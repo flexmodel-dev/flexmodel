@@ -1,0 +1,3 @@
+[submodule "flexmodel-ui"]
+	path = flexmodel-ui
+	url = git@github.com:flexmodel-dev/flexmodel-ui.git

@@ -17,5 +17,12 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
-
+    <profiles>
+        <profile>
+            <id>with-ui</id>
+            <modules>
+                <module>flexmodel-ui</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

@@ -1,0 +1,606 @@
+model f_project {
+  id : String @id @default(uuid()),
+  name: String,
+  description?: String,
+  enabled : Boolean @comment("是否启用") @default("true"),
+  owner_id?: String @comment("所有者 ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @comment("租户")
+}
+model f_user {
+  id : String @id @default(uuid()),
+  name? : String @length("255") @comment("名称"),
+  email? : String @length("255") @comment("邮箱"),
+  password_hash : String @length("255") @comment("密码HASH"),
+  role_ids: String @length("255") @comment("角色ID, 逗号分隔"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name : "IDX_USERNAME", unique: "true", fields: [name]),
+  @index(name : "IDX_EMAIL", unique: "true", fields: [email]),
+  @comment("用户")
+}
+model f_role {
+  id : String @id @unique @default(uuid()),
+  name : String @length("255"),
+  description? : String @length("255"),
+  resource_ids?: String @length("2000") @comment("资源ID, 逗号分隔"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name:"IDX_ROLE_NAME", unique: "true", fields: [name]),
+  @comment("角色")
+}
+model f_resource {
+  id: Long @id @default(autoIncrement()),
+  name : String @length("255"),
+  permission: String @length("255") @comment("权限标识"),
+  type: String @length("100") @comment("类型, system: 系统级, platform: 项目级"),
+  parent_id?: Long,
+  @comment("资源")
+}
+model f_resource_template {
+  id: Long @id @default(autoIncrement()),
+  name: String @length("255"),
+  permission: String @length("255") @comment("权限标识"),
+  parent_id?: Long,
+  @comment("资源模版")
+}
+model f_config {
+  id : String @id @unique @default(uuid()),
+  key : String @comment("名称") @length("255"),
+  value? : String @length("255"),
+  created_at : DateTime @default(now()),
+  updated_at : DateTime @default(now()),
+  @comment("配置"),
+  @index(name:"IDX_CONFIG_KEY", unique: "true", fields: [key]),
+  @comment("系统配置")
+}
+model f_datasource {
+  name : String @id,
+  type? : DatasourceType,
+  config? : JSON,
+  enabled : Boolean @comment("禁用状态") @default("true"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("数据源")
+}
+
+model f_storage {
+  name : String @id,
+  type? : StorageType,
+  config? : JSON,
+  enabled : Boolean @comment("是否启用") @default("true"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("文件存储")
+}
+model f_api_definition {
+  id : String @id @unique @default(uuid()),
+  name : String @length("255"),
+  parent_id? : String @length("255"),
+  type : ApiType,
+  method? : String @length("255"),
+  path? : String @length("255"),
+  meta? : JSON,
+  enabled : Boolean @comment("是否开启") @default("true"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("API定义")
+}
+model f_api_definition_history {
+  id : String @id @default(uuid()),
+  api_definition_id: String @length("100"),
+  name : String @length("255"),
+  parent_id? : String @length("255"),
+  type : ApiType,
+  method? : String @length("255"),
+  path? : String @length("255"),
+  meta? : JSON,
+  enabled : Boolean @comment("是否开启") @default("true"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("API定义")
+}
+model f_api_request_log {
+  id : String @id @default(uuid()),
+  url : String @length("2000") @comment("请求地址"),
+  http_method: String @length("255") @comment("请求方法"),
+  path: String @length("1000") @comment("请求路径"),
+  request_body : JSON @comment("请求参数"),
+  request_headers : JSON @comment("请求头"),
+  status_code : Int,
+  response_time : Int,
+  client_ip?: String @length("45") @comment("IP地址"),
+  created_at : DateTime @default(now()),
+  is_success: Boolean @comment("是否成功") @default("true"),
+  error_message? : JSON @comment("异常信息"),
+  project_id?: String @comment("项目ID"),
+  @index(name: "IDX_API_REQUEST_LOG_CREATED_AT", fields: [created_at]),
+  @index(name: "IDX_API_REQUEST_LOG_IS_ERROR", fields: [is_success]),
+  @index(name: "IDX_API_REQUEST_LOG_PATH_CREATED_AT", fields: [path, created_at]),
+  @index(name: "IDX_API_REQUEST_LOG_STATUS_CREATED_AT", fields: [status_code, created_at]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("API请求日志")
+}
+model f_identity_provider {
+  name : String @id,
+  provider? : JSON,
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("身份源")
+}
+
+model f_ai_chat_memory {
+  id : String @id @default(uuid()),
+  messages : String @length("10000") @comment("消息"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @comment("AI聊天记忆")
+}
+
+model f_ai_chat_conversation {
+  id : String @id @default(uuid()),
+  title : String @length("255") @comment("标题"),
+  messages? : f_ai_chat_message[] @relation(localField: "id", foreignField: "conversation_id", cascadeDelete: "true"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("AI聊天会话")
+}
+
+model f_ai_chat_message {
+  id : String @id @default(uuid()),
+  conversation_id : String @length("255") @comment("会话ID"),
+//  conversation? : f_ai_chat_conversation @comment("会话") @relation(localField: "conversation_id", foreignField: "id", cascadeDelete: false),
+  role: String @length("255") @comment("角色"),
+  content : String @length("4000") @comment("内容"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name:"IDX_CONVERSATION_ID", unique: false, fields: [conversation_id]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("AI聊天消息")
+}
+
+model f_em_flow_definition {
+  id: Long @id @default(autoIncrement()),
+  flow_module_id: String @comment("流程模型id") @unique,
+  flow_name: String @comment("流程名称"),
+  flow_key: String @comment("流程业务标识"),
+  flow_model?: String @length(10000) @comment("表单定义"),
+  status: Int @default(0) @comment("状态(1.初始态 2.编辑中 3.已下线)"),
+  create_time: DateTime @default(now()) @comment("流程创建时间"),
+  modify_time: DateTime @default(now()) @comment("流程修改时间"),
+  operator: String @comment("操作人"),
+  remark: String @length(512) @comment("备注"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  caller?: String @comment("调用方"),
+  is_deleted: Boolean @default(0) @comment("删除状态(0未删除，1已删除)"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_flow_define_module", fields: [flow_module_id]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("流程定义")
+}
+
+model f_em_flow_deployment {
+  id: Long @id @default(autoIncrement()),
+  flow_deploy_id: String @comment("流程模型部署id") @unique,
+  flow_module_id: String @comment("流程模型id"),
+  flow_name: String @comment("流程名称"),
+  flow_key: String @comment("流程业务标识"),
+  flow_model: String @length(10000) @comment("表单定义"),
+  status: Int @default(0) @comment("状态(1.已部署 3.已下线)"),
+  create_time: DateTime @default(now()) @comment("流程创建时间"),
+  modify_time: DateTime @default(now()) @comment("流程修改时间"),
+  operator: String @comment("操作人"),
+  remark: String @length(512) @comment("备注"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  caller?: String @comment("调用方"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_flow_deploy", fields: [flow_deploy_id]),
+  @index(name: "IDX_flow_module", fields: [flow_module_id]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("流程部署")
+}
+
+model f_ei_flow_instance {
+  id: Long @id @default(autoIncrement()),
+  flow_instance_id: String @unique @comment("流程执行实例id"),
+  parent_flow_instance_id?: String @comment("父流程执行实例id"),
+  flow_deploy_id: String @comment("流程模型部署id"),
+  flow_module_id: String @comment("流程模型id"),
+  status: Int @default(0) @comment("状态(1.执行完成 2.执行中 3.执行终止(强制终止))"),
+  create_time: DateTime @default(now()) @comment("流程创建时间"),
+  modify_time: DateTime @default(now()) @comment("流程修改时间"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  caller?: String @comment("调用方"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_flow_instance", fields: [flow_instance_id]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("流程执行实例")
+}
+
+model f_ei_flow_instance_mapping {
+  id: Long @id @default(autoIncrement()),
+  flow_instance_id: String @comment("流程执行实例id"),
+  node_instance_id: String @comment("节点执行实例id"),
+  node_key: String @comment("节点唯一标识"),
+  sub_flow_instance_id: String @comment("子流程执行实例id"),
+  type: Int @default(0) @comment("状态(1.执行 2.回滚)"),
+  create_time: DateTime @default(now()) @comment("流程创建时间"),
+  modify_time: DateTime @default(now()) @comment("流程修改时间"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  caller?: String @default("optimus-prime") @comment("调用方"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_ei_flow_node", fields: [flow_instance_id]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("父子流程实例映射")
+}
+
+model f_ei_node_instance {
+  id: Long @id @default(autoIncrement()),
+  node_instance_id: String @unique @comment("节点执行实例id"),
+  flow_instance_id: String @comment("流程执行实例id"),
+  source_node_instance_id: String @comment("上一个节点执行实例id"),
+  instance_data_id: String @length(5000) @comment("实例数据id"),
+  flow_deploy_id: String @comment("流程模型部署id"),
+  node_key: String @comment("节点唯一标识"),
+  node_type: Int @default(0) @comment("流程类型"),
+  source_node_key: String @comment("上一个流程节点唯一标识"),
+  status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
+  create_time: DateTime @default(now()) @comment("流程创建时间"),
+  modify_time: DateTime @default(now()) @comment("流程修改时间"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  caller?: String @comment("调用方"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_node_instance_id", fields: [node_instance_id]),
+  @index(name: "IDX_fiid_sniid_nk", fields: [flow_instance_id, source_node_instance_id, node_key]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("节点执行实例")
+}
+
+model f_ei_node_instance_log {
+  id: Long @id @default(autoIncrement()),
+  node_instance_id: String @comment("节点执行实例id"),
+  flow_instance_id: String @comment("流程执行实例id"),
+  instance_data_id: String @comment("实例数据id"),
+  node_key: String @comment("节点唯一标识"),
+  type: Int @default(0) @comment("操作类型(1.系统执行 2.任务提交 3.任务撤销)"),
+  status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
+  create_time: DateTime @default(now()) @comment("流程创建时间"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  caller?: String @comment("调用方"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("节点执行记录")
+}
+
+model f_ei_instance_data {
+  id: Long @id @default(autoIncrement()),
+  node_instance_id: String @comment("节点执行实例id"),
+  flow_instance_id: String @comment("流程执行实例id"),
+  instance_data_id: String @unique @comment("实例数据id"),
+  flow_deploy_id: String @comment("流程模型部署id"),
+  flow_module_id: String @comment("流程模型id"),
+  node_key: String @comment("节点唯一标识"),
+  instance_data: String @length(5000) @comment("数据列表json"),
+  type: Int @default(0) @comment("操作类型(1.实例初始化 2.系统执行 3.系统主动获取 4.上游更新 5.任务提交 6.任务撤回)"),
+  create_time: DateTime @default(now()) @comment("流程创建时间"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  caller?: String @comment("调用方"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_instance_data_id", fields: [instance_data_id]),
+  @index(name: "IDX_flow_instance", fields: [flow_instance_id]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("实例数据")
+}
+
+// Quartz 持久化表模型（根据提供的表结构生成）
+// 约定：
+// 1) 每个模型均包含默认主键字段 id。
+// 2) 原表的 PRIMARY KEY（通常为复合键）用唯一索引实现，命名保持接近官方索引名。
+// 3) BLOB 字段以 JSON 存储；布尔型标志位(VARCHAR(1))以 Boolean 表示。
+
+model f_qrtz_job_detail {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  job_name : String @length("190") @comment("任务名称"),
+  job_group : String @length("190") @comment("任务分组"),
+  description? : String @length("250") @comment("任务描述"),
+  job_class_name : String @length("250") @comment("任务实现类名"),
+  is_durable : Boolean @comment("是否持久化(原 VARCHAR(1))"),
+  is_nonconcurrent : Boolean @comment("是否不并发执行(原 VARCHAR(1))"),
+  is_update_data : Boolean @comment("执行后是否更新数据(原 VARCHAR(1))"),
+  requests_recovery : Boolean @comment("是否请求恢复(原 VARCHAR(1))"),
+  job_data? : JSON @comment("任务数据(原 BLOB)"),
+  @index(name:"UQ_QRTZ_JOB_DETAILS_PK", unique: "true", fields: [sched_name, job_name, job_group]),
+  @index(name:"IDX_QRTZ_J_REQ_RECOVERY", unique: "false", fields: [sched_name, requests_recovery]),
+  @index(name:"IDX_QRTZ_J_GRP", unique: "false", fields: [sched_name, job_group]),
+  @comment("Quartz 任务明细")
+}
+
+model f_qrtz_trigger {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  trigger_name : String @length("190") @comment("触发器名称"),
+  trigger_group : String @length("190") @comment("触发器分组"),
+  job_name : String @length("190") @comment("关联任务名称"),
+  job_group : String @length("190") @comment("关联任务分组"),
+  description? : String @length("250") @comment("触发器描述"),
+  next_fire_time? : Long @comment("下次触发时间(毫秒)"),
+  prev_fire_time? : Long @comment("上次触发时间(毫秒)"),
+  priority? : Int @comment("优先级"),
+  trigger_state : String @length("16") @comment("触发器状态"),
+  trigger_type : String @length("8") @comment("触发器类型(如 CRON/SIMPLE)"),
+  start_time : Long @comment("开始时间(毫秒)"),
+  end_time? : Long @comment("结束时间(毫秒)"),
+  calendar_name? : String @length("190") @comment("日历名称"),
+  misfire_instr? : Int @comment("误触发指令(原 SMALLINT)"),
+  job_data? : JSON @comment("触发器数据(原 BLOB)"),
+  @index(name:"UQ_QRTZ_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
+  @index(name:"IDX_QRTZ_T_J", unique: "false", fields: [sched_name, job_name, job_group]),
+  @index(name:"IDX_QRTZ_T_JG", unique: "false", fields: [sched_name, job_group]),
+  @index(name:"IDX_QRTZ_T_C", unique: "false", fields: [sched_name, calendar_name]),
+  @index(name:"IDX_QRTZ_T_G", unique: "false", fields: [sched_name, trigger_group]),
+  @index(name:"IDX_QRTZ_T_STATE", unique: "false", fields: [sched_name, trigger_state]),
+  @index(name:"IDX_QRTZ_T_N_STATE", unique: "false", fields: [sched_name, trigger_name, trigger_group, trigger_state]),
+  @index(name:"IDX_QRTZ_T_N_G_STATE", unique: "false", fields: [sched_name, trigger_group, trigger_state]),
+  @index(name:"IDX_QRTZ_T_NEXT_FIRE_TIME", unique: "false", fields: [sched_name, next_fire_time]),
+  @index(name:"IDX_QRTZ_T_NFT_ST", unique: "false", fields: [sched_name, trigger_state, next_fire_time]),
+  @index(name:"IDX_QRTZ_T_NFT_MISFIRE", unique: "false", fields: [sched_name, misfire_instr, next_fire_time]),
+  @index(name:"IDX_QRTZ_T_NFT_ST_MISFIRE", unique: "false", fields: [sched_name, misfire_instr, next_fire_time, trigger_state]),
+  @index(name:"IDX_QRTZ_T_NFT_ST_MISFIRE_GRP", unique: "false", fields: [sched_name, misfire_instr, next_fire_time, trigger_group, trigger_state]),
+  @comment("Quartz 触发器")
+}
+
+model f_qrtz_simple_trigger {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  trigger_name : String @length("190") @comment("触发器名称"),
+  trigger_group : String @length("190") @comment("触发器分组"),
+  repeat_count : Long @comment("重复次数"),
+  repeat_interval : Long @comment("重复间隔(毫秒)"),
+  times_triggered : Long @comment("已触发次数"),
+  @index(name:"UQ_QRTZ_SIMPLE_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
+  @comment("Quartz Simple 类型触发器明细")
+}
+
+model f_qrtz_cron_trigger {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  trigger_name : String @length("190") @comment("触发器名称"),
+  trigger_group : String @length("190") @comment("触发器分组"),
+  cron_expression : String @length("120") @comment("CRON 表达式"),
+  time_zone_id? : String @length("80") @comment("时区标识"),
+  @index(name:"UQ_QRTZ_CRON_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
+  @comment("Quartz Cron 类型触发器明细")
+}
+
+model f_qrtz_simprop_trigger {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  trigger_name : String @length("190") @comment("触发器名称"),
+  trigger_group : String @length("190") @comment("触发器分组"),
+  str_prop_1? : String @length("512") @comment("字符串属性1"),
+  str_prop_2? : String @length("512") @comment("字符串属性2"),
+  str_prop_3? : String @length("512") @comment("字符串属性3"),
+  int_prop_1? : Int @comment("整型属性1"),
+  int_prop_2? : Int @comment("整型属性2"),
+  long_prop_1? : Long @comment("长整型属性1"),
+  long_prop_2? : Long @comment("长整型属性2"),
+  dec_prop_1? : String @length("50") @comment("小数属性1(原 NUMERIC(13,4))"),
+  dec_prop_2? : String @length("50") @comment("小数属性2(原 NUMERIC(13,4))"),
+  bool_prop_1? : Boolean @comment("布尔属性1(原 VARCHAR(1))"),
+  bool_prop_2? : Boolean @comment("布尔属性2(原 VARCHAR(1))"),
+  @index(name:"UQ_QRTZ_SIMPROP_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
+  @comment("Quartz Simprop 类型触发器明细")
+}
+
+model f_qrtz_blob_trigger {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  trigger_name : String @length("190") @comment("触发器名称"),
+  trigger_group : String @length("190") @comment("触发器分组"),
+  blob_data? : JSON @comment("触发器二进制数据(原 BLOB)"),
+  @index(name:"UQ_QRTZ_BLOB_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
+  @index(name:"IDX_QRTZ_BLOB_TRIG", unique: "false", fields: [sched_name, trigger_name, trigger_group]),
+  @comment("Quartz Blob 类型触发器明细")
+}
+
+model f_qrtz_calendar {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  calendar_name : String @length("190") @comment("日历名称"),
+  calendar : String @comment("日历数据(原 BLOB)"),
+  @index(name:"UQ_QRTZ_CALENDARS_PK", unique: "true", fields: [sched_name, calendar_name]),
+  @comment("Quartz 日历")
+}
+
+model f_qrtz_paused_trigger_grp {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  trigger_group : String @length("190") @comment("触发器分组"),
+  @index(name:"UQ_QRTZ_PAUSED_TRIGGER_GRPS_PK", unique: "true", fields: [sched_name, trigger_group]),
+  @comment("Quartz 已暂停触发器分组")
+}
+
+model f_qrtz_fired_trigger {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  entry_id : String @length("95") @comment("触发记录条目ID"),
+  trigger_name : String @length("190") @comment("触发器名称"),
+  trigger_group : String @length("190") @comment("触发器分组"),
+  instance_name : String @length("190") @comment("调度实例名称"),
+  fired_time : Long @comment("实际触发时间(毫秒)"),
+  sched_time : Long @comment("计划时间(毫秒)"),
+  priority : Int @comment("优先级"),
+  state : String @length("16") @comment("状态"),
+  job_name? : String @length("190") @comment("任务名称"),
+  job_group? : String @length("190") @comment("任务分组"),
+  is_nonconcurrent? : Boolean @comment("是否不并发(原 VARCHAR(1))"),
+  requests_recovery? : Boolean @comment("是否请求恢复(原 VARCHAR(1))"),
+  @index(name:"UQ_QRTZ_FIRED_TRIGGERS_PK", unique: "true", fields: [sched_name, entry_id]),
+  @index(name:"IDX_QRTZ_FT_TRIG_INST_NAME", unique: "false", fields: [sched_name, instance_name]),
+  @index(name:"IDX_QRTZ_FT_INST_JOB_REQ_RCVRY", unique: "false", fields: [sched_name, instance_name, requests_recovery]),
+  @index(name:"IDX_QRTZ_FT_J_G", unique: "false", fields: [sched_name, job_name, job_group]),
+  @index(name:"IDX_QRTZ_FT_JG", unique: "false", fields: [sched_name, job_group]),
+  @index(name:"IDX_QRTZ_FT_T_G", unique: "false", fields: [sched_name, trigger_name, trigger_group]),
+  @index(name:"IDX_QRTZ_FT_TG", unique: "false", fields: [sched_name, trigger_group]),
+  @comment("Quartz 已触发触发器记录")
+}
+
+model f_qrtz_scheduler_state {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  instance_name : String @length("190") @comment("调度实例名称"),
+  last_checkin_time : Long @comment("最后检查时间(毫秒)"),
+  checkin_interval : Long @comment("检查间隔(毫秒)"),
+  @index(name:"UQ_QRTZ_SCHEDULER_STATE_PK", unique: "true", fields: [sched_name, instance_name]),
+  @comment("Quartz 调度器状态")
+}
+
+model f_qrtz_lock {
+  id : String @id @default(uuid()),
+  sched_name : String @length("120") @comment("调度器名称"),
+  lock_name : String @length("40") @comment("锁名称"),
+  @index(name:"UQ_QRTZ_LOCKS_PK", unique: "true", fields: [sched_name, lock_name]),
+  @comment("Quartz 锁")
+}
+
+model f_trigger {
+  id : String @id @default(uuid()),
+  name : String @comment("描述"),
+  description? : String @length("100") @comment("描述"),
+  type: TriggerType @comment("触发器类型"),
+  config: JSON @comment("触发器配置"),
+  job_type: String @length("50") @default("FLOW") @comment("任务的类型"),
+  job_group: String @length("50") @comment("任务的分组"),
+  job_id: String @length("50") @comment("任务的ID"),
+  state: Boolean @default(true) @comment("状态"),
+  @index(name:"UQ_TRIGGER_PK", unique: "true", fields: [id]),
+  created_at? : DateTime @default(now()),
+  updated_at? : DateTime @default(now()),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  project_id?: String @comment("项目ID"),
+  @index(name:"IDX_PROJECT", unique: false, fields: [project_id]),
+  @comment("触发器配置")
+}
+
+model f_job_execution_log {
+  id : String @id @default(uuid()),
+  trigger_id : String @length("50") @comment("触发器ID"),
+  job_id : String @length("50") @comment("作业ID"),
+  job_group : String @length("50") @comment("作业分组"),
+  job_type : String @length("50") @comment("作业类型"),
+  job_name : String @length("255") @comment("作业名称"),
+  execution_status : String @length("20") @comment("执行状态(SUCCESS/FAILED/RUNNING)"),
+  start_time : DateTime @comment("开始执行时间"),
+  end_time? : DateTime @comment("结束执行时间"),
+  execution_duration? : Long @comment("执行时长(毫秒)"),
+  is_success : Boolean @default(false) @comment("是否执行成功"),
+  error_message? : String @length("2000") @comment("错误信息"),
+  error_stack_trace? : JSON @comment("错误堆栈信息"),
+  input_data? : JSON @comment("输入数据"),
+  output_data? : JSON @comment("输出数据"),
+  retry_count : Int @default(0) @comment("重试次数"),
+  max_retry_count : Int @default(0) @comment("最大重试次数"),
+  scheduler_name : String @length("120") @comment("调度器名称"),
+  instance_name : String @length("190") @comment("调度实例名称"),
+  fired_time : Long @comment("实际触发时间(毫秒)"),
+  scheduled_time : Long @comment("计划执行时间(毫秒)"),
+  project_id?: String @comment("项目ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+
+  @index(name:"IDX_JOB_EXEC_TRIGGER_ID", unique: false, fields: [trigger_id]),
+  @index(name:"IDX_JOB_EXEC_JOB_ID", unique: false, fields: [job_id]),
+  @index(name:"IDX_JOB_EXEC_SCHEDULER", unique: false, fields: [scheduler_name]),
+  @index(name:"IDX_JOB_EXEC_STATUS", unique: false, fields: [execution_status]),
+  @index(name:"IDX_JOB_EXEC_START_TIME", unique: false, fields: [start_time]),
+  @index(name:"IDX_JOB_EXEC_SUCCESS", unique: false, fields: [is_success]),
+  @index(name:"IDX_TENANT", unique: false, fields: [project_id]),
+  @index(name:"IDX_JOB_EXEC_COMPOSITE", unique: false, fields: [trigger_id, start_time]),
+  @comment("作业执行日志")
+}
+
+enum TriggerType {
+  EVENT,
+  SCHEDULED
+}
+
+enum ApiType {
+  FOLDER,
+  API
+}
+
+enum DatasourceType {
+  SYSTEM,
+  USER
+}
+
+enum StorageType {
+  S3,
+  LOCAL
+}

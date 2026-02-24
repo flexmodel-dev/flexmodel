@@ -1,0 +1,73 @@
+package dev.flexmodel;
+
+
+import dev.flexmodel.model.SchemaObject;
+import dev.flexmodel.session.AbstractSessionContext;
+
+import java.util.List;
+import java.util.Set;
+
+/**
+ * 模型注册表
+ * @author cjbi
+ */
+public interface ModelRegistry {
+
+  /**
+   * 从数据库中加载模型
+   *
+   * @param sessionContext
+   * @return
+   */
+  List<SchemaObject> loadFromDataSource(AbstractSessionContext sessionContext);
+
+  /**
+   * 从数据库中加载模型
+   *
+   * @param sessionContext
+   * @param includes
+   * @return
+   */
+  List<SchemaObject> loadFromDataSource(AbstractSessionContext sessionContext, Set<String> includes);
+
+  /**
+   * 获取所有已注册的模型
+   *
+   * @param schemaName
+   * @return
+   */
+  List<SchemaObject> listRegistered(String schemaName);
+
+  /**
+   * 注销模型
+   *
+   * @param schemaName
+   */
+  void unregisterAll(String schemaName);
+
+  /**
+   * 注销模型
+   *
+   * @param schemaName
+   * @param modelName
+   */
+  void unregisterAll(String schemaName, String modelName);
+
+  /**
+   * 注册模型
+   *
+   * @param schemaName
+   * @param object
+   */
+  void register(String schemaName, SchemaObject object);
+
+  /**
+   * 获取已注册的模型
+   *
+   * @param schemaName
+   * @param modelName
+   * @return
+   */
+  SchemaObject getRegistered(String schemaName, String modelName);
+
+}

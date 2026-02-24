@@ -1,0 +1,87 @@
+package dev.flexmodel.codegen;
+
+import dev.flexmodel.JsonUtils;
+import dev.flexmodel.ModelImportBundle;
+import dev.flexmodel.model.SchemaObject;
+import dev.flexmodel.parser.ASTNodeConverter;
+import dev.flexmodel.parser.impl.ModelParser;
+import dev.flexmodel.parser.impl.ParseException;
+
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 配置类，用于存储和处理代码生成的各种设置，包括数据库连接信息和生成策略。
+ *
+ * @author cjbi
+ */
+public class Configuration implements Serializable {
+
+  private List<SchemaConfig> schemas = new ArrayList<>();
+
+  public List<ModelImportBundle> getImportDescribes() {
+    List<ModelImportBundle> importDescribes = new ArrayList<>();
+    for (SchemaConfig schema : schemas) {
+      List<SchemaObject> models = new ArrayList<>();
+      List<ModelImportBundle.ImportData> data = new ArrayList<>();
+      // read from script
+      String[] importScripts = schema.getImportScript().split(",");
+      for (String importScript : importScripts) {
+        File scriptFile = Path.of(schema.getBaseDir(), importScript).toFile();
+        System.out.println("Import Script File Path: " + scriptFile.getAbsolutePath());
+        if (scriptFile.exists()) {
+          System.out.println("Script file is exists, import Script File: " + scriptFile);
+          if (importScript.endsWith(".json")) {
+            try {
+              String content = Files.readString(scriptFile.toPath());
+              ModelImportBundle describe = JsonUtils.parseToObject(content, ModelImportBundle.class);
+              models.addAll(describe.getObjects());
+              data.addAll(describe.getData());
+            } catch (IOException e) {
+              System.out.println("Parse file error: " + importScript);
+              throw new RuntimeException(e);
+            }
+          } else if (importScript.endsWith(".idl")) {
+            try {
+              String content = Files.readString(scriptFile.toPath());
+              ModelParser modelParser = new ModelParser(new ByteArrayInputStream(content.getBytes()));
+              List<ModelParser.ASTNode> list = modelParser.CompilationUnit();
+              for (ModelParser.ASTNode astNode : list) {
+                models.add(ASTNodeConverter.toSchemaObject(astNode));
+              }
+            } catch (IOException | ParseException e) {
+              System.out.println("Parse file error: " + importScript);
+              throw new RuntimeException(e);
+            }
+          } else {
+            System.out.println("Unsupported script file type: " + importScript + ", must be .json or .idl");
+          }
+        }
+      }
+      ModelImportBundle importDescribe = new ModelImportBundle();
+      importDescribe.setSchemaName(schema.getName());
+      importDescribe.setObjects(models);
+      importDescribe.setData(data);
+      importDescribes.add(importDescribe);
+    }
+    return importDescribes;
+  }
+
+  public List<SchemaConfig> getSchemas() {
+    return schemas;
+  }
+
+  public void addSchema(SchemaConfig schema) {
+    schemas.add(schema);
+  }
+
+  public void setSchemas(List<SchemaConfig> schemas) {
+    this.schemas = schemas;
+  }
+}

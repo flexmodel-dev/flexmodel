@@ -1,0 +1,333 @@
+{
+  "objects": [
+    {
+      "name": "Datasource",
+      "type": "entity",
+      "fields": [
+        {
+          "name": "name",
+          "type": "String",
+          "identity": true,
+          "unique": false,
+          "nullable": true,
+          "modelName": "Datasource"
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "length": 255,
+          "unique": false,
+          "nullable": true,
+          "modelName": "Datasource"
+        },
+        {
+          "name": "config",
+          "type": "JSON",
+          "unique": false,
+          "nullable": true,
+          "modelName": "Datasource"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": true,
+          "modelName": "Datasource"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": true,
+          "modelName": "Datasource"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "ApiInfo",
+      "type": "entity",
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "identity": true,
+          "unique": false,
+          "nullable": true,
+          "modelName": "ApiInfo",
+          "defaultValue": {
+            "type": "generated",
+            "name": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "length": 255,
+          "unique": false,
+          "nullable": false,
+          "modelName": "ApiInfo",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        },
+        {
+          "name": "parentId",
+          "type": "String",
+          "length": 255,
+          "unique": false,
+          "nullable": true,
+          "modelName": "ApiInfo"
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "length": 255,
+          "unique": false,
+          "nullable": false,
+          "modelName": "ApiInfo",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ],
+          "defaultValue": {
+            "type": "fixed",
+            "value": "FOLDER"
+          }
+        },
+        {
+          "name": "method",
+          "type": "String",
+          "length": 255,
+          "unique": false,
+          "nullable": true,
+          "modelName": "ApiInfo"
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "length": 255,
+          "unique": false,
+          "nullable": true,
+          "modelName": "ApiInfo"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": false,
+          "modelName": "ApiInfo",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": false,
+          "modelName": "ApiInfo",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "unique": false,
+          "nullable": true,
+          "modelName": "ApiInfo"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "ApiLog",
+      "type": "entity",
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "identity": true,
+          "unique": false,
+          "nullable": true,
+          "modelName": "ApiLog",
+          "defaultValue": {
+            "type": "generated",
+            "name": "uuid"
+          }
+        },
+        {
+          "name": "level",
+          "type": "String",
+          "length": 255,
+          "unique": false,
+          "nullable": false,
+          "modelName": "ApiLog",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        },
+        {
+          "name": "uri",
+          "type": "String",
+          "unique": false,
+          "nullable": false,
+          "modelName": "ApiLog",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "unique": false,
+          "nullable": false,
+          "modelName": "ApiLog",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": false,
+          "modelName": "ApiLog",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "IdentityProvider",
+      "type": "entity",
+      "fields": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": false,
+          "modelName": "IdentityProvider",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        },
+        {
+          "name": "provider",
+          "type": "JSON",
+          "unique": false,
+          "nullable": true,
+          "modelName": "IdentityProvider",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "identity": true,
+          "unique": false,
+          "nullable": true,
+          "modelName": "Datasource"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": false,
+          "modelName": "IdentityProvider",
+          "validators": [
+            {
+              "type": "NotNullValidator",
+              "message": "must not be null"
+            }
+          ]
+        }
+      ],
+      "indexes": []
+    }
+  ],
+  "data": [
+    {
+      "modelName": "Datasource",
+      "values": [
+        {
+          "name": "admin3",
+          "type": "user",
+          "config": {
+            "url": "jdbc:sqlite:file::memory:?cache=shared",
+            "dbKind": "sqlite",
+            "password": "",
+            "username": ""
+          }
+        }
+      ]
+    },
+    {
+      "modelName": "IdentityProvider",
+      "values": [
+        {
+          "name": "oidc-test",
+          "provider": {
+            "type": "oidc",
+            "issuer": "http://localhost:8080/realms/master",
+            "clientId": "simple",
+            "clientSecret": "3224354232asdfew"
+          }
+        }
+      ]
+    },
+    {
+      "modelName": "ApiInfo",
+      "values": [
+        {
+          "name": "Fetch a paginated ApiLog records list",
+          "parentId": "01J1MBYWE7CS55HQC3XSSCAAE6",
+          "type": "REST_API",
+          "method": "GET",
+          "path": "/system_ApiLog",
+          "meta": {
+            "auth": false,
+            "type": "list",
+            "model": "ApiLog",
+            "enable": true,
+            "paging": true,
+            "datasource": "system"
+          }
+        }
+      ]
+    }
+  ]
+}

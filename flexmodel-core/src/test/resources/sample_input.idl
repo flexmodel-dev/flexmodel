@@ -1,0 +1,46 @@
+// 班级
+model Classes {
+  id: String @id @default(uuid()),
+  classCode: String @unique @length(255),
+  className? : String  @default("A班级"),
+  students: Student[] @relation(localField: "id", foreignField: "classId", cascadeDelete: true),
+}
+
+// 学生
+model Student {
+  id : String @id @default(uuid()),
+  studentName? : String @length("255"),
+  gender? : UserGender,
+  interest? : User_interest[],
+  age? : Int,
+  classId? : Long,
+  studentClass: Classes @relation(localField: "classId", foreignField: "id"),
+  studentDetail: StudentDetail @relation(localField: "id", foreignField: "studentId", cascadeDelete: true),
+  createdAt? : DateTime @default(now()),
+  updatedAt? : DateTime @default(now()),
+  @index(name:"IDX_studentName", unique: false, fields: [classId, studentName: (sort: "desc")]),
+  @index(unique: "false", fields: [studentName]),
+  @index(unique: "false", fields: [classId]),
+}
+
+// 学生详情
+model StudentDetail {
+  id : String @id @default(autoIncrement()),
+  studentId? : Long,
+  description? : String @length("255"),
+}
+
+// 用户性别
+enum UserGender {
+  UNKNOWN,
+  MALE,
+  FEMALE
+}
+
+// 用户爱好
+enum user_interest {
+  chang,
+  tiao,
+  rap,
+  daLanQiu
+}

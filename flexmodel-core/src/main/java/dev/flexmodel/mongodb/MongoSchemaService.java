@@ -1,0 +1,226 @@
+package dev.flexmodel.mongodb;
+
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.Indexes;
+import dev.flexmodel.model.*;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import dev.flexmodel.ModelRegistry;
+import dev.flexmodel.model.*;
+import dev.flexmodel.model.field.TypedField;
+import dev.flexmodel.query.Direction;
+import dev.flexmodel.service.BaseService;
+import dev.flexmodel.service.SchemaService;
+import dev.flexmodel.sql.StringHelper;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * @author cjbi
+ */
+public class MongoSchemaService extends BaseService implements SchemaService {
+
+  private final String schemaName;
+  private final MongoDatabase mongoDatabase;
+  private final ModelRegistry modelRegistry;
+  private final MongoContext sessionContext;
+
+  public MongoSchemaService(MongoContext sessionContext) {
+    super(sessionContext);
+    this.schemaName = sessionContext.getSchemaName();
+    this.mongoDatabase = sessionContext.getMongoDatabase();
+    this.modelRegistry = sessionContext.getModelRegistry();
+    this.sessionContext = sessionContext;
+  }
+
+  @Override
+  public List<SchemaObject> loadModels() {
+    return sessionContext.getModelRegistry().loadFromDataSource(sessionContext);
+  }
+
+  @Override
+  public List<SchemaObject> loadModels(Set<String> modelNames) {
+    return sessionContext.getModelRegistry().loadFromDataSource(sessionContext, modelNames);
+  }
+
+  @Override
+  public List<SchemaObject> listModels() {
+    return modelRegistry.listRegistered(sessionContext.getSchemaName());
+  }
+
+  @Override
+  public SchemaObject getModel(String modelName) {
+    return modelRegistry.getRegistered(schemaName, modelName);
+  }
+
+  @Override
+  public void dropModel(String modelName) {
+    String collectionName = getCollectionName(modelName);
+    mongoDatabase.getCollection(collectionName).drop();
+    modelRegistry.unregisterAll(schemaName, modelName);
+  }
+
+  @Override
+  public EntityDefinition createEntity(EntityDefinition entity) {
+    // 保存到ModelRegistry中
+    modelRegistry.register(schemaName, entity);
+
+    String collectionName = getCollectionName(entity.getName());
+    mongoDatabase.createCollection(collectionName);
+
+    // 创建集合中已定义的索引
+    List<IndexDefinition> indexesToCreate = new ArrayList<>(entity.getIndexes());
+    for (IndexDefinition index : indexesToCreate) {
+      createIndex(index);
+    }
+
+    // 为主键字段创建唯一索引
+    entity.findIdField().ifPresent(idField -> {
+      IndexDefinition index = new IndexDefinition(idField.getModelName());
+      index.setUnique(true);
+      index.addField(idField.getName());
+      createIndex(index);
+    });
+
+    return entity;
+  }
+
+  @Override
+  public NativeQueryDefinition createNativeQuery(NativeQueryDefinition nq) {
+    modelRegistry.register(schemaName, nq);
+    return nq;
+  }
+
+  @Override
+  public EnumDefinition createEnum(EnumDefinition anEnum) {
+    // 保存到ModelRegistry中
+    modelRegistry.register(schemaName, anEnum);
+    return anEnum;
+  }
+
+  @Override
+  public TypedField<?, ?> createField(TypedField<?, ?> field) {
+    if (field.isIdentity()) {
+      IndexDefinition index = new IndexDefinition(field.getModelName());
+      index.setUnique(true);
+      index.addField(field.getName());
+      createIndex(index);
+    }
+    // 更新实体定义，添加新字段
+    EntityDefinition entity = (EntityDefinition) modelRegistry.getRegistered(schemaName, field.getModelName());
+    if (entity != null) {
+      entity.addField(field);
+      modelRegistry.register(schemaName, entity);
+    }
+    return field;
+  }
+
+  @Override
+  public TypedField<?, ?> modifyField(TypedField<?, ?> field) {
+    // mongodb无需修改schema
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(field.getModelName());
+    entity.removeField(field.getName());
+    entity.addField(field);
+    modelRegistry.register(schemaName, entity);
+    return field;
+  }
+
+  @Override
+  public void dropField(String modelName, String fieldName) {
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+    entity.removeField(fieldName);
+    // 移除相关索引
+    for (IndexDefinition index : entity.getIndexes()) {
+      if (index.containsField(fieldName)) {
+        entity.removeIndex(index.getName());
+      }
+    }
+    sessionContext.getModelRegistry().register(schemaName, entity);
+  }
+
+  @Override
+  public IndexDefinition createIndex(IndexDefinition index) {
+    String collectionName = getCollectionName(index.getModelName());
+    List<Bson> indexes = new ArrayList<>();
+    for (IndexDefinition.Field field : index.getFields()) {
+      indexes.add(field.direction() == Direction.ASC
+        ? Indexes.ascending(field.fieldName())
+        : Indexes.descending(field.fieldName())
+      );
+    }
+    String indexName = getPhysicalIndexName(index);
+    index.setName(indexName);
+
+    IndexOptions indexOptions = new IndexOptions();
+    indexOptions.name(getPhysicalIndexName(index));
+    indexOptions.unique(index.isUnique());
+    mongoDatabase.getCollection(collectionName).createIndex(Indexes.compoundIndex(indexes), indexOptions);
+
+    // 只有在索引不存在时才添加到实体中，避免重复添加
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(index.getModelName());
+    if (entity != null && entity.getIndex(index.getName()) == null) {
+      entity.addIndex(index);
+      modelRegistry.register(schemaName, entity);
+    }
+    return index;
+  }
+
+  private String getPhysicalIndexName(IndexDefinition index) {
+    String modelName = index.getModelName();
+    String indexName = index.getName();
+
+    return indexName != null ? indexName : "IDX_" + StringHelper.hashedName(modelName + index.getFields().stream()
+      .map(IndexDefinition.Field::fieldName)
+      .collect(Collectors.joining())
+    );
+  }
+
+  @Override
+  public void dropIndex(String modelName, String indexName) {
+    String collectionName = getCollectionName(modelName);
+    mongoDatabase.getCollection(collectionName).dropIndex(indexName);
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+    entity.removeIndex(indexName);
+    sessionContext.getModelRegistry().register(schemaName, entity);
+  }
+
+  @Override
+  public void createSequence(String sequenceName, int initialValue, int incrementSize) {
+    String collectionName = getCollectionName("flex_sequences");
+    mongoDatabase.getCollection(collectionName).insertOne(Document.parse(String.format("""
+      {
+        _id: "%s",
+        seq: %s
+      }
+      """, sequenceName, initialValue)));
+  }
+
+  private String getCollectionName(String modelName) {
+    EntityDefinition model = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+    if (model == null) {
+      return modelName;
+    }
+    return model.getName();
+  }
+
+  @Override
+  public void dropSequence(String sequenceName) {
+    String collectionName = getCollectionName(sequenceName);
+    mongoDatabase.getCollection(collectionName).deleteOne(Filters.eq("_id", sequenceName));
+  }
+
+  @Override
+  public long getSequenceNextVal(String sequenceName) {
+    String collectionName = getCollectionName("flex_sequences");
+    Document document = mongoDatabase.getCollection(collectionName)
+      .findOneAndUpdate(Filters.eq("_id", sequenceName), Document.parse("{ $inc: { seq: 1 } }"));
+    assert document != null;
+    return ((Number) document.get("seq")).longValue();
+  }
+
+}

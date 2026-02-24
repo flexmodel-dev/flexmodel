@@ -23,11 +23,12 @@ Flexmodel 旨在为开发者提供一个开源、灵活且高度可定制的后�
 - **[flexmodel-engine](./flexmodel-engine)**: 核心 DSL 引擎。负责模型定义、查询解析、代码生成及多数据库适配。
 - **[flexmodel-server](./flexmodel-server)**: 基于 Quarkus 的服务端实现。遵循 DDD 架构，提供 REST/GraphQL API、AI 聊天及任务调度。
 - **[flexmodel-ui](./flexmodel-ui)**: 基于 React + Ant Design 的前端管理后台。负责模型可视化设计、数据管理及系统配置。
+- **[flexmodel-website](./flexmodel-website)**: 项目官方文档及演示网站。基于 Docusaurus 构建，提供完整的技术文档和快速上手指南。
 
 ## 🛠️ 技术栈
 
 - **后端**: Java 21, Quarkus 3, Maven, SQLite/MySQL/PostgreSQL, MongoDB.
-- **前端**: React, TypeScript, Ant Design v5, Tailwind CSS, Vite.
+- **前端**: React, TypeScript, Ant Design v5, Tailwind CSS, Vite, Docusaurus.
 - **协议**: REST API, GraphQL, WebSocket, SSE.
 
 ## 📖 快速开始
@@ -37,6 +38,7 @@ Flexmodel 旨在为开发者提供一个开源、灵活且高度可定制的后�
 1. [Flexmodel Engine 快速开始](./flexmodel-engine/README.md)
 2. [Flexmodel Server 快速开始](./flexmodel-server/README.md)
 3. [Flexmodel UI 快速开始](./flexmodel-ui/README.md)
+4. [Flexmodel Website 快速开始](./flexmodel-website/README.md)
 
 ## 🤝 贡献指南
 

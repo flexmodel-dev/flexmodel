@@ -1,0 +1,661 @@
+[
+  {
+    "name": "fs_datasource",
+    "type": "entity",
+    "fields": [
+      {
+        "name": "name",
+        "type": "String",
+        "identity": true,
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_datasource"
+      },
+      {
+        "name": "type",
+        "type": "EnumRef",
+        "from": "DatasourceType",
+        "multiple": false,
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_datasource"
+      },
+      {
+        "name": "config",
+        "type": "JSON",
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_datasource"
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_datasource",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      },
+      {
+        "name": "updatedAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_datasource",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      },
+      {
+        "name": "enabled",
+        "type": "Boolean",
+        "unique": false,
+        "comment": "",
+        "nullable": false,
+        "modelName": "fs_datasource",
+        "defaultValue": {
+          "type": "fixed",
+          "value": true
+        }
+      }
+    ],
+    "indexes": []
+  },
+  {
+    "name": "fs_api_definition",
+    "type": "entity",
+    "fields": [
+      {
+        "name": "id",
+        "type": "String",
+        "identity": true,
+        "unique": true,
+        "nullable": true,
+        "modelName": "fs_api_definition",
+        "defaultValue": {
+          "type": "generated",
+          "name": "uuid"
+        }
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "length": 255,
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_definition"
+      },
+      {
+        "name": "parentId",
+        "type": "String",
+        "length": 255,
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_api_definition"
+      },
+      {
+        "name": "type",
+        "type": "EnumRef",
+        "from": "ApiType",
+        "multiple": false,
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_definition",
+        "defaultValue": {
+          "type": "fixed",
+          "value": "FOLDER"
+        }
+      },
+      {
+        "name": "method",
+        "type": "String",
+        "length": 255,
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_api_definition"
+      },
+      {
+        "name": "path",
+        "type": "String",
+        "length": 255,
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_api_definition"
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_definition",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      },
+      {
+        "name": "updatedAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_definition",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      },
+      {
+        "name": "meta",
+        "type": "JSON",
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_api_definition"
+      },
+      {
+        "name": "enabled",
+        "type": "Boolean",
+        "unique": false,
+        "comment": "",
+        "nullable": false,
+        "modelName": "fs_api_definition",
+        "defaultValue": {
+          "type": "fixed",
+          "value": true
+        }
+      }
+    ],
+    "indexes": []
+  },
+  {
+    "name": "fs_api_log",
+    "type": "entity",
+    "fields": [
+      {
+        "name": "id",
+        "type": "String",
+        "identity": true,
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_api_log",
+        "defaultValue": {
+          "type": "generated",
+          "name": "uuid"
+        }
+      },
+      {
+        "name": "level",
+        "type": "EnumRef",
+        "from": "LogLevel",
+        "multiple": false,
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_log"
+      },
+      {
+        "name": "uri",
+        "type": "String",
+        "length": "2000",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_log"
+      },
+      {
+        "name": "data",
+        "type": "JSON",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_log"
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_log",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "IDX_level",
+        "modelName": "fs_api_log",
+        "fields": [
+          {
+            "fieldName": "level",
+            "direction": "ASC"
+          }
+        ],
+        "unique": false
+      }
+    ]
+  },
+  {
+    "name": "fs_identity_provider",
+    "type": "entity",
+    "fields": [
+      {
+        "name": "name",
+        "type": "String",
+        "identity": true,
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_datasource"
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_identity_provider",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      },
+      {
+        "name": "provider",
+        "type": "JSON",
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_identity_provider"
+      },
+      {
+        "name": "updatedAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_identity_provider",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      }
+    ],
+    "indexes": []
+  },
+  {
+    "name": "fs_config",
+    "comment": "配置",
+    "type": "entity",
+    "fields": [
+      {
+        "name": "id",
+        "type": "String",
+        "identity": true,
+        "unique": true,
+        "nullable": true,
+        "modelName": "fs_config",
+        "defaultValue": {
+          "type": "generated",
+          "name": "uuid"
+        }
+      },
+      {
+        "name": "key",
+        "comment": "名称",
+        "type": "String",
+        "length": 255,
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_config"
+      },
+      {
+        "name": "value",
+        "type": "String",
+        "unique": false,
+        "nullable": true,
+        "modelName": "fs_config"
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_api_definition",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      },
+      {
+        "name": "updatedAt",
+        "type": "DateTime",
+        "unique": false,
+        "nullable": false,
+        "modelName": "fs_config",
+        "defaultValue": {
+          "type": "generated",
+          "name": "now"
+        }
+      }
+    ],
+    "indexes": [
+      {
+        "name": "IDX_key",
+        "modelName": "fs_config",
+        "fields": [
+          {
+            "fieldName": "key",
+            "direction": "ASC"
+          }
+        ],
+        "unique": true
+      }
+    ]
+  },
+  {
+    "type": "entity",
+    "name": "Teacher",
+    "fields": [
+      {
+        "name": "id",
+        "type": "String",
+        "identity": true,
+        "modelName": "Teacher",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "name": "teacherName",
+        "type": "String",
+        "modelName": "Teacher",
+        "unique": false,
+        "nullable": true,
+        "length": 255
+      },
+      {
+        "name": "subject",
+        "type": "String",
+        "modelName": "Teacher",
+        "unique": false,
+        "nullable": true,
+        "length": 255
+      }
+    ],
+    "indexes": []
+  },
+  {
+    "type": "entity",
+    "name": "Student",
+    "fields": [
+      {
+        "name": "id",
+        "type": "String",
+        "identity": true,
+        "modelName": "Student",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "name": "studentName",
+        "type": "String",
+        "modelName": "Student",
+        "unique": false,
+        "nullable": true,
+        "length": 255
+      },
+      {
+        "name": "gender",
+        "type": "EnumRef",
+        "from": "UserGender",
+        "multiple": false,
+        "modelName": "Student",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "name": "interest",
+        "type": "EnumRef",
+        "from": "user_interest",
+        "multiple": true,
+        "modelName": "Student",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "name": "age",
+        "type": "Int",
+        "modelName": "Student",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "name": "classId",
+        "type": "Long",
+        "modelName": "Student",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "type": "Relation",
+        "name": "studentClass",
+        "comment": "班级",
+        "modelName": "Student",
+        "multiple": false,
+        "from": "Classes",
+        "localField": "classId",
+        "foreignField": "id",
+        "cascadeDelete": false
+      },
+      {
+        "name": "studentDetail",
+        "type": "Relation",
+        "modelName": "Student",
+        "unique": false,
+        "nullable": true,
+        "multiple": false,
+        "from": "StudentDetail",
+        "localField": "id",
+        "foreignField": "studentId",
+        "cascadeDelete": true
+      }
+    ],
+    "indexes": [
+      {
+        "modelName": "Student",
+        "name": "IDX_studentName",
+        "fields": [
+          {
+            "fieldName": "studentName",
+            "direction": "ASC"
+          }
+        ],
+        "unique": false
+      },
+      {
+        "modelName": "Student",
+        "name": "IDX_classId",
+        "fields": [
+          {
+            "fieldName": "classId",
+            "direction": "ASC"
+          }
+        ],
+        "unique": false
+      }
+    ]
+  },
+  {
+    "type": "entity",
+    "name": "StudentDetail",
+    "fields": [
+      {
+        "name": "id",
+        "type": "Long",
+        "identity": true,
+        "modelName": "StudentDetail",
+        "unique": false,
+        "nullable": true,
+        "defaultValue": {
+          "type": "generated",
+          "name": "autoIncrement"
+        }
+      },
+      {
+        "name": "studentId",
+        "type": "Long",
+        "modelName": "StudentDetail",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "type": "Relation",
+        "name": "student",
+        "comment": "学生",
+        "modelName": "StudentDetail",
+        "multiple": false,
+        "from": "Student",
+        "localField": "studentId",
+        "foreignField": "id",
+        "cascadeDelete": false
+      },
+      {
+        "name": "description",
+        "type": "String",
+        "largeObjects": true,
+        "modelName": "StudentDetail",
+        "unique": false,
+        "nullable": true
+      }
+    ],
+    "indexes": []
+  },
+  {
+    "type": "entity",
+    "name": "Classes",
+    "fields": [
+      {
+        "name": "id",
+        "type": "String",
+        "identity": true,
+        "modelName": "Classes",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "name": "classCode",
+        "type": "String",
+        "modelName": "Classes",
+        "unique": false,
+        "nullable": true,
+        "length": 255
+      },
+      {
+        "name": "className",
+        "type": "String",
+        "modelName": "Classes",
+        "unique": false,
+        "nullable": true,
+        "length": 255
+      },
+      {
+        "type": "Relation",
+        "name": "students",
+        "modelName": "Classes",
+        "unique": false,
+        "nullable": true,
+        "multiple": true,
+        "from": "Student",
+        "localField": "id",
+        "foreignField": "classId",
+        "cascadeDelete": true
+      }
+    ]
+  },
+  {
+    "type": "entity",
+    "name": "Course",
+    "fields": [
+      {
+        "name": "courseNo",
+        "type": "String",
+        "identity": true,
+        "modelName": "Course",
+        "unique": false,
+        "nullable": true
+      },
+      {
+        "name": "courseName",
+        "type": "String",
+        "modelName": "Course",
+        "unique": false,
+        "nullable": true,
+        "length": 255
+      }
+    ],
+    "indexes": [
+      {
+        "name": "IDX_courseNo",
+        "modelName": "Course",
+        "fields": [
+          {
+            "fieldName": "courseNo",
+            "direction": "ASC"
+          }
+        ],
+        "unique": false
+      }
+    ]
+  },
+  {
+    "name": "ApiType",
+    "type": "enum",
+    "elements": [
+      "FOLDER",
+      "API"
+    ],
+    "comment": "接口类型"
+  },
+  {
+    "name": "DatasourceType",
+    "type": "enum",
+    "elements": [
+      "SYSTEM",
+      "USER"
+    ],
+    "comment": "数据源类型"
+  },
+  {
+    "name": "UserGender",
+    "type": "enum",
+    "elements": [
+      "UNKNOWN",
+      "MALE",
+      "FEMALE"
+    ],
+    "comment": "性别"
+  },
+  {
+    "name": "user_interest",
+    "type": "enum",
+    "elements": [
+      "chang",
+      "tiao",
+      "rap",
+      "daLanQiu"
+    ],
+    "comment": "兴趣"
+  },
+  {
+    "name": "LogLevel",
+    "type": "enum",
+    "elements": [
+      "DEBUG",
+      "INFO",
+      "WARN",
+      "ERROR"
+    ],
+    "comment": "日志等级"
+  },
+  {
+    "name": "select_log_count",
+    "statement": "select count(*) as total from fs_api_log",
+    "type": "native_query"
+  }
+]

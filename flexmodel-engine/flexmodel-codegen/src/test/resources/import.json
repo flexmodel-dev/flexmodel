@@ -1,0 +1,503 @@
+{
+  "objects": [
+    {
+      "name": "flow_definition",
+      "comment": null,
+      "fields": [
+        {
+          "type": "Long",
+          "identity": true,
+          "name": "id",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": false,
+          "defaultValue": {
+            "type": "generated",
+            "name": "autoIncrement"
+          }
+        },
+        {
+          "type": "Long",
+          "name": "last_modified_by",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null
+        },
+        {
+          "type": "String",
+          "name": "caller",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null,
+          "length": 255
+        },
+        {
+          "type": "String",
+          "name": "flow_name",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null,
+          "length": 255
+        },
+        {
+          "type": "String",
+          "name": "flow_title",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null,
+          "length": 255
+        },
+        {
+          "type": "String",
+          "name": "status",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null,
+          "length": 3
+        },
+        {
+          "type": "String",
+          "name": "process_name",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null,
+          "length": 255
+        },
+        {
+          "type": "DateTime",
+          "name": "create_time",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null
+        },
+        {
+          "type": "Long",
+          "name": "created_by",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null
+        },
+        {
+          "type": "DateTime",
+          "name": "update_time",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null
+        },
+        {
+          "type": "String",
+          "name": "flow_model",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null
+        },
+        {
+          "type": "String",
+          "name": "process_key",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null,
+          "length": 255
+        },
+        {
+          "type": "String",
+          "name": "tenant_id",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": false,
+          "defaultValue": null,
+          "length": 255
+        },
+        {
+          "type": "String",
+          "name": "flow_key",
+          "modelName": "flow_definition",
+          "comment": null,
+          "unique": false,
+          "nullable": true,
+          "defaultValue": null,
+          "length": 255
+        }
+      ],
+      "indexes": [],
+      "type": "entity"
+    },
+    {
+      "name": "fs_datasource",
+      "type": "entity",
+      "fields": [
+        {
+          "name": "name",
+          "type": "String",
+          "identity": true,
+          "unique": false,
+          "nullable": true,
+          "modelName": "Datasource",
+          "defaultValue": {
+            "type": "generated",
+            "name": "uuid"
+          }
+        },
+        {
+          "name": "type",
+          "type": "String",
+          "length": 255,
+          "unique": false,
+          "nullable": true,
+          "modelName": "fs_datasource"
+        },
+        {
+          "name": "config",
+          "type": "JSON",
+          "unique": false,
+          "nullable": true,
+          "modelName": "fs_datasource"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": true,
+          "modelName": "fs_datasource"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": true,
+          "modelName": "fs_datasource"
+        },
+        {
+          "name": "enabled",
+          "type": "Boolean",
+          "unique": false,
+          "comment": "",
+          "nullable": false,
+          "modelName": "fs_datasource",
+          "defaultValue": {
+            "type": "fixed",
+            "value": true
+          }
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "fs_api_log",
+      "type": "entity",
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "identity": true,
+          "unique": false,
+          "nullable": true,
+          "modelName": "fs_api_log",
+          "defaultValue": {
+            "type": "generated",
+            "name": "uuid"
+          }
+        },
+        {
+          "name": "level",
+          "type": "EnumRef",
+          "from": "LogLevel",
+          "multiple": false,
+          "unique": false,
+          "nullable": false,
+          "modelName": "fs_api_log"
+        },
+        {
+          "name": "uri",
+          "type": "String",
+          "unique": false,
+          "nullable": false,
+          "modelName": "fs_api_log"
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "unique": false,
+          "nullable": false,
+          "modelName": "fs_api_log"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "unique": false,
+          "nullable": false,
+          "modelName": "fs_api_log"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_level",
+          "modelName": "fs_api_log",
+          "fields": [
+            {
+              "fieldName": "level",
+              "direction": "ASC"
+            }
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Student",
+      "fields": [
+        {
+          "name": "id",
+          "type": "Long",
+          "identity": true,
+          "modelName": "Student",
+          "unique": false,
+          "nullable": true,
+          "defaultValue": {
+            "type": "generated",
+            "name": "autoIncrement"
+          }
+        },
+        {
+          "name": "studentName",
+          "type": "String",
+          "modelName": "Student",
+          "unique": false,
+          "nullable": true,
+          "length": 255
+        },
+        {
+          "name": "gender",
+          "type": "EnumRef",
+          "from": "UserGender",
+          "multiple": false,
+          "modelName": "Student",
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "interest",
+          "type": "EnumRef",
+          "from": "User_interest",
+          "multiple": true,
+          "modelName": "Student",
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "age",
+          "type": "Int",
+          "modelName": "Student",
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "classId",
+          "type": "Long",
+          "modelName": "Student",
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "studentDetail",
+          "type": "Relation",
+          "modelName": "Student",
+          "unique": false,
+          "nullable": true,
+          "multiple": false,
+          "from": "StudentDetail",
+          "localField": "id",
+          "foreignField": "studentId",
+          "cascadeDelete": true
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "type": "entity",
+      "name": "StudentDetail",
+      "fields": [
+        {
+          "name": "id",
+          "type": "Long",
+          "identity": true,
+          "modelName": "StudentDetail",
+          "unique": false,
+          "nullable": true,
+          "defaultValue": {
+            "type": "generated",
+            "name": "autoIncrement"
+          }
+        },
+        {
+          "name": "studentId",
+          "type": "Long",
+          "modelName": "StudentDetail",
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "modelName": "StudentDetail",
+          "unique": false,
+          "nullable": true
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "LogLevel",
+      "type": "enum",
+      "elements": [
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR"
+      ],
+      "comment": "日志等级"
+    },
+    {
+      "name": "UserGender",
+      "type": "enum",
+      "elements": [
+        "UNKNOWN",
+        "MALE",
+        "FEMALE"
+      ],
+      "comment": "性别"
+    },
+    {
+      "name": "User_interest",
+      "type": "enum",
+      "elements": [
+        "chang",
+        "tiao",
+        "rap",
+        "daLanQiu"
+      ],
+      "comment": "兴趣"
+    }
+  ],
+  "data": [
+    {
+      "modelName": "fs_datasource",
+      "values": [
+        {
+          "name": "sqlite_test",
+          "type": "user",
+          "config": {
+            "url": "jdbc:sqlite:file::memory:?cache=shared",
+            "dbKind": "sqlite",
+            "password": "",
+            "username": ""
+          }
+        },
+        {
+          "name": "mysql_test",
+          "type": "user",
+          "config": {
+            "url": "${MYSQL_URL}",
+            "dbKind": "mysql",
+            "password": "${MYSQL_PASSWORD}",
+            "username": "${MYSQL_USERNAME}"
+          }
+        }
+      ]
+    },
+    {
+      "modelName": "Student",
+      "values": [
+        {
+          "id": 1,
+          "studentName": "张三",
+          "gender": "MALE",
+          "age": 10,
+          "classId": 1,
+          "studentDetail": {
+            "description": "张三的描述"
+          },
+          "courses": [
+            {
+              "courseNo": "Math",
+              "courseName": "数学"
+            },
+            {
+              "courseNo": "YuWen",
+              "courseName": "语文"
+            },
+            {
+              "courseNo": "Eng",
+              "courseName": "英语"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "studentName": "李四",
+          "gender": "FEMALE",
+          "age": 10,
+          "classId": 1,
+          "studentDetail": {
+            "description": "李四的描述"
+          },
+          "courses": [
+            {
+              "courseNo": "Math",
+              "courseName": "数学"
+            },
+            {
+              "courseNo": "YuWen",
+              "courseName": "语文"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "studentName": "王五",
+          "gender": "MALE",
+          "age": 11,
+          "classId": 2,
+          "studentDetail": {
+            "description": "王五的描述"
+          },
+          "courses": [
+            {
+              "courseNo": "YuWen",
+              "courseName": "语文"
+            },
+            {
+              "courseNo": "Eng",
+              "courseName": "英语"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

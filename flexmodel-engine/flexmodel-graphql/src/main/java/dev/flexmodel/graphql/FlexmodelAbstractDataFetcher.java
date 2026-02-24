@@ -1,0 +1,132 @@
+package dev.flexmodel.graphql;
+
+import graphql.execution.CoercedVariables;
+import graphql.execution.ValuesResolver;
+import graphql.schema.DataFetcher;
+import graphql.schema.DataFetchingEnvironment;
+import graphql.schema.SelectedField;
+import dev.flexmodel.JsonUtils;
+import dev.flexmodel.model.EntityDefinition;
+import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.TypedField;
+import dev.flexmodel.query.Direction;
+import dev.flexmodel.query.Query;
+import dev.flexmodel.session.Session;
+import dev.flexmodel.session.SessionFactory;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static dev.flexmodel.query.Expressions.field;
+
+/**
+ * @author cjbi
+ */
+public abstract class FlexmodelAbstractDataFetcher<T> implements DataFetcher<T> {
+
+  protected final String schemaName;
+  protected final String modelName;
+  protected final SessionFactory sessionFactory;
+
+  protected static final String PAGE_NUMBER = "page";
+  protected static final String PAGE_SIZE = "size";
+  protected static final String ORDER_BY = "order_by";
+  protected static final String WHERE = "where";
+  protected static final String ID = "id";
+  protected static final String AFFECTED_ROWS = "affected_rows";
+  protected static final String AGG_COUNT = "_count";
+  protected static final String AGG_MAX = "_max";
+  protected static final String AGG_MIN = "_min";
+  protected static final String AGG_SUM = "_sum";
+  protected static final String AGG_AVG = "_avg";
+  protected static final String[] AGG_FIELDS = new String[]{AGG_COUNT, AGG_MAX, AGG_MIN, AGG_SUM, AGG_AVG};
+
+
+  public FlexmodelAbstractDataFetcher(String schemaName, String modelName, SessionFactory sessionFactory) {
+    this.schemaName = schemaName;
+    this.modelName = modelName;
+    this.sessionFactory = sessionFactory;
+  }
+
+  protected List<Map<String, Object>> findRelationDataList(Session session, DataFetchingEnvironment env, String path, String modelName, RelationField relationField, Object id) {
+    EntityDefinition entity = (EntityDefinition) session.schema().getModel(relationField.getModelName());
+    EntityDefinition targetEntity = (EntityDefinition) session.schema().getModel(relationField.getFrom());
+    path = path == null ? relationField.getName() : path + "/" + relationField.getName();
+    List<SelectedField> selectedFields = env.getSelectionSet().getFields(path + "/*");
+    List<RelationField> relationFields = new ArrayList<>();
+
+    List<Map<String, Object>> list = session.dsl()
+      .select(selector -> {
+        TypedField<?, ?> idField = entity.findIdField().orElseThrow();
+        selector.field(idField.getName(), Query.field(entity.getName() + "." + idField.getName()));
+        for (SelectedField selectedField : selectedFields) {
+          TypedField<?, ?> flexModelField = targetEntity.getField(selectedField.getName());
+          if (flexModelField == null) {
+            continue;
+          }
+          if (flexModelField instanceof RelationField secondaryRelationField) {
+            relationFields.add(secondaryRelationField);
+            continue;
+          }
+          selector.field(selectedField.getName(), Query.field(targetEntity.getName() + "." + flexModelField.getName()));
+        }
+        return selector;
+      })
+      .from(entity.getName())
+      .leftJoin(joins -> joins.addLeftJoin(join -> join.setFrom(targetEntity.getName())))
+      .where(field(entity.getName() + "." + entity.findIdField().map(TypedField::getName).orElseThrow()).eq(id))
+      .execute();
+
+    List<Map<String, Object>> result = new ArrayList<>();
+    for (Map<String, Object> map : list) {
+      Map<String, Object> resultData = new HashMap<>(map);
+      result.add(resultData);
+      for (RelationField sencondaryRelationField : relationFields) {
+        Object secondaryId = map.get(entity.findIdField().map(TypedField::getName).orElseThrow());
+        List<Map<String, Object>> associationDataList = findRelationDataList(session, env, path, sencondaryRelationField.getFrom(), sencondaryRelationField, secondaryId);
+        resultData.put(sencondaryRelationField.getName(), sencondaryRelationField.isMultiple() ?
+          associationDataList : associationDataList.stream().findFirst().orElse(null));
+      }
+    }
+    return result;
+  }
+
+  protected Query getQuery(Integer pageNumber, Integer pageSize, Map<String, String> orderBy, Map<String, Object> where, Query query) {
+    if (pageSize != null && pageNumber != null) {
+      query.setPage(new Query.Page().setPageNumber(pageNumber).setPageSize(pageSize));
+    }
+    if (orderBy != null) {
+      Query.OrderBy sort = new Query.OrderBy();
+      orderBy.forEach((k, v) -> sort.addOrder(k, Direction.valueOf(v.toUpperCase())));
+      query.setOrderBy(sort);
+    }
+    if (where != null) {
+      query.setFilter(JsonUtils.toJsonString(where));
+    }
+    return query;
+  }
+
+  protected Map<String, Object> getArguments(DataFetchingEnvironment env) {
+    Map<String, Object> newVariables = new HashMap<>();
+    newVariables.putAll(env.getVariables());
+    Map<String, Object> variables = env.getGraphQlContext()
+      .getOrDefault("__VARIABLES", new ConcurrentHashMap<>());
+    newVariables.putAll(variables);
+    return ValuesResolver.getArgumentValues(
+      env.getGraphQLSchema().getCodeRegistry(),
+      env.getFieldDefinition().getArguments(),
+      env.getField().getArguments(),
+      CoercedVariables.of(newVariables),
+      env.getGraphQlContext(),
+      env.getLocale());
+  }
+
+  @SuppressWarnings("unchecked")
+  protected <R> R getArgument(DataFetchingEnvironment env, String name) {
+    return (R) getArguments(env).get(name);
+  }
+
+}

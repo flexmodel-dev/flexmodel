@@ -7,6 +7,7 @@
     <artifactId>flexmodel-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <modules>
+        <module>flexmodel-engine</module>
         <module>flexmodel-server</module>
     </modules>
     <packaging>pom</packaging>

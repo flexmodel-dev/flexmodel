@@ -4,10 +4,10 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <groupId>dev.flexmodel</groupId>
-  <artifactId>flexmodel-parent</artifactId>
+  <artifactId>flexmodel-engine-parent</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>FlexModel Parent</name>
+  <name>Flexmodel engine</name>
   <modules>
     <module>flexmodel-core</module>
     <module>flexmodel-graphql</module>
@@ -89,25 +89,8 @@
   <distributionManagement>
     <repository>
       <id>github</id>
-      <name>GitHub MetaCode Apache Maven Packages</name>
+      <name>GitHub Flexmodel Apache Maven Packages</name>
       <url>https://maven.pkg.github.com/flexmodel-dev/flexmodel-maven-packages</url>
     </repository>
   </distributionManagement>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-source-plugin</artifactId>
-        <version>3.2.1</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
 </project>

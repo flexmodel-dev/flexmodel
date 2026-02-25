@@ -79,7 +79,7 @@ jobs:
 
   push-image:
     name: Push docker image
-    needs: [ server-test ]
+    needs: [ engine-test, server-test ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

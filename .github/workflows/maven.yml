@@ -24,12 +24,13 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
-      - name: Generate settings.xml for Maven Builds
-        uses: whelk-io/maven-settings-xml-action@v20
-        with:
-          repositories: '[{ "id": "github", "url": "https://maven.pkg.github.com/flexmodel-dev/flexmodel-maven-packages", "snapshots": { "enabled" : true } }]'
-          plugin_repositories: '[{ "id": "github", "url": "https://maven.pkg.github.com/flexmodel-dev/flexmodel-maven-packages", "snapshots": { "enabled" : true } }]'
-          servers: '[{ "id": "github", "username": "cjbi", "password": "${{ secrets.MAVEN_TOKEN }}" }]'
+      - name: Configure Maven settings
+        env:
+          GITHUB_USERNAME: cjbi
+          MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        run: |
+          mkdir -p ~/.m2
+          cp .github/settings.xml ~/.m2/settings.xml
       - name: Run tests with Maven
         run: |
           mvn -B -U test
@@ -53,11 +54,13 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
-      - name: Generate settings.xml for Maven Builds
-        uses: whelk-io/maven-settings-xml-action@v20
-        with:
-          repositories: '[{ "id": "github", "url": "https://maven.pkg.github.com/flexmodel-dev/flexmodel-maven-packages", "snapshots": { "enabled" : true } }]'
-          servers: '[{ "id": "github", "username": "cjbi", "password": "${{ secrets.MAVEN_TOKEN }}" }]'
+      - name: Configure Maven settings
+        env:
+          GITHUB_USERNAME: cjbi
+          MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        run: |
+          mkdir -p ~/.m2
+          cp .github/settings.xml ~/.m2/settings.xml
       - name: Build Image with Maven
         run: |
           cd flexmodel-server

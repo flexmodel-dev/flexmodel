@@ -45,7 +45,6 @@ jobs:
 
   server-test:
     name: Run server tests
-    needs: [ engine-test ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +79,7 @@ jobs:
 
   push-image:
     name: Push docker image
-    needs: [ engine-test, server-test ]
+    needs: [ server-test ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

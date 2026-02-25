@@ -1,10 +1,10 @@
 package dev.flexmodel.domain.model.auth;
 
 import dev.flexmodel.shared.SessionContextHolder;
+import dev.flexmodel.shared.utils.StringUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.Project;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 

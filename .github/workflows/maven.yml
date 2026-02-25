@@ -9,7 +9,7 @@ on:
   pull_request:
     branches: [ "main" ]
   repository_dispatch:
-    types: [ "engine_deploy", "ui_deploy" ]
+    types: [ "ui_deploy" ]
 
 
 jobs:
@@ -66,7 +66,7 @@ jobs:
           cp .github/settings.xml ~/.m2/settings.xml
       - name: Run tests with Maven
         run: |
-          mvn -B -U install -Dmaven.test.skip=true
+          mvn -B -U install -Dmaven.test.skip=true -Pwith-ui
           cd flexmodel-server
           mvn -B -U test
       - name: Caching Maven Dependencies

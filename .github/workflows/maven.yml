@@ -13,37 +13,7 @@ on:
 
 
 jobs:
-  engine-test:
-    name: Run engine tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
-      - name: Configure Maven settings
-        env:
-          GITHUB_USERNAME: cjbi
-          MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
-        run: |
-          mkdir -p ~/.m2
-          cp .github/settings.xml ~/.m2/settings.xml
-      - name: Run tests with Maven
-        run: |
-          cd flexmodel-engine
-          mvn -B -U test
-      - name: Caching Maven Dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-  server-test:
+  install-dependencies:
     name: Run server tests
     runs-on: ubuntu-latest
     steps:
@@ -67,15 +37,63 @@ jobs:
       - name: Run tests with Maven
         run: |
           mvn -B -U install -Dmaven.test.skip=true -Pwith-ui
-          cd flexmodel-server
-          mvn -B -U test
       - name: Caching Maven Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+
+  engine-test:
+    name: Run engine tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Configure Maven settings
+        env:
+          GITHUB_USERNAME: cjbi
+          MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        run: |
+          mkdir -p ~/.m2
+          cp .github/settings.xml ~/.m2/settings.xml
+      - name: Run tests with Maven
+        run: |
+          cd flexmodel-engine
+          mvn -B -U test
+
+  server-test:
+    name: Run server tests
+    needs: [ install-dependencies ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Configure Maven settings
+        env:
+          GITHUB_USERNAME: cjbi
+          MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        run: |
+          mkdir -p ~/.m2
+          cp .github/settings.xml ~/.m2/settings.xml
+      - name: Run tests with Maven
+        run: |
+          cd flexmodel-server
+          mvn -B -U test
 
   push-image:
     name: Push docker image
@@ -103,13 +121,6 @@ jobs:
         run: |
           cd flexmodel-server
           mvn -B -U -Dmaven.test.skip=true clean package -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.container-image.image=cjbi/flexmodel:latest -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} -Dquarkus.container-image.password=${{ secrets.DOCKER_PASSWORD }}
-      - name: Caching Maven Dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
 
   deploy:
     runs-on: ubuntu-latest

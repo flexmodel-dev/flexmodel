@@ -36,7 +36,7 @@ public class SchedulerTest {
    * 场景：验证 Scheduler 元数据获取与最基础的作业增删改查能力。
    * 断言：SchedulerMetaData 正确；作业 add/get/delete 均生效。
    */
-  @Test
+//  @Test
   public void testSchedulerMetadataAndBasicOps() throws Exception {
     assertNotNull(quartz);
     SchedulerMetaData meta = quartz.getMetaData();

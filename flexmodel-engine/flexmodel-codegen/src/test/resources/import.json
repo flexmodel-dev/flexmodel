@@ -11,7 +11,7 @@
           "modelName": "flow_definition",
           "comment": null,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "defaultValue": {
             "type": "generated",
             "name": "autoIncrement"
@@ -128,7 +128,7 @@
           "modelName": "flow_definition",
           "comment": null,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "defaultValue": null,
           "length": 255
         },
@@ -196,7 +196,7 @@
           "type": "Boolean",
           "unique": false,
           "comment": "",
-          "nullable": false,
+          "nullable": true,
           "modelName": "fs_datasource",
           "defaultValue": {
             "type": "fixed",
@@ -228,28 +228,28 @@
           "from": "LogLevel",
           "multiple": false,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "fs_api_log"
         },
         {
           "name": "uri",
           "type": "String",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "fs_api_log"
         },
         {
           "name": "data",
           "type": "JSON",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "fs_api_log"
         },
         {
           "name": "createdAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "fs_api_log"
         }
       ],

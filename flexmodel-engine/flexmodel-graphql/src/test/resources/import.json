@@ -46,7 +46,7 @@
           "type": "Boolean",
           "unique": false,
           "comment": "",
-          "nullable": false,
+          "nullable": true,
           "modelName": "Datasource",
           "defaultValue": {
             "type": "fixed",
@@ -79,7 +79,7 @@
           "type": "String",
           "length": 255,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiInfo"
         },
         {
@@ -95,7 +95,7 @@
           "type": "String",
           "length": 255,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiInfo",
           "defaultValue": {
             "type": "fixed",
@@ -122,14 +122,14 @@
           "name": "createdAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiInfo"
         },
         {
           "name": "updatedAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiInfo"
         },
         {
@@ -163,28 +163,28 @@
           "type": "String",
           "length": 255,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiLog"
         },
         {
           "name": "uri",
           "type": "String",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiLog"
         },
         {
           "name": "data",
           "type": "JSON",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiLog"
         },
         {
           "name": "createdAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiLog"
         }
       ],
@@ -218,7 +218,7 @@
           "name": "createdAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "IdentityProvider"
         },
         {
@@ -232,7 +232,7 @@
           "name": "updatedAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "IdentityProvider"
         }
       ],
@@ -261,7 +261,7 @@
           "type": "String",
           "length": 255,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "Config"
         },
         {
@@ -276,14 +276,14 @@
           "name": "createdAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiInfo"
         },
         {
           "name": "updatedAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "Config"
         }
       ],

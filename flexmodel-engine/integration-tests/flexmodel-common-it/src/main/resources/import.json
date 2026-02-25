@@ -65,7 +65,7 @@
           "type": "String",
           "length": 255,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiInfo",
           "validators": [
             {
@@ -87,7 +87,7 @@
           "type": "String",
           "length": 255,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiInfo",
           "validators": [
             {
@@ -161,7 +161,7 @@
           "type": "String",
           "length": 255,
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiLog",
           "validators": [
             {
@@ -174,7 +174,7 @@
           "name": "uri",
           "type": "String",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiLog",
           "validators": [
             {
@@ -187,7 +187,7 @@
           "name": "data",
           "type": "JSON",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiLog",
           "validators": [
             {
@@ -200,7 +200,7 @@
           "name": "createdAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "ApiLog",
           "validators": [
             {
@@ -220,7 +220,7 @@
           "name": "createdAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "IdentityProvider",
           "validators": [
             {
@@ -254,7 +254,7 @@
           "name": "updatedAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
+          "nullable": true,
           "modelName": "IdentityProvider",
           "validators": [
             {

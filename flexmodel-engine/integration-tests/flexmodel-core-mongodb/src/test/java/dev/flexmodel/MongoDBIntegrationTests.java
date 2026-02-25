@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import dev.flexmodel.mongodb.MongoDataSourceProvider;
+import dev.flexmodel.mongodb.MongoSchemaProvider;
 
 import java.util.List;
 import java.util.Map;
@@ -37,7 +37,7 @@ public class MongoDBIntegrationTests extends AbstractSessionTests {
     MongoClient mongoClient = MongoClients.create(container.getConnectionString());
     MongoDatabase database = mongoClient.getDatabase("test")
       .withCodecRegistry(pojoCodecRegistry);
-    initSession(new MongoDataSourceProvider("default", database));
+    initSession(new MongoSchemaProvider("default", database));
   }
 
   @Test

@@ -1,6 +1,5 @@
 package dev.flexmodel.graphql;
 
-import dev.flexmodel.graphql.FlexmodelGraphQL;
 import graphql.ExecutionResult;
 import graphql.GraphQL;
 import org.junit.jupiter.api.Assertions;

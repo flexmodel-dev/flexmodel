@@ -528,4 +528,12 @@ public abstract class SqlDialect {
     return alter.toString();
   }
 
+  public String getCreateSchemaSql(String schemaName) {
+    return "create schema " + quoteIdentifier(schemaName);
+  }
+
+  public String getDropSchemaSql(String schemaName) {
+    return "drop schema " + quoteIdentifier(schemaName);
+  }
+
 }

@@ -99,4 +99,9 @@ public class DB2SqlDialect extends SqlDialect {
     return false;
   }
 
+  @Override
+  public String getDropSchemaSql(String schemaName) {
+    return "drop schema " + quoteIdentifier(schemaName) + " restrict";
+  }
+
 }

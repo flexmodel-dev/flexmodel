@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import dev.flexmodel.sql.JdbcDataSourceProvider;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 
 /**
  * @author cjbi
@@ -21,6 +21,6 @@ public class DmIntegrationTests extends AbstractSessionTests {
     dataSource.setJdbcUrl(container.getJdbcUrl());
     dataSource.setUsername(container.getUsername());
     dataSource.setPassword(container.getPassword());
-    initSession(new JdbcDataSourceProvider("default", dataSource));
+    initSession(new JdbcSchemaProvider("default", dataSource));
   }
 }

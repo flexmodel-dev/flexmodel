@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.session.SessionManager;
-import dev.flexmodel.sql.JdbcDataSourceProvider;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 
 /**
  * Session配置类
@@ -16,25 +16,18 @@ import dev.flexmodel.sql.JdbcDataSourceProvider;
 @ApplicationScoped
 public class SessionConfig {
 
-  /**
-   * 配置SessionFactory
-   */
   @Produces
   @ApplicationScoped
   public SessionFactory sessionFactory() {
     HikariDataSource dataSource = new HikariDataSource();
-    dataSource.setMaxLifetime(30000); // 30s
+    dataSource.setMaxLifetime(30000);
     dataSource.setJdbcUrl("jdbc:sqlite:file::memory:?cache=shared");
 
     return SessionFactory.builder()
-      .setDefaultDataSourceProvider(new JdbcDataSourceProvider("system", dataSource))
+      .setDefaultSchemaProvider(new JdbcSchemaProvider("system", dataSource))
       .build();
   }
 
-  /**
-   * 配置通用的SessionManager（可选）
-   * 如果不使用QuarkusSessionManager，可以使用这个
-   */
   @Produces
   @ApplicationScoped
   public SessionManager sessionManager(SessionFactory sessionFactory) {

@@ -62,4 +62,15 @@ public class GBaseSqlDialect extends InformixSqlDialect {
   public boolean supportsJSR310() {
     return false;
   }
+
+  @Override
+  public String getCreateSchemaSql(String schemaName) {
+    return "create schema " + quoteIdentifier(schemaName);
+  }
+
+  @Override
+  public String getDropSchemaSql(String schemaName) {
+    return "drop schema " + quoteIdentifier(schemaName);
+  }
+
 }

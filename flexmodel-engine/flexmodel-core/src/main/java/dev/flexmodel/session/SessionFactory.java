@@ -4,7 +4,7 @@ import com.mongodb.client.MongoDatabase;
 import dev.flexmodel.sql.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import dev.flexmodel.DataSourceProvider;
+import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.ModelImportBundle;
 import dev.flexmodel.ModelRegistry;
@@ -18,14 +18,13 @@ import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.mongodb.MongoContext;
-import dev.flexmodel.mongodb.MongoDataSourceProvider;
+import dev.flexmodel.mongodb.MongoSchemaProvider;
 import dev.flexmodel.mongodb.MongoSession;
 import dev.flexmodel.parser.ASTNodeConverter;
 import dev.flexmodel.parser.impl.ModelParser;
 import dev.flexmodel.parser.impl.ParseException;
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.EventAwareDataService;
-import dev.flexmodel.sql.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,33 +38,33 @@ import java.util.stream.Collectors;
 public class SessionFactory {
 
   private final ModelRegistry modelRegistry;
-  private final DataSourceProvider defaultDataSourceProvider;
-  private final Map<String, DataSourceProvider> dataSourceProviders = new HashMap<>();
+  private final SchemaProvider defaultSchemaProvider;
+  private final Map<String, SchemaProvider> schemaProviders = new HashMap<>();
   private final Cache cache;
   private final Logger log = LoggerFactory.getLogger(SessionFactory.class);
   private final MemoryScriptManager memoryScriptManager;
   private final boolean failsafe;
   private final EventPublisher eventPublisher;
 
-  SessionFactory(DataSourceProvider defaultDataSourceProvider, List<DataSourceProvider> dataSourceProviders, Cache cache, boolean failsafe, EventPublisher eventPublisher) {
+  SessionFactory(SchemaProvider defaultSchemaProvider, List<SchemaProvider> schemaProviders, Cache cache, boolean failsafe, EventPublisher eventPublisher) {
     this.cache = cache;
     this.memoryScriptManager = new MemoryScriptManager();
     this.eventPublisher = eventPublisher != null ? eventPublisher : new SimpleEventPublisher();
-    this.defaultDataSourceProvider = defaultDataSourceProvider;
-    addDataSourceProvider(defaultDataSourceProvider);
-    dataSourceProviders.forEach(this::addDataSourceProvider);
-    this.modelRegistry = initializeModelRegistry(defaultDataSourceProvider);
+    this.defaultSchemaProvider = defaultSchemaProvider;
+    registerSchemaProvider(defaultSchemaProvider);
+    schemaProviders.forEach(this::registerSchemaProvider);
+    this.modelRegistry = initializeModelRegistry(defaultSchemaProvider);
     this.failsafe = failsafe;
     processBuildItem();
   }
 
-  private ModelRegistry initializeModelRegistry(DataSourceProvider dataSourceProvider) {
-    if (dataSourceProvider instanceof JdbcDataSourceProvider jdbcDataSourceProvider) {
-      return new CachingModelRegistry(new JdbcModelRegistry(jdbcDataSourceProvider.dataSource()), cache);
-    } else if (dataSourceProvider instanceof MongoDataSourceProvider) {
+  private ModelRegistry initializeModelRegistry(SchemaProvider schemaProvider) {
+    if (schemaProvider instanceof JdbcSchemaProvider jdbcSchemaProvider) {
+      return new CachingModelRegistry(new JdbcModelRegistry(jdbcSchemaProvider.dataSource()), cache);
+    } else if (schemaProvider instanceof MongoSchemaProvider) {
       return new InMemoryModelRegistry();
     } else {
-      throw new IllegalArgumentException("Unsupported DataSourceProvider");
+      throw new IllegalArgumentException("Unsupported SchemaProvider");
     }
   }
 
@@ -227,7 +226,11 @@ public class SessionFactory {
   }
 
   public List<String> getSchemaNames() {
-    return List.copyOf(dataSourceProviders.keySet());
+    return List.copyOf(schemaProviders.keySet());
+  }
+
+  public boolean isSchemaExists(String schemaName) {
+    return schemaProviders.containsKey(schemaName);
   }
 
   public List<SchemaObject> getModels(String schemaName) {
@@ -242,24 +245,24 @@ public class SessionFactory {
     return new Builder();
   }
 
-  public void addDataSourceProvider(DataSourceProvider dataSource) {
-    dataSourceProviders.put(dataSource.getId(), dataSource);
+  public void registerSchemaProvider(SchemaProvider schemaProvider) {
+    schemaProviders.put(schemaProvider.getName(), schemaProvider);
   }
 
-  public DataSourceProvider getDataSourceProvider(String dsId) {
-    return dataSourceProviders.get(dsId);
+  public SchemaProvider getSchemaProvider(String schemaName) {
+    return schemaProviders.get(schemaName);
   }
 
-  public void removeDataSourceProvider(String dsId) {
-    dataSourceProviders.remove(dsId);
+  public void unregisterSchemaProvider(String schemaName) {
+    schemaProviders.remove(schemaName);
   }
 
   public Session createSession() {
-    return createSession(defaultDataSourceProvider.getId());
+    return createSession(defaultSchemaProvider.getName());
   }
 
   public Session createFailsefeSession() {
-    return createFailsafeSession(defaultDataSourceProvider.getId());
+    return createFailsafeSession(defaultSchemaProvider.getName());
   }
 
   /**
@@ -271,16 +274,14 @@ public class SessionFactory {
    */
   public Session createFailsafeSession(String id) {
     try {
-      return switch (dataSourceProviders.get(id)) {
-        case JdbcDataSourceProvider jdbc -> {
+      return switch (schemaProviders.get(id)) {
+        case JdbcSchemaProvider jdbc -> {
           Connection connection = jdbc.dataSource().getConnection();
           SqlContext sqlContext = new SqlContext(id, new NamedParameterSqlExecutor(connection), modelRegistry, this);
           sqlContext.setFailsafe(true);
 
-          // 创建原始的DataService
           DataService originalDataService = new SqlDataService(sqlContext);
 
-          // 包装为事件感知的DataService
           String sessionId = UUID.randomUUID().toString();
           DataService eventAwareDataService = new EventAwareDataService(
             originalDataService, eventPublisher, id, sessionId, this
@@ -288,55 +289,51 @@ public class SessionFactory {
 
           yield new SqlSession(sqlContext, eventAwareDataService);
         }
-        case MongoDataSourceProvider mongodb -> {
+        case MongoSchemaProvider mongodb -> {
           MongoDatabase mongoDatabase = mongodb.mongoDatabase();
           MongoContext mongoContext = new MongoContext(id, mongoDatabase, modelRegistry, this);
           mongoContext.setFailsafe(true);
 
-          // MongoDB的事件支持暂时使用原始DataService
-          // TODO: 实现MongoDB的事件支持
           yield new MongoSession(mongoContext);
         }
         case null,
-             default -> throw new IllegalStateException("Unexpected identifier: " + id);
+             default -> throw new IllegalStateException("Unexpected schemaName: " + id);
       };
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  public Session createSession(String identifier) {
+  public Session createSession(String schemaName) {
+    if (!isSchemaExists(schemaName)) {
+      throw new SchemaNotFoundException("Schema not found: " + schemaName);
+    }
     try {
       if (failsafe) {
-        return createFailsafeSession(identifier);
+        return createFailsafeSession(schemaName);
       }
-      return switch (dataSourceProviders.get(identifier)) {
-        case JdbcDataSourceProvider jdbc -> {
+      return switch (schemaProviders.get(schemaName)) {
+        case JdbcSchemaProvider jdbc -> {
           Connection connection = jdbc.dataSource().getConnection();
-          SqlContext sqlContext = new SqlContext(identifier, new NamedParameterSqlExecutor(connection), modelRegistry, this);
+          SqlContext sqlContext = new SqlContext(schemaName, new NamedParameterSqlExecutor(connection), modelRegistry, this);
 
-          // 创建原始的DataService
           DataService originalDataService = new SqlDataService(sqlContext);
 
-          // 包装为事件感知的DataService
           String sessionId = UUID.randomUUID().toString();
           DataService eventAwareDataService = new EventAwareDataService(
-            originalDataService, eventPublisher, identifier, sessionId, this
+            originalDataService, eventPublisher, schemaName, sessionId, this
           );
 
-          // 创建SqlSession时使用包装后的DataService
           yield new SqlSession(sqlContext, eventAwareDataService);
         }
-        case MongoDataSourceProvider mongodb -> {
+        case MongoSchemaProvider mongodb -> {
           MongoDatabase mongoDatabase = mongodb.mongoDatabase();
-          MongoContext mongoContext = new MongoContext(identifier, mongoDatabase, modelRegistry, this);
+          MongoContext mongoContext = new MongoContext(schemaName, mongoDatabase, modelRegistry, this);
 
-          // MongoDB的事件支持暂时使用原始DataService
-          // TODO: 实现MongoDB的事件支持
           yield new MongoSession(mongoContext);
         }
         case null,
-             default -> throw new IllegalStateException("Unexpected identifier: " + identifier);
+             default -> throw new IllegalStateException("Unexpected schemaName: " + schemaName);
       };
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -345,8 +342,8 @@ public class SessionFactory {
 
   public static class Builder {
     private Cache cache;
-    private DataSourceProvider defaultDataSourceProvider = null;
-    private final List<DataSourceProvider> dataSourceProviders = new ArrayList<>();
+    private SchemaProvider defaultSchemaProvider = null;
+    private final List<SchemaProvider> schemaProviders = new ArrayList<>();
     private boolean failsafe = false;
     private EventPublisher eventPublisher = null;
 
@@ -358,13 +355,13 @@ public class SessionFactory {
       return this;
     }
 
-    public Builder setDefaultDataSourceProvider(DataSourceProvider dataSourceProvider) {
-      this.defaultDataSourceProvider = dataSourceProvider;
+    public Builder setDefaultSchemaProvider(SchemaProvider schemaProvider) {
+      this.defaultSchemaProvider = schemaProvider;
       return this;
     }
 
-    public Builder addDataSourceProvider(DataSourceProvider dataSourceProvider) {
-      this.dataSourceProviders.add(dataSourceProvider);
+    public Builder registerSchemaProvider(SchemaProvider schemaProvider) {
+      this.schemaProviders.add(schemaProvider);
       return this;
     }
 
@@ -379,13 +376,13 @@ public class SessionFactory {
     }
 
     public SessionFactory build() {
-      if (defaultDataSourceProvider == null) {
-        throw new IllegalStateException("Please set defaultDataSourceProvider");
+      if (defaultSchemaProvider == null) {
+        throw new IllegalStateException("Please set defaultSchemaProvider");
       }
       if (cache == null) {
         this.cache = new ConcurrentHashMapCache();
       }
-      return new SessionFactory(defaultDataSourceProvider, dataSourceProviders, cache, failsafe, eventPublisher);
+      return new SessionFactory(defaultSchemaProvider, schemaProviders, cache, failsafe, eventPublisher);
     }
   }
 
@@ -394,19 +391,54 @@ public class SessionFactory {
   }
 
   public String getDefaultSchema() {
-    return defaultDataSourceProvider.getId();
+    return defaultSchemaProvider.getName();
   }
 
   public ModelRegistry getModelRegistry() {
     return modelRegistry;
   }
 
-  /**
-   * 获取事件发布器
-   *
-   * @return 事件发布器
-   */
   public EventPublisher getEventPublisher() {
     return eventPublisher;
+  }
+
+  public void createSchema(String schemaName) {
+    try {
+      if (defaultSchemaProvider instanceof JdbcSchemaProvider jdbc) {
+        try (Connection connection = jdbc.dataSource().getConnection()) {
+          dev.flexmodel.sql.dialect.SqlDialect dialect = dev.flexmodel.sql.SqlDialectFactory.create(connection.getMetaData());
+          String sql = dialect.getCreateSchemaSql(schemaName);
+          log.info("Creating schema: {}", sql);
+          try (java.sql.Statement stmt = connection.createStatement()) {
+            stmt.execute(sql);
+          }
+        }
+      } else {
+        throw new UnsupportedOperationException("Schema creation is only supported for JDBC data sources");
+      }
+    } catch (Exception e) {
+      log.error("Failed to create schema: {}", schemaName, e);
+      throw new RuntimeException("Failed to create schema: " + schemaName, e);
+    }
+  }
+
+  public void dropSchema(String schemaName) {
+    try {
+      if (defaultSchemaProvider instanceof JdbcSchemaProvider jdbc) {
+        try (Connection connection = jdbc.dataSource().getConnection()) {
+          dev.flexmodel.sql.dialect.SqlDialect dialect = dev.flexmodel.sql.SqlDialectFactory.create(connection.getMetaData());
+          String sql = dialect.getDropSchemaSql(schemaName);
+          log.info("Dropping schema: {}", sql);
+          try (java.sql.Statement stmt = connection.createStatement()) {
+            stmt.execute(sql);
+          }
+        }
+      } else {
+        throw new UnsupportedOperationException("Schema dropping is only supported for JDBC data sources");
+      }
+    } catch (Exception e) {
+      log.error("Failed to drop schema: {}", schemaName, e);
+      throw new RuntimeException("Failed to drop schema: " + schemaName, e);
+    }
   }
 }

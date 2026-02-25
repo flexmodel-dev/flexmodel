@@ -120,27 +120,15 @@
           "name": "createdAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
-          "modelName": "ApiInfo",
-          "validators": [
-            {
-              "type": "NotNullValidator",
-              "message": "must not be null"
-            }
-          ]
+          "nullable": true,
+          "modelName": "ApiInfo"
         },
         {
           "name": "updatedAt",
           "type": "DateTime",
           "unique": false,
-          "nullable": false,
-          "modelName": "ApiInfo",
-          "validators": [
-            {
-              "type": "NotNullValidator",
-              "message": "must not be null"
-            }
-          ]
+          "nullable": true,
+          "modelName": "ApiInfo"
         },
         {
           "name": "meta",

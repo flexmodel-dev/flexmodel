@@ -16,7 +16,7 @@ import dev.flexmodel.query.Predicate;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.sql.JdbcDataSourceProvider;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,15 +35,13 @@ public abstract class AbstractSessionTests {
 
   public static SessionFactory sessionFactory;
   public static Session session;
-  // 用于生成唯一的实体名称，避免测试间冲突
   private final AtomicInteger entityCounter = new AtomicInteger(1);
 
-  // 记录测试中创建的实体，用于清理
   private final List<String> createdEntities = new ArrayList<>();
 
-  protected static void initSession(DataSourceProvider dataSourceProvider) {
+  protected static void initSession(SchemaProvider schemaProvider) {
     sessionFactory = SessionFactory.builder()
-      .setDefaultDataSourceProvider(dataSourceProvider)
+      .setDefaultSchemaProvider(schemaProvider)
       .build();
     session = sessionFactory.createSession("default");
   }
@@ -1184,13 +1182,12 @@ public abstract class AbstractSessionTests {
     createTeacherData(teacherEntityName);
     createTeacher2("TestSyncModelsteacher2");
     String identifier = "default";
-    DataSourceProvider dataSourceProvider = sessionFactory.getDataSourceProvider(identifier);
-//    sessionFactory.addDataSourceProvider(dataSourceProvider);
-    if (dataSourceProvider instanceof JdbcDataSourceProvider jdbcDataSourceProvider) {
+    SchemaProvider schemaProvider = sessionFactory.getSchemaProvider(identifier);
+    if (schemaProvider instanceof JdbcSchemaProvider jdbcSchemaProvider) {
       SessionFactory sessionFactory = SessionFactory.builder()
-        .setDefaultDataSourceProvider(jdbcDataSourceProvider)
+        .setDefaultSchemaProvider(jdbcSchemaProvider)
         .build();
-      sessionFactory.addDataSourceProvider(dataSourceProvider);
+      sessionFactory.registerSchemaProvider(schemaProvider);
       Session newSession = sessionFactory.createSession(identifier);
       List<SchemaObject> models = newSession.schema().loadModels();
       Assertions.assertFalse(models.isEmpty());
@@ -1198,7 +1195,6 @@ public abstract class AbstractSessionTests {
       Assertions.assertFalse(studentDetailEntity.getFields().isEmpty());
       Assertions.assertTrue(studentDetailEntity.getIndexes().isEmpty());
     } else {
-      // todo mongodb模型同步待实现
     }
 
   }

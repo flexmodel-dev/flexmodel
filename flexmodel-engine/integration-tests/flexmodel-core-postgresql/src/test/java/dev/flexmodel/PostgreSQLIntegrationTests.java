@@ -7,7 +7,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-import dev.flexmodel.sql.JdbcDataSourceProvider;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 
 /**
  * @author cjbi
@@ -25,6 +25,6 @@ public class PostgreSQLIntegrationTests extends AbstractSessionTests {
     dataSource.setJdbcUrl(container.getJdbcUrl());
     dataSource.setUsername(container.getUsername());
     dataSource.setPassword(container.getPassword());
-    initSession(new JdbcDataSourceProvider("default", dataSource));
+    initSession(new JdbcSchemaProvider("default", dataSource));
   }
 }

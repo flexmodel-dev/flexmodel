@@ -1,8 +1,5 @@
 package dev.flexmodel.codegen;
 
-import dev.flexmodel.codegen.Configuration;
-import dev.flexmodel.codegen.GenerationTool;
-import dev.flexmodel.codegen.SchemaConfig;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;

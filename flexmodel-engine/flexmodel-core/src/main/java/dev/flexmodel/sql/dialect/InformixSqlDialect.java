@@ -115,4 +115,14 @@ public class InformixSqlDialect extends SqlDialect {
     return bool ? "'t'" : "'f'";
   }
 
+  @Override
+  public String getCreateSchemaSql(String schemaName) {
+    return "create database " + quoteIdentifier(schemaName);
+  }
+
+  @Override
+  public String getDropSchemaSql(String schemaName) {
+    return "drop database " + quoteIdentifier(schemaName);
+  }
+
 }

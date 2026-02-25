@@ -2,7 +2,7 @@ package dev.flexmodel.sql;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import dev.flexmodel.DataSourceProvider;
+import dev.flexmodel.SchemaProvider;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -17,11 +17,11 @@ public class SqlConnectionHolder {
 
   Logger log = LoggerFactory.getLogger(SqlConnectionHolder.class);
 
-  private final Map<String, DataSourceProvider> dataSourceProviderMap;
+  private final Map<String, SchemaProvider> schemaProviderMap;
   private final Map<String, Connection> connections = new HashMap<>();
 
-  public SqlConnectionHolder(Map<String, DataSourceProvider> dataSourceProviderMap) {
-    this.dataSourceProviderMap = dataSourceProviderMap;
+  public SqlConnectionHolder(Map<String, SchemaProvider> schemaProviderMap) {
+    this.schemaProviderMap = schemaProviderMap;
   }
 
   public Connection getOrCreateConnection(String identifier) {
@@ -31,11 +31,11 @@ public class SqlConnectionHolder {
           try {
             return v;
           } catch (Exception e) {
-            DataSource dataSource = ((JdbcDataSourceProvider) dataSourceProviderMap.get(identifier)).dataSource();
+            DataSource dataSource = ((JdbcSchemaProvider) schemaProviderMap.get(identifier)).dataSource();
             return dataSource.getConnection();
           }
         }
-        DataSource dataSource = ((JdbcDataSourceProvider) dataSourceProviderMap.get(identifier)).dataSource();
+        DataSource dataSource = ((JdbcSchemaProvider) schemaProviderMap.get(identifier)).dataSource();
         return dataSource.getConnection();
       } catch (SQLException e) {
         throw new RuntimeException(e);
@@ -58,7 +58,6 @@ public class SqlConnectionHolder {
       } catch (SQLException ex) {
         log.debug("Could not close JDBC Connection", ex);
       } catch (Throwable ex) {
-        // We don't trust the JDBC driver: It might throw RuntimeException or Error.
         log.debug("Unexpected exception on closing JDBC Connection", ex);
       }
     }

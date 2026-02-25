@@ -140,4 +140,14 @@ public class OracleSqlDialect extends SqlDialect {
     return false;
   }
 
+  @Override
+  public String getCreateSchemaSql(String schemaName) {
+    return "create user " + quoteIdentifier(schemaName) + " identified by " + quoteIdentifier(schemaName);
+  }
+
+  @Override
+  public String getDropSchemaSql(String schemaName) {
+    return "drop user " + quoteIdentifier(schemaName) + " cascade";
+  }
+
 }

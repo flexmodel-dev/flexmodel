@@ -1,7 +1,5 @@
 package dev.flexmodel.codegen;
 
-import dev.flexmodel.codegen.GenerationContext;
-import dev.flexmodel.codegen.ModelClass;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.JsonUtils;

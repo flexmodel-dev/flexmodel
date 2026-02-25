@@ -1,8 +1,7 @@
-package dev.flexmodel.event.test;
+package tech.wetech.flexmodel.event.test;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.DataSourceProvider;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventListener;
 import dev.flexmodel.event.EventPublisher;
@@ -12,6 +11,7 @@ import dev.flexmodel.event.impl.PreInsertEvent;
 import dev.flexmodel.event.impl.PreUpdateEvent;
 import dev.flexmodel.event.impl.SimpleEventPublisher;
 import dev.flexmodel.session.SessionFactory;
+import dev.flexmodel.SchemaProvider;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,7 +40,6 @@ public class EventTest {
     insertedCount = new AtomicInteger(0);
     lastInsertedData = new AtomicReference<>();
 
-    // 添加测试监听器
     eventPublisher.addListener(new EventListener() {
       @Override
       public void onPreChange(PreChangeEvent event) {
@@ -71,13 +70,12 @@ public class EventTest {
     // 创建SessionFactory（需要配置数据源）
     // sessionFactory = SessionFactory.builder()
     //     .setEventPublisher(eventPublisher)
-    //     .setDefaultDataSourceProvider(createTestDataSource())
+    //     .setDefaultSchemaProvider(createTestDataSource())
     //     .build();
   }
 
   @Test
   void testEventPublishing() {
-    // 测试事件发布
     PreInsertEvent preEvent = new PreInsertEvent("test", "schema",
       Map.of("id", 1, "name", "test"), 1, "session1", null);
 
@@ -88,7 +86,6 @@ public class EventTest {
 
   @Test
   void testChangedEventPublishing() {
-    // 测试后置事件发布
     InsertedEvent changedEvent = new InsertedEvent("test", "schema",
       null, Map.of("id", 1, "name", "test"), 1, 1, true, null, "session1", null);
 
@@ -198,9 +195,7 @@ public class EventTest {
   }
 
   // 辅助方法：创建测试数据源（需要根据实际情况实现）
-  private DataSourceProvider createTestDataSource() {
-    // 这里需要根据实际的测试环境创建数据源
-    // 可以使用H2内存数据库进行测试
-    return null; // 简化实现
+  private SchemaProvider createTestDataSource() {
+    return null;
   }
 }

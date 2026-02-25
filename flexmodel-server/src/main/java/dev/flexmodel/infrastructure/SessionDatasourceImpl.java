@@ -10,20 +10,20 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
-import dev.flexmodel.DataSourceProvider;
+import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.codegen.entity.Datasource;
 import dev.flexmodel.domain.model.connect.NativeQueryResult;
 import dev.flexmodel.domain.model.connect.SessionDatasource;
 import dev.flexmodel.domain.model.connect.ValidateResult;
 import dev.flexmodel.domain.model.connect.database.Database;
 import dev.flexmodel.domain.model.connect.database.MongoDB;
-import dev.flexmodel.mongodb.MongoDataSourceProvider;
+import dev.flexmodel.mongodb.MongoSchemaProvider;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.shared.SystemVariablesHolder;
 import dev.flexmodel.shared.utils.JsonUtils;
 import dev.flexmodel.shared.utils.StringUtils;
-import dev.flexmodel.sql.JdbcDataSourceProvider;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 
 import javax.sql.DataSource;
 import java.sql.DriverManager;
@@ -102,28 +102,27 @@ public class SessionDatasourceImpl implements SessionDatasource {
   @Override
   public void add(Datasource datasource) {
     try {
-      DataSourceProvider dataSourceProvider = buildDataSourceProvider(datasource.getName(), datasource);
-      sessionFactory.addDataSourceProvider(dataSourceProvider);
+      SchemaProvider schemaProvider = buildSchemaProvider(datasource.getName(), datasource);
+      sessionFactory.registerSchemaProvider(schemaProvider);
     } catch (Exception e) {
       log.error("Session dataSource create error: {}", e.getMessage(), e);
     }
   }
 
-  private DataSourceProvider buildDataSourceProvider(String id, Datasource datasource) {
-    DataSourceProvider dataSourceProvider;
+  private SchemaProvider buildSchemaProvider(String id, Datasource datasource) {
+    SchemaProvider schemaProvider;
     if (datasource.getConfig() instanceof MongoDB mongoDB) {
-      dataSourceProvider = new MongoDataSourceProvider(id, buildMongoDatabase(mongoDB));
+      schemaProvider = new MongoSchemaProvider(id, buildMongoDatabase(mongoDB));
     } else {
       Database config = JsonUtils.getInstance().convertValue(datasource.getConfig(), Database.class);
-      dataSourceProvider = new JdbcDataSourceProvider(id, buildJdbcDataSource(config));
+      schemaProvider = new JdbcSchemaProvider(id, buildJdbcDataSource(config));
     }
-    return dataSourceProvider;
+    return schemaProvider;
   }
 
   public DataSource buildJdbcDataSource(Database database) {
     HikariDataSource dataSource = new HikariDataSource();
-    dataSource.setMaxLifetime(30000); // 30s
-//    dataSource.setMaximumPoolSize(30);
+    dataSource.setMaxLifetime(30000);
     dataSource.setJdbcUrl(getContent(database.getUrl()));
     dataSource.setUsername(getContent(database.getUsername()));
     dataSource.setPassword(getContent(database.getPassword()));
@@ -140,7 +139,7 @@ public class SessionDatasourceImpl implements SessionDatasource {
 
   @Override
   public void delete(String projectId, String datasourceName) {
-    sessionFactory.removeDataSourceProvider(datasourceName);
+    sessionFactory.unregisterSchemaProvider(datasourceName);
   }
 
   @Override

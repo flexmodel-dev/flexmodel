@@ -15,7 +15,7 @@ import dev.flexmodel.domain.model.connect.DatasourceService;
 import dev.flexmodel.domain.model.connect.SessionDatasource;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.shared.FlexmodelConfig;
-import dev.flexmodel.sql.JdbcDataSourceProvider;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 
 import java.util.List;
 
@@ -50,28 +50,26 @@ public class SessionConfig {
                                        AuditDataEventListener auditDataEventListener) {
     FlexmodelConfig.DatasourceConfig datasourceConfig = flexmodelConfig.datasources().get(SYSTEM_DS_KEY);
     HikariDataSource defaultDs = new HikariDataSource();
-    defaultDs.setMaxLifetime(30000); // 30s
+    defaultDs.setMaxLifetime(30000);
     defaultDs.setJdbcUrl(datasourceConfig.url());
     defaultDs.setUsername(datasourceConfig.username().orElse(null));
     defaultDs.setPassword(datasourceConfig.password().orElse(null));
     SessionFactory.Builder builder = SessionFactory.builder()
-      .setDefaultDataSourceProvider(new JdbcDataSourceProvider(SYSTEM_DS_KEY, defaultDs))
+      .setDefaultSchemaProvider(new JdbcSchemaProvider(SYSTEM_DS_KEY, defaultDs))
       .setFailsafe(true);
     flexmodelConfig.datasources().forEach((key, value) -> {
       if (key.equals(SYSTEM_DS_KEY)) {
         return;
       }
       HikariDataSource ds = new HikariDataSource();
-      ds.setMaxLifetime(30000); // 30s
+      ds.setMaxLifetime(30000);
       ds.setJdbcUrl(value.url());
       ds.setUsername(value.username().orElse(null));
       ds.setPassword(value.password().orElse(null));
-      builder.addDataSourceProvider(new JdbcDataSourceProvider(key, ds));
+      builder.registerSchemaProvider(new JdbcSchemaProvider(key, ds));
     });
     SessionFactory sf = builder.build();
-    // 添加触发器监听器
     sf.getEventPublisher().addListener(triggerDataChangedEventListener);
-    // 添加数据审计监听器
     sf.getEventPublisher().addListener(auditDataEventListener);
     return sf;
   }

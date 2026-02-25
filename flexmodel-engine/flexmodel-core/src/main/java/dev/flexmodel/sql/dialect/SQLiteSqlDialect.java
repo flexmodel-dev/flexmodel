@@ -98,4 +98,15 @@ public class SQLiteSqlDialect extends SqlDialect {
   public boolean supportsNotNullWithoutDefaultValue() {
     return false;
   }
+
+  @Override
+  public String getCreateSchemaSql(String schemaName) {
+    return "attach database '" + schemaName + ".db' as " + quoteIdentifier(schemaName);
+  }
+
+  @Override
+  public String getDropSchemaSql(String schemaName) {
+    return "detach database " + quoteIdentifier(schemaName);
+  }
+
 }

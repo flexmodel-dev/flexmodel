@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.model.NativeQueryDefinition;
-import dev.flexmodel.sql.JdbcDataSourceProvider;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +20,7 @@ public class SQLiteIntegrationTests extends AbstractSessionTests {
   public static void beforeAll() {
     HikariDataSource dataSource = new HikariDataSource();
     dataSource.setJdbcUrl("jdbc:sqlite:file::memory:?cache=shared");
-    initSession(new JdbcDataSourceProvider("default", dataSource));
+    initSession(new JdbcSchemaProvider("default", dataSource));
   }
 
   @Test

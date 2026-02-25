@@ -173,4 +173,14 @@ public class MySQLSqlDialect extends SqlDialect {
     return null;
   }
 
+  @Override
+  public String getCreateSchemaSql(String schemaName) {
+    return "create schema " + quoteIdentifier(schemaName);
+  }
+
+  @Override
+  public String getDropSchemaSql(String schemaName) {
+    return "drop schema " + quoteIdentifier(schemaName);
+  }
+
 }

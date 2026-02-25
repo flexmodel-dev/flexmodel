@@ -7,7 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.sql.JdbcDataSourceProvider;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 
 /**
  * @author cjbi
@@ -22,9 +22,9 @@ public class AbstractIntegrationTest {
   static void init() {
     HikariDataSource dataSource = new HikariDataSource();
     dataSource.setJdbcUrl("jdbc:sqlite:file::memory:?cache=shared");
-    JdbcDataSourceProvider jdbcDataSourceProvider = new JdbcDataSourceProvider(SCHEMA_NAME, dataSource);
+    JdbcSchemaProvider jdbcSchemaProvider = new JdbcSchemaProvider(SCHEMA_NAME, dataSource);
     SessionFactory sessionFactory = SessionFactory.builder()
-      .setDefaultDataSourceProvider(jdbcDataSourceProvider)
+      .setDefaultSchemaProvider(jdbcSchemaProvider)
       .build();
     session = sessionFactory.createSession(SCHEMA_NAME);
   }

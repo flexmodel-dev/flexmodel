@@ -101,12 +101,12 @@ public class SQLiteSqlDialect extends SqlDialect {
 
   @Override
   public String getCreateSchemaSql(String schemaName) {
-    return "attach database '" + schemaName + ".db' as " + quoteIdentifier(schemaName);
+    return "";
   }
 
   @Override
   public String getDropSchemaSql(String schemaName) {
-    return "detach database " + quoteIdentifier(schemaName);
+    return "";
   }
 
 }

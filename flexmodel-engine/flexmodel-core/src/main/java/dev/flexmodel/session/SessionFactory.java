@@ -402,43 +402,4 @@ public class SessionFactory {
     return eventPublisher;
   }
 
-  public void createSchema(String schemaName) {
-    try {
-      if (defaultSchemaProvider instanceof JdbcSchemaProvider jdbc) {
-        try (Connection connection = jdbc.dataSource().getConnection()) {
-          dev.flexmodel.sql.dialect.SqlDialect dialect = dev.flexmodel.sql.SqlDialectFactory.create(connection.getMetaData());
-          String sql = dialect.getCreateSchemaSql(schemaName);
-          log.info("Creating schema: {}", sql);
-          try (java.sql.Statement stmt = connection.createStatement()) {
-            stmt.execute(sql);
-          }
-        }
-      } else {
-        throw new UnsupportedOperationException("Schema creation is only supported for JDBC data sources");
-      }
-    } catch (Exception e) {
-      log.error("Failed to create schema: {}", schemaName, e);
-      throw new RuntimeException("Failed to create schema: " + schemaName, e);
-    }
-  }
-
-  public void dropSchema(String schemaName) {
-    try {
-      if (defaultSchemaProvider instanceof JdbcSchemaProvider jdbc) {
-        try (Connection connection = jdbc.dataSource().getConnection()) {
-          dev.flexmodel.sql.dialect.SqlDialect dialect = dev.flexmodel.sql.SqlDialectFactory.create(connection.getMetaData());
-          String sql = dialect.getDropSchemaSql(schemaName);
-          log.info("Dropping schema: {}", sql);
-          try (java.sql.Statement stmt = connection.createStatement()) {
-            stmt.execute(sql);
-          }
-        }
-      } else {
-        throw new UnsupportedOperationException("Schema dropping is only supported for JDBC data sources");
-      }
-    } catch (Exception e) {
-      log.error("Failed to drop schema: {}", schemaName, e);
-      throw new RuntimeException("Failed to drop schema: " + schemaName, e);
-    }
-  }
 }

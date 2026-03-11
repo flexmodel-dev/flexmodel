@@ -9,26 +9,30 @@ import dev.flexmodel.session.Session;
 import static dev.flexmodel.query.Expressions.field;
 
 @ApplicationScoped
-public class InstanceDataFmRepository implements InstanceDataRepository {
+public class InstanceDataFmRepository extends AbstractRepository implements InstanceDataRepository {
 
   @Inject
   Session session;
 
   @Override
   public InstanceData select(String projectId, String flowInstanceId, String instanceDataId) {
-    return session.dsl().selectFrom(InstanceData.class)
-      .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getFlowInstanceId).eq(flowInstanceId)
-        .and(field(InstanceData::getInstanceDataId).eq(instanceDataId))))
-      .executeOne();
+    try (Session session = getProjectSession(projectId)) {
+      return session.dsl().selectFrom(InstanceData.class)
+        .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getFlowInstanceId).eq(flowInstanceId)
+          .and(field(InstanceData::getInstanceDataId).eq(instanceDataId))))
+        .executeOne();
+    }
   }
 
   @Override
   public InstanceData selectRecentOne(String projectId, String flowInstanceId) {
-    return session.dsl().selectFrom(InstanceData.class)
-      .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getFlowInstanceId).eq(flowInstanceId)))
-      .orderByDesc(InstanceData::getId)
-      .limit(1)
-      .executeOne();
+    try (Session session = getProjectSession(projectId)) {
+      return session.dsl().selectFrom(InstanceData.class)
+        .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getFlowInstanceId).eq(flowInstanceId)))
+        .orderByDesc(InstanceData::getId)
+        .limit(1)
+        .executeOne();
+    }
   }
 
   @Override
@@ -38,10 +42,12 @@ public class InstanceDataFmRepository implements InstanceDataRepository {
 
   @Override
   public int updateData(String projectId, InstanceData instanceData) {
-    return session.dsl().update(InstanceData.class)
-      .values(instanceData)
-      .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getId).eq(instanceData.getId())))
-      .execute();
+    try (Session session = getProjectSession(projectId)) {
+      return session.dsl().update(InstanceData.class)
+        .values(instanceData)
+        .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getId).eq(instanceData.getId())))
+        .execute();
+    }
   }
 
   @Override
@@ -52,5 +58,3 @@ public class InstanceDataFmRepository implements InstanceDataRepository {
     return insert(mergeEntity);
   }
 }
-
-

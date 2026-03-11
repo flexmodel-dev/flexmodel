@@ -2,8 +2,6 @@ package dev.flexmodel.infrastructure.persistence;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import dev.flexmodel.codegen.entity.Datasource;
-import dev.flexmodel.domain.model.connect.DatasourceService;
 import dev.flexmodel.domain.model.modeling.ModelRepository;
 import dev.flexmodel.model.*;
 import dev.flexmodel.model.field.TypedField;
@@ -27,9 +25,6 @@ public class ModelFmRepository implements ModelRepository {
 
   @Inject
   SessionFactory sessionFactory;
-
-  @Inject
-  DatasourceService datasourceService;
 
   @Override
   @SuppressWarnings("all")
@@ -148,13 +143,7 @@ public class ModelFmRepository implements ModelRepository {
   @Override
   public Integer count(String projectId) {
     int modelCount = 0;
-    List<Datasource> datasources = datasourceService.findAll(projectId);
-    for (Datasource datasource : datasources) {
-      List<SchemaObject> list = findAll(projectId, datasource.getName());
-      if (list != null) {
-        modelCount += list.size();
-      }
-    }
+    List<SchemaObject> list = findAll(projectId, projectId);
     return modelCount;
   }
 }

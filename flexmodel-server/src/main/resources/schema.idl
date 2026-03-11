@@ -1,6 +1,7 @@
 model f_project {
   id : String @id @default(uuid()),
   name: String,
+  database_name: String,
   description?: String,
   enabled : Boolean @comment("是否启用") @default("true"),
   owner_id?: String @comment("所有者 ID"),
@@ -61,20 +62,6 @@ model f_config {
   @index(name:"IDX_CONFIG_KEY", unique: "true", fields: [key]),
   @comment("系统配置")
 }
-model f_datasource {
-  name : String @id,
-  type? : DatasourceType,
-  config? : JSON,
-  enabled : Boolean @comment("禁用状态") @default("true"),
-  project_id?: String @comment("项目ID"),
-  created_by?: String @comment("创建人"),
-  updated_by?: String @comment("更新人"),
-  created_at?: DateTime @default(now()) @comment("创建时间"),
-  updated_at?: DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_PROJECT", fields: [project_id]),
-  @comment("数据源")
-}
-
 model f_storage {
   name : String @id,
   type? : StorageType,

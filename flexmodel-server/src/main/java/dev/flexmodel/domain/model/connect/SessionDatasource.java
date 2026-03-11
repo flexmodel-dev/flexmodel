@@ -1,6 +1,6 @@
 package dev.flexmodel.domain.model.connect;
 
-import dev.flexmodel.codegen.entity.Datasource;
+import dev.flexmodel.codegen.entity.Project;
 
 import java.util.List;
 import java.util.Map;
@@ -10,14 +10,12 @@ import java.util.Map;
  */
 public interface SessionDatasource {
 
-  List<String> getPhysicsModelNames(Datasource datasource);
+  List<String> getPhysicsModelNames(Project project);
 
-  ValidateResult validate(Datasource datasource);
+  void add(Project project);
 
-  void add(Datasource datasource);
+  void delete(Project project);
 
-  void delete(String projectId, String datasourceName);
-
-  NativeQueryResult executeNativeQuery(String projectId, String datasourceName, String statement, Map<String, Object> parameters);
+  NativeQueryResult executeNativeQuery(Project project, String statement, Map<String, Object> parameters);
 
 }

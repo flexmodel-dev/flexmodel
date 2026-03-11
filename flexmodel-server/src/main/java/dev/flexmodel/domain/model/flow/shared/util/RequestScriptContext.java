@@ -1,6 +1,5 @@
 package dev.flexmodel.domain.model.flow.shared.util;
 
-import dev.flexmodel.codegen.entity.Datasource;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
@@ -106,15 +105,10 @@ public class RequestScriptContext {
     // 日志
     context.put("log", new Logger(projectId));
 
-    if (sessionFactory != null) {
+    if(sessionFactory!=null) {
       Session session = sessionFactory.createSession(projectId);
-      List<Datasource> datasources = session.dsl().selectFrom(Datasource.class).execute();
-      Map<String, ScriptExecutionDB> dbs = new HashMap<>();
-      for (Datasource datasource : datasources) {
-        dbs.put(datasource.getName(), new ScriptExecutionDB(datasource.getName(), sessionFactory));
-      }
-      context.put("dbs", dbs);
     }
+
     return context;
   }
 

@@ -9,7 +9,6 @@ import dev.flexmodel.codegen.entity.FlowDefinition;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.domain.model.api.ApiDefinitionService;
 import dev.flexmodel.domain.model.api.ApiRequestLogService;
-import dev.flexmodel.domain.model.connect.DatasourceService;
 import dev.flexmodel.domain.model.flow.service.FlowDefinitionService;
 import dev.flexmodel.domain.model.flow.service.FlowInstanceService;
 import dev.flexmodel.domain.model.modeling.ModelService;
@@ -48,8 +47,6 @@ public class MetricsApplicationService {
   @Inject
   ApiRequestLogService apiLogService;
   @Inject
-  DatasourceService datasourceService;
-  @Inject
   ModelService modelService;
   @Inject
   FlowInstanceService flowInstanceService;
@@ -64,7 +61,6 @@ public class MetricsApplicationService {
     try {
       Integer modelCount = modelService.count(projectId);
       Integer customApiCount = apiDefinitionService.count(projectId);
-      Integer datasourceCount = datasourceService.count(projectId);
       long reqLogCount = apiLogService.count(projectId, TRUE);
       long flowDefCount = flowDefService.count(projectId, Expressions.field(FlowDefinition::getIsDeleted).eq(false));
       long flowInsCount = flowInstanceService.count(projectId, TRUE);
@@ -73,7 +69,7 @@ public class MetricsApplicationService {
       long jobFailureCount = jobExecutionLogService.count(Expressions.field(JobExecutionLog::getExecutionStatus).eq("FAILED"));
 
       return FmMetricsResponse.builder()
-        .dataSourceCount(datasourceCount)
+        .dataSourceCount(-1)
         .customApiCount(customApiCount)
         .requestCount((int) reqLogCount)
         .flowDefCount((int) flowDefCount)

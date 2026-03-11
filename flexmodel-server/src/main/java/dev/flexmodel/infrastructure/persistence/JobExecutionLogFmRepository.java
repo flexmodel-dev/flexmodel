@@ -13,14 +13,9 @@ import java.util.List;
 
 import static dev.flexmodel.query.Expressions.field;
 
-/**
- * 作业执行日志仓储实现
- *
- * @author cjbi
- */
 @ApplicationScoped
 @ActivateRequestContext
-public class JobExecutionLogFmRepository implements JobExecutionLogRepository {
+public class JobExecutionLogFmRepository extends AbstractRepository implements JobExecutionLogRepository {
 
   @Inject
   Session session;
@@ -35,38 +30,45 @@ public class JobExecutionLogFmRepository implements JobExecutionLogRepository {
 
   @Override
   public JobExecutionLog save(String projectId, JobExecutionLog jobExecutionLog) {
-    session.dsl()
-      .mergeInto(JobExecutionLog.class)
-      .values(jobExecutionLog)
-      .execute();
+    try (Session session = getProjectSession(projectId)) {
+      session.dsl()
+        .mergeInto(JobExecutionLog.class)
+        .values(jobExecutionLog)
+        .execute();
+    }
     return jobExecutionLog;
   }
 
   @Override
   public void delete(String projectId, Predicate filter) {
-    session.dsl()
-      .deleteFrom(JobExecutionLog.class)
-      .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
-      .execute();
+    try (Session session = getProjectSession(projectId)) {
+      session.dsl()
+        .deleteFrom(JobExecutionLog.class)
+        .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
+        .execute();
+    }
   }
 
   @Override
   public List<JobExecutionLog> find(String projectId, Predicate filter, Integer page, Integer size) {
-    var query = session.dsl()
-      .selectFrom(JobExecutionLog.class)
-      .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
-      .page(page, size)
-      .orderByDesc(JobExecutionLog::getStartTime);
-
-    return query.execute();
+    try (Session session = getProjectSession(projectId)) {
+      return session.dsl()
+        .selectFrom(JobExecutionLog.class)
+        .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
+        .page(page, size)
+        .orderByDesc(JobExecutionLog::getStartTime)
+        .execute();
+    }
   }
 
   @Override
   public long count(String projectId, Predicate filter) {
-    return session.dsl()
-      .selectFrom(JobExecutionLog.class)
-      .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
-      .count();
+    try (Session session = getProjectSession(projectId)) {
+      return session.dsl()
+        .selectFrom(JobExecutionLog.class)
+        .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
+        .count();
+    }
   }
 
   @Override
@@ -74,10 +76,8 @@ public class JobExecutionLogFmRepository implements JobExecutionLogRepository {
     LocalDateTime purgeDate = LocalDateTime.now().minusDays(days);
     Predicate filter = field(JobExecutionLog::getCreatedAt).lte(purgeDate);
 
-    // 先统计要删除的记录数
     long count = count(projectId, filter);
 
-    // 执行删除
     delete(projectId, filter);
 
     return (int) count;

@@ -10,6 +10,14 @@ public class SessionContextHolder {
 
   private static final ThreadLocal<SessionContext> CONTEXT_HOLDER = ThreadLocal.withInitial(SessionContext::new);
 
+  public static void setProjectDatabaseName(String projectDatabaseName) {
+    CONTEXT_HOLDER.get().setProjectDatabaseName(projectDatabaseName);
+  }
+
+  public static String getProjectDatabaseName() {
+    return CONTEXT_HOLDER.get().getProjectDatabaseName();
+  }
+
   public static void setProjectId(String projectId) {
     CONTEXT_HOLDER.get().setProjectId(projectId);
   }
@@ -31,6 +39,7 @@ public class SessionContextHolder {
   @Setter
   static class SessionContext {
     private String projectId;
+    private String projectDatabaseName;
     private String userId;
   }
 

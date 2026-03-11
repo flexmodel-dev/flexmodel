@@ -5,8 +5,6 @@ import dev.langchain4j.agent.tool.Tool;
 import io.smallrye.common.annotation.NonBlocking;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import dev.flexmodel.codegen.entity.Datasource;
-import dev.flexmodel.domain.model.connect.DatasourceService;
 import dev.flexmodel.domain.model.modeling.ModelService;
 import dev.flexmodel.model.SchemaObject;
 
@@ -20,27 +18,6 @@ public class ModelingTool {
 
   @Inject
   ModelService modelService;
-
-  @Inject
-  DatasourceService datasourceService;
-
-  @Tool("获取数据源列表")
-  @NonBlocking
-  public String listDatasources(@P("项目ID") String projectId) {
-    List<Datasource> dataSources = datasourceService.findAll(projectId);
-    if (dataSources.isEmpty()) {
-      return "No data sources are currently available.";
-    }
-
-    StringBuilder response = new StringBuilder();
-    response.append("Available data sources:\n\n");
-
-    for (int i = 0; i < dataSources.size(); i++) {
-      response.append((i + 1)).append(". ").append(dataSources.get(i).getName()).append("\n");
-    }
-
-    return response.toString();
-  }
 
   @Tool("获取某个数据源中所有可用数据模型的列表")
   @NonBlocking

@@ -22,7 +22,7 @@ import java.util.Map;
  * @author cjbi
  */
 @Tag(name = "记录", description = "模型数据记录管理")
-@Path("/v1/projects/{projectId}/datasources/{datasourceName}/models/{modelName}/records")
+@Path("/v1/projects/{projectId}/models/{modelName}/records")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class RecordResource {
@@ -60,7 +60,6 @@ public class RecordResource {
   @GET
   public PageDTO<Map<String, Object>> findPagingRecords(
     @PathParam("projectId") String projectId,
-    @PathParam("datasourceName") String datasourceName,
     @PathParam("modelName") String modelName,
     @QueryParam("page") @DefaultValue("1") int page,
     @QueryParam("size") @DefaultValue("15") int size,
@@ -68,7 +67,7 @@ public class RecordResource {
     @QueryParam("nestedQuery") @DefaultValue("false") boolean nestedQuery,
     @QueryParam("sort") String sort
   ) {
-    return dataApplicationService.findPagingRecords(projectId, datasourceName, modelName, page, size, filter, sort, nestedQuery);
+    return dataApplicationService.findPagingRecords(projectId, modelName, page, size, filter, sort, nestedQuery);
   }
 
   @Parameter(name = "id", description = "ID", examples = {@ExampleObject(value = "1")}, in = ParameterIn.PATH)
@@ -77,12 +76,11 @@ public class RecordResource {
   @Path("/{id}")
   public Map<String, Object> findOneRecord(
     @PathParam("projectId") String projectId,
-    @PathParam("datasourceName") String datasourceName,
     @PathParam("modelName") String modelName,
     @PathParam("id") String id,
     @QueryParam("nestedQuery") @DefaultValue("false") boolean nestedQuery
   ) {
-    return dataApplicationService.findOneRecord(projectId, datasourceName, modelName, id, nestedQuery);
+    return dataApplicationService.findOneRecord(projectId, modelName, id, nestedQuery);
   }
 
 
@@ -124,11 +122,10 @@ public class RecordResource {
   @POST
   public Map<String, Object> createRecord(
     @PathParam("projectId") String projectId,
-    @PathParam("datasourceName") String datasourceName,
     @PathParam("modelName") String modelName,
     Map<String, Object> record
   ) {
-    return dataApplicationService.createRecord(projectId, datasourceName, modelName, record);
+    return dataApplicationService.createRecord(projectId, modelName, record);
   }
 
   @RequestBody(
@@ -172,12 +169,11 @@ public class RecordResource {
   @Path("/{id}")
   public Map<String, Object> updateRecord(
     @PathParam("projectId") String projectId,
-    @PathParam("datasourceName") String datasourceName,
     @PathParam("modelName") String modelName,
     @PathParam("id") String id,
     Map<String, Object> record
   ) {
-    return dataApplicationService.updateRecord(projectId, datasourceName, modelName, id, record);
+    return dataApplicationService.updateRecord(projectId, modelName, id, record);
   }
 
   @RequestBody(
@@ -220,12 +216,11 @@ public class RecordResource {
   @Path("/{id}")
   public Map<String, Object> updateRecordIgnoreNull(
     @PathParam("projectId") String projectId,
-    @PathParam("datasourceName") String datasourceName,
     @PathParam("modelName") String modelName,
     @PathParam("id") String id,
     Map<String, Object> record
   ) {
-    return dataApplicationService.updateRecordIgnoreNull(projectId, datasourceName, modelName, id, record);
+    return dataApplicationService.updateRecordIgnoreNull(projectId, modelName, id, record);
   }
 
   @Parameter(name = "id", description = "ID", examples = {@ExampleObject(value = "1")}, in = ParameterIn.PATH)
@@ -234,11 +229,10 @@ public class RecordResource {
   @Path("/{id}")
   public void deleteRecord(
     @PathParam("projectId") String projectId,
-    @PathParam("datasourceName") String datasourceName,
     @PathParam("modelName") String modelName,
     @PathParam("id") String id
   ) {
-    dataApplicationService.deleteRecord(projectId, datasourceName, modelName, id);
+    dataApplicationService.deleteRecord(projectId, modelName, id);
   }
 
 }

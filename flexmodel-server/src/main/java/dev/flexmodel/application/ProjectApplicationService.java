@@ -5,7 +5,6 @@ import dev.flexmodel.application.dto.ProjectResponse;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.domain.model.api.ApiDefinitionService;
 import dev.flexmodel.domain.model.auth.ProjectService;
-import dev.flexmodel.domain.model.connect.DatasourceService;
 import dev.flexmodel.domain.model.flow.service.FlowDeploymentService;
 import dev.flexmodel.domain.model.storage.StorageService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -27,8 +26,6 @@ public class ProjectApplicationService {
   @Inject
   FlowDeploymentService flowDeploymentService;
   @Inject
-  DatasourceService datasourceService;
-  @Inject
   StorageService storageService;
 
   public List<ProjectResponse> findProjects(ProjectListRequest request) {
@@ -39,7 +36,7 @@ public class ProjectApplicationService {
             ProjectResponse.ProjectStats projectStats = new ProjectResponse.ProjectStats(
               apiDefinitionService.count(project.getId()),
               flowDeploymentService.count(project.getId()),
-              datasourceService.count(project.getId()),
+              -1,
               storageService.count(project.getId())
             );
             response.setStats(projectStats);

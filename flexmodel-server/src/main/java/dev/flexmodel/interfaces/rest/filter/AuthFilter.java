@@ -1,5 +1,8 @@
 package dev.flexmodel.interfaces.rest.filter;
 
+import dev.flexmodel.application.ProjectApplicationService;
+import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.session.Session;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -38,6 +41,8 @@ public class AuthFilter implements ContainerRequestFilter {
   SettingsApplicationService settingsApplicationService;
   @Inject
   IdentityProviderApplicationService identityProviderApplicationService;
+  @Inject
+  ProjectApplicationService projectApplicationService;
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
@@ -92,7 +97,17 @@ public class AuthFilter implements ContainerRequestFilter {
     String accessToken = Objects.toString(requestContext.getHeaderString("Authorization"), "")
       .replaceFirst("Bearer ", "");
     String userId = JwtUtil.getAccount(accessToken);
-    SessionContextHolder.setProjectId(projectId);
+    if (projectId != null) {
+      Project project = projectApplicationService.findProject(projectId);
+      if (project == null) {
+        throw new AuthException("Project not found");
+      }
+      SessionContextHolder.setProjectId(projectId);
+      SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
+    } else {
+      SessionContextHolder.setProjectId(null);
+      SessionContextHolder.setProjectDatabaseName(null);
+    }
     SessionContextHolder.setUserId(userId);
     requestContext.setProperty("projectId", projectId);
     requestContext.setProperty("userId", userId);

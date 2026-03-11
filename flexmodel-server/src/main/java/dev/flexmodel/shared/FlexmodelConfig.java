@@ -15,6 +15,9 @@ import java.util.Optional;
 @ConfigMapping(prefix = "flexmodel")
 public interface FlexmodelConfig extends Serializable {
 
+  @WithName("project-url-template")
+  String projectUrlTemplate();
+
   @WithName("datasource")
   @WithUnnamedKey("system")
   Map<String, DatasourceConfig> datasources();

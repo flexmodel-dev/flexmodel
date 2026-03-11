@@ -1,6 +1,7 @@
 package dev.flexmodel.infrastructure.session;
 
 import com.zaxxer.hikari.HikariDataSource;
+import dev.flexmodel.domain.model.connect.SessionDatasource;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -8,11 +9,8 @@ import jakarta.enterprise.inject.Produces;
 import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.application.AuditDataEventListener;
 import dev.flexmodel.application.TriggerDataChangedEventListener;
-import dev.flexmodel.codegen.entity.Datasource;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.domain.model.auth.ProjectService;
-import dev.flexmodel.domain.model.connect.DatasourceService;
-import dev.flexmodel.domain.model.connect.SessionDatasource;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.shared.FlexmodelConfig;
 import dev.flexmodel.sql.JdbcSchemaProvider;
@@ -29,16 +27,11 @@ public class SessionConfig {
   public static final String SYSTEM_DS_KEY = "system";
 
   public void installDatasource(@Observes StartupEvent startupEvent,
-                                SessionDatasource sessionDatasource,
-                                ProjectService projectService,
-                                DatasourceService datasourceService) {
+                                ProjectService projectService, SessionDatasource sessionDatasource) {
     long beginTime = System.currentTimeMillis();
     List<Project> projects = projectService.findProjects();
     for (Project project : projects) {
-      List<Datasource> datasourceList = datasourceService.findAll(project.getId());
-      for (Datasource datasource : datasourceList) {
-        sessionDatasource.add(datasource);
-      }
+      sessionDatasource.add(project);
     }
     log.info("========== Engine init successful in {} ms!", System.currentTimeMillis() - beginTime);
   }

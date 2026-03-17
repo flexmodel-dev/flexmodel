@@ -3,6 +3,7 @@ package dev.flexmodel.rest;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -12,6 +13,29 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
  */
 @QuarkusTest
 class ModelResourceTest {
+
+  // 测试表名列表，用于清理
+  private static final String[] TEST_TABLE_NAMES = {
+    "testCreateModelStudent",
+    "testDropModelStudent",
+    "testCreateFieldStudent",
+    "testModifyFieldStudent",
+    "testDropFieldStudent",
+    "testCreateIndexStudent",
+    "testModifyIndexStudent",
+    "testDropIndexStudent"
+  };
+
+  @BeforeEach
+  void cleanupTestModels() {
+    // 清理测试创建的模型
+    for (String tableName : TEST_TABLE_NAMES) {
+      given()
+        .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+        .when()
+        .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}", tableName);
+    }
+  }
 
   @Test
   void testFindModels() {

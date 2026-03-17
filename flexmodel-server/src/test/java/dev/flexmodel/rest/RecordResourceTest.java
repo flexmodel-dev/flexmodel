@@ -4,16 +4,17 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.interfaces.rest.jwt.JwtUtil;
 
 import java.time.Duration;
 
 import static io.restassured.RestAssured.given;
+import static io.restassured.RestAssured.when;
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
@@ -22,7 +23,6 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
  */
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RecordResourceTest {
 
   /**
@@ -30,6 +30,18 @@ class RecordResourceTest {
    */
   private String getTestToken() {
     return JwtUtil.sign("admin", Duration.ofMinutes(5));
+  }
+
+  @BeforeEach
+  void cleanupTestData() {
+    // 清理测试创建的记录（id = 100000）
+    given()
+      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .when()
+      .delete(Resources.ROOT_PATH + "/projects/{projectId}/models/{modelName}/records/{recordId}",
+        "dev_test", "Student", 100000)
+      .then()
+      .statusCode(anyOf(equalTo(204), equalTo(404))); // 204成功删除，404记录不存在
   }
 
   @Test

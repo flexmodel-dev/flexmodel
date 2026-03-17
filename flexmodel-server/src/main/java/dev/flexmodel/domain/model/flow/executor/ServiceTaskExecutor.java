@@ -76,7 +76,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
         // 执行 CRUD 操作
         result = executeAction(subType, null, nodeInstance, runtimeContext.getInstanceDataMap());
       } else {
-        // 获取脚本内容（用于 groovy、js 等脚本类型）
+        // 获取脚本内容（用于 js、sql 等脚本类型）
         Object scriptObj = nodeInstance.get("script");
         if (scriptObj == null) {
           LOGGER.error("doExecute: script is null.||nodeInstanceId={}||nodeKey={}||subType={}",

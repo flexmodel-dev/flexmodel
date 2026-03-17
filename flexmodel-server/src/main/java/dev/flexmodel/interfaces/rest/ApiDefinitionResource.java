@@ -13,7 +13,6 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import dev.flexmodel.application.ApiDefinitionApplicationService;
 import dev.flexmodel.application.dto.ApiDefinitionTreeDTO;
-import dev.flexmodel.application.dto.GenerateAPIsDTO;
 import dev.flexmodel.codegen.entity.ApiDefinition;
 import dev.flexmodel.codegen.entity.ApiDefinitionHistory;
 
@@ -155,13 +154,6 @@ public class ApiDefinitionResource {
   @Path("/{id}")
   public void delete(@PathParam("projectId") String projectId, @PathParam("id") String id) {
     apiDesignApplicationService.deleteApiDefinition(projectId, id);
-  }
-
-  @Operation(summary = "根据模型生成接口定义")
-  @POST
-  @Path("/generate")
-  public void generateAPIs(@PathParam("projectId") String projectId, GenerateAPIsDTO dto) {
-    apiDesignApplicationService.generateAPIs(projectId, dto);
   }
 
   @Schema(

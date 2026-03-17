@@ -7,7 +7,7 @@
 - **一站式后端能力**: 集成了身份认证 (Auth)、文件存储 (Storage)、任务调度 (Job) 及服务编排 (Flow)。
 - **统一数据接口**: 抽象底层数据源差异，提供标准化的 REST 和 GraphQL 接口。
 - **AI 赋能**: 内置 LangChain4j，提供流式对话能力 (SSE)，支持构建智能应用。
-- **动态逻辑**: 支持基于 Groovy 的代码模板生成，实现灵活的业务逻辑扩展。
+- **动态逻辑**: 支持基于 JavaScript 的脚本执行，实现灵活的业务逻辑扩展。
 - **DDD 架构**: 严格的分层架构（接口层、应用层、领域层、基础设施层），易于演进和维护。
 
 ## 🛠️ 技术栈
@@ -16,7 +16,7 @@
 - **AI 能力**: LangChain4j (OpenAI 兼容接口, StreamingChatModel)
 - **API 协议**: REST API, GraphQL, OpenAPI/Swagger UI
 - **持久化**: SQLite (默认演示) / 支持扩展多种关系型与 NoSQL 数据库
-- **其他**: Lombok, Groovy, Docker, Maven
+- **其他**: Lombok, GraalVM JavaScript, Docker, Maven
 
 ## 🏗️ 分层架构
 

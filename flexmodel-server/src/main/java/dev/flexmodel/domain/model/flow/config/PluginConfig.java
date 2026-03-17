@@ -11,7 +11,7 @@ import dev.flexmodel.domain.model.flow.plugin.manager.PluginManager;
 import dev.flexmodel.domain.model.flow.shared.util.ExpressionCalculator;
 import dev.flexmodel.domain.model.flow.shared.util.IdGenerator;
 import dev.flexmodel.domain.model.flow.shared.util.StrongUuidGenerator;
-import dev.flexmodel.domain.model.flow.shared.util.impl.GroovyExpressionCalculator;
+import dev.flexmodel.domain.model.flow.shared.util.impl.JavaScriptExpressionCalculator;
 
 import java.util.List;
 import java.util.Optional;
@@ -54,7 +54,7 @@ public class PluginConfig {
       LOGGER.info("Found expression calculator plugin: {}", expressionCalculatorPlugins.get(0).getName());
       return expressionCalculatorPlugins.get(0).getExpressionCalculator();
     }
-    return new GroovyExpressionCalculator();
+    return new JavaScriptExpressionCalculator();
   }
 
   /**

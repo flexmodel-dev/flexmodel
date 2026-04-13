@@ -16,7 +16,9 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class LogStatResponse {
+  @Builder.Default
   private List<LogStat> apiStatList = new ArrayList<>();
+  @Builder.Default
   private List<LogApiRank> apiRankingList = new ArrayList<>();
   private ApiChart apiChart;
 

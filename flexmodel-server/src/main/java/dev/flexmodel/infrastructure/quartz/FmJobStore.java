@@ -176,6 +176,32 @@ public class FmJobStore implements JobStore {
   }
 
   @Override
+  public List<JobDetail> getJobDetails(GroupMatcher<JobKey> matcher) throws JobPersistenceException {
+    try {
+      List<QrtzJobDetail> jobDetails = jobRepository.findJobs(instanceName);
+      List<JobDetail> list = new ArrayList<>();
+      for (QrtzJobDetail jd : jobDetails) {
+        JobKey jobKey = new JobKey(jd.getJobName(), jd.getJobGroup());
+        if (matcher.isMatch(jobKey)) {
+          try {
+            JobDetail jobDetail = deserializeJobDetail(jd);
+            // 叠加内存缓存的最新 JobDataMap（若存在）
+            JobDataMap cached = lastJobData.get(jobDetail.getKey());
+            if (cached != null) {
+              jobDetail.getJobDataMap().putAll(cached);
+            }
+            list.add(jobDetail);
+          } catch (Exception ignored) {
+          }
+        }
+      }
+      return list;
+    } catch (Exception e) {
+      throw new JobPersistenceException("Failed to get job details", e);
+    }
+  }
+
+  @Override
   public void storeTrigger(OperableTrigger newTrigger, boolean replaceExisting) throws ObjectAlreadyExistsException, JobPersistenceException {
     try {
       QrtzTrigger existingTrigger = jobRepository.findTrigger(instanceName, newTrigger.getKey().getName(), newTrigger.getKey().getGroup());
@@ -445,6 +471,27 @@ public class FmJobStore implements JobStore {
       return list;
     } catch (Exception e) {
       throw new JobPersistenceException("Failed to get triggers for job", e);
+    }
+  }
+
+  @Override
+  public List<OperableTrigger> getTriggersByJobAndTriggerGroup(GroupMatcher<JobKey> jobMatcher, GroupMatcher<TriggerKey> triggerMatcher) throws JobPersistenceException {
+    try {
+      List<QrtzTrigger> triggers = jobRepository.findTriggers(instanceName);
+      List<OperableTrigger> list = new ArrayList<>();
+      for (QrtzTrigger t : triggers) {
+        JobKey jobKey = new JobKey(t.getJobName(), t.getJobGroup());
+        TriggerKey triggerKey = new TriggerKey(t.getTriggerName(), t.getTriggerGroup());
+        if (jobMatcher.isMatch(jobKey) && triggerMatcher.isMatch(triggerKey)) {
+          try {
+            list.add(deserializeTrigger(t));
+          } catch (Exception ignored) {
+          }
+        }
+      }
+      return list;
+    } catch (Exception e) {
+      throw new JobPersistenceException("Failed to get triggers by job and trigger group", e);
     }
   }
 

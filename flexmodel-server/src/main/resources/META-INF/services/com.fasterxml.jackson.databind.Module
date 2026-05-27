@@ -1,1 +1,1 @@
-dev.flexmodel.interfaces.rest.json.jackson.FlexmodelServerModule
+dev.flexmodel.common.config.web.json.jackson.FlexmodelServerModule

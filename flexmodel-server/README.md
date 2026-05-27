@@ -1,6 +1,6 @@
 # Flexmodel Server
 
-> **Flexmodel Server** 是基于 Quarkus 的后端服务实现，作为 Flexmodel 项目的服务端核心，遵循 DDD（领域驱动设计）架构，集成了数据访问、服务编排、任务调度、文件存储和身份认证等核心功能。
+> **Flexmodel Server** 是基于 Quarkus 的后端服务实现，作为 Flexmodel 项目的服务端核心，采用特性垂直分包架构，集成了数据访问、服务编排、任务调度、文件存储和身份认证等核心功能。
 
 ## 🚀 核心特性
 
@@ -8,7 +8,7 @@
 - **统一数据接口**: 抽象底层数据源差异，提供标准化的 REST 和 GraphQL 接口。
 - **AI 赋能**: 内置 LangChain4j，提供流式对话能力 (SSE)，支持构建智能应用。
 - **动态逻辑**: 支持基于 JavaScript 的脚本执行，实现灵活的业务逻辑扩展。
-- **DDD 架构**: 严格的分层架构（接口层、应用层、领域层、基础设施层），易于演进和维护。
+- **特性垂直分包**: 按业务特性垂直分包，每个特性包内聚 Resource、Service、Repository、DTO，易于演进和维护。
 
 ## 🛠️ 技术栈
 
@@ -18,15 +18,24 @@
 - **持久化**: SQLite (默认演示) / 支持扩展多种关系型与 NoSQL 数据库
 - **其他**: Lombok, GraalVM JavaScript, Docker, Maven
 
-## 🏗️ 分层架构
+## 🏗️ 架构设计
 
-项目采用 DDD 分层与按职责划分的包结构：
+项目采用特性垂直分包 (Feature-Based Packaging) 架构，按业务特性组织代码，每个特性包包含该特性所需的全部组件：
 
-- **接口层 (Interfaces)**: `dev.flexmodel.interfaces` - 提供 REST API 及协议适配。
-- **应用层 (Application)**: `dev.flexmodel.application` - 编排领域用例，处理 DTO、事务及业务流程。
-- **领域层 (Domain)**: `dev.flexmodel.domain` - 核心领域模型与领域服务，包含仓储接口。
-- **基础设施层 (Infrastructure)**: `dev.flexmodel.infrastructure` - 外部资源适配（数据库、调度、存储、AI）。
-- **公共与工具 (Shared)**: `dev.flexmodel.shared` - 通用工具类。
+- **`api/`**: API 管理 — 定义、运行时执行、文档生成、GraphQL
+- **`flow/`**: 流程编排 — 流程定义、实例管理、执行引擎、插件、校验
+- **`auth/`**: 认证授权 — 用户、角色、资源、权限
+- **`modeling/`**: 数据建模 — 模型定义、字段管理
+- **`data/`**: 数据访问 — 记录 CRUD、查询
+- **`scheduling/`**: 任务调度 — 触发器、作业执行
+- **`storage/`**: 文件存储 — 本地、S3
+- **`ai/`**: AI 聊天 — LLM 集成、对话管理
+- **`settings/`**: 系统设置
+- **`metrics/`**: 监控指标
+- **`project/`**: 项目管理
+- **`idp/`**: 身份提供商
+- **`connect/`**: 数据源连接
+- **`common/`**: 共享基础设施 — 配置、工具类、全局异常、安全过滤器
 
 ## 🚀 快速开始
 

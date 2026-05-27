@@ -1,4 +1,4 @@
-package dev.flexmodel.domain.model.flow.executor;
+package dev.flexmodel.flow.executor;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -8,12 +8,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.domain.model.flow.dto.model.FlowElement;
-import dev.flexmodel.domain.model.flow.dto.model.FlowModel;
-import dev.flexmodel.domain.model.flow.shared.EntityBuilder;
-import dev.flexmodel.domain.model.flow.shared.common.RuntimeContext;
-import dev.flexmodel.domain.model.flow.shared.util.FlowModelUtil;
-import dev.flexmodel.shared.utils.JsonUtils;
+import dev.flexmodel.flow.dto.model.FlowElement;
+import dev.flexmodel.flow.dto.model.FlowModel;
+import dev.flexmodel.domain.model.flow.EntityBuilder;
+import dev.flexmodel.flow.common.RuntimeContext;
+import dev.flexmodel.flow.common.util.FlowModelUtil;
+import dev.flexmodel.common.utils.JsonUtils;
 
 import java.util.HashMap;
 import java.util.List;

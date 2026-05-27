@@ -5,7 +5,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.interfaces.rest.jwt.JwtUtil;
+import dev.flexmodel.common.config.web.jwt.JwtUtil;
 
 import java.time.Duration;
 

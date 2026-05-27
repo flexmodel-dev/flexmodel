@@ -1,4 +1,4 @@
-package dev.flexmodel.domain.model.flow.validator;
+package dev.flexmodel.flow.validator;
 
 
 import io.quarkus.test.common.QuarkusTestResource;
@@ -8,9 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.domain.model.flow.exception.DefinitionException;
-import dev.flexmodel.domain.model.flow.exception.ProcessException;
-import dev.flexmodel.domain.model.flow.shared.EntityBuilder;
+import dev.flexmodel.flow.exception.DefinitionException;
+import dev.flexmodel.flow.exception.ProcessException;
+import dev.flexmodel.domain.model.flow.EntityBuilder;
 
 
 @Slf4j

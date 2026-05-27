@@ -13,10 +13,7 @@ import dev.flexmodel.flow.service.FlowInstanceService;
 import dev.flexmodel.modeling.ModelService;
 import dev.flexmodel.scheduling.JobExecutionLogService;
 import dev.flexmodel.scheduling.TriggerService;
-import dev.flexmodel.quarkus.session.SessionManaged;
 import dev.flexmodel.query.Expressions;
-
-import java.text.DecimalFormat;
 
 import static dev.flexmodel.query.Expressions.TRUE;
 
@@ -25,10 +22,8 @@ import static dev.flexmodel.query.Expressions.TRUE;
  */
 @Slf4j
 @ApplicationScoped
-@SessionManaged
 public class MetricsService {
 
-  private final DecimalFormat decimalFormat = new DecimalFormat("#.##");
   @Inject
   ApiDefinitionService apiDefinitionService;
   @Inject

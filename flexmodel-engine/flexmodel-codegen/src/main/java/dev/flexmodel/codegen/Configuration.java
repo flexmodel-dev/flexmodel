@@ -33,6 +33,7 @@ public class Configuration implements Serializable {
       // read from script
       String[] importScripts = schema.getImportScript().split(",");
       for (String importScript : importScripts) {
+        importScript = importScript.trim();
         File scriptFile = Path.of(schema.getBaseDir(), importScript).toFile();
         System.out.println("Import Script File Path: " + scriptFile.getAbsolutePath());
         if (scriptFile.exists()) {
@@ -62,6 +63,8 @@ public class Configuration implements Serializable {
           } else {
             System.out.println("Unsupported script file type: " + importScript + ", must be .json or .idl");
           }
+        } else {
+          System.err.println("WARNING: Import script file not found: " + scriptFile.getAbsolutePath());
         }
       }
       ModelImportBundle importDescribe = new ModelImportBundle();
@@ -70,6 +73,7 @@ public class Configuration implements Serializable {
       importDescribe.setData(data);
       importDescribes.add(importDescribe);
     }
+    System.out.println("解析的配置===============: " + JsonUtils.toJsonString(importDescribes));
     return importDescribes;
   }
 

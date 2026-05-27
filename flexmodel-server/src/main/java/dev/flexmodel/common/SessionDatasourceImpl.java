@@ -62,8 +62,30 @@ public class SessionDatasourceImpl implements SessionDatasource {
   @Override
   public void add(Project project) {
     try {
-      SchemaProvider schemaProvider = new JdbcSchemaProvider(project.getDatabaseName().equals("system")? "flexmodel" : project.getDatabaseName(), buildJdbcDataSource(project.getDatabaseName()));
-      sessionFactory.registerSchemaProvider(schemaProvider);
+      String schemaName = project.getDatabaseName().equals("system") ? "flexmodel" : project.getDatabaseName();
+      // 如果配置文件中有该数据源的显式配置，使用配置中的URL而非模板URL
+      FlexmodelConfig.DatasourceConfig configDs = flexmodelConfig.datasources().get(project.getDatabaseName());
+      if (configDs != null) {
+        // 配置文件中已定义该数据源，如果SchemaProvider已注册则跳过
+        if (sessionFactory.isSchemaExists(schemaName)) {
+          log.info("SchemaProvider '{}' already registered from config, skipping dynamic registration", schemaName);
+          return;
+        }
+        // 配置存在但SchemaProvider未注册（不应发生），使用配置URL创建
+        HikariDataSource ds = new HikariDataSource();
+        ds.setMaxLifetime(30000);
+        ds.setJdbcUrl(configDs.url());
+        ds.setUsername(configDs.username().orElse(null));
+        ds.setPassword(configDs.password().orElse(null));
+        SchemaProvider schemaProvider = new JdbcSchemaProvider(schemaName, ds);
+        sessionFactory.registerSchemaProvider(schemaProvider);
+        log.info("Registered SchemaProvider '{}' from config URL: {}", schemaName, configDs.url());
+      } else {
+        // 配置文件中没有显式配置，使用projectUrlTemplate动态创建
+        SchemaProvider schemaProvider = new JdbcSchemaProvider(schemaName, buildJdbcDataSource(project.getDatabaseName()));
+        sessionFactory.registerSchemaProvider(schemaProvider);
+        log.info("Registered SchemaProvider '{}' from template URL", schemaName);
+      }
     } catch (Exception e) {
       log.error("Session dataSource create error: {}", e.getMessage(), e);
     }

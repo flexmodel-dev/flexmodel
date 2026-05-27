@@ -79,11 +79,6 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>dev.flexmodel</groupId>
-      <artifactId>flexmodel-quarkus</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-web-dependency-locator</artifactId>
     </dependency>
@@ -185,15 +180,25 @@
             <schemas>
               <schema>
                 <name>system</name>
-                <import-script>src/main/resources/paltform_schema.idl,src/main/resources/project_schema.idl,src/main/resources/data.json</import-script>
+                <import-script>
+                  src/main/resources/platform_schema.idl,
+                  src/main/resources/project_schema.idl,
+                  src/main/resources/platform_data.json,
+                  src/main/resources/project_data.json
+                </import-script>
                 <packageName>dev.flexmodel.codegen</packageName>
                 <replaceString>^f_ei_|^f_em_|^f_</replaceString>
               </schema>
               <schema>
                 <name>dev_test</name>
-                <import-script>src/main/resources/dev_test_schema.idl,src/main/resources/dev_test_data.json
+                <import-script>
+                  src/main/resources/project_schema.idl,
+                  src/main/resources/project_data.json,
+                  src/main/resources/dev_test_schema.idl,
+                  src/main/resources/dev_test_data.json
                 </import-script>
                 <packageName>dev.flexmodel.test.codegen</packageName>
+                <replaceString>^f_ei_|^f_em_|^f_</replaceString>
               </schema>
             </schemas>
           </generator>

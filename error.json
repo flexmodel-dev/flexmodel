@@ -1,0 +1,267 @@
+{
+    "code": -1,
+    "success": false,
+    "message": "Could not execute JDBC Statement: select count(*) from(\nselect \n \"f_trigger\".\"id\" \"id\", \n \"f_trigger\".\"name\" \"name\", \n \"f_trigger\".\"description\" \"description\", \n \"f_trigger\".\"type\" \"type\", \n \"f_trigger\".\"config\" \"config\", \n \"f_trigger\".\"job_type\" \"job_type\", \n \"f_trigger\".\"job_group\" \"job_group\", \n \"f_trigger\".\"job_id\" \"job_id\", \n \"f_trigger\".\"state\" \"state\", \n \"f_trigger\".\"created_at\" \"created_at\", \n \"f_trigger\".\"updated_at\" \"updated_at\", \n \"f_trigger\".\"created_by\" \"created_by\", \n \"f_trigger\".\"updated_by\" \"updated_by\", \n \"f_trigger\".\"project_id\" \"project_id\"\nfrom \"f_trigger\" \"f_trigger\"\nwhere (\"project_id\" = :project_id_0)) tmp_count, Reason: [SQLITE_ERROR] SQL error or missing database (no such table: f_trigger)",
+    "errors": [
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "lambda$queryForScalar$0",
+            "fileName": "NamedParameterSqlExecutor.java",
+            "lineNumber": 53,
+            "className": "dev.flexmodel.sql.NamedParameterSqlExecutor",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "metrics",
+            "fileName": "NamedParameterSqlExecutor.java",
+            "lineNumber": 303,
+            "className": "dev.flexmodel.sql.NamedParameterSqlExecutor",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "queryForScalar",
+            "fileName": "NamedParameterSqlExecutor.java",
+            "lineNumber": 33,
+            "className": "dev.flexmodel.sql.NamedParameterSqlExecutor",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "count",
+            "fileName": "SqlDataService.java",
+            "lineNumber": 371,
+            "className": "dev.flexmodel.sql.SqlDataService",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "count",
+            "fileName": "EventAwareDataService.java",
+            "lineNumber": 342,
+            "className": "dev.flexmodel.service.EventAwareDataService",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "count",
+            "fileName": "DSLQueryBuilder.java",
+            "lineNumber": 242,
+            "className": "dev.flexmodel.query.DSLQueryBuilder",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "count",
+            "fileName": "TypedDSLQueryBuilder.java",
+            "lineNumber": 197,
+            "className": "dev.flexmodel.query.TypedDSLQueryBuilder",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "count",
+            "fileName": "TriggerFmRepository.java",
+            "lineNumber": 68,
+            "className": "dev.flexmodel.scheduling.TriggerFmRepository",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "count",
+            "fileName": null,
+            "lineNumber": -1,
+            "className": "dev.flexmodel.scheduling.TriggerFmRepository_ClientProxy",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "findPage",
+            "fileName": "TriggerService.java",
+            "lineNumber": 172,
+            "className": "dev.flexmodel.scheduling.TriggerService",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "findPage",
+            "fileName": null,
+            "lineNumber": -1,
+            "className": "dev.flexmodel.scheduling.TriggerService_ClientProxy",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "findPage",
+            "fileName": "TriggerResource.java",
+            "lineNumber": 48,
+            "className": "dev.flexmodel.scheduling.TriggerResource",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "findPage",
+            "fileName": null,
+            "lineNumber": -1,
+            "className": "dev.flexmodel.scheduling.TriggerResource_ClientProxy",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "invoke",
+            "fileName": null,
+            "lineNumber": -1,
+            "className": "dev.flexmodel.scheduling.TriggerResource$quarkusrestinvoker$findPage_cec5c93f8aa4b453a652746db5183f663187c972",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "handle",
+            "fileName": "InvocationHandler.java",
+            "lineNumber": 29,
+            "className": "org.jboss.resteasy.reactive.server.handlers.InvocationHandler",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "invokeHandler",
+            "fileName": "QuarkusResteasyReactiveRequestContext.java",
+            "lineNumber": 190,
+            "className": "io.quarkus.resteasy.reactive.server.runtime.QuarkusResteasyReactiveRequestContext",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "run",
+            "fileName": "AbstractResteasyReactiveContext.java",
+            "lineNumber": 147,
+            "className": "org.jboss.resteasy.reactive.common.core.AbstractResteasyReactiveContext",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "runWith",
+            "fileName": "VertxCoreRecorder.java",
+            "lineNumber": 677,
+            "className": "io.quarkus.vertx.core.runtime.VertxCoreRecorder$15",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "doRunWith",
+            "fileName": "EnhancedQueueExecutor.java",
+            "lineNumber": 2651,
+            "className": "org.jboss.threads.EnhancedQueueExecutor$Task",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "run",
+            "fileName": "EnhancedQueueExecutor.java",
+            "lineNumber": 2630,
+            "className": "org.jboss.threads.EnhancedQueueExecutor$Task",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "runThreadBody",
+            "fileName": "EnhancedQueueExecutor.java",
+            "lineNumber": 1622,
+            "className": "org.jboss.threads.EnhancedQueueExecutor",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "run",
+            "fileName": "EnhancedQueueExecutor.java",
+            "lineNumber": 1589,
+            "className": "org.jboss.threads.EnhancedQueueExecutor$ThreadBody",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "run",
+            "fileName": "DelegatingRunnable.java",
+            "lineNumber": 11,
+            "className": "org.jboss.threads.DelegatingRunnable",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "run",
+            "fileName": "ThreadLocalResettingRunnable.java",
+            "lineNumber": 11,
+            "className": "org.jboss.threads.ThreadLocalResettingRunnable",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": null,
+            "moduleVersion": null,
+            "methodName": "run",
+            "fileName": "FastThreadLocalRunnable.java",
+            "lineNumber": 30,
+            "className": "io.netty.util.concurrent.FastThreadLocalRunnable",
+            "nativeMethod": false
+        },
+        {
+            "classLoaderName": null,
+            "moduleName": "java.base",
+            "moduleVersion": "25.0.3",
+            "methodName": "run",
+            "fileName": "Thread.java",
+            "lineNumber": 1474,
+            "className": "java.lang.Thread",
+            "nativeMethod": false
+        }
+    ]
+}

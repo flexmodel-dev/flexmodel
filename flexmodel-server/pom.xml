@@ -185,7 +185,7 @@
             <schemas>
               <schema>
                 <name>system</name>
-                <import-script>src/main/resources/schema.idl,src/main/resources/data.json</import-script>
+                <import-script>src/main/resources/paltform_schema.idl,src/main/resources/project_schema.idl,src/main/resources/data.json</import-script>
                 <packageName>dev.flexmodel.codegen</packageName>
                 <replaceString>^f_ei_|^f_em_|^f_</replaceString>
               </schema>

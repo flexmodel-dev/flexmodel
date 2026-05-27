@@ -21,7 +21,7 @@ import java.util.Objects;
 public class ProjectService {
 
   @Inject
-  ProjectRepository tenantRepository;
+  ProjectRepository projectRepository;
 
 
   @Inject
@@ -32,11 +32,11 @@ public class ProjectService {
   StorageService storageService;
 
   public List<Project> findProjects() {
-    return tenantRepository.findProjects();
+    return projectRepository.findProjects();
   }
 
   public List<ProjectResponse> findProjects(ProjectListRequest request) {
-    return tenantRepository.findProjects().stream()
+    return projectRepository.findProjects().stream()
       .map(project -> {
           ProjectResponse response = ProjectResponse.fromProject(project);
           if (Objects.equals(request.getIncldue(), "stats")) {
@@ -53,7 +53,7 @@ public class ProjectService {
       ).toList();
   }
   public Project findProject(String projectId) {
-    return tenantRepository.findProject(projectId);
+    return projectRepository.findProject(projectId);
   }
 
   public Project createProject(Project project) {
@@ -64,7 +64,7 @@ public class ProjectService {
       project.setId(null);
     }
     project.setOwnerId(SessionContextHolder.getUserId());
-    return tenantRepository.save(project);
+    return projectRepository.save(project);
   }
 
   public Project updateProject(Project project) {
@@ -78,13 +78,13 @@ public class ProjectService {
     project.setCreatedAt(existingProject.getCreatedAt());
     project.setCreatedBy(existingProject.getCreatedBy());
     project.setOwnerId(existingProject.getOwnerId());
-    return tenantRepository.save(project);
+    return projectRepository.save(project);
   }
 
   public void deleteProject(String projectId) {
     if ("default".equals(projectId)) {
       throw new IllegalArgumentException("默认项目不能删除");
     }
-    tenantRepository.delete(projectId);
+    projectRepository.delete(projectId);
   }
 }

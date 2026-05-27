@@ -1,12 +1,12 @@
-package dev.flexmodel.domain.model.flow.shared;
+package dev.flexmodel.domain.model.flow;
 
-import dev.flexmodel.domain.model.flow.dto.model.*;
-import dev.flexmodel.domain.model.flow.dto.param.*;
-import dev.flexmodel.domain.model.flow.shared.common.*;
 import dev.flexmodel.codegen.entity.*;
-import dev.flexmodel.domain.model.flow.dto.bo.NodeInstanceBO;
-import dev.flexmodel.domain.model.flow.shared.util.FlowModelUtil;
-import dev.flexmodel.shared.utils.JsonUtils;
+import dev.flexmodel.flow.common.*;
+import dev.flexmodel.flow.dto.bo.NodeInstanceBO;
+import dev.flexmodel.flow.dto.model.*;
+import dev.flexmodel.flow.dto.param.*;
+import dev.flexmodel.flow.common.util.FlowModelUtil;
+import dev.flexmodel.common.utils.JsonUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;

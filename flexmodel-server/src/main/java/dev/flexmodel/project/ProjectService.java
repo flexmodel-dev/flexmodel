@@ -21,12 +21,16 @@ import dev.flexmodel.codegen.entity.Project;
 import javax.sql.DataSource;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * @author cjbi
  */
 @ApplicationScoped
 public class ProjectService {
+
+  /** 项目ID格式：以小写字母开头，由小写字母、数字和下划线组成，长度2~63个字符 */
+  private static final Pattern PROJECT_ID_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{1,62}$");
 
   @Inject
   ProjectRepository projectRepository;
@@ -71,11 +75,14 @@ public class ProjectService {
   }
 
   public Project createProject(Project project) {
-    if (!StringUtils.isBlank(project.getId()) && findProject(project.getId()) != null) {
-      throw new IllegalArgumentException("项目ID已经存在");
-    }
     if (StringUtils.isBlank(project.getId())) {
-      project.setId(null);
+      throw new IllegalArgumentException("项目ID不能为空");
+    }
+    if (!PROJECT_ID_PATTERN.matcher(project.getId()).matches()) {
+      throw new IllegalArgumentException("项目ID格式不正确，需以小写字母开头，由小写字母、数字和下划线组成，长度2~63个字符");
+    }
+    if (findProject(project.getId()) != null) {
+      throw new IllegalArgumentException("项目ID已经存在");
     }
     // 设置 databaseName（若未指定则用 projectId）
     if (StringUtils.isBlank(project.getDatabaseName())) {

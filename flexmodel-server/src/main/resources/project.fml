@@ -11,41 +11,7 @@ model f_storage {
   @index(name: "IDX_PROJECT", fields: [project_id]),
   @comment("文件存储")
 }
-model f_api_definition {
-  id : String @id @unique @default(uuid()),
-  name : String @length("255"),
-  parent_id? : String @length("255"),
-  type : ApiType,
-  method? : String @length("255"),
-  path? : String @length("255"),
-  meta? : JSON,
-  enabled : Boolean @comment("是否开启") @default("true"),
-  project_id?: String @comment("项目ID"),
-  created_by?: String @comment("创建人"),
-  updated_by?: String @comment("更新人"),
-  created_at?: DateTime @default(now()) @comment("创建时间"),
-  updated_at?: DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_PROJECT", fields: [project_id]),
-  @comment("API定义")
-}
-model f_api_definition_history {
-  id : String @id @default(uuid()),
-  api_definition_id: String @length("100"),
-  name : String @length("255"),
-  parent_id? : String @length("255"),
-  type : ApiType,
-  method? : String @length("255"),
-  path? : String @length("255"),
-  meta? : JSON,
-  enabled : Boolean @comment("是否开启") @default("true"),
-  project_id?: String @comment("项目ID"),
-  created_by?: String @comment("创建人"),
-  updated_by?: String @comment("更新人"),
-  created_at?: DateTime @default(now()) @comment("创建时间"),
-  updated_at?: DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_PROJECT", fields: [project_id]),
-  @comment("API定义")
-}
+
 model f_api_request_log {
   id : String @id @default(uuid()),
   url : String @length("2000") @comment("请求地址"),
@@ -67,6 +33,7 @@ model f_api_request_log {
   @index(name: "IDX_PROJECT", fields: [project_id]),
   @comment("API请求日志")
 }
+
 model f_identity_provider {
   name : String @id,
   provider? : JSON,
@@ -378,16 +345,6 @@ seed f_em_flow_deployment {
   {flow_deploy_id: "c2d6f2bb-0d7b-4eb0-81a6-5a72262740d4", flow_module_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", flow_name: "testFlowName_1757909108656", flow_key: "testFlowKey_1757909108656", flow_model: "{\"flowElementList\":[{\"key\":\"startEvent1\",\"type\":2,\"outgoing\":[\"sequenceFlow1\"]},{\"key\":\"sequenceFlow1\",\"type\":1,\"outgoing\":[\"userTask1\"],\"incoming\":[\"startEvent1\"]},{\"key\":\"userTask1\",\"type\":4,\"outgoing\":[\"sequenceFlow2\"],\"incoming\":[\"sequenceFlow1\"]},{\"key\":\"sequenceFlow2\",\"type\":1,\"outgoing\":[\"exclusiveGateway1\"],\"incoming\":[\"userTask1\"]},{\"key\":\"exclusiveGateway1\",\"type\":6,\"outgoing\":[\"sequenceFlow3\",\"sequenceFlow4\"],\"properties\":{\"hookInfoIds\":\"[1,2]\"},\"incoming\":[\"sequenceFlow2\"]},{\"key\":\"s...[truncated]", status: 1, create_time: "2025-09-15 12:05:09.000", modify_time: "2025-09-15 12:05:09.000", operator: "testOperator", remark: "testRemark", archive: 0, caller: "testCaller", project_id: "dev_test"},
   {flow_deploy_id: "fce9c1e9-57dd-483e-bba1-dd7cb5a53ca7", flow_module_id: "da5835fe-e82a-447f-b614-c0ce9aaecb78", flow_name: "增删改查测试", flow_key: "crud_test", flow_model: "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"properties\":{\"positionX\":-496,\"positionY\":48}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgolxly85affbh\"],\"outgoing\":[],\"properties\":{\"positionX\":1408,\"positionY\":48}},{\"key\":\"serviceTask_mgokolh6ottxgz\",\"type\":5,\"incoming\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"outgoing\":[\"SequenceFlow_mgokv2z5j6tju7\"],\"properties\":{\"subType\":\"insert_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Te...[truncated]", status: 1, create_time: "2025-09-15 12:05:09.000", modify_time: "2025-09-15 12:05:09.000", operator: "admin", remark: "增删改查测试", archive: 0, caller: "admin", project_id: "dev_test"},
   {flow_deploy_id: "1fe532ae-33c4-4f57-aabe-62640da4f185", flow_module_id: "9243be36-9ced-4413-acd5-5fc93a05c698", flow_name: "脚本测试", flow_key: "script_test", flow_model: "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_miclvtzacagocb\"],\"properties\":{\"positionX\":-96,\"positionY\":64,\"name\":\"Start\"}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_miclvvbzb9t82p\"],\"outgoing\":[],\"properties\":{\"positionX\":800,\"positionY\":48,\"name\":\"End\"}},{\"key\":\"serviceTask_miclvseffazfuf\",\"type\":5,\"incoming\":[\"SequenceFlow_miclvtzacagocb\"],\"outgoing\":[\"SequenceFlow_miclvvbzb9t82p\"],\"properties\":{\"subType\":\"script\",\"script\":\"\"hello world\\...[truncated]", status: 1, create_time: "2025-10-14T11:23:02.659", modify_time: "2025-10-14T11:23:02.660", operator: "admin", remark: "Javascript脚本测试", archive: 0, caller: "admin", project_id: "dev_test"},
-}
-
-seed f_api_definition {
-  {id: "d421f1bb-6036-4114-bb7d-3cd6b15f3910", name: "Ping", parent_id: null, type: "API", method: "GET", path: "/ping", meta: {auth: false, document: {input: {schema: {type: "object", "$schema": "http://json-schema.org/draft-04/schema#", properties: {}}}, output: {schema: {type: "object", "$schema": "http://json-schema.org/draft-04/schema#", properties: {msg: {type: "string", title: "消息"}, success: {type: "boolean", title: "是否成功"}}}}}, execution: {executionType: "script", executionScript: "context.log.info('Simple test');\ncontext.response.body = {'msg': 'ok', success: true};"}, rateLimitingEnabled: false}, project_id: "default", created_by: "admin", updated_by: "", created_at: "2026-01-13 21:28:08", updated_at: "2026-01-26 11:09:38"},
-  {id: "01J2PAY0XJV4MHW0TDNEMSG03C", meta: {}, name: "【示例】学生接口", type: "FOLDER", created_at: "2024-07-13T23:21:09", updated_at: "2024-07-13T23:21:09", created_by: "admin", updated_by: "admin", project_id: "dev_test"},
-  {parent_id: "01J2PAY0XJV4MHW0TDNEMSG03C", meta: {auth: false, execution: {executionType: "graphql", query: "query MyQuery($orderBy: ClassesOrderBy = { id: asc }, $size: Int = 10, $page: Int = 1) {\n  classes(orderBy: $orderBy, size: $size, page: $page) {\n    classCode\n    className\n    id\n  }\n}", variables: {order_by: {id: "desc"}}, operationName: "MyQuery"}}, name: "查询班级列表", path: "/Classes/list", id: "01J2PAY1M8T1R8HM979P4ASM9A", method: "GET", type: "API", created_at: "2024-07-13T23:21:09", updated_at: "2024-07-13T23:21:09", created_by: "admin", updated_by: "admin", project_id: "dev_test"},
-  {parent_id: "01J2PAY0XJV4MHW0TDNEMSG03C", meta: {auth: false, identityProvider: "demo", rateLimitingEnabled: true, maxRequestCount: 50, intervalInSeconds: 60, execution: {executionType: "graphql", query: "query MyQuery($id: Int) {\n  classesById(id: $id) {\n    classCode\n    className\n    id\n  }\n}", variables: {id: 1}, operationName: "MyQuery"}}, name: "查询单个班级", path: "/Classes/{id}", id: "01J2PAY1X3ZN529SQTKB8TG1Q5", method: "GET", type: "API", created_at: "2024-07-13T23:21:09", updated_at: "2024-07-13T23:21:09", created_by: "admin", updated_by: "admin", project_id: "dev_test"},
-  {parent_id: "01J2PAY0XJV4MHW0TDNEMSG03C", meta: {auth: false, execution: {executionType: "graphql", query: "mutation MyMutation($classCode: String, $className: String, $id: ID = \"\") {\n  createClasses(\n    data: { classCode: $classCode, className: $className, id: $id }\n  ) {\n    classCode\n    className\n    id\n  }\n}", operationName: "MyMutation"}}, name: "创建班级", path: "/Classes", id: "01J2PAY2F3VK71GXV6BWXYEA5P", method: "POST", type: "API", created_at: "2024-07-13T23:21:09", updated_at: "2024-07-13T23:21:09", created_by: "admin", updated_by: "admin", project_id: "dev_test"},
-  {parent_id: "01J2PAY0XJV4MHW0TDNEMSG03C", meta: {auth: false, execution: {executionType: "graphql", query: "mutation MyMutation($classCode: String, $className: String, $id: ID) {\n  updateClassesById(\n    id: \"1\"\n    set: { classCode: $classCode, className: $className, id: $id }\n  ) {\n    classCode\n    className\n    id\n  }\n}", operationName: "MyMutation"}}, name: "更新班级", path: "/Classes/{id}", id: "01J2PAY2RJ79JYB2GJP5K0AW5F", method: "PUT", type: "API", created_at: "2024-07-13T23:21:09", updated_at: "2024-07-13T23:21:09", created_by: "admin", updated_by: "admin", project_id: "dev_test"},
-  {parent_id: "01J2PAY0XJV4MHW0TDNEMSG03C", meta: {auth: false, execution: {executionType: "graphql", query: "mutation MyMutation($id: ID!) {\n  deleteClassesById(id: $id) {\n    classCode\n    className\n    id\n  }\n}", operationName: "MyMutation"}}, name: "删除班级", path: "/Classes/{id}", id: "01J2PAY3W18T1BQJ5H5D8STGYT", method: "DELETE", type: "API", created_at: "2024-07-13T23:21:09", updated_at: "2024-07-13T23:21:09", created_by: "admin", updated_by: "admin", project_id: "dev_test"},
 }
 
 seed f_identity_provider {

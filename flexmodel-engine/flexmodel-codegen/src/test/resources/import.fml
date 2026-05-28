@@ -1,0 +1,75 @@
+model flow_definition {
+  id : Long @id @default(autoIncrement()),
+  last_modified_by? : Long,
+  caller? : String @length("255"),
+  flow_name? : String @length("255"),
+  flow_title? : String @length("255"),
+  status? : String @length("3"),
+  process_name? : String @length("255"),
+  create_time? : DateTime,
+  created_by? : Long,
+  update_time? : DateTime,
+  flow_model? : String @length("255"),
+  process_key? : String @length("255"),
+  tenant_id : String @length("255"),
+  flow_key? : String @length("255"),
+}
+model fs_datasource {
+  name : String @id,
+  type? : String @length("255"),
+  config? : JSON,
+  createdAt? : DateTime @default(now()),
+  updatedAt? : DateTime @default(now()),
+  enabled : Boolean @comment("") @default("true"),
+}
+model fs_api_log {
+  id : String @id @default(uuid()),
+  level : LogLevel,
+  uri : String @length("255"),
+  data : JSON,
+  createdAt : DateTime,
+  @index(unique: "false", fields: [level]),
+}
+model Classes {
+  id : Long @id @default(autoIncrement()),
+  classCode? : String @length("255"),
+  className? : String @length("255"),
+  students? : Student[] @relation(localField: "id", foreignField: "classId", cascadeDelete: "true"),
+}
+model Student {
+  id : String @id @default(uuid()),
+  studentName? : String @length("255"),
+  gender? : UserGender,
+  interest? : User_interest[],
+  age? : Int,
+  classId? : Long,
+  studentClass: Classes @relation(localField: "classId", foreignField: "id"),
+  studentDetail: StudentDetail @relation(localField: "id", foreignField: "studentId", cascadeDelete: true),
+  createdAt? : DateTime @default(now()),
+  updatedAt? : DateTime @default(now()),
+  @index(name:"IDX_studentName", unique: false, fields: [classId, studentName: (sort: "desc")]),
+  @index(unique: "false", fields: [studentName]),
+  @index(unique: "false", fields: [classId]),
+}
+model StudentDetail {
+  id : Long @id @default(autoIncrement()),
+  studentId? : Long,
+  description? : String @length("255"),
+}
+enum LogLevel {
+  DEBUG,
+  INFO,
+  WARN,
+  ERROR
+}
+enum UserGender {
+  UNKNOWN,
+  MALE,
+  FEMALE
+}
+enum User_interest {
+  chang,
+  tiao,
+  rap,
+  daLanQiu
+}

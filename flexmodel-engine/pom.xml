@@ -10,7 +10,6 @@
   <modules>
     <module>flexmodel-core</module>
     <module>flexmodel-graphql</module>
-    <module>flexmodel-quarkus</module>
     <module>integration-tests</module>
     <module>flexmodel-codegen</module>
     <module>flexmodel-maven-plugin</module>

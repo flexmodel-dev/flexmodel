@@ -5,6 +5,7 @@ import dev.flexmodel.graphql.I18nUtil
 import dev.flexmodel.codegen.AbstractGenerator
 import dev.flexmodel.codegen.GenerationContext
 import dev.flexmodel.codegen.ModelField
+import dev.flexmodel.codegen.StringUtils
 import dev.flexmodel.model.field.EnumRefField
 import dev.flexmodel.model.field.RelationField
 import dev.flexmodel.model.field.ScalarType
@@ -28,15 +29,15 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
   ]
 
   def comparisonMapping = [
-    (ScalarType.STRING.getType())  : "String_comparison_exp",
-    (ScalarType.FLOAT.getType())   : "Float_comparison_exp",
-    (ScalarType.INT.getType())     : "Int_comparison_exp",
-    (ScalarType.LONG.getType())    : "Int_comparison_exp",
-    (ScalarType.BOOLEAN.getType()) : "Boolean_comparison_exp",
-    (ScalarType.DATETIME.getType()): "Date_comparison_exp",
-    (ScalarType.DATE.getType())    : "DateTime_comparison_exp",
-    (ScalarType.TIME.getType())    : "DateTime_comparison_exp",
-    (ScalarType.JSON.getType())    : "JSON_comparison_exp",
+    (ScalarType.STRING.getType())  : "StringComparisonExp",
+    (ScalarType.FLOAT.getType())   : "FloatComparisonExp",
+    (ScalarType.INT.getType())     : "IntComparisonExp",
+    (ScalarType.LONG.getType())    : "IntComparisonExp",
+    (ScalarType.BOOLEAN.getType()) : "BooleanComparisonExp",
+    (ScalarType.DATETIME.getType()): "DateComparisonExp",
+    (ScalarType.DATE.getType())    : "DateTimeComparisonExp",
+    (ScalarType.TIME.getType())    : "DateTimeComparisonExp",
+    (ScalarType.JSON.getType())    : "JSONComparisonExp",
   ]
 
   I18nUtil i18n = new I18nUtil()
@@ -44,10 +45,11 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
   def toGraphQLType(ModelField itt, GenerationContext context) {
     if (itt.isRelationField()) {
       def rf = itt.original as RelationField
+      def typeName = StringUtils.capitalize(StringUtils.snakeToCamel(rf.from))
       if (rf.multiple) {
-        return "[${itt.modelClass.schemaName}_${rf.from}]"
+        return "[${typeName}]"
       } else {
-        return "${itt.modelClass.schemaName}_${rf.from}"
+        return "${typeName}"
       }
     } else if (itt.isBasicField()) {
       def f = itt.original as TypedField
@@ -57,10 +59,11 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
       return "${typeMapping[f.type]}"
     } else if (itt.isEnumField() && context.containsEnumClass((itt.original as EnumRefField).from)) {
       def ef = itt.original as EnumRefField
+      def typeName = StringUtils.capitalize(StringUtils.snakeToCamel(ef.from))
       if (ef.multiple) {
-        return "[${itt.modelClass.schemaName}_${ef.from}]"
+        return "[${typeName}]"
       } else {
-        return "${itt.modelClass.schemaName}_${ef.from}"
+        return "${typeName}"
       }
     } else {
       return "String"
@@ -76,7 +79,7 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
 
     context.enumClassList.each {
       out.println ""
-      out.println "enum ${it.schemaName}_${it.original.name} {"
+      out.println "enum ${it.shortClassName} {"
       it.elements.each {
         out.println "  ${it}"
       }
@@ -87,14 +90,15 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "\"${i18n.getString("gql.query.comment")}\""
     out.println "type Query {"
     context.modelClassList.each {
-      def key = "${it.schemaName}_${it.original.name}"
+      def key = it.shortClassName
+      def qkey = StringUtils.uncapitalize(key)
       out.println ""
       out.println " \"${i18n.getString("gql.query.find.comment", it.schemaName, it.original.name)}\""
-      out.println "  ${DataFetchers.FIND.keyFunc.apply(it.schemaName, it.original.name)}("
+      out.println "  ${DataFetchers.FIND.keyFunc.apply(it.schemaName, qkey)}("
       out.println "    \"${i18n.getString("gql.query.where.comment")}\""
-      out.println "    where: ${key}_bool_exp"
+      out.println "    where: ${key}BoolExp"
       out.println "    \"${i18n.getString("gql.query.order_by.comment")}\""
-      out.println "    order_by: ${key}_order_by"
+      out.println "    orderBy: ${key}OrderBy"
       out.println "    \"${i18n.getString("gql.query.size.comment")}\""
       out.println "    size: Int"
       out.println "    \"${i18n.getString("gql.query.page.comment")}\""
@@ -102,22 +106,23 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
       out.println "  ): [${key}!]!"
       out.println ""
       out.println "  \"${i18n.getString("gql.query.aggregate.comment", it.schemaName, it.original.name)}\""
-      out.println "  ${DataFetchers.AGGREGATE.keyFunc.apply(it.schemaName, it.original.name)}("
+      out.println "  ${DataFetchers.AGGREGATE.keyFunc.apply(it.schemaName, qkey)}("
       out.println "    \"${i18n.getString("gql.query.where.comment")}\""
-      out.println "    where: ${key}_bool_exp"
+      out.println "    where: ${key}BoolExp"
       out.println "    \"${i18n.getString("gql.query.order_by.comment")}\""
-      out.println "    order_by: ${key}_order_by"
+      out.println "    orderBy: ${key}OrderBy"
       out.println "    \"${i18n.getString("gql.query.size.comment")}\""
       out.println "    size: Int"
       out.println "    \"${i18n.getString("gql.query.page.comment")}\""
       out.println "    page: Int"
-      out.println "  ): ${key}_aggregate!"
+      out.println "  ): ${key}Aggregate!"
       out.println ""
-      out.println "  \"${i18n.getString("gql.query.find_one.comment", it.schemaName, it.original.name)}\""
-      out.println "  ${DataFetchers.FIND_ONE.keyFunc.apply(it.schemaName, it.original.name)}("
-      out.println "    \"filter the rows returned\""
-      out.println "    where: ${key}_bool_exp"
-      out.println "  ): ${key}"
+      if (it.idField) {
+        out.println "  \"${i18n.getString("gql.query.by_id.comment", it.schemaName, it.original.name)}\""
+        out.println "  ${DataFetchers.BY_ID.keyFunc.apply(it.schemaName, qkey)}("
+        out.println "    id: ID!"
+        out.println "  ): ${key}"
+      }
     }
     out.println "}"
     // gen mutation
@@ -125,42 +130,43 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "\"${i18n.getString("gql.mutation.comment")}\""
     out.println "type Mutation {"
     context.modelClassList.each {
-      def key = "${it.schemaName}_${it.original.name}"
+      def key = it.shortClassName
+      def qkey = StringUtils.uncapitalize(key)
       out.println ""
       out.println "  \"${i18n.getString("gql.mutation.delete.comment", it.schemaName, it.original.name)}\""
-      out.println "  ${DataFetchers.MUTATION_DELETE.keyFunc.apply(it.schemaName, it.original.name)}("
+      out.println "  ${DataFetchers.MUTATION_DELETE.keyFunc.apply(it.schemaName, qkey)}("
       out.println "    \"${i18n.getString("gql.mutation.delete.filter.comment")}\""
-      out.println "    where: ${key}_bool_exp!"
-      out.println "  ): mutation_response"
+      out.println "    where: ${key}BoolExp!"
+      out.println "  ): MutationResponse"
       if (it.idField) {
         out.println ""
         out.println "  \"${i18n.getString("gql.mutation.delete_by_id.comment", it.schemaName, it.original.name)}\""
-        out.println "  ${DataFetchers.MUTATION_DELETE_BY_ID.keyFunc.apply(it.schemaName, it.original.name)}("
+        out.println "  ${DataFetchers.MUTATION_DELETE_BY_ID.keyFunc.apply(it.schemaName, qkey)}("
         out.println "    id: ID!"
         out.println "  ): ${key}"
         out.println ""
         out.println "  \"${i18n.getString("gql.mutation.update_by_id.comment", it.schemaName, it.original.name)}\""
-        out.println "  ${DataFetchers.MUTATION_UPDATE_BY_ID.keyFunc.apply(it.schemaName, it.original.name)}("
-        out.println "   _set: ${key}_set_input"
+        out.println "  ${DataFetchers.MUTATION_UPDATE_BY_ID.keyFunc.apply(it.schemaName, qkey)}("
+        out.println "   set: ${key}SetInput"
         out.println "   id: ID!"
         out.println "  ): ${key}"
       }
       out.println ""
       out.println "  \"${i18n.getString("gql.mutation.create.comment", it.schemaName, it.original.name)}\""
-      out.println "  ${DataFetchers.MUTATION_CREATE.keyFunc.apply(it.schemaName, it.original.name)}("
-      out.println "    data: ${key}_insert_input"
+      out.println "  ${DataFetchers.MUTATION_CREATE.keyFunc.apply(it.schemaName, qkey)}("
+      out.println "    data: ${key}InsertInput"
       out.println "  ): ${key}"
       out.println ""
       out.println "  \"${i18n.getString("gql.mutation.update.comment", it.schemaName, it.original.name)}\""
-      out.println "  ${DataFetchers.MUTATION_UPDATE.keyFunc.apply(it.schemaName, it.original.name)}("
-      out.println "    _set: ${key}_set_input"
-      out.println "    where: ${key}_bool_exp!"
-      out.println "  ): mutation_response"
+      out.println "  ${DataFetchers.MUTATION_UPDATE.keyFunc.apply(it.schemaName, qkey)}("
+      out.println "    set: ${key}SetInput"
+      out.println "    where: ${key}BoolExp!"
+      out.println "  ): MutationResponse"
     }
     out.println "}"
     out.println ""
     context.modelClassList.each {
-      def key = "${it.schemaName}_${it.original.name}"
+      def key = it.shortClassName
       out.println "  \"${i18n.getString("gql.type.model.comment", it.schemaName, it.original.name)}\""
       out.println "type ${key} {"
       it.allFields.each {
@@ -171,17 +177,17 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
       out.println "}"
       out.println ""
       "\"${i18n.getString("gql.query.aggregate.selection.comment", key)}\""
-      out.println "type ${key}_aggregate {"
-      out.println "  _count(distinct: Boolean, field: ${key}_select_field): Int!"
+      out.println "type ${key}Aggregate {"
+      out.println "  _count(distinct: Boolean, field: ${key}SelectField): Int!"
       out.println "  _max: ${key}!"
       out.println "  _min: ${key}!"
       out.println "  _sum: ${key}!"
-      out.println "  _avg: ${key}_avg_fields!"
+      out.println "  _avg: ${key}AvgFields!"
       out.println "  _join: Query"
       out.println "  _join_mutation: Mutation"
       out.println "}"
       out.println ""
-      out.println "type ${key}_avg_fields {"
+      out.println "type ${key}AvgFields {"
       it.allFields.each {
         if (!it.isRelationField()) {
           out.println "  ${it.name}: Float"
@@ -192,36 +198,35 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     }
     context.modelClassList.each {
       out.println ""
-      def schemaName = it.schemaName
-      def key = "${it.schemaName}_${it.original.name}"
+      def key = it.shortClassName
       // gen input model
       out.println "\"${i18n.getString("gql.bool_expr.comment", key)}\""
-      out.println "input ${key}_bool_exp {"
-      out.println "  _and: [${key}_bool_exp!]"
-      out.println "  _or: [${key}_bool_exp!]"
+      out.println "input ${key}BoolExp {"
+      out.println "  and: [${key}BoolExp!]"
+      out.println "  or: [${key}BoolExp!]"
       it.allFields.each {
         if (!it.isRelationField() && !it.isEnumField()) {
           TypedField f = it.original as TypedField
           out.println "  ${it.name}: ${comparisonMapping[f.type]}"
         } else if (it.isEnumField() && context.containsEnumClass((it.original as EnumRefField).from)) {
           EnumRefField enumField = it.original as EnumRefField
-          out.println "  ${it.name}: ${schemaName}_${enumField.from}_comparison_exp"
+          out.println "  ${it.name}: ${StringUtils.capitalize(StringUtils.snakeToCamel(enumField.from))}ComparisonExp"
         } else {
-          out.println "  ${it.name}: String_comparison_exp"
+          out.println "  ${it.name}: StringComparisonExp"
         }
       }
       out.println "}"
       out.println ""
       out.println "\"${i18n.getString("gql.order_by.comment", key)}\""
-      out.println "input ${key}_order_by {"
+      out.println "input ${key}OrderBy {"
       it.allFields.each {
         if (!it.isRelationField()) {
-          out.println "  ${it.name}: order_by"
+          out.println "  ${it.name}: OrderBy"
         }
       }
       out.println "}"
       out.println ""
-      out.println "input ${key}_insert_input {"
+      out.println "input ${key}InsertInput {"
       it.allFields.each {
         if (!it.isRelationField()) {
           out.println "  ${it.name}: ${toGraphQLType(it, context)}"
@@ -229,7 +234,7 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
       }
       out.println "}"
       out.println ""
-      out.println "input ${key}_set_input {"
+      out.println "input ${key}SetInput {"
       it.allFields.each {
         if (!it.isRelationField()) {
           out.println "  ${it.name}: ${toGraphQLType(it, context)}"
@@ -238,9 +243,9 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
       out.println "}"
     }
     context.modelClassList.each {
-      def key = "${it.schemaName}_${it.original.name}"
+      def key = it.shortClassName
       out.println ""
-      out.println "enum ${key}_select_field {"
+      out.println "enum ${key}SelectField {"
       it.allFields.each {
         if (!it.isRelationField()) {
           out.println "  ${it.name}"
@@ -263,7 +268,7 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "scalar Time"
     out.println ""
     out.println "\"${i18n.getString("gql.comparison_exp.comment", "Int")}\""
-    out.println "input Int_comparison_exp {"
+    out.println "input IntComparisonExp {"
     out.println "  _eq: Int"
     out.println "  _ne: Int"
     out.println "  _gt: Int"
@@ -275,7 +280,7 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "}"
     out.println ""
     out.println "\"${i18n.getString("gql.comparison_exp.comment", "Float")}\""
-    out.println "input Float_comparison_exp {"
+    out.println "input FloatComparisonExp {"
     out.println "  _eq: Float"
     out.println "  _ne: Float"
     out.println "  _gt: Float"
@@ -287,7 +292,7 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "}"
     out.println ""
     out.println "\"${i18n.getString("gql.comparison_exp.comment", "String")}\""
-    out.println "input String_comparison_exp {"
+    out.println "input StringComparisonExp {"
     out.println "  _eq: String"
     out.println "  _ne: String"
     out.println "  _in: [String!]"
@@ -299,7 +304,7 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "}"
     out.println ""
     out.println "\"${i18n.getString("gql.comparison_exp.comment", "JSON")}\""
-    out.println "input JSON_comparison_exp {"
+    out.println "input JSONComparisonExp {"
     out.println "  _eq: String"
     out.println "  _ne: String"
     out.println "  _in: [String!]"
@@ -311,13 +316,13 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "}"
     out.println ""
     out.println "\"${i18n.getString("gql.comparison_exp.comment", "Boolean")}\""
-    out.println "input Boolean_comparison_exp {"
+    out.println "input BooleanComparisonExp {"
     out.println "  _eq: Boolean"
     out.println "  _ne: Boolean"
     out.println "}"
     out.println ""
     out.println "\"${i18n.getString("gql.comparison_exp.comment", "Date")}\""
-    out.println "input Date_comparison_exp {"
+    out.println "input DateComparisonExp {"
     out.println "  _eq: Date"
     out.println "  _ne: Date"
     out.println "  _gt: Date"
@@ -330,7 +335,7 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "}"
     out.println ""
     out.println "\"${i18n.getString("gql.comparison_exp.comment", "DateTime")}\""
-    out.println "input DateTime_comparison_exp {"
+    out.println "input DateTimeComparisonExp {"
     out.println "  _eq: DateTime"
     out.println "  _ne: DateTime"
     out.println "  _gt: DateTime"
@@ -343,7 +348,7 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "}"
     out.println ""
     out.println "\"${i18n.getString("gql.comparison_exp.comment", "Time")}\""
-    out.println "input Time_comparison_exp {"
+    out.println "input TimeComparisonExp {"
     out.println "  _eq: Time"
     out.println "  _ne: Time"
     out.println "  _gt: Time"
@@ -358,17 +363,17 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     context.enumClassList.each {
       out.println ""
       out.println "\"${i18n.getString("gql.comparison_exp.comment", "EnumRef")}\""
-      out.println "input ${it.schemaName}_${it.original.name}_comparison_exp {"
-      out.println "  _eq: ${it.schemaName}_${it.original.name}"
-      out.println "  _ne: ${it.schemaName}_${it.original.name}"
-      out.println "  _in: [${it.schemaName}_${it.original.name}!]"
-      out.println "  _nin: [${it.schemaName}_${it.original.name}!]"
+      out.println "input ${it.shortClassName}ComparisonExp {"
+      out.println "  _eq: ${it.shortClassName}"
+      out.println "  _ne: ${it.shortClassName}"
+      out.println "  _in: [${it.shortClassName}!]"
+      out.println "  _nin: [${it.shortClassName}!]"
       out.println "}"
       out.println ""
     }
     out.println ""
     out.println "\"${i18n.getString("gql.enum.order_by.comment")}\""
-    out.println "enum order_by {"
+    out.println "enum OrderBy {"
     out.println "    \"${i18n.getString("gql.enum.order_by.asc.comment")}\""
     out.println "  asc"
     out.println "    \"${i18n.getString("gql.enum.order_by.desc.comment")}\""
@@ -376,9 +381,9 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println "}"
     out.println ""
     out.println "\"${i18n.getString("gql.mutation.response.comment")}\""
-    out.println "type mutation_response {"
+    out.println "type MutationResponse {"
     out.println "  \"${i18n.getString("gql.mutation.response.affected_rows.comment")}\""
-    out.println "  affected_rows: Int!"
+    out.println "  affectedRows: Int!"
     out.println "  _join: Query"
     out.println "  _join_mutation: Mutation"
     out.println "}"

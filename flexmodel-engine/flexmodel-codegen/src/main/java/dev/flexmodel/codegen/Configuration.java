@@ -73,7 +73,6 @@ public class Configuration implements Serializable {
       importDescribe.setData(data);
       importDescribes.add(importDescribe);
     }
-    System.out.println("解析的配置===============: " + JsonUtils.toJsonString(importDescribes));
     return importDescribes;
   }
 

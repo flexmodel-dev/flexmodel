@@ -71,7 +71,7 @@ public class TriggerService {
 
   private String getJobGroup(Trigger trigger, TriggerConfig triggerConfig) {
     if (triggerConfig instanceof EventTriggerConfig eventTriggerConfig) {
-      return eventTriggerConfig.getDatasourceName() + "_" + eventTriggerConfig.getModelName();
+      return trigger.getProjectId() + "_" + eventTriggerConfig.getModelName();
     } else {
       if (triggerConfig instanceof ScheduledTriggerConfig) {
         FlowDeployment flowDeployment = flowService.findRecentByFlowModuleId(trigger.getProjectId(), trigger.getJobId());

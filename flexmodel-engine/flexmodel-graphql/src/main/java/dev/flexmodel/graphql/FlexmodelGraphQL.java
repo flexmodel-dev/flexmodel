@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import dev.flexmodel.codegen.EnumClass;
 import dev.flexmodel.codegen.GenerationContext;
 import dev.flexmodel.codegen.ModelClass;
+import dev.flexmodel.codegen.StringUtils;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
 import dev.flexmodel.model.SchemaObject;
@@ -43,7 +44,7 @@ public class FlexmodelGraphQL {
       "_join", (DataFetcher<?>) environment -> Map.of(),
       "_join_mutation", (DataFetcher<?>) environment -> Map.of()
     );
-    joinDataFetchers.put("mutation_response", joinMap);
+    joinDataFetchers.put("MutationResponse", joinMap);
 
     for (String schemaName : sf.getSchemaNames()) {
       if (!includeSchemaNames.contains(schemaName)) {
@@ -55,19 +56,21 @@ public class FlexmodelGraphQL {
       for (SchemaObject model : models) {
         if (model instanceof EntityDefinition entity) {
           log.debug("Generate graphQL model: {}", model.getName());
+          String pascalName = StringUtils.capitalize(StringUtils.snakeToCamel(model.getName()));
+          String camelName = StringUtils.uncapitalize(pascalName);
           context.getModelClassList().add(ModelClass.buildModelClass("", schemaName, entity));
-          joinDataFetchers.put(schemaName + "_" + model.getName(), joinMap);
-          joinDataFetchers.put(schemaName + "_" + model.getName() + "_aggregate", joinMap);
+          joinDataFetchers.put(pascalName, joinMap);
+          joinDataFetchers.put(pascalName + "Aggregate", joinMap);
 
           for (DataFetchers fetchType : DataFetchers.values()) {
             if (fetchType.isQuery()) {
               queryDataFetchers.put(
-                fetchType.getKeyFunc().apply(schemaName, model.getName()),
+                fetchType.getKeyFunc().apply(schemaName, camelName),
                 fetchType.getDataFetcherFunc().apply(schemaName, model.getName(), sf));
             }
             if (fetchType.isMutation()) {
               mutationDataFetchers.put(
-                fetchType.getKeyFunc().apply(schemaName, model.getName()),
+                fetchType.getKeyFunc().apply(schemaName, camelName),
                 fetchType.getDataFetcherFunc().apply(schemaName, model.getName(), sf));
             }
           }

@@ -33,10 +33,10 @@ public abstract class FlexmodelAbstractDataFetcher<T> implements DataFetcher<T> 
 
   protected static final String PAGE_NUMBER = "page";
   protected static final String PAGE_SIZE = "size";
-  protected static final String ORDER_BY = "order_by";
+  protected static final String ORDER_BY = "orderBy";
   protected static final String WHERE = "where";
   protected static final String ID = "id";
-  protected static final String AFFECTED_ROWS = "affected_rows";
+  protected static final String AFFECTED_ROWS = "affectedRows";
   protected static final String AGG_COUNT = "_count";
   protected static final String AGG_MAX = "_max";
   protected static final String AGG_MIN = "_min";

@@ -30,7 +30,7 @@ import java.time.format.DateTimeFormatter;
 public class ApiLogResource {
 
   @Inject
-  ApiRuntimeService apiRuntimeService;
+  ApiRequestLogService apiRequestLogService;
 
   @Parameter(name = "current", description = "当前页，默认值：1", examples = {@ExampleObject(value = "1")}, in = ParameterIn.QUERY)
   @Parameter(name = "pageSize", description = "第几页，默认值：15", examples = {@ExampleObject(value = "15")}, in = ParameterIn.QUERY)
@@ -61,7 +61,7 @@ public class ApiLogResource {
                                             @QueryParam("isSuccess") Boolean isSuccess
   ) {
     RequestResult result = parseQuery(dateRange, isSuccess);
-    return apiRuntimeService.findApiLogs(projectId, page, size, keyword, result.startDate(), result.endDate(), isSuccess);
+    return apiRequestLogService.findApiLogs(projectId, page, size, keyword, result.startDate(), result.endDate(), isSuccess);
   }
 
   @Parameter(name = "keyword", description = "关键字", in = ParameterIn.QUERY)
@@ -86,7 +86,7 @@ public class ApiLogResource {
                               @QueryParam("dateRange") String dateRange,
                               @QueryParam("isSuccess") Boolean isSuccess) {
     RequestResult result = parseQuery(dateRange, isSuccess);
-    return apiRuntimeService.stat(projectId, keyword, result.startDate(), result.endDate(), isSuccess);
+    return apiRequestLogService.stat(projectId, keyword, result.startDate(), result.endDate(), isSuccess);
   }
 
   private static RequestResult parseQuery(String dateRange, Boolean isSuccess) {

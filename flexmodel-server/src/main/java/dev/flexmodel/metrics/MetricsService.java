@@ -6,7 +6,6 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.codegen.entity.FlowDefinition;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
-import dev.flexmodel.api.ApiDefinitionService;
 import dev.flexmodel.api.ApiRequestLogService;
 import dev.flexmodel.flow.service.FlowDefinitionService;
 import dev.flexmodel.flow.service.FlowInstanceService;
@@ -25,8 +24,6 @@ import static dev.flexmodel.query.Expressions.TRUE;
 public class MetricsService {
 
   @Inject
-  ApiDefinitionService apiDefinitionService;
-  @Inject
   ApiRequestLogService apiLogService;
   @Inject
   ModelService modelService;
@@ -42,7 +39,6 @@ public class MetricsService {
   public FmMetricsResponse getFmMetrics(String projectId) {
     try {
       Integer modelCount = modelService.count(projectId);
-      Integer customApiCount = apiDefinitionService.count(projectId);
       long reqLogCount = apiLogService.count(projectId, TRUE);
       long flowDefCount = flowDefService.count(projectId, Expressions.field(FlowDefinition::getIsDeleted).eq(false));
       long flowInsCount = flowInstanceService.count(projectId, TRUE);
@@ -52,7 +48,7 @@ public class MetricsService {
 
       return FmMetricsResponse.builder()
         .dataSourceCount(-1)
-        .customApiCount(customApiCount)
+        .customApiCount(-1)
         .requestCount((int) reqLogCount)
         .flowDefCount((int) flowDefCount)
         .flowExecCount((int) flowInsCount)

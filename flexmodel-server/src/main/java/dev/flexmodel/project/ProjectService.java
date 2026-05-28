@@ -1,6 +1,5 @@
 package dev.flexmodel.project;
 
-import dev.flexmodel.api.ApiDefinitionService;
 import dev.flexmodel.common.SessionContextHolder;
 import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.flow.service.FlowDeploymentService;
@@ -25,8 +24,6 @@ public class ProjectService {
 
 
   @Inject
-  ApiDefinitionService apiDefinitionService;
-  @Inject
   FlowDeploymentService flowDeploymentService;
   @Inject
   StorageService storageService;
@@ -41,7 +38,7 @@ public class ProjectService {
           ProjectResponse response = ProjectResponse.fromProject(project);
           if (Objects.equals(request.getIncldue(), "stats")) {
             ProjectResponse.ProjectStats projectStats = new ProjectResponse.ProjectStats(
-              apiDefinitionService.count(project.getId()),
+              -1,
               flowDeploymentService.count(project.getId()),
               -1,
               storageService.count(project.getId())

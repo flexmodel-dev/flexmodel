@@ -19,12 +19,6 @@ import java.util.List;
 public class EventTriggerConfig implements TriggerConfig {
 
   /**
-   * 数据源名称
-   * 指定要监听的数据源
-   */
-  private String datasourceName;
-
-  /**
    * 模型名称
    * 指定要监听的模型
    */
@@ -55,7 +49,7 @@ public class EventTriggerConfig implements TriggerConfig {
 
   @Override
   public void validate() {
-    if (StringUtils.isEmpty(datasourceName) || StringUtils.isEmpty(modelName) || CollectionUtils.isEmpty(mutationTypes)) {
+    if (StringUtils.isEmpty(modelName) || CollectionUtils.isEmpty(mutationTypes)) {
       throw new TriggerException("EventTriggerConfig is invalid.");
     }
   }

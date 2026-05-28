@@ -1,5 +1,6 @@
 package dev.flexmodel.api.consumer;
 
+import dev.flexmodel.graphql.FlexmodelGraphQL;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.vertx.ConsumeEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -13,6 +14,9 @@ import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.session.SessionFactory;
 
 import java.util.List;
+import java.util.Map;
+
+import static java.util.stream.Collectors.*;
 
 /**
  * 监听GraphQL变更事件
@@ -37,15 +41,12 @@ public class GraphQLEventConsumer {
   public void consume(GraphQLRefreshEvent event) {
     long beginTime = System.currentTimeMillis();
     log.info("Received graphql message");
-//    List<Project> projects = projectService.findProjects(event);
-//    for (Project project : projects) {
-//      Map<String, List<String>> dsMap = datasourceList.stream()
-//        .filter(f -> f.getProjectId() != null)
-//        .collect(groupingBy(Datasource::getProjectId, mapping(Datasource::getName, toList())));
-//      FlexmodelGraphQL fg = new FlexmodelGraphQL();
+    List<Project> projects = projectService.findProjects();
+    for (Project project : projects) {
+      FlexmodelGraphQL fg = new FlexmodelGraphQL();
 //      graphQLManger.addDefaultGraphQL(fg.generateGraphQLWithSchemaObject(sf, sf.getSchemaNames()));
-//      dsMap.forEach((projectId, datasourceNames) -> graphQLManger.addGraphQL(projectId, fg.generateGraphQLWithSchemaObject(sf, datasourceNames)));
-//    }
+      graphQLManger.addGraphQL(project.getId(), fg.generateGraphQLWithSchemaObject(sf, List.of(project.getDatabaseName())));
+    }
     log.info("========== GraphQL init successful in {} ms!", System.currentTimeMillis() - beginTime);
   }
 

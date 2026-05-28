@@ -5,10 +5,13 @@ import dev.flexmodel.model.EnumDefinition;
 import dev.flexmodel.model.IndexDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.model.field.*;
+import dev.flexmodel.ModelImportBundle;
 import dev.flexmodel.model.field.*;
 import dev.flexmodel.parser.impl.ModelParser;
+import dev.flexmodel.parser.impl.ParseException;
 import dev.flexmodel.query.Direction;
 
+import java.io.StringReader;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -318,6 +321,62 @@ public class ASTNodeConverter {
       ModelParser.Annotation anno = new ModelParser.Annotation("scale");
       anno.parameters.put("value", scale.toString());
       idlField.annotations.add(anno);
+    }
+  }
+
+  // ===================== FML Seed 转换方法 =====================
+
+  /**
+   * 将 SeedDeclaration AST 节点转换为 ImportData
+   */
+  public static ModelImportBundle.ImportData toImportData(ModelParser.Seed seed) {
+    ModelImportBundle.ImportData importData = new ModelImportBundle.ImportData();
+    importData.setModelName(seed.modelName);
+    importData.setValues(seed.records);
+    return importData;
+  }
+
+  /**
+   * 解析 FML 字符串，同时返回模型定义和种子数据
+   */
+  public static FMLParseResult parseFML(String fmlString) throws ParseException {
+    ModelParser parser = new ModelParser(new StringReader(fmlString));
+    List<ModelParser.ASTNode> ast = parser.CompilationUnit();
+
+    List<SchemaObject> models = new ArrayList<>();
+    List<ModelImportBundle.ImportData> seeds = new ArrayList<>();
+
+    for (ModelParser.ASTNode node : ast) {
+      if (node instanceof ModelParser.Seed) {
+        seeds.add(toImportData((ModelParser.Seed) node));
+      } else {
+        SchemaObject obj = toSchemaObject(node);
+        if (obj != null) {
+          models.add(obj);
+        }
+      }
+    }
+    return new FMLParseResult(models, seeds);
+  }
+
+  /**
+   * FML 解析结果，包含模型定义和种子数据
+   */
+  public static class FMLParseResult {
+    private final List<SchemaObject> models;
+    private final List<ModelImportBundle.ImportData> seeds;
+
+    public FMLParseResult(List<SchemaObject> models, List<ModelImportBundle.ImportData> seeds) {
+      this.models = models;
+      this.seeds = seeds;
+    }
+
+    public List<SchemaObject> getModels() {
+      return models;
+    }
+
+    public List<ModelImportBundle.ImportData> getSeeds() {
+      return seeds;
     }
   }
 

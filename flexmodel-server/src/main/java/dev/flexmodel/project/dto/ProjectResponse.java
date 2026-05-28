@@ -25,7 +25,7 @@ public class ProjectResponse extends Project {
     return response;
   }
 
-  public record ProjectStats(Integer apiCount, Integer datasourceCount, Integer flowCount, Integer storageCount) {
+  public record ProjectStats(Integer apiCount, Integer flowCount, Integer storageCount) {
   }
 
 }

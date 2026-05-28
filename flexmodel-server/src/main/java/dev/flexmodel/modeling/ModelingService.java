@@ -99,8 +99,8 @@ public class ModelingService {
     return modelService.findModel(projectId, project.getDatabaseName(), modelName).orElseThrow(() -> new RuntimeException("Model not found"));
   }
 
-  public List<SchemaObject> executeIdl(String projectId, String idl) throws ParseException {
+  public List<SchemaObject> executeFml(String projectId, String fml) throws ParseException {
     Project project = projectService.findProject(projectId);
-    return modelService.executeIdl(projectId, project.getDatabaseName(), idl);
+    return modelService.executeFml(projectId, project.getDatabaseName(), fml);
   }
 }

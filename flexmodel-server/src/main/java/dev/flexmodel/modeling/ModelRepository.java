@@ -36,7 +36,7 @@ public interface ModelRepository {
 
   void importModels(String projectId, String datasourceName, String script, String type);
 
-  List<SchemaObject> executeIdl(String projectId, String datasourceName, String idl) throws ParseException;
+  List<SchemaObject> executeFml(String projectId, String datasourceName, String fml) throws ParseException;
 
   Integer count(String projectId);
 

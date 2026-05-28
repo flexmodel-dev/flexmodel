@@ -24,14 +24,14 @@ class GenerationToolTest extends AbstractIntegrationTest {
   }
 
   @Test
-  void testIDL() {
+  void testFML() {
     Configuration configuration = new Configuration();
     SchemaConfig schemaConfig = new SchemaConfig();
-    schemaConfig.setName("system_idl");
-    schemaConfig.setImportScript("import.idl");
+    schemaConfig.setName("system_fml");
+    schemaConfig.setImportScript("import.fml");
     schemaConfig.setBaseDir("src/test/resources/");
     schemaConfig.setDirectory("src/test/java");
-    schemaConfig.setPackageName("com.example_idl");
+    schemaConfig.setPackageName("com.example_fml");
     schemaConfig.setReplaceString("f_");
     configuration.addSchema(schemaConfig);
     GenerationTool.run(configuration);

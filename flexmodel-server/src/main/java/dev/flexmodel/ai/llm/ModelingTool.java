@@ -66,7 +66,7 @@ public class ModelingTool {
     }
     try {
       return modelService.findModel(projectId, datasourceName.trim(), modelName.trim())
-        .map(SchemaObject::getIdl)
+        .map(SchemaObject::getFml)
         .orElse("No model exists");
     } catch (Exception e) {
       return String.format("Error retrieving model from datasource '%s': %s", datasourceName, e.getMessage());
@@ -74,14 +74,14 @@ public class ModelingTool {
   }
 
   @NonBlocking
-  @Tool("在指定数据源下面执行IDL语句")
-  public String modelingByIdl(@P("项目ID") String projectId, @P("数据源名称") String datasourceName, @P("模型IDL") String idl) {
+  @Tool("在指定数据源下面执行FML语句")
+  public String modelingByFml(@P("项目ID") String projectId, @P("数据源名称") String datasourceName, @P("模型FML") String fml) {
     if (datasourceName == null || datasourceName.trim().isEmpty()) {
       datasourceName = "dev_test"; // default datasource
     }
-    String replacedIdl = idl.replaceAll("\n", "");
+    String replacedFml = fml.replaceAll("\n", "");
     try {
-      modelService.importModels(projectId, datasourceName, replacedIdl, "idl");
+      modelService.importModels(projectId, datasourceName, replacedFml, "fml");
       // success
       return "success";
     } catch (Exception e) {

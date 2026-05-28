@@ -111,16 +111,16 @@ public class ModelFmRepository implements ModelRepository {
   public void importModels(String projectId, String datasourceName, String script, String type) {
     if (type.equals("JSON")) {
       sessionFactory.loadJSONString(datasourceName, script);
-    } else if (type.equals("IDL")) {
-      sessionFactory.loadIDLString(datasourceName, script);
+    } else if (type.equals("FML")) {
+      sessionFactory.loadFMLString(datasourceName, script);
     } else {
-      throw new RuntimeException("Unsupported type");
+      throw new RuntimeException("Unsupported type: " + type + ", supported types: JSON, FML");
     }
   }
 
   @Override
-  public List<SchemaObject> executeIdl(String projectId, String datasourceName, String idlString) throws ParseException {
-    ModelParser parser = new ModelParser(new StringReader(idlString));
+  public List<SchemaObject> executeFml(String projectId, String datasourceName, String fmlString) throws ParseException {
+    ModelParser parser = new ModelParser(new StringReader(fmlString));
     List<ModelParser.ASTNode> ast = parser.CompilationUnit();
     List<SchemaObject> schema = new ArrayList<>();
     for (ModelParser.ASTNode obj : ast) {

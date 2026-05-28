@@ -191,12 +191,12 @@ public class ModelingResource {
   }
 
   @POST
-  @Path("/idl/execute")
-  public List<SchemaObject> executeIdl(@PathParam("projectId") String projectId, IdlRequest request) {
+  @Path("/fml/execute")
+  public List<SchemaObject> executeFml(@PathParam("projectId") String projectId, FmlRequest request) {
     try {
-      return modelingService.executeIdl(projectId, request.idl());
+      return modelingService.executeFml(projectId, request.fml());
     } catch (Exception e) {
-      throw new RuntimeException("IDL格式有误: " + e.getMessage());
+      throw new RuntimeException("FML格式有误: " + e.getMessage());
     }
   }
 
@@ -433,7 +433,7 @@ public class ModelingResource {
   }
 
 
-  public record IdlRequest(String idl) {
+  public record FmlRequest(String fml) {
 
   }
 

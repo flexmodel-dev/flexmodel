@@ -30,28 +30,16 @@ public class TestDataInitializer {
         try {
             log.info("Initializing test data for dev_test project...");
 
-            // 加载dev_test的schema
-            try (InputStream schemaStream = getClass().getClassLoader()
-                    .getResourceAsStream("dev_test_schema.idl")) {
-                if (schemaStream == null) {
-                    log.warn("dev_test_schema.idl not found, skipping test data initialization");
+            // 加载dev_test的schema和数据（FML格式）
+            try (InputStream fmlStream = getClass().getClassLoader()
+                    .getResourceAsStream("dev_test.fml")) {
+                if (fmlStream == null) {
+                    log.warn("dev_test.fml not found, skipping test data initialization");
                     return;
                 }
-                String schemaContent = new String(schemaStream.readAllBytes(), StandardCharsets.UTF_8);
-                sessionFactory.loadIDLString("dev_test", schemaContent);
-                log.info("Loaded dev_test schema");
-            }
-
-            // 加载dev_test的数据
-            try (InputStream dataStream = getClass().getClassLoader()
-                    .getResourceAsStream("dev_test_data.json")) {
-                if (dataStream == null) {
-                    log.warn("dev_test_data.json not found");
-                    return;
-                }
-                String dataContent = new String(dataStream.readAllBytes(), StandardCharsets.UTF_8);
-                sessionFactory.loadJSONString("dev_test", dataContent);
-                log.info("Loaded dev_test data");
+                String fmlContent = new String(fmlStream.readAllBytes(), StandardCharsets.UTF_8);
+                sessionFactory.loadFMLString("dev_test", fmlContent);
+                log.info("Loaded dev_test schema and data from FML");
             }
 
             initialized = true;

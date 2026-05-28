@@ -40,7 +40,6 @@ public class ProjectService {
             ProjectResponse.ProjectStats projectStats = new ProjectResponse.ProjectStats(
               -1,
               flowDeploymentService.count(project.getId()),
-              -1,
               storageService.count(project.getId())
             );
             response.setStats(projectStats);

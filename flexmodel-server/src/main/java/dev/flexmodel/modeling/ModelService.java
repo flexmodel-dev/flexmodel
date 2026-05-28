@@ -74,7 +74,7 @@ public class ModelService {
     modelRepository.importModels(projectId, datasourceName, script, type);
   }
 
-  public List<SchemaObject> executeIdl(String projectId, String datasourceName, String idl) throws ParseException {
-    return modelRepository.executeIdl(projectId, datasourceName, idl);
+  public List<SchemaObject> executeFml(String projectId, String datasourceName, String fml) throws ParseException {
+    return modelRepository.executeFml(projectId, datasourceName, fml);
   }
 }

@@ -181,10 +181,8 @@
               <schema>
                 <name>system</name>
                 <import-script>
-                  src/main/resources/platform_schema.idl,
-                  src/main/resources/project_schema.idl,
-                  src/main/resources/platform_data.json,
-                  src/main/resources/project_data.json
+                  src/main/resources/platform.fml,
+                  src/main/resources/project.fml
                 </import-script>
                 <packageName>dev.flexmodel.codegen</packageName>
                 <replaceString>^f_ei_|^f_em_|^f_</replaceString>
@@ -192,10 +190,8 @@
               <schema>
                 <name>dev_test</name>
                 <import-script>
-                  src/main/resources/project_schema.idl,
-                  src/main/resources/project_data.json,
-                  src/main/resources/dev_test_schema.idl,
-                  src/main/resources/dev_test_data.json
+                  src/main/resources/project.fml,
+                  src/main/resources/dev_test.fml
                 </import-script>
                 <packageName>dev.flexmodel.test.codegen</packageName>
                 <replaceString>^f_ei_|^f_em_|^f_</replaceString>

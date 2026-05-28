@@ -106,4 +106,19 @@ public class DmSqlDialect extends SqlDialect {
   public boolean supportsGroupByColumnAlias() {
     return false;
   }
+
+  @Override
+  public boolean supportsAutoCreateSchema() {
+    return false;
+  }
+
+  @Override
+  public String[] getCreateSchemaIfNotExistsSql(String schemaName) {
+    return new String[]{};
+  }
+
+  @Override
+  public String[] getDropSchemaIfExistsSql(String schemaName) {
+    return new String[]{ "DROP USER " + quoteIdentifier(schemaName) + " CASCADE" };
+  }
 }

@@ -19,19 +19,12 @@ import static graphql.ExecutionInput.newExecutionInput;
 @ApplicationScoped
 public class GraphQLManager {
 
-  private GraphQL defaultGraphql;
   private final Map<String, GraphQL> tenantGraphqlMap = new HashMap<>();
 
   public GraphQL getGraphQL(String projectId) {
-    if (StringUtils.isEmpty(projectId)) {
-      return defaultGraphql;
-    }
     return tenantGraphqlMap.get(projectId);
   }
 
-  public void addDefaultGraphQL(GraphQL graphQL) {
-    defaultGraphql = graphQL;
-  }
 
   public void addGraphQL(String projectId, GraphQL graphQL) {
     tenantGraphqlMap.put(projectId, graphQL);

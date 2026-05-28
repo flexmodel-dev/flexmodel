@@ -89,6 +89,9 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     // gen query
     out.println "\"${i18n.getString("gql.query.comment")}\""
     out.println "type Query {"
+    if (context.modelClassList.isEmpty()) {
+      out.println "  _health: String"
+    }
     context.modelClassList.each {
       def key = it.shortClassName
       def qkey = StringUtils.uncapitalize(key)
@@ -129,6 +132,9 @@ class GraphQLSchemaGenerator extends AbstractGenerator {
     out.println ""
     out.println "\"${i18n.getString("gql.mutation.comment")}\""
     out.println "type Mutation {"
+    if (context.modelClassList.isEmpty()) {
+      out.println "  _noop: String"
+    }
     context.modelClassList.each {
       def key = it.shortClassName
       def qkey = StringUtils.uncapitalize(key)

@@ -34,7 +34,7 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     createTeacherData(session, teacherEntityName);
 
     FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
-    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, sessionFactory.getSchemaNames());
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
     // 创建查询
     String query = """
       query {
@@ -120,7 +120,7 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     createTeacherData(session, teacherEntityName);
 
     FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
-    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, sessionFactory.getSchemaNames());
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
     String query = """
       query {
         list: testDirectiveStudent {
@@ -166,7 +166,7 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     createTeacherData(session, teacherEntityName);
 
     FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
-    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, sessionFactory.getSchemaNames());
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
     String query = """
       query ($classId: Int = 1, $classById: ID = 1, $studentId: Int @internal) {
         class: testJoinClassesById(id: $classById) {
@@ -216,7 +216,7 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     createTeacherData(session, teacherEntityName);
 
     FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
-    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, sessionFactory.getSchemaNames());
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
     // 创建查询
     String query = """
       mutation {

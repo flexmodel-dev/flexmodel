@@ -43,11 +43,31 @@ public class GraphQLEventConsumer {
     log.info("Received graphql message");
     List<Project> projects = projectService.findProjects();
     for (Project project : projects) {
-      FlexmodelGraphQL fg = new FlexmodelGraphQL();
-//      graphQLManger.addDefaultGraphQL(fg.generateGraphQLWithSchemaObject(sf, sf.getSchemaNames()));
-      graphQLManger.addGraphQL(project.getId(), fg.generateGraphQLWithSchemaObject(sf, List.of(project.getDatabaseName())));
+      refreshProject(project);
     }
     log.info("========== GraphQL init successful in {} ms!", System.currentTimeMillis() - beginTime);
+  }
+
+  /**
+   * 刷新单个项目的 GraphQL Schema。
+   * 用于新项目创建后同步注册 GraphQL，避免全量刷新。
+   *
+   * @param project 项目
+   */
+  public void refreshProject(Project project) {
+    try {
+      String schemaName = project.getDatabaseName();
+      log.info("Refreshing GraphQL for project '{}', schemaName='{}'", project.getId(), schemaName);
+
+      FlexmodelGraphQL fg = new FlexmodelGraphQL();
+      graphQLManger.addGraphQL(
+        project.getId(),
+        fg.generateGraphQLWithSchemaObject(sf, "system")
+      );
+      log.info("GraphQL schema generated for project '{}', models={}", project.getId(), sf.getModels(schemaName).size());
+    } catch (Exception e) {
+      log.warn("Failed to generate GraphQL for project '{}': {}", project.getId(), e.getMessage(), e);
+    }
   }
 
 }

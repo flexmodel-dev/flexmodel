@@ -230,4 +230,11 @@ public class SQLServerSqlDialect extends SqlDialect {
         return "alter column";
     }
 
+    @Override
+    public String[] getCreateSchemaIfNotExistsSql(String schemaName) {
+        return new String[]{
+            "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '" + schemaName + "') EXEC('CREATE SCHEMA " + quoteIdentifier(schemaName) + "')"
+        };
+    }
+
 }

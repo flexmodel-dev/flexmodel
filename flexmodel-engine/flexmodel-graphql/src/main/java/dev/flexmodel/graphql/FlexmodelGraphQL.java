@@ -33,7 +33,7 @@ public class FlexmodelGraphQL {
 
   private final Logger log = LoggerFactory.getLogger(FlexmodelGraphQL.class);
 
-  public GraphQL generateGraphQLWithSchemaObject(SessionFactory sf, List<String> includeSchemaNames) {
+  public GraphQL generateGraphQLWithSchemaObject(SessionFactory sf, String schemaName) {
     GraphQLSchemaGenerator generator = new GraphQLSchemaGenerator();
     GenerationContext context = new GenerationContext();
     Map<String, DataFetcher<?>> queryDataFetchers = new HashMap<>();
@@ -46,41 +46,36 @@ public class FlexmodelGraphQL {
     );
     joinDataFetchers.put("MutationResponse", joinMap);
 
-    for (String schemaName : sf.getSchemaNames()) {
-      if (!includeSchemaNames.contains(schemaName)) {
-        log.debug("Generate GraphQL,Ignore schema: {}", schemaName);
-        continue;
-      }
-      log.debug("Generate graphQL schema: {}", schemaName);
-      List<SchemaObject> models = sf.getModels(schemaName);
-      for (SchemaObject model : models) {
-        if (model instanceof EntityDefinition entity) {
-          log.debug("Generate graphQL model: {}", model.getName());
-          String pascalName = StringUtils.capitalize(StringUtils.snakeToCamel(model.getName()));
-          String camelName = StringUtils.uncapitalize(pascalName);
-          context.getModelClassList().add(ModelClass.buildModelClass("", schemaName, entity));
-          joinDataFetchers.put(pascalName, joinMap);
-          joinDataFetchers.put(pascalName + "Aggregate", joinMap);
 
-          for (DataFetchers fetchType : DataFetchers.values()) {
-            if (fetchType.isQuery()) {
-              queryDataFetchers.put(
-                fetchType.getKeyFunc().apply(schemaName, camelName),
-                fetchType.getDataFetcherFunc().apply(schemaName, model.getName(), sf));
-            }
-            if (fetchType.isMutation()) {
-              mutationDataFetchers.put(
-                fetchType.getKeyFunc().apply(schemaName, camelName),
-                fetchType.getDataFetcherFunc().apply(schemaName, model.getName(), sf));
-            }
+    log.debug("Generate graphQL schema: {}", schemaName);
+    List<SchemaObject> models = sf.getModels(schemaName);
+    for (SchemaObject model : models) {
+      if (model instanceof EntityDefinition entity) {
+        log.debug("Generate graphQL model: {}", model.getName());
+        String pascalName = StringUtils.capitalize(StringUtils.snakeToCamel(model.getName()));
+        String camelName = StringUtils.uncapitalize(pascalName);
+        context.getModelClassList().add(ModelClass.buildModelClass("", schemaName, entity));
+        joinDataFetchers.put(pascalName, joinMap);
+        joinDataFetchers.put(pascalName + "Aggregate", joinMap);
+
+        for (DataFetchers fetchType : DataFetchers.values()) {
+          if (fetchType.isQuery()) {
+            queryDataFetchers.put(
+              fetchType.getKeyFunc().apply(schemaName, camelName),
+              fetchType.getDataFetcherFunc().apply(schemaName, model.getName(), sf));
           }
-        } else if (model instanceof EnumDefinition andEnum) {
-          log.debug("Generate graphQL model: {}", model.getName());
-          context.getEnumClassList().add(EnumClass.buildEnumClass("", schemaName, andEnum));
-        } else {
-          log.debug("Ignore model: {}", model.getName());
-          // 暂时忽略非实体类型
+          if (fetchType.isMutation()) {
+            mutationDataFetchers.put(
+              fetchType.getKeyFunc().apply(schemaName, camelName),
+              fetchType.getDataFetcherFunc().apply(schemaName, model.getName(), sf));
+          }
         }
+      } else if (model instanceof EnumDefinition andEnum) {
+        log.debug("Generate graphQL model: {}", model.getName());
+        context.getEnumClassList().add(EnumClass.buildEnumClass("", schemaName, andEnum));
+      } else {
+        log.debug("Ignore model: {}", model.getName());
+        // 暂时忽略非实体类型
       }
     }
 

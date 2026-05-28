@@ -61,34 +61,45 @@ public class SessionDatasourceImpl implements SessionDatasource {
 
   @Override
   public void add(Project project) {
+    registerSchema(project.getDatabaseName());
+  }
+
+  @Override
+  public void registerSchema(String schemaName) {
     try {
-      String schemaName = project.getDatabaseName().equals("system") ? "flexmodel" : project.getDatabaseName();
+      String actualSchemaName = "system".equals(schemaName) ? "flexmodel" : schemaName;
       // 如果配置文件中有该数据源的显式配置，使用配置中的URL而非模板URL
-      FlexmodelConfig.DatasourceConfig configDs = flexmodelConfig.datasources().get(project.getDatabaseName());
+      FlexmodelConfig.DatasourceConfig configDs = flexmodelConfig.datasources().get(schemaName);
       if (configDs != null) {
         // 配置文件中已定义该数据源，如果SchemaProvider已注册则跳过
-        if (sessionFactory.isSchemaExists(schemaName)) {
-          log.info("SchemaProvider '{}' already registered from config, skipping dynamic registration", schemaName);
+        if (sessionFactory.isSchemaExists(actualSchemaName)) {
+          log.info("SchemaProvider '{}' already registered from config, skipping dynamic registration", actualSchemaName);
           return;
         }
-        // 配置存在但SchemaProvider未注册（不应发生），使用配置URL创建
+        // 配置存在但SchemaProvider未注册，使用配置URL创建
         HikariDataSource ds = new HikariDataSource();
         ds.setMaxLifetime(30000);
         ds.setJdbcUrl(configDs.url());
         ds.setUsername(configDs.username().orElse(null));
         ds.setPassword(configDs.password().orElse(null));
-        SchemaProvider schemaProvider = new JdbcSchemaProvider(schemaName, ds);
+        SchemaProvider schemaProvider = new JdbcSchemaProvider(actualSchemaName, ds);
         sessionFactory.registerSchemaProvider(schemaProvider);
-        log.info("Registered SchemaProvider '{}' from config URL: {}", schemaName, configDs.url());
+        log.info("Registered SchemaProvider '{}' from config URL: {}", actualSchemaName, configDs.url());
       } else {
         // 配置文件中没有显式配置，使用projectUrlTemplate动态创建
-        SchemaProvider schemaProvider = new JdbcSchemaProvider(schemaName, buildJdbcDataSource(project.getDatabaseName()));
+        SchemaProvider schemaProvider = new JdbcSchemaProvider(actualSchemaName, buildJdbcDataSource(schemaName));
         sessionFactory.registerSchemaProvider(schemaProvider);
-        log.info("Registered SchemaProvider '{}' from template URL", schemaName);
+        log.info("Registered SchemaProvider '{}' from template URL", actualSchemaName);
       }
     } catch (Exception e) {
       log.error("Session dataSource create error: {}", e.getMessage(), e);
     }
+  }
+
+  @Override
+  public void unregisterSchema(String schemaName) {
+    sessionFactory.unregisterSchemaProvider(schemaName);
+    log.info("Unregistered SchemaProvider '{}'", schemaName);
   }
 
   public DataSource buildJdbcDataSource(String databaseName) {

@@ -1,8 +1,12 @@
 package dev.flexmodel.codegen;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * @author cjbi
@@ -24,14 +28,14 @@ class GenerationToolTest extends AbstractIntegrationTest {
   }
 
   @Test
-  void testIDL() {
+  void testFML() {
     Configuration configuration = new Configuration();
     SchemaConfig schemaConfig = new SchemaConfig();
-    schemaConfig.setName("system_idl");
-    schemaConfig.setImportScript("import.idl");
+    schemaConfig.setName("system_fml");
+    schemaConfig.setImportScript("import.fml");
     schemaConfig.setBaseDir("src/test/resources/");
     schemaConfig.setDirectory("src/test/java");
-    schemaConfig.setPackageName("com.example_idl");
+    schemaConfig.setPackageName("com.example_fml");
     schemaConfig.setReplaceString("f_");
     configuration.addSchema(schemaConfig);
     GenerationTool.run(configuration);
@@ -50,4 +54,26 @@ class GenerationToolTest extends AbstractIntegrationTest {
     }
   }
 
+  @AfterAll
+  static void afterAll() throws IOException {
+    deleteRecursively(Paths.get("src/test/java/com"));
+    deleteRecursively(Paths.get("src/test/resources/target/classes"));
+  }
+
+  private static void deleteRecursively(Path path) throws IOException {
+    if (!Files.exists(path)) return;
+    Files.walkFileTree(path, new SimpleFileVisitor<>() {
+      @Override
+      public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+        Files.delete(file);
+        return FileVisitResult.CONTINUE;
+      }
+
+      @Override
+      public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+        Files.delete(dir);
+        return FileVisitResult.CONTINUE;
+      }
+    });
+  }
 }

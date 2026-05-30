@@ -1,4 +1,4 @@
-package dev.flexmodel.domain.model.flow.executor;
+package dev.flexmodel.flow.executor;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -7,12 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.domain.model.flow.dto.bo.NodeInstanceBO;
-import dev.flexmodel.domain.model.flow.dto.model.FlowElement;
-import dev.flexmodel.domain.model.flow.exception.ProcessException;
-import dev.flexmodel.domain.model.flow.shared.common.ErrorEnum;
-import dev.flexmodel.domain.model.flow.shared.common.NodeInstanceStatus;
-import dev.flexmodel.domain.model.flow.shared.common.RuntimeContext;
+import dev.flexmodel.flow.dto.bo.NodeInstanceBO;
+import dev.flexmodel.flow.dto.model.FlowElement;
+import dev.flexmodel.flow.exception.ProcessException;
+import dev.flexmodel.flow.common.ErrorEnum;
+import dev.flexmodel.flow.common.NodeInstanceStatus;
+import dev.flexmodel.flow.common.RuntimeContext;
 
 import java.util.ArrayList;
 import java.util.HashMap;

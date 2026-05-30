@@ -1,0 +1,84 @@
+{
+  "features": [
+    {
+      "id": "feat-001",
+      "name": "Data - 动态建模与多数据源支持",
+      "description": "运行时动态建模，支持 SQLite/MySQL/PostgreSQL/Oracle/DB2/MongoDB 等 10+ 数据库的数据访问层",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "flexmodel-engine 核心模块已实现，集成测试覆盖多种数据库"
+    },
+    {
+      "id": "feat-002",
+      "name": "Auth - RBAC 权限与多租户",
+      "description": "基于角色的访问控制、多租户隔离、JWT 安全验证",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "flexmodel-server/auth 特性包已实现"
+    },
+    {
+      "id": "feat-003",
+      "name": "Flow - 可视化流程编排",
+      "description": "流程定义、实例管理、执行引擎、插件系统、校验，低代码后端扩展",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "flexmodel-server/flow 特性包已实现，FlowService 已按职责拆分为三个服务类"
+    },
+    {
+      "id": "feat-004",
+      "name": "API - API 管理与 GraphQL",
+      "description": "API 定义、运行时执行、文档生成、GraphQL 支持",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "flexmodel-server/api 和 flexmodel-engine/graphql 模块已实现"
+    },
+    {
+      "id": "feat-005",
+      "name": "Job - 分布式任务调度",
+      "description": "内置触发器、作业执行的任务调度系统",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "flexmodel-server/scheduling 特性包已实现"
+    },
+    {
+      "id": "feat-006",
+      "name": "Storage - 文件存储抽象",
+      "description": "支持本地/S3/OSS 的文件存储抽象层",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "flexmodel-server/storage 特性包已实现"
+    },
+    {
+      "id": "feat-007",
+      "name": "AI - LangChain4j 智能对话",
+      "description": "集成 LangChain4j，提供 SSE 流式对话能力",
+      "dependencies": ["feat-001", "feat-002"],
+      "status": "done",
+      "evidence": "flexmodel-server/ai 特性包已实现"
+    },
+    {
+      "id": "feat-008",
+      "name": "前端 UI 完善",
+      "description": "基于 React + Ant Design v5 的前端界面持续优化和功能完善",
+      "dependencies": ["feat-002", "feat-003", "feat-004"],
+      "status": "in-progress",
+      "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中"
+    },
+    {
+      "id": "feat-009",
+      "name": "文档站建设",
+      "description": "基于 Docusaurus 的文档站内容完善，包含 API 文档和教程",
+      "dependencies": ["feat-004"],
+      "status": "in-progress",
+      "evidence": "flexmodel-website 模块已有基础结构，docs/api 和 docs/tutorial 目录已有内容"
+    },
+    {
+      "id": "feat-010",
+      "name": "替换此占位符为你的下一个特性",
+      "description": "将本条目替换为你接下来要实现的具体功能特性，设置 status 为 not-started",
+      "dependencies": [],
+      "status": "not-started",
+      "evidence": ""
+    }
+  ]
+}

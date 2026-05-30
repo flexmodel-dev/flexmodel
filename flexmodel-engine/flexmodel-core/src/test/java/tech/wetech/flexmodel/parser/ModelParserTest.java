@@ -14,7 +14,7 @@ public class ModelParserTest {
 
   @Test
   void test() throws ParseException {
-    InputStream is = this.getClass().getClassLoader().getResourceAsStream("sample_input.idl");
+    InputStream is = this.getClass().getClassLoader().getResourceAsStream("sample_input.fml");
     // 从标准输入解析，解析结果为 AST 节点列表
     ModelParser parser = new ModelParser(is);
     List ast = parser.CompilationUnit();

@@ -199,7 +199,6 @@ public class TriggerResourceTest {
           "type": "EVENT",
           "config": {
               "type": "event",
-              "datasourceName": "dev_test",
               "modelName": "Student",
               "mutationTypes": ["create", "update"],
               "triggerTiming": "after"
@@ -221,7 +220,6 @@ public class TriggerResourceTest {
       .body("id", notNullValue())
       .body("name", equalTo("测试事件触发"))
       .body("type", equalTo("EVENT"))
-      .body("config.datasourceName", equalTo("dev_test"))
       .body("config.modelName", equalTo("Student"))
       .body("config.triggerTiming", equalTo("after"));
   }
@@ -388,7 +386,6 @@ public class TriggerResourceTest {
       .then()
       .statusCode(200)
       .body("type", equalTo("EVENT"))
-      .body("config.datasourceName", equalTo("dev_test"))
       .body("config.modelName", equalTo("Classes"))
       .body("config.mutationTypes", notNullValue())
       .body("config.triggerTiming", equalTo("after"));

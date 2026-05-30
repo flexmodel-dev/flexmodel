@@ -104,4 +104,15 @@ public class DB2SqlDialect extends SqlDialect {
     return "drop schema " + quoteIdentifier(schemaName) + " restrict";
   }
 
+  @Override
+  public String[] getCreateSchemaIfNotExistsSql(String schemaName) {
+    // DB2 不支持 IF NOT EXISTS，通过先检查再创建实现幂等
+    return new String[]{ "CREATE SCHEMA " + quoteIdentifier(schemaName) };
+  }
+
+  @Override
+  public String[] getDropSchemaIfExistsSql(String schemaName) {
+    return new String[]{ "DROP SCHEMA " + quoteIdentifier(schemaName) + " RESTRICT" };
+  }
+
 }

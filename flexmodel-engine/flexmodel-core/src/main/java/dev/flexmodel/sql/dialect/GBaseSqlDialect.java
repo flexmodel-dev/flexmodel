@@ -73,4 +73,14 @@ public class GBaseSqlDialect extends InformixSqlDialect {
     return "drop schema " + quoteIdentifier(schemaName);
   }
 
+  @Override
+  public String[] getCreateSchemaIfNotExistsSql(String schemaName) {
+    return new String[]{ "CREATE SCHEMA IF NOT EXISTS " + quoteIdentifier(schemaName) };
+  }
+
+  @Override
+  public String[] getDropSchemaIfExistsSql(String schemaName) {
+    return new String[]{ "DROP SCHEMA IF EXISTS " + quoteIdentifier(schemaName) };
+  }
+
 }

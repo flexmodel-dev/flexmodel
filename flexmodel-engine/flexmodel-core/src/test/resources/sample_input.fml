@@ -1,0 +1,53 @@
+// 班级模型
+model Classes {
+  id: Long @id @default(autoIncrement()),
+  classCode? : String @length(255),
+  className? : String @length(255),
+}
+
+// 学生模型
+model Student {
+  id: String @id @default(uuid()),
+  studentName? : String @length(255),
+  gender? : UserGender,
+  age? : Int,
+  classId? : Long,
+  score? : Float,
+  active? : Boolean @default("true"),
+  profile? : JSON,
+  createdAt? : DateTime @default(now()),
+}
+
+// 性别枚举
+enum UserGender {
+  UNKNOWN,
+  MALE,
+  FEMALE
+}
+
+// 班级种子数据
+seed Classes {
+  { classCode: "CLS001", className: "一班" },
+  { classCode: "CLS002", className: "二班" },
+  { classCode: "CLS003", className: "三班" },
+}
+
+// 学生种子数据（带注解）
+seed Student @strategy("skip_exists") @match("studentName") {
+  { studentName: "张三", gender: "MALE", age: 18, score: 95.5, active: true },
+  { studentName: "李四", gender: "FEMALE", age: 17, score: 88.0, active: true },
+  { studentName: "王五", gender: "MALE", age: 19, score: null, active: false },
+}
+
+// 带嵌套对象和数组的种子数据
+seed Student {
+  {
+    studentName: "赵六",
+    age: 20,
+    profile: {
+      hobby: "编程",
+      level: 5,
+      skills: ["Java", "Python", "SQL"],
+    },
+  },
+}

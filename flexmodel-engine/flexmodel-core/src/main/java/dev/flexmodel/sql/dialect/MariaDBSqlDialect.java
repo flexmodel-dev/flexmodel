@@ -158,4 +158,14 @@ public class MariaDBSqlDialect extends SqlDialect {
     return null;
   }
 
+  @Override
+  public String[] getCreateSchemaIfNotExistsSql(String schemaName) {
+    return new String[]{ "CREATE DATABASE IF NOT EXISTS " + quoteIdentifier(schemaName) };
+  }
+
+  @Override
+  public String[] getDropSchemaIfExistsSql(String schemaName) {
+    return new String[]{ "DROP DATABASE IF EXISTS " + quoteIdentifier(schemaName) };
+  }
+
 }

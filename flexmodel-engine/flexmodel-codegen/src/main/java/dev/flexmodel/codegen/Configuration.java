@@ -33,6 +33,7 @@ public class Configuration implements Serializable {
       // read from script
       String[] importScripts = schema.getImportScript().split(",");
       for (String importScript : importScripts) {
+        importScript = importScript.trim();
         File scriptFile = Path.of(schema.getBaseDir(), importScript).toFile();
         System.out.println("Import Script File Path: " + scriptFile.getAbsolutePath());
         if (scriptFile.exists()) {
@@ -47,21 +48,21 @@ public class Configuration implements Serializable {
               System.out.println("Parse file error: " + importScript);
               throw new RuntimeException(e);
             }
-          } else if (importScript.endsWith(".idl")) {
+          } else if (importScript.endsWith(".fml")) {
             try {
               String content = Files.readString(scriptFile.toPath());
-              ModelParser modelParser = new ModelParser(new ByteArrayInputStream(content.getBytes()));
-              List<ModelParser.ASTNode> list = modelParser.CompilationUnit();
-              for (ModelParser.ASTNode astNode : list) {
-                models.add(ASTNodeConverter.toSchemaObject(astNode));
-              }
+              ASTNodeConverter.FMLParseResult result = ASTNodeConverter.parseFML(content);
+              models.addAll(result.getModels());
+              data.addAll(result.getSeeds());
             } catch (IOException | ParseException e) {
               System.out.println("Parse file error: " + importScript);
               throw new RuntimeException(e);
             }
           } else {
-            System.out.println("Unsupported script file type: " + importScript + ", must be .json or .idl");
+            System.out.println("Unsupported script file type: " + importScript + ", must be .json or .fml");
           }
+        } else {
+          System.err.println("WARNING: Import script file not found: " + scriptFile.getAbsolutePath());
         }
       }
       ModelImportBundle importDescribe = new ModelImportBundle();

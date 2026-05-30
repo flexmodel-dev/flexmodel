@@ -4,8 +4,8 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.domain.model.settings.Settings;
-import dev.flexmodel.interfaces.rest.jwt.JwtUtil;
+import dev.flexmodel.settings.Settings;
+import dev.flexmodel.common.config.web.jwt.JwtUtil;
 
 import java.time.Duration;
 

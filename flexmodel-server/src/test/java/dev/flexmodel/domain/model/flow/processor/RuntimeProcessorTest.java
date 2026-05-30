@@ -1,6 +1,6 @@
-package dev.flexmodel.domain.model.flow.processor;
+package dev.flexmodel.flow.processor;
 
-import dev.flexmodel.domain.model.flow.dto.result.*;
+import dev.flexmodel.flow.dto.result.*;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -9,15 +9,15 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.codegen.entity.FlowDeployment;
-import dev.flexmodel.domain.model.flow.dto.bo.ElementInstance;
-import dev.flexmodel.domain.model.flow.dto.bo.NodeInstance;
-import dev.flexmodel.domain.model.flow.dto.param.CommitTaskParam;
-import dev.flexmodel.domain.model.flow.dto.param.RollbackTaskParam;
-import dev.flexmodel.domain.model.flow.dto.param.StartProcessParam;
-import dev.flexmodel.domain.model.flow.repository.FlowDeploymentRepository;
-import dev.flexmodel.domain.model.flow.shared.EntityBuilder;
-import dev.flexmodel.domain.model.flow.shared.common.ErrorEnum;
-import dev.flexmodel.shared.utils.JsonUtils;
+import dev.flexmodel.flow.dto.bo.ElementInstance;
+import dev.flexmodel.flow.dto.bo.NodeInstance;
+import dev.flexmodel.flow.dto.param.CommitTaskParam;
+import dev.flexmodel.flow.dto.param.RollbackTaskParam;
+import dev.flexmodel.flow.dto.param.StartProcessParam;
+import dev.flexmodel.flow.repository.FlowDeploymentRepository;
+import dev.flexmodel.domain.model.flow.EntityBuilder;
+import dev.flexmodel.flow.common.ErrorEnum;
+import dev.flexmodel.common.utils.JsonUtils;
 
 import java.util.HashMap;
 import java.util.Map;

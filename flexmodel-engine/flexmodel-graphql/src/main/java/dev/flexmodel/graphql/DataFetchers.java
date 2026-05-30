@@ -1,6 +1,7 @@
 package dev.flexmodel.graphql;
 
 import graphql.schema.DataFetcher;
+import dev.flexmodel.codegen.StringUtils;
 import dev.flexmodel.session.SessionFactory;
 
 import java.util.function.BiFunction;
@@ -9,14 +10,14 @@ import java.util.function.BiFunction;
  * @author cjbi
  */
 public enum DataFetchers {
-  FIND((schema, model) -> schema + "_list" + "_" + model, FlexmodelListDataFetcher::new, true),
-  FIND_ONE((schema, model) -> schema + "_find_one" + "_" + model, FlexmodelFindOneDataFetcher::new, true),
-  AGGREGATE((schema, model) -> schema + "_aggregate" + "_" + model, FlexmodelAggregateDataFetcher::new, true),
-  MUTATION_DELETE((schema, model) -> schema + "_" + "delete_" + model, FlexmodelMutationDeleteDataFetcher::new, false),
-  MUTATION_DELETE_BY_ID((schema, model) -> schema + "_" + "delete_" + model + "_by_id", FlexmodelMutationDeleteByIdDataFetcher::new, false),
-  MUTATION_CREATE((schema, model) -> schema + "_" + "create_" + model, FlexmodelMutationCreateDataFetcher::new, false),
-  MUTATION_UPDATE((schema, model) -> schema + "_" + "update_" + model, FlexmodelMutationUpdateDataFetcher::new, false),
-  MUTATION_UPDATE_BY_ID((schema, model) -> schema + "_" + "update_" + model + "_by_id", FlexmodelMutationUpdateByIdDataFetcher::new, false);
+  FIND((schema, model) -> model, FlexmodelListDataFetcher::new, true),
+  BY_ID((schema, model) -> model + "ById", FlexmodelByIdDataFetcher::new, true),
+  AGGREGATE((schema, model) -> model + "Aggregate", FlexmodelAggregateDataFetcher::new, true),
+  MUTATION_DELETE((schema, model) -> "delete" + StringUtils.capitalize(model), FlexmodelMutationDeleteDataFetcher::new, false),
+  MUTATION_DELETE_BY_ID((schema, model) -> "delete" + StringUtils.capitalize(model) + "ById", FlexmodelMutationDeleteByIdDataFetcher::new, false),
+  MUTATION_CREATE((schema, model) -> "create" + StringUtils.capitalize(model), FlexmodelMutationCreateDataFetcher::new, false),
+  MUTATION_UPDATE((schema, model) -> "update" + StringUtils.capitalize(model), FlexmodelMutationUpdateDataFetcher::new, false),
+  MUTATION_UPDATE_BY_ID((schema, model) -> "update" + StringUtils.capitalize(model) + "ById", FlexmodelMutationUpdateByIdDataFetcher::new, false);
 
   private final BiFunction<String, String, String> keyFunc;
   private final DataFetcherFunc dataFetcherFunc;

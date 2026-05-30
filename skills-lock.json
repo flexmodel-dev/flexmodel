@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "harness-creator": {
+      "source": "walkinglabs/learn-harness-engineering",
+      "sourceType": "github",
+      "skillPath": "skills/harness-creator/SKILL.md",
+      "computedHash": "a87a708b46d85f81eccfc1ea2b1d472328bb08e1a27f14c633de29bc0388fbe3"
+    }
+  }
+}

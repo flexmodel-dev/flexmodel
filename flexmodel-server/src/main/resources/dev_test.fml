@@ -1,0 +1,83 @@
+model Teacher {
+  id : Long @id @default(autoIncrement()),
+  teacherName? : String @length("255"),
+  subject? : String @length("255"),
+  @index(name:"IDX_TEACHER_NAME", unique: "false", fields: [teacherName]),
+  @comment("教师")
+}
+model Student {
+  id : Long @id @default(autoIncrement()),
+  studentName? : String @length("255"),
+  gender? : UserGender,
+  interest? : user_interest[],
+  age? : Int,
+  classId? : Long,
+  studentClass? : Classes @comment("班级") @relation(localField: "classId", foreignField: "id", cascadeDelete: "false"),
+  studentDetail? : StudentDetail @relation(localField: "id", foreignField: "studentId", cascadeDelete: "true"),
+  @index(name: "IDX_STUDENT_NAME",unique: "false", fields: [studentName]),
+  @index(name:"IDX_CLASS_ID", unique: "false", fields: [classId]),
+  @comment("学生")
+}
+model StudentDetail {
+  id : Long @id @default(autoIncrement()),
+  studentId? : Long,
+  student? : Student @comment("学生") @relation(localField: "studentId", foreignField: "id", cascadeDelete: "false"),
+  description? : String @length("255"),
+  @comment("学生详情")
+}
+model Classes {
+  id : Long @id @default(autoIncrement()),
+  classCode? : String @length("255"),
+  className? : String @length("255"),
+  students? : Student[] @relation(localField: "id", foreignField: "classId", cascadeDelete: "true"),
+  @index(name:"IDX_CLASS_CODE", unique: "false", fields: [classCode]),
+  @comment("班级")
+}
+model Course {
+  courseNo : String @id @default(uuid()),
+  courseName? : String @length("255"),
+  @index(name:"IDX_COURSE_NO", unique: "false", fields: [courseNo]),
+  @comment("课程")
+}
+enum UserGender {
+  UNKNOWN,
+  MALE,
+  FEMALE
+}
+enum user_interest {
+  chang,
+  tiao,
+  rap,
+  daLanQiu
+}
+
+// ==============================
+// 种子数据 (seed)
+// ==============================
+
+seed Course {
+  {courseNo: "Math", courseName: "数学"},
+  {courseNo: "YuWen", courseName: "语文"},
+  {courseNo: "Eng", courseName: "英语"},
+  {courseNo: "History", courseName: "历史"},
+  {courseNo: "politics", courseName: "政治"},
+}
+
+seed Classes {
+  {id: 1, className: "一年级1班", classCode: "C_001"},
+  {id: 2, className: "一年级2班", classCode: "C_002"},
+  {id: 3, className: "二年级1班", classCode: "C_003"},
+}
+
+seed Student {
+  {id: 1, studentName: "张三", gender: "MALE", interest: ["chang", "tiao", "rap", "daLanQiu"], age: 10, classId: 1, studentDetail: {description: "张三的描述"}},
+  {id: 2, studentName: "李四", gender: "FEMALE", interest: ["chang", "tiao"], age: 10, classId: 1, studentDetail: {description: "李四的描述"}},
+  {id: 3, studentName: "王五", interest: ["daLanQiu"], gender: "MALE", age: 11, classId: 2, studentDetail: {description: "王五的描述"}},
+}
+
+seed Teacher {
+  {id: 1, teacherName: "张老师", subject: "数学", students: [{id: 1}, {id: 2}, {id: 3}]},
+  {id: 2, teacherName: "李老师", subject: "语文", students: [{id: 1}, {id: 2}, {id: 3}]},
+  {id: 3, teacherName: "王老师", subject: "英语", students: [{id: 1}, {id: 3}]},
+}
+

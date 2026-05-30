@@ -34,31 +34,31 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     createTeacherData(session, teacherEntityName);
 
     FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
-    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, sessionFactory.getSchemaNames());
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
     // 创建查询
     String query = """
       query {
-        classes: system_list_testQueryClasses(
+        classes: testQueryClasses(
          page: 1,
          size:1,
-         where: {classCode: {_eq: "C_001"}, _and: [{className: {_eq: "一年级1班"}}, {_or: [{classCode: { _eq: "C_002"}}]}]}
+         where: {classCode: {_eq: "C_001"}, and: [{className: {_eq: "一年级1班"}}, {or: [{classCode: { _eq: "C_002"}}]}]}
         ) {
           id, classCode, className, students { name: studentName }
         }
-        students: system_list_testQueryStudent(
+        students: testQueryStudent(
           size: 3
           page: 1
-          order_by: {classId: asc, id: desc}
+          orderBy: {classId: asc, id: desc}
         ) {
           id, studentName
         }
-        teachers: system_list_testQueryTeacher {
+        teachers: testQueryTeacher {
          id, teacherName
         }
-        aggregate: system_aggregate_testQueryStudent {
+        aggregate: testQueryStudentAggregate {
            _count
         }
-        aggregate2: system_aggregate_testQueryStudent {
+        aggregate2: testQueryStudentAggregate {
            total: _count(distinct: true, field: id)
            _max {
              id, age
@@ -73,17 +73,17 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
              age
            }
         }
-        system_list_testQueryStudent {
+        testQueryStudent {
           age
           classId
           gender
           id
           studentName
           _join {
-            system_aggregate_Student {
+            testQueryStudentAggregate {
               _count
             }
-            system_list_testQueryStudent(size:10, page:1) {
+            testQueryStudent(size:10, page:1) {
               age
               classId
               gender
@@ -120,17 +120,17 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     createTeacherData(session, teacherEntityName);
 
     FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
-    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, sessionFactory.getSchemaNames());
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
     String query = """
       query {
-        list: system_list_testDirectiveStudent {
+        list: testDirectiveStudent {
           classId
           studentName
         }
-        total: system_aggregate_testDirectiveStudent @transform(get: "_count") {
+        total: testDirectiveStudentAggregate @transform(get: "_count") {
            _count
         }
-        avgAge: system_aggregate_testDirectiveStudent @transform(get: "_avg.age") {
+        avgAge: testDirectiveStudentAggregate @transform(get: "_avg.age") {
           _avg {
             age
           }
@@ -166,23 +166,23 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     createTeacherData(session, teacherEntityName);
 
     FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
-    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, sessionFactory.getSchemaNames());
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
     String query = """
-      query ($classId: Int = 1, $studentId: Int @internal) {
-        class: system_find_one_testJoinClasses(where: { id: { _eq: $classId } }) {
+      query ($classId: Int = 1, $classById: ID = 1, $studentId: Int @internal) {
+        class: testJoinClassesById(id: $classById) {
           className
           id
           _join {
-            students: system_list_testJoinStudent(where: { classId: { _eq: $classId } }) {
+            students: testJoinStudent(where: { classId: { _eq: $classId } }) {
               id @export(as: "studentId")
               studentName
               _join {
-                detail: system_find_one_testJoinStudentDetail(where: { studentId: { _eq: $studentId } }) {
+                detail: testJoinStudentDetail(size: 1, where: { studentId: { _eq: $studentId } }) {
                   description
                 }
               }
             }
-            total: system_aggregate_testJoinStudent(where: { classId: { _eq: $classId } }) {
+            total: testJoinStudentAggregate(where: { classId: { _eq: $classId } }) {
               _count
             }
           }
@@ -216,18 +216,18 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     createTeacherData(session, teacherEntityName);
 
     FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
-    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, sessionFactory.getSchemaNames());
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
     // 创建查询
     String query = """
       mutation {
-        class: system_create_testMutationClasses(data:{className: "测试班级", classCode: "TestC"}) {
+        class: createTestMutationClasses(data:{className: "测试班级", classCode: "TestC"}) {
           classCode
         }
-        course: system_create_testMutationCourse(data: {courseName: "测试课程", courseNo: "Test_CC"}) {
+        course: createTestMutationCourse(data: {courseName: "测试课程", courseNo: "Test_CC"}) {
             courseName
             courseNo
         }
-        student: system_create_testMutationStudent(data: {studentName: "张三丰", gender: MALE, age: 200, classId: 1, remark: {test:"aa"}}) {
+        student: createTestMutationStudent(data: {studentName: "张三丰", gender: MALE, age: 200, classId: 1, remark: {test:"aa"}}) {
             id
             remark
         }
@@ -241,10 +241,10 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     Assertions.assertNotNull(data.get("student"));
     String query2 = """
       mutation MyMutation($studentId: ID!, $courseNo: ID!) {
-        class: system_delete_testMutationCourse_by_id(id: $courseNo) {
+        class: deleteTestMutationCourseById(id: $courseNo) {
           courseNo
         }
-        student: system_update_testMutationStudent_by_id(_set: {age: 199, remark: {test: "bb"}}, id: $studentId) {
+        student: updateTestMutationStudentById(set: {age: 199, remark: {test: "bb"}}, id: $studentId) {
           id
         }
       }

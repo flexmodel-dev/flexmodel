@@ -185,6 +185,64 @@ public class ModelParser {
 
     }
 
+    // Seed 对象，保存种子数据声明
+    public static class Seed implements ASTNode {
+        public String modelName;
+        public List<Annotation> annotations = new ArrayList<>();
+        public List<Map<String, Object>> records = new ArrayList<>();
+        public Seed(String modelName) { this.modelName = modelName; }
+        public void addRecord(Map<String, Object> record) { records.add(record); }
+        public void addAnnotation(Annotation ann) { annotations.add(ann); }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("seed ").append(modelName);
+            for (Annotation ann : annotations) {
+                sb.append(" ").append(ann.toString());
+            }
+            sb.append(" {\n");
+            for (Map<String, Object> record : records) {
+                sb.append("  ").append(mapToString(record)).append(",\n");
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+
+        private String mapToString(Map<?, ?> map) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{");
+            boolean first = true;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (!first) sb.append(", ");
+                first = false;
+                sb.append(entry.getKey()).append(": ");
+                sb.append(valueToString(entry.getValue()));
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+
+        private String valueToString(Object value) {
+            if (value == null) return "null";
+            if (value instanceof String) return "\"" + value + "\"";
+            if (value instanceof List) {
+                List<?> lst = (List<?>) value;
+                StringBuilder sb = new StringBuilder("[");
+                boolean first = true;
+                for (Object elem : lst) {
+                    if (!first) sb.append(", ");
+                    first = false;
+                    sb.append(valueToString(elem));
+                }
+                sb.append("]");
+                return sb.toString();
+            }
+            if (value instanceof Map) return mapToString((Map<?, ?>) value);
+            return value.toString();
+        }
+    }
+
     public static void main(String[] args) throws ParseException {
         ModelParser parser = new ModelParser(System.in);
         List ast = parser.CompilationUnit();
@@ -207,6 +265,10 @@ SKIP : { <MULTI_LINE_COMMENT: "/*" (~["*"] | "*" ~["/"])* "*/" > }
 /* 关键字和符号 */
 TOKEN : { < MODEL: "model" > }
 TOKEN : { < ENUM: "enum" > }
+TOKEN : { < SEED: "seed" > }
+TOKEN : { < TRUE: "true" > }
+TOKEN : { < FALSE: "false" > }
+TOKEN : { < NULL: "null" > }
 TOKEN : { < AT: "@" > }
 TOKEN : { < COLON: ":" > }
 TOKEN : { < COMMA: "," > }
@@ -217,11 +279,11 @@ TOKEN : { < LBRACE: "{" > }
 TOKEN : { < RBRACE: "}" > }
 TOKEN : { < LBRACKET: "[" > }
 TOKEN : { < RBRACKET: "]" > }
-TOKEN : { < STRING_LITERAL: "\"" (~["\"", "\\"])* "\"" > }
+TOKEN : { < STRING_LITERAL: "\"" ( ~["\"", "\\"] | "\\" ["\"", "\\", "n", "r", "t", "b", "f", "/"] )* "\"" > }
 TOKEN : { < INTEGER_LITERAL: (["0"-"9"])+ > }
-TOKEN : { < TRUE: "true" > }
-TOKEN : { < FALSE: "false" > }
 TOKEN : { < IDENTIFIER: (["a"-"z", "A"-"Z", "_"]) (["a"-"z", "A"-"Z", "0"-"9", "_"])* > }
+TOKEN : { < MINUS: "-" > }
+TOKEN : { < DOT: "." > }
 
 /* 入口产生式，返回 AST 节点列表 */
 List CompilationUnit() : { List astList = new ArrayList(); Object node; }
@@ -229,6 +291,7 @@ List CompilationUnit() : { List astList = new ArrayList(); Object node; }
     (
         node = ModelDeclaration() { astList.add(node); }
       | node = EnumDeclaration()  { astList.add(node); }
+      | node = SeedDeclaration()  { astList.add(node); }
     )* <EOF>
     { return astList; }
 }
@@ -396,4 +459,103 @@ String Type() : { String baseType; }
 String Identifier() : { Token t; }
 {
     t = <IDENTIFIER> { return t.image; }
+}
+
+/* ========== Seed 数据声明相关产生式 ========== */
+
+/* 解析 seed 声明，返回 Seed 对象 */
+Seed SeedDeclaration() : {
+    String modelName;
+    Seed seed;
+    Annotation ann;
+}
+{
+    <SEED> modelName = Identifier()
+    { seed = new Seed(modelName); }
+    ( ann = SeedAnnotationDecl() { seed.addAnnotation(ann); } )*
+    <LBRACE>
+    ( SeedRecordList(seed) )?
+    <RBRACE>
+    { return seed; }
+}
+
+/* Seed 专用注解产生式 */
+Annotation SeedAnnotationDecl() : { String annName; Annotation ann; }
+{
+    <AT> annName = Identifier()
+    {
+       ann = new Annotation(annName);
+    }
+    ( <LPAREN> AnnotationArguments(ann) <RPAREN> )?
+    { return ann; }
+}
+
+/* 解析种子记录列表 */
+void SeedRecordList(Seed seed) : { Map<String, Object> record; }
+{
+    record = SeedRecord() { seed.addRecord(record); }
+    ( LOOKAHEAD(<COMMA> <LBRACE>) <COMMA> record = SeedRecord() { seed.addRecord(record); } )*
+    ( <COMMA> )?
+}
+
+/* 解析单条种子记录 { key: value, ... } */
+Map<String, Object> SeedRecord() : {
+    Map<String, Object> record = new LinkedHashMap();
+}
+{
+    <LBRACE>
+    ( SeedPairList(record) )?
+    <RBRACE>
+    { return record; }
+}
+
+/* 解析键值对列表 */
+void SeedPairList(Map<String, Object> map) : { String key; Object value; }
+{
+    key = SeedKey() <COLON> value = SeedValue() { map.put(key, value); }
+    ( LOOKAHEAD(<COMMA> (<IDENTIFIER> | <STRING_LITERAL>) <COLON>) <COMMA> key = SeedKey() <COLON> value = SeedValue() { map.put(key, value); } )*
+    ( <COMMA> )?
+}
+
+/* 解析种子键名，支持标识符和字符串字面量 */
+String SeedKey() : { Token t; }
+{
+    t = <IDENTIFIER> { return t.image; }
+  | t = <STRING_LITERAL> { return t.image.substring(1, t.image.length()-1); }
+}
+
+/* 解析种子值，支持多种类型 */
+Object SeedValue() : { Token t; Token t2; Object s; String id; }
+{
+    LOOKAHEAD(<IDENTIFIER> <LPAREN>) s = FunctionCall() { return s; }
+  | t = <STRING_LITERAL> { return t.image.substring(1, t.image.length()-1); }
+  | LOOKAHEAD(<MINUS> <INTEGER_LITERAL> <DOT>) <MINUS> t = <INTEGER_LITERAL> <DOT> t2 = <INTEGER_LITERAL> { return -Double.parseDouble(t.image + "." + t2.image); }
+  | LOOKAHEAD(<MINUS> <INTEGER_LITERAL>) <MINUS> t = <INTEGER_LITERAL> { return -Long.parseLong(t.image); }
+  | LOOKAHEAD(<INTEGER_LITERAL> <DOT>) t = <INTEGER_LITERAL> <DOT> t2 = <INTEGER_LITERAL> { return Double.parseDouble(t.image + "." + t2.image); }
+  | t = <INTEGER_LITERAL> { return Long.parseLong(t.image); }
+  | t = <TRUE> { return Boolean.TRUE; }
+  | t = <FALSE> { return Boolean.FALSE; }
+  | <NULL> { return null; }
+  | s = SeedArray() { return s; }
+  | s = SeedObject() { return s; }
+}
+
+/* 解析种子数组值 */
+List SeedArray() : { List list = new ArrayList(); Object elem; }
+{
+    <LBRACKET>
+    ( elem = SeedValue() { list.add(elem); } ( <COMMA> elem = SeedValue() { list.add(elem); } )* ( <COMMA> )? )?
+    <RBRACKET>
+    { return list; }
+}
+
+/* 解析种子嵌套对象值 */
+Map<String, Object> SeedObject() : {
+    Map<String, Object> map = new LinkedHashMap();
+}
+{
+    <LBRACE>
+    ( SeedPairList(map) )?
+    <RBRACE>
+    { return map; }
 }

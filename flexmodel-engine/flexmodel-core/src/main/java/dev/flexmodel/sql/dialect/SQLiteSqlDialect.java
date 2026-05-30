@@ -109,4 +109,14 @@ public class SQLiteSqlDialect extends SqlDialect {
     return "";
   }
 
+  @Override
+  public String[] getCreateSchemaIfNotExistsSql(String schemaName) {
+    return new String[]{ "" };
+  }
+
+  @Override
+  public String[] getDropSchemaIfExistsSql(String schemaName) {
+    return new String[]{ "" };
+  }
+
 }

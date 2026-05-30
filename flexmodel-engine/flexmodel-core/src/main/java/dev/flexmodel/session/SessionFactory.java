@@ -25,6 +25,7 @@ import dev.flexmodel.parser.impl.ModelParser;
 import dev.flexmodel.parser.impl.ParseException;
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.EventAwareDataService;
+import dev.flexmodel.ModelImportBundle;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -86,44 +87,28 @@ public class SessionFactory {
     });
   }
 
-  public void loadIDLString(String schemaName, String idlString) {
+  public void loadFMLString(String schemaName, String fmlString) {
     try {
-      // 处理空字符串或只包含空白字符的字符串
-      if (idlString == null || idlString.trim().isEmpty()) {
-        log.info("Empty or null IDL string provided for schema: {}", schemaName);
+      if (fmlString == null || fmlString.trim().isEmpty()) {
+        log.info("Empty or null FML string provided for schema: {}", schemaName);
         return;
       }
 
-      // 创建IDL解析器
-      ModelParser parser =
-        new ModelParser(new java.io.StringReader(idlString));
+      ASTNodeConverter.FMLParseResult result = ASTNodeConverter.parseFML(fmlString);
 
-      // 解析IDL字符串，获取AST节点列表
-      List<ModelParser.ASTNode> ast = parser.CompilationUnit();
-
-      // 将AST节点转换为SchemaObject列表
-      List<SchemaObject> schema = new ArrayList<>();
-      for (ModelParser.ASTNode obj : ast) {
-        SchemaObject schemaObject = ASTNodeConverter.toSchemaObject(obj);
-        if (schemaObject != null) {
-          schema.add(schemaObject);
-        } else {
-          log.warn("Failed to convert AST node to SchemaObject: {}", obj);
-        }
-      }
-
-      // 使用故障安全会话处理模型 - 使用默认数据源
       try (Session session = createFailsafeSession(schemaName)) {
-        processModels(schema, session);
+        processModels(result.getModels(), session);
+        processImportData(result.getSeeds(), session);
       }
 
-      log.info("Successfully loaded {} models from IDL for schema: {}", schema.size(), schemaName);
+      log.info("Successfully loaded {} models and {} seeds from FML for schema: {}",
+        result.getModels().size(), result.getSeeds().size(), schemaName);
     } catch (ParseException e) {
-      log.error("Failed to parse IDL string for schema {}: {}", schemaName, e.getMessage(), e);
-      throw new RuntimeException("IDL parsing failed: " + e.getMessage(), e);
+      log.error("Failed to parse FML string for schema {}: {}", schemaName, e.getMessage(), e);
+      throw new RuntimeException("FML parsing failed: " + e.getMessage(), e);
     } catch (Exception e) {
-      log.error("Failed to load IDL string for schema {}: {}", schemaName, e.getMessage(), e);
-      throw new RuntimeException("Failed to load IDL: " + e.getMessage(), e);
+      log.error("Failed to load FML string for schema {}: {}", schemaName, e.getMessage(), e);
+      throw new RuntimeException("Failed to load FML: " + e.getMessage(), e);
     }
   }
 
@@ -142,13 +127,13 @@ public class SessionFactory {
         throw new RuntimeException("Script file not found: " + scriptName);
       }
       String scriptString = new String(is.readAllBytes());
-      if (scriptName.endsWith(".json")) {
+      if (scriptName.endsWith(".fml")) {
+        loadFMLString(schemaName, scriptString);
+      } else if (scriptName.endsWith(".json")) {
         loadJSONString(schemaName, scriptString);
-      } else if (scriptName.endsWith(".idl")) {
-        loadIDLString(schemaName, scriptString);
       } else {
         // unsupported script type
-        log.warn("Unsupported script type: {}, must be .json or .idl", scriptName);
+        log.warn("Unsupported script type: {}, must be .fml or .json", scriptName);
       }
     } catch (IOException e) {
       log.error("Failed to read import script: {}", e.getMessage(), e);
@@ -163,7 +148,7 @@ public class SessionFactory {
     Map<String, SchemaObject> wrapperMap = session.schema().listModels().stream().collect(Collectors.toMap(SchemaObject::getName, m -> m));
     for (SchemaObject model : models) {
       SchemaObject older = wrapperMap.get(model.getName());
-      if (older != null && Objects.equals(older.getIdl(), model.getIdl())) {
+      if (older != null && Objects.equals(older.getFml(), model.getFml())) {
         continue;
       }
       if (model instanceof EntityDefinition newer) {

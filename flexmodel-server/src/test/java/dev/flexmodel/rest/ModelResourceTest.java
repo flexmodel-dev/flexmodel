@@ -3,6 +3,7 @@ package dev.flexmodel.rest;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -13,12 +14,35 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 @QuarkusTest
 class ModelResourceTest {
 
+  // 测试表名列表，用于清理
+  private static final String[] TEST_TABLE_NAMES = {
+    "testCreateModelStudent",
+    "testDropModelStudent",
+    "testCreateFieldStudent",
+    "testModifyFieldStudent",
+    "testDropFieldStudent",
+    "testCreateIndexStudent",
+    "testModifyIndexStudent",
+    "testDropIndexStudent"
+  };
+
+  @BeforeEach
+  void cleanupTestModels() {
+    // 清理测试创建的模型
+    for (String tableName : TEST_TABLE_NAMES) {
+      given()
+        .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+        .when()
+        .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}", tableName);
+    }
+  }
+
   @Test
   void testFindModels() {
     given()
       .header("Authorization", TestTokenHelper.getAuthorizationHeader())
       .when()
-      .get(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models", "system")
+      .get(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200)
       .body("size()", greaterThanOrEqualTo(1));
@@ -71,7 +95,7 @@ class ModelResourceTest {
           ]
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models", "sqlite_test")
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200);
   }
@@ -133,14 +157,14 @@ class ModelResourceTest {
           ]
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models", "sqlite_test")
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200);
     given()
       .header("Authorization", TestTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
-      .delete(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models/{modelName}", "sqlite_test", "testDropModel")
+      .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}", "testDropModel")
       .then()
       .statusCode(204);
   }
@@ -202,7 +226,7 @@ class ModelResourceTest {
           ]
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models", "sqlite_test")
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200);
     given()
@@ -219,7 +243,7 @@ class ModelResourceTest {
           "length": 255
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models/{modelName}/fields", "sqlite_test", "testCreateFieldStudent")
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/fields", "testCreateFieldStudent")
       .then()
       .statusCode(200);
   }
@@ -280,7 +304,7 @@ class ModelResourceTest {
           ]
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models", "sqlite_test")
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200);
     given()
@@ -297,8 +321,7 @@ class ModelResourceTest {
           "length": 500
         }
         """)
-      .put(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models/{modelName}/fields/{fieldName}",
-        "sqlite_test",
+      .put(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/fields/{fieldName}",
         "testModifyFieldStudent",
         "studentName")
       .then()
@@ -363,14 +386,13 @@ class ModelResourceTest {
           "indexes": []
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models", "sqlite_test")
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200);
     given()
       .header("Authorization", TestTokenHelper.getAuthorizationHeader())
       .when()
-      .delete(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models/{modelName}/fields/{fieldName}",
-        "sqlite_test",
+      .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/fields/{fieldName}",
         "testDropFieldStudent",
         "studentName")
       .then()
@@ -433,9 +455,7 @@ class ModelResourceTest {
           ]
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models",
-        "sqlite_test"
-      )
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200);
     given()
@@ -455,8 +475,7 @@ class ModelResourceTest {
           "unique": false
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models/{modelName}/indexes",
-        "sqlite_test",
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/indexes",
         "testCreateIndexStudent"
       )
       .then()
@@ -530,9 +549,7 @@ class ModelResourceTest {
         }]
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models",
-        "sqlite_test"
-      )
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200);
     given()
@@ -552,8 +569,7 @@ class ModelResourceTest {
           "unique": true
         }
         """)
-      .put(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models/{modelName}/indexes/{indexName}",
-        "sqlite_test",
+      .put(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/indexes/{indexName}",
         "testModifyIndexStudent",
         "IDX_gender_wedsd"
       )
@@ -628,17 +644,14 @@ class ModelResourceTest {
         }]
         }
         """)
-      .post(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models",
-        "sqlite_test"
-      )
+      .post(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
       .statusCode(200);
     given()
       .header("Authorization", TestTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
-      .delete(Resources.ROOT_PATH + "/projects/dev_test/datasources/{datasourceName}/models/{modelName}/indexes/{indexName}",
-        "sqlite_test",
+      .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/indexes/{indexName}",
         "testModifyIndexStudent",
         "IDX_gender"
       )

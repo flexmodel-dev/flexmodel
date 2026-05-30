@@ -536,4 +536,27 @@ public abstract class SqlDialect {
     return "drop schema " + quoteIdentifier(schemaName);
   }
 
+  /**
+   * 返回幂等的创建 Schema SQL（IF NOT EXISTS 语义）。
+   * 部分数据库可能需要返回多条 SQL（如 Oracle 需要 CREATE USER + GRANT + QUOTA）。
+   */
+  public String[] getCreateSchemaIfNotExistsSql(String schemaName) {
+    return new String[]{ getCreateSchemaSql(schemaName) };
+  }
+
+  /**
+   * 返回幂等的删除 Schema SQL（IF EXISTS 语义）。
+   */
+  public String[] getDropSchemaIfExistsSql(String schemaName) {
+    return new String[]{ getDropSchemaSql(schemaName) };
+  }
+
+  /**
+   * 是否支持通过 SQL 自动创建 Schema。
+   * Oracle/DM 等数据库的 Schema 等同于用户，需要 DBA 预先创建，返回 false。
+   */
+  public boolean supportsAutoCreateSchema() {
+    return true;
+  }
+
 }

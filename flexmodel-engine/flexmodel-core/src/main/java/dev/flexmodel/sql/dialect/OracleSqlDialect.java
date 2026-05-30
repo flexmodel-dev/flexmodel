@@ -150,4 +150,20 @@ public class OracleSqlDialect extends SqlDialect {
     return "drop user " + quoteIdentifier(schemaName) + " cascade";
   }
 
+  @Override
+  public boolean supportsAutoCreateSchema() {
+    return false;
+  }
+
+  @Override
+  public String[] getCreateSchemaIfNotExistsSql(String schemaName) {
+    // Oracle 的 schema = 用户，需要 DBA 预先创建，此处返回空数组，由 SchemaManager 检查 supportsAutoCreateSchema 后处理
+    return new String[]{};
+  }
+
+  @Override
+  public String[] getDropSchemaIfExistsSql(String schemaName) {
+    return new String[]{ "DROP USER " + quoteIdentifier(schemaName) + " CASCADE" };
+  }
+
 }

@@ -2,7 +2,10 @@ package dev.flexmodel.project.dto;
 
 import lombok.Getter;
 import lombok.Setter;
+import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
+
+import java.util.List;
 
 /**
  * @author cjbi
@@ -12,6 +15,8 @@ import dev.flexmodel.codegen.entity.Project;
 public class ProjectResponse extends Project {
 
   private ProjectStats stats;
+  private List<Branch> branches;
+
   public static ProjectResponse fromProject(Project project) {
     ProjectResponse response = new ProjectResponse();
     response.setId(project.getId());
@@ -22,6 +27,8 @@ public class ProjectResponse extends Project {
     response.setCreatedBy(project.getCreatedBy());
     response.setUpdatedBy(project.getUpdatedBy());
     response.setCreatedAt(project.getCreatedAt());
+    response.setCurrentBranch(project.getCurrentBranch());
+    response.setDatabaseName(project.getDatabaseName());
     return response;
   }
 

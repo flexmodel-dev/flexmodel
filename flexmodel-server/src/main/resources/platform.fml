@@ -4,12 +4,25 @@ model f_project {
   database_name: String,
   description?: String,
   enabled : Boolean @comment("是否启用") @default("true"),
+  current_branch?: String @default("main") @comment("当前活跃分支"),
   owner_id?: String @comment("所有者 ID"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @comment("租户")
+}
+model f_branch {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  name : String @comment("分支名称"),
+  database_name : String @comment("分支数据库名称"),
+  source_branch?: String @default("main") @comment("来源分支"),
+  description? : String @comment("分支描述"),
+  created_by? : String @comment("创建人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  @index(name: "IDX_BRANCH_PROJECT_NAME", unique: true, fields: [project_id, name]),
+  @comment("项目分支")
 }
 model f_user {
   id : String @id @default(uuid()),
@@ -240,8 +253,8 @@ model f_qrtz_lock {
 // ==============================
 
 seed f_project {
-  {id: "default", name: "系统默认", database_name: "system", description: "默认项目", owner_id: "admin", enabled: true},
-  {id: "dev_test", database_name: "dev_test", name: "开发测试", description: "开发测试项目", owner_id: "admin", enabled: true},
+  {id: "default", name: "系统默认", database_name: "system", description: "默认项目", owner_id: "admin", enabled: true, current_branch: "main"},
+  {id: "dev_test", database_name: "dev_test", name: "开发测试", description: "开发测试项目", owner_id: "admin", enabled: true, current_branch: "main"},
 }
 
 seed f_user {

@@ -57,7 +57,7 @@ public class ProjectResource {
       @Content(
         mediaType = "application/json",
         schema = @Schema(
-          implementation = Project.class
+          implementation = ProjectResponse.class
         )
       )
     }
@@ -65,8 +65,8 @@ public class ProjectResource {
   @Operation(summary = "获取项目详情")
   @GET
   @Path("/{projectId}")
-  public Project findProject(@PathParam("projectId") String projectId) {
-    return projectService.findProject(projectId);
+  public ProjectResponse findProject(@PathParam("projectId") String projectId) {
+    return projectService.findProjectResponse(projectId);
   }
 
   @APIResponse(

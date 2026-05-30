@@ -9,7 +9,9 @@ import jakarta.enterprise.inject.Produces;
 import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.common.AuditDataEventListener;
 import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
+import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.branch.BranchRepository;
 import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.common.FlexmodelConfig;
@@ -27,11 +29,17 @@ public class SessionConfig {
   public static final String SYSTEM_DS_KEY = "system";
 
   public void installDatasource(@Observes StartupEvent startupEvent,
-                                ProjectService projectService, SessionDatasource sessionDatasource) {
+                                ProjectService projectService, SessionDatasource sessionDatasource,
+                                BranchRepository branchRepository) {
     long beginTime = System.currentTimeMillis();
     List<Project> projects = projectService.findProjects();
     for (Project project : projects) {
       sessionDatasource.add(project);
+      // 注册非 main 分支的数据库 SchemaProvider
+      List<Branch> branches = branchRepository.findByProjectId(project.getId());
+      for (Branch branch : branches) {
+        sessionDatasource.registerSchema(branch.getDatabaseName());
+      }
     }
     log.info("========== Engine init successful in {} ms!", System.currentTimeMillis() - beginTime);
   }

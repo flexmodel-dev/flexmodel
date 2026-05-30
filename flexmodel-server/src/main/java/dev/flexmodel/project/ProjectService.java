@@ -9,6 +9,9 @@ import dev.flexmodel.common.config.SessionConfig;
 import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.connect.SessionDatasource;
 import dev.flexmodel.flow.service.FlowDeploymentService;
+import dev.flexmodel.codegen.entity.Branch;
+import dev.flexmodel.branch.BranchRepository;
+import dev.flexmodel.branch.BranchService;
 import dev.flexmodel.project.dto.ProjectListRequest;
 import dev.flexmodel.project.dto.ProjectResponse;
 import dev.flexmodel.sql.JdbcSchemaManager;
@@ -36,6 +39,12 @@ public class ProjectService {
   ProjectRepository projectRepository;
 
   @Inject
+  BranchRepository branchRepository;
+
+  @Inject
+  BranchService branchService;
+
+  @Inject
   FlowDeploymentService flowDeploymentService;
   @Inject
   StorageService storageService;
@@ -57,7 +66,7 @@ public class ProjectService {
   public List<ProjectResponse> findProjects(ProjectListRequest request) {
     return projectRepository.findProjects().stream()
       .map(project -> {
-          ProjectResponse response = ProjectResponse.fromProject(project);
+          ProjectResponse response = toProjectResponse(project);
           if (Objects.equals(request.getIncldue(), "stats")) {
             ProjectResponse.ProjectStats projectStats = new ProjectResponse.ProjectStats(
               -1,
@@ -70,8 +79,26 @@ public class ProjectService {
         }
       ).toList();
   }
+
   public Project findProject(String projectId) {
     return projectRepository.findProject(projectId);
+  }
+
+  /**
+   * 获取项目详情（包含分支列表）
+   */
+  public ProjectResponse findProjectResponse(String projectId) {
+    Project project = projectRepository.findProject(projectId);
+    if (project == null) {
+      return null;
+    }
+    return toProjectResponse(project);
+  }
+
+  private ProjectResponse toProjectResponse(Project project) {
+    ProjectResponse response = ProjectResponse.fromProject(project);
+    response.setBranches(branchService.listBranches(project.getId()));
+    return response;
   }
 
   public Project createProject(Project project) {
@@ -89,6 +116,7 @@ public class ProjectService {
       project.setDatabaseName(project.getId());
     }
     project.setOwnerId(SessionContextHolder.getUserId());
+    project.setCurrentBranch("main");
 
     // 1. 创建物理 Schema
     DataSource systemDs = getSystemDataSource();
@@ -128,6 +156,13 @@ public class ProjectService {
       throw new IllegalArgumentException("默认项目不能删除");
     }
     Project project = findProject(projectId);
+
+    // 0. 删除所有非 main 分支记录和取消注册 SchemaProvider
+    List<Branch> branches = branchRepository.findByProjectId(projectId);
+    for (Branch branch : branches) {
+      sessionDatasource.unregisterSchema(branch.getDatabaseName());
+      branchRepository.delete(projectId, branch.getName());
+    }
 
     // 1. 取消注册 SchemaProvider
     sessionDatasource.unregisterSchema(project.getDatabaseName());

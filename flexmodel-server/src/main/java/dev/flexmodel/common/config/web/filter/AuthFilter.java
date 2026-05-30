@@ -103,7 +103,13 @@ public class AuthFilter implements ContainerRequestFilter {
         throw new AuthException("Project not found");
       }
       SessionContextHolder.setProjectId(projectId);
-      SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
+      String currentBranch = project.getCurrentBranch();
+      if (!"main".equals(currentBranch)) {
+        SessionContextHolder.setProjectDatabaseName(project.getDatabaseName() + "_" + currentBranch);
+      } else {
+        SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
+      }
+      SessionContextHolder.setBranchName(currentBranch);
     } else {
       SessionContextHolder.setProjectId(null);
       SessionContextHolder.setProjectDatabaseName(null);

@@ -34,6 +34,14 @@ public class SessionContextHolder {
     return CONTEXT_HOLDER.get().getUserId();
   }
 
+  public static void setBranchName(String branchName) {
+    CONTEXT_HOLDER.get().setBranchName(branchName);
+  }
+
+  public static String getBranchName() {
+    return CONTEXT_HOLDER.get().getBranchName();
+  }
+
 
   @Getter
   @Setter
@@ -41,6 +49,7 @@ public class SessionContextHolder {
     private String projectId;
     private String projectDatabaseName;
     private String userId;
+    private String branchName;
   }
 
 }

@@ -1,5 +1,7 @@
 package dev.flexmodel.api.consumer;
 
+import dev.flexmodel.project.BranchService;
+import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.graphql.FlexmodelGraphQL;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.vertx.ConsumeEvent;
@@ -32,6 +34,8 @@ public class GraphQLEventConsumer {
   GraphQLManager graphQLManger;
   @Inject
   ProjectService projectService;
+  @Inject
+  BranchService branchService;
 
   public void handle(@Observes StartupEvent startupEvent) {
     consume(new GraphQLRefreshEvent());
@@ -56,15 +60,19 @@ public class GraphQLEventConsumer {
    */
   public void refreshProject(Project project) {
     try {
-      String schemaName = project.getDatabaseName();
-      log.info("Refreshing GraphQL for project '{}', schemaName='{}'", project.getId(), schemaName);
+      List<Branch> branches = branchService.listBranches(project.getId());
+      for (Branch branch : branches) {
+        String databaseName = branch.getDatabaseName();
+        log.info("Refreshing GraphQL for project '{}', schemaName='{}'", project.getId(), databaseName);
 
-      FlexmodelGraphQL fg = new FlexmodelGraphQL();
-      graphQLManger.addGraphQL(
-        project.getId(),
-        fg.generateGraphQLWithSchemaObject(sf, "system")
-      );
-      log.info("GraphQL schema generated for project '{}', models={}", project.getId(), sf.getModels(schemaName).size());
+        FlexmodelGraphQL fg = new FlexmodelGraphQL();
+        graphQLManger.addGraphQL(
+          project.getId(),
+          fg.generateGraphQLWithSchemaObject(sf, "system")
+        );
+        log.info("GraphQL schema generated for project '{}', models={}", project.getId(), sf.getModels(databaseName).size());
+      }
+
     } catch (Exception e) {
       log.warn("Failed to generate GraphQL for project '{}': {}", project.getId(), e.getMessage(), e);
     }

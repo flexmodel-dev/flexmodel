@@ -1,4 +1,4 @@
-package dev.flexmodel.branch.dto;
+package dev.flexmodel.project.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,6 +1,6 @@
-package dev.flexmodel.branch;
+package dev.flexmodel.project;
 
-import dev.flexmodel.branch.dto.BranchCreateRequest;
+import dev.flexmodel.project.dto.BranchCreateRequest;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import jakarta.inject.Inject;

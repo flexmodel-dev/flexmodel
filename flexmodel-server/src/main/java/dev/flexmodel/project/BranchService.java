@@ -1,29 +1,27 @@
-package dev.flexmodel.branch;
+package dev.flexmodel.project;
 
+import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.FlexmodelConfig;
 import dev.flexmodel.common.SessionContextHolder;
-import dev.flexmodel.common.config.SessionConfig;
-import dev.flexmodel.common.utils.StringUtils;
+import dev.flexmodel.common.SessionDatasourceImpl;
 import dev.flexmodel.connect.SessionDatasource;
-import dev.flexmodel.project.ProjectService;
+import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.sql.JdbcSchemaManager;
+import dev.flexmodel.sql.JdbcSchemaProvider;
+import dev.flexmodel.sql.SchemaCopier;
+import dev.flexmodel.sql.SchemaCopierFactory;
 import dev.flexmodel.sql.SchemaManager;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import com.zaxxer.hikari.HikariDataSource;
 
 /**
  * 分支服务，管理分支的创建、删除、切换。
@@ -41,18 +39,24 @@ public class BranchService {
   BranchRepository branchRepository;
 
   @Inject
-  ProjectService projectService;
+  ProjectRepository projectRepository;
 
   @Inject
   SessionDatasource sessionDatasource;
 
   @Inject
+  SessionDatasourceImpl sessionDatasourceImpl;
+
+  @Inject
   FlexmodelConfig flexmodelConfig;
+
+  @Inject
+  SessionFactory sessionFactory;
 
   private final SchemaManager schemaManager = new JdbcSchemaManager();
 
   public List<Branch> listBranches(String projectId) {
-    Project project = projectService.findProject(projectId);
+    Project project = projectRepository.findProject(projectId);
     if (project == null) {
       return List.of();
     }
@@ -65,7 +69,7 @@ public class BranchService {
     mainBranch.setId("main");
     mainBranch.setProjectId(projectId);
     mainBranch.setName("main");
-    mainBranch.setDatabaseName(project.getDatabaseName());
+    mainBranch.setDatabaseName(resolveDatabaseName(project));
     result.add(mainBranch);
     result.addAll(dbBranches);
     return result;
@@ -76,7 +80,7 @@ public class BranchService {
     if (!BRANCH_NAME_PATTERN.matcher(branchName).matches()) {
       throw new IllegalArgumentException("分支名格式不正确，需以小写字母开头，由小写字母、数字和下划线组成，长度2~63个字符");
     }
-    Project project = projectService.findProject(projectId);
+    Project project = projectRepository.findProject(projectId);
     if (project == null) {
       throw new IllegalArgumentException("项目不存在");
     }
@@ -91,7 +95,7 @@ public class BranchService {
     // 2. 确定源分支的 databaseName
     String sourceDbName;
     if (sourceBranch == null || "main".equals(sourceBranch)) {
-      sourceDbName = project.getDatabaseName();
+      sourceDbName = resolveDatabaseName(project);
     } else {
       Branch sourceBranchRecord = branchRepository.findByProjectIdAndName(projectId, sourceBranch);
       if (sourceBranchRecord == null) {
@@ -101,15 +105,16 @@ public class BranchService {
     }
 
     // 3. 计算目标数据库名
-    String branchDbName = project.getDatabaseName() + "_" + branchName;
+    String branchDbName = resolveDatabaseName(project) + "_" + branchName;
 
-    // 4. 复制数据库文件（SQLite）
-    copyDatabase(sourceDbName, branchDbName);
+    // 4. 构建目标数据源并通过 FML 导出导入复制模型结构
+    DataSource targetDs = sessionDatasourceImpl.buildJdbcDataSource(branchDbName);
+    SchemaProvider sourceProvider = sessionFactory.getSchemaProvider(sourceDbName);
+    SchemaProvider targetProvider = new JdbcSchemaProvider(branchDbName, targetDs);
+    SchemaCopier copier = SchemaCopierFactory.create(sessionFactory);
+    copier.copySchema(sourceProvider, branchDbName, targetProvider);
 
-    // 5. 注册新 SchemaProvider
-    sessionDatasource.registerSchema(branchDbName);
-
-    // 6. 保存分支记录
+    // 5. 保存分支记录
     Branch branch = new Branch();
     branch.setProjectId(projectId);
     branch.setName(branchName);
@@ -124,7 +129,7 @@ public class BranchService {
     if ("main".equals(branchName)) {
       throw new IllegalArgumentException("不能删除 main 分支");
     }
-    Project project = projectService.findProject(projectId);
+    Project project = projectRepository.findProject(projectId);
     if (project == null) {
       throw new IllegalArgumentException("项目不存在");
     }
@@ -141,7 +146,7 @@ public class BranchService {
 
     // 2. 删除物理数据库
     try {
-      DataSource systemDs = getSystemDataSource();
+      DataSource systemDs = ProjectService.getSystemDataSource(flexmodelConfig);
       schemaManager.dropSchema(systemDs, branch.getDatabaseName());
     } catch (Exception e) {
       log.warn("删除分支数据库失败: {}", e.getMessage());
@@ -152,7 +157,7 @@ public class BranchService {
   }
 
   public Project switchBranch(String projectId, String branchName) {
-    Project project = projectService.findProject(projectId);
+    Project project = projectRepository.findProject(projectId);
     if (project == null) {
       throw new IllegalArgumentException("项目不存在");
     }
@@ -163,43 +168,27 @@ public class BranchService {
       }
     }
     project.setCurrentBranch(branchName);
-    return projectService.updateProject(project);
+    return projectRepository.save(project);
   }
 
   /**
-   * 复制 SQLite 数据库文件。
-   * 通过项目 URL 模板推算文件路径，直接拷贝文件。
+   * 根据项目当前活跃分支解析对应的 databaseName。
+   * 优先从 f_branch 表查询，若未找到则回退到 project.databaseName（向后兼容），最终回退到 projectId。
    */
-  private void copyDatabase(String sourceDbName, String targetDbName) {
-    String sourceUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", sourceDbName);
-    String targetUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", targetDbName);
-
-    // 从 JDBC URL 中提取文件路径（去掉 jdbc:sqlite:file: 前缀）
-    String sourceFilePath = sourceUrl.replaceFirst("^jdbc:sqlite:file:", "");
-    String targetFilePath = targetUrl.replaceFirst("^jdbc:sqlite:file:", "");
-
-    Path source = Path.of(sourceFilePath);
-    Path target = Path.of(targetFilePath);
-
-    if (!Files.exists(source)) {
-      throw new RuntimeException("源数据库文件不存在: " + source.toAbsolutePath());
+  private String resolveDatabaseName(Project project) {
+    String currentBranch = project.getCurrentBranch();
+    // 非 main 分支：从 f_branch 表查询
+    if (currentBranch != null && !"main".equals(currentBranch)) {
+      Branch branch = branchRepository.findByProjectIdAndName(project.getId(), currentBranch);
+      if (branch == null) {
+        throw new IllegalArgumentException("当前分支 " + currentBranch + " 不存在");
+      }
+      return branch.getDatabaseName();
     }
-
-    try {
-      Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-      log.info("复制数据库文件: {} -> {}", source.toAbsolutePath(), target.toAbsolutePath());
-    } catch (IOException e) {
-      throw new RuntimeException("复制数据库文件失败: " + e.getMessage(), e);
+    // main 分支：优先使用 project.databaseName（向后兼容），否则回退到 projectId
+    if (project.getDatabaseName() != null && !project.getDatabaseName().isBlank()) {
+      return project.getDatabaseName();
     }
-  }
-
-  private DataSource getSystemDataSource() {
-    FlexmodelConfig.DatasourceConfig config = flexmodelConfig.datasources().get(SessionConfig.SYSTEM_DS_KEY);
-    HikariDataSource ds = new HikariDataSource();
-    ds.setMaxLifetime(30000);
-    ds.setJdbcUrl(config.url());
-    ds.setUsername(config.username().orElse(null));
-    ds.setPassword(config.password().orElse(null));
-    return ds;
+    return project.getId();
   }
 }

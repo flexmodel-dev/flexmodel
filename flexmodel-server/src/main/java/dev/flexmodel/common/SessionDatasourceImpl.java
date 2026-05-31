@@ -10,6 +10,7 @@ import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.sql.JdbcSchemaProvider;
+import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,9 @@ public class SessionDatasourceImpl implements SessionDatasource {
   @Inject
   FlexmodelConfig flexmodelConfig;
 
+  @Inject
+  ProjectService projectService;
+
   private String getContent(String template) {
     return StringUtils.simpleRenderTemplate(template, SystemVariablesHolder.getSystemVariables());
   }
@@ -42,7 +46,7 @@ public class SessionDatasourceImpl implements SessionDatasource {
   @Override
   public List<String> getPhysicsModelNames(Project project) {
     List<String> list = new ArrayList<>();
-    String databaseName = project.getDatabaseName();
+    String databaseName = projectService.resolveDatabaseName(project.getId());
     FlexmodelConfig.DatasourceConfig datasource = flexmodelConfig.datasources().get(SessionConfig.SYSTEM_DS_KEY);
     String jdbcUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", databaseName);
     String username = datasource.username().orElse(null);
@@ -61,7 +65,7 @@ public class SessionDatasourceImpl implements SessionDatasource {
 
   @Override
   public void add(Project project) {
-    registerSchema(project.getDatabaseName());
+    registerSchema(projectService.resolveDatabaseName(project.getId()));
   }
 
   @Override
@@ -117,13 +121,13 @@ public class SessionDatasourceImpl implements SessionDatasource {
 
   @Override
   public void delete(Project project) {
-    sessionFactory.unregisterSchemaProvider(project.getDatabaseName());
+    sessionFactory.unregisterSchemaProvider(projectService.resolveDatabaseName(project.getId()));
   }
 
   @Override
   @SuppressWarnings("all")
   public NativeQueryResult executeNativeQuery(Project project, String statement, Map<String, Object> parameters) {
-    try (Session session = sessionFactory.createSession(project.getDatabaseName())) {
+    try (Session session = sessionFactory.createSession(projectService.resolveDatabaseName(project.getId()))) {
       long beginTime = System.currentTimeMillis();
       Object result = session.data().executeNativeStatement(statement, parameters);
       long endTime = System.currentTimeMillis() - beginTime;

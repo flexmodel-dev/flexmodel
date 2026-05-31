@@ -1,6 +1,5 @@
 package dev.flexmodel.modeling;
 
-import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -24,62 +23,51 @@ public class ModelingService {
   ProjectService projectService;
 
   public List<SchemaObject> findModels(String projectId) {
-    Project project = projectService.findProject(projectId);
-    return modelService.findAll(projectId, project.getDatabaseName());
+    return modelService.findAll(projectId, projectService.resolveDatabaseName(projectId));
   }
 
   public SchemaObject createModel(String projectId, SchemaObject model) {
-    Project project = projectService.findProject(projectId);
-    return modelService.createModel(projectId, project.getDatabaseName(), model);
+    return modelService.createModel(projectId, projectService.resolveDatabaseName(projectId), model);
   }
 
   public void dropModel(String projectId, String modelName) {
-    Project project = projectService.findProject(projectId);
-    modelService.dropModel(projectId, project.getDatabaseName(), modelName);
+    modelService.dropModel(projectId, projectService.resolveDatabaseName(projectId), modelName);
   }
 
   public TypedField<?, ?> createField(String projectId, TypedField<?, ?> field) {
-    Project project = projectService.findProject(projectId);
-    return modelService.createField(projectId, project.getDatabaseName(), field);
+    return modelService.createField(projectId, projectService.resolveDatabaseName(projectId), field);
   }
 
   public TypedField<?, ?> modifyField(String projectId, TypedField<?, ?> field) {
-    Project project = projectService.findProject(projectId);
-    return modelService.modifyField(projectId, project.getDatabaseName(), field);
+    return modelService.modifyField(projectId, projectService.resolveDatabaseName(projectId), field);
   }
 
   public void dropField(String projectId, String modelName, String fieldName) {
-    Project project = projectService.findProject(projectId);
-    modelService.dropField(projectId, project.getDatabaseName(), modelName, fieldName);
+    modelService.dropField(projectId, projectService.resolveDatabaseName(projectId), modelName, fieldName);
   }
 
   public IndexDefinition createIndex(String projectId, IndexDefinition index) {
-    Project project = projectService.findProject(projectId);
-    return modelService.createIndex(projectId, project.getDatabaseName(), index);
+    return modelService.createIndex(projectId, projectService.resolveDatabaseName(projectId), index);
   }
 
   public IndexDefinition modifyIndex(String projectId, IndexDefinition index) {
-    Project project = projectService.findProject(projectId);
-    return modelService.modifyIndex(projectId, project.getDatabaseName(), index);
+    return modelService.modifyIndex(projectId, projectService.resolveDatabaseName(projectId), index);
   }
 
   public void dropIndex(String projectId, String modelName, String indexName) {
-    Project project = projectService.findProject(projectId);
-    modelService.dropIndex(projectId, project.getDatabaseName(), modelName, indexName);
+    modelService.dropIndex(projectId, projectService.resolveDatabaseName(projectId), modelName, indexName);
   }
 
   public List<SchemaObject> syncModels(String projectId, Set<String> models) {
-    Project project = projectService.findProject(projectId);
-    return modelService.syncModels(projectId, project.getDatabaseName(), models);
+    return modelService.syncModels(projectId, projectService.resolveDatabaseName(projectId), models);
   }
 
   public void importModels(String projectId, String script, String type) {
-    Project project = projectService.findProject(projectId);
-    modelService.importModels(projectId, project.getDatabaseName(), script, type);
+    modelService.importModels(projectId, projectService.resolveDatabaseName(projectId), script, type);
   }
 
   public SchemaObject modifyModel(String projectId, String modelName, SchemaObject model) {
-    Project project = projectService.findProject(projectId);
+    String databaseName = projectService.resolveDatabaseName(projectId);
     if (model instanceof EntityDefinition) {
       throw new RuntimeException("Unsupported model type");
     }
@@ -89,18 +77,16 @@ public class ModelingService {
     if (model instanceof EnumDefinition anEnum) {
       anEnum.setName(modelName);
     }
-    modelService.dropModel(projectId, project.getDatabaseName(), modelName);
-    modelService.createModel(projectId, project.getDatabaseName(), model);
+    modelService.dropModel(projectId, databaseName, modelName);
+    modelService.createModel(projectId, databaseName, model);
     return model;
   }
 
   public SchemaObject findModel(String projectId, String modelName) {
-    Project project = projectService.findProject(projectId);
-    return modelService.findModel(projectId, project.getDatabaseName(), modelName).orElseThrow(() -> new RuntimeException("Model not found"));
+    return modelService.findModel(projectId, projectService.resolveDatabaseName(projectId), modelName).orElseThrow(() -> new RuntimeException("Model not found"));
   }
 
   public List<SchemaObject> executeFml(String projectId, String fml) throws ParseException {
-    Project project = projectService.findProject(projectId);
-    return modelService.executeFml(projectId, project.getDatabaseName(), fml);
+    return modelService.executeFml(projectId, projectService.resolveDatabaseName(projectId), fml);
   }
 }

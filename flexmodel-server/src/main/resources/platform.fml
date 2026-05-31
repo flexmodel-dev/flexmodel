@@ -1,7 +1,7 @@
 model f_project {
   id : String @id @default(uuid()),
   name: String,
-  database_name: String,
+  database_name?: String,
   description?: String,
   enabled : Boolean @comment("是否启用") @default("true"),
   current_branch?: String @default("main") @comment("当前活跃分支"),
@@ -254,7 +254,7 @@ model f_qrtz_lock {
 
 seed f_project {
   {id: "default", name: "系统默认", database_name: "system", description: "默认项目", owner_id: "admin", enabled: true, current_branch: "main"},
-  {id: "dev_test", database_name: "dev_test", name: "开发测试", description: "开发测试项目", owner_id: "admin", enabled: true, current_branch: "main"},
+  {id: "dev_test", name: "开发测试", description: "开发测试项目", owner_id: "admin", enabled: true, current_branch: "main"},
 }
 
 seed f_user {

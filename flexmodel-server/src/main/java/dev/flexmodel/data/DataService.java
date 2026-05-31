@@ -1,6 +1,5 @@
 package dev.flexmodel.data;
 
-import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -60,40 +59,34 @@ public class DataService {
                                                         String filter,
                                                         String sort,
                                                         boolean nestedQuery) {
-    Project project = projectService.findProject(projectId);
-    String datasourceName = project.getDatabaseName();
+    String datasourceName = projectService.resolveDatabaseName(projectId);
     List<Map<String, Object>> list = dataRepository.findRecords(projectId, datasourceName, modelName, page, size, filter, sort, nestedQuery);
     long total = dataRepository.countRecords(projectId, datasourceName, modelName, filter);
     return new PageDTO<>(list, total);
   }
 
   public Map<String, Object> findOneRecord(String projectId, String modelName, String id, boolean nestedQuery) {
-    Project project = projectService.findProject(projectId);
-    String datasourceName = project.getDatabaseName();
+    String datasourceName = projectService.resolveDatabaseName(projectId);
     return dataRepository.findOneRecord(projectId, datasourceName, modelName, id, nestedQuery);
   }
 
   public Map<String, Object> createRecord(String projectId, String modelName, Map<String, Object> data) {
-    Project project = projectService.findProject(projectId);
-    String datasourceName = project.getDatabaseName();
+    String datasourceName = projectService.resolveDatabaseName(projectId);
     return dataRepository.createRecord(projectId, datasourceName, modelName, data);
   }
 
   public Map<String, Object> updateRecord(String projectId, String modelName, Object id, Map<String, Object> data) {
-    Project project = projectService.findProject(projectId);
-    String datasourceName = project.getDatabaseName();
+    String datasourceName = projectService.resolveDatabaseName(projectId);
     return dataRepository.updateRecord(projectId, datasourceName, modelName, id, data);
   }
 
   public void deleteRecord(String projectId, String modelName, Object id) {
-    Project project = projectService.findProject(projectId);
-    String datasourceName = project.getDatabaseName();
+    String datasourceName = projectService.resolveDatabaseName(projectId);
     dataRepository.deleteRecord(projectId, datasourceName, modelName, id);
   }
 
   public Map<String, Object> updateRecordIgnoreNull(String projectId, String modelName, String id, Map<String, Object> record) {
-    Project project = projectService.findProject(projectId);
-    String datasourceName = project.getDatabaseName();
+    String datasourceName = projectService.resolveDatabaseName(projectId);
     Map<String, Object> oldData = dataRepository.findOneRecord(projectId, datasourceName, modelName, id, false);
     Map<String, Object> mergeData = new HashMap<>(oldData);
     mergeData.putAll(record);

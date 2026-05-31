@@ -10,8 +10,6 @@ import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.connect.SessionDatasource;
 import dev.flexmodel.flow.service.FlowDeploymentService;
 import dev.flexmodel.codegen.entity.Branch;
-import dev.flexmodel.branch.BranchRepository;
-import dev.flexmodel.branch.BranchService;
 import dev.flexmodel.project.dto.ProjectListRequest;
 import dev.flexmodel.project.dto.ProjectResponse;
 import dev.flexmodel.sql.JdbcSchemaManager;
@@ -85,6 +83,31 @@ public class ProjectService {
   }
 
   /**
+   * 根据项目当前活跃分支解析对应的 databaseName。
+   * 优先从 f_branch 表查询，若未找到则回退到 project.databaseName（向后兼容），最终回退到 projectId。
+   */
+  public String resolveDatabaseName(String projectId) {
+    Project project = findProject(projectId);
+    if (project == null) {
+      throw new IllegalArgumentException("项目不存在: " + projectId);
+    }
+    String currentBranch = project.getCurrentBranch();
+    // 非 main 分支：从 f_branch 表查询
+    if (currentBranch != null && !"main".equals(currentBranch)) {
+      Branch branch = branchRepository.findByProjectIdAndName(projectId, currentBranch);
+      if (branch == null) {
+        throw new IllegalArgumentException("当前分支 " + currentBranch + " 不存在");
+      }
+      return branch.getDatabaseName();
+    }
+    // main 分支：优先使用 project.databaseName（向后兼容），否则回退到 projectId
+    if (project.getDatabaseName() != null && !project.getDatabaseName().isBlank()) {
+      return project.getDatabaseName();
+    }
+    return projectId;
+  }
+
+  /**
    * 获取项目详情（包含分支列表）
    */
   public ProjectResponse findProjectResponse(String projectId) {
@@ -111,22 +134,20 @@ public class ProjectService {
     if (findProject(project.getId()) != null) {
       throw new IllegalArgumentException("项目ID已经存在");
     }
-    // 设置 databaseName（若未指定则用 projectId）
-    if (StringUtils.isBlank(project.getDatabaseName())) {
-      project.setDatabaseName(project.getId());
-    }
+    // main 分支的 databaseName 约定为 projectId
+    String mainDatabaseName = project.getId();
     project.setOwnerId(SessionContextHolder.getUserId());
     project.setCurrentBranch("main");
 
     // 1. 创建物理 Schema
-    DataSource systemDs = getSystemDataSource();
-    schemaManager.createSchema(systemDs, project.getDatabaseName());
+    DataSource systemDs = getSystemDataSource(flexmodelConfig);
+    schemaManager.createSchema(systemDs, mainDatabaseName);
 
     // 2. 注册 SchemaProvider 到 SessionFactory（必须在初始化表结构之前）
-    sessionDatasource.registerSchema(project.getDatabaseName());
+    sessionDatasource.registerSchema(mainDatabaseName);
 
     // 3. 用 project.fml 初始化表结构
-    schemaInitializer.init(project.getDatabaseName());
+    schemaInitializer.init(mainDatabaseName);
 
     // 4. 保存 f_project 记录
     Project saved = projectRepository.save(project);
@@ -164,13 +185,14 @@ public class ProjectService {
       branchRepository.delete(projectId, branch.getName());
     }
 
-    // 1. 取消注册 SchemaProvider
-    sessionDatasource.unregisterSchema(project.getDatabaseName());
+    // 1. 取消注册 main 分支 SchemaProvider
+    String mainDatabaseName = resolveDatabaseName(projectId);
+    sessionDatasource.unregisterSchema(mainDatabaseName);
 
     // 2. 删除物理 Schema
     try {
-      DataSource systemDs = getSystemDataSource();
-      schemaManager.dropSchema(systemDs, project.getDatabaseName());
+      DataSource systemDs = getSystemDataSource(flexmodelConfig);
+      schemaManager.dropSchema(systemDs, mainDatabaseName);
     } catch (Exception e) {
       // Schema 删除失败不影响记录删除，记录日志即可
       // 部分数据库（如 Oracle）可能无法自动删除
@@ -183,7 +205,7 @@ public class ProjectService {
   /**
    * 构建系统数据源，用于执行 Schema 管理 DDL。
    */
-  private DataSource getSystemDataSource() {
+  static DataSource getSystemDataSource(FlexmodelConfig flexmodelConfig) {
     FlexmodelConfig.DatasourceConfig config = flexmodelConfig.datasources().get(SessionConfig.SYSTEM_DS_KEY);
     HikariDataSource ds = new HikariDataSource();
     ds.setMaxLifetime(30000);

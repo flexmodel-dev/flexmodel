@@ -11,7 +11,7 @@ import dev.flexmodel.common.AuditDataEventListener;
 import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.branch.BranchRepository;
+import dev.flexmodel.project.BranchRepository;
 import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.common.FlexmodelConfig;

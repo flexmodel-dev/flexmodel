@@ -1,4 +1,4 @@
-package dev.flexmodel.branch;
+package dev.flexmodel.project;
 
 import dev.flexmodel.codegen.entity.Branch;
 

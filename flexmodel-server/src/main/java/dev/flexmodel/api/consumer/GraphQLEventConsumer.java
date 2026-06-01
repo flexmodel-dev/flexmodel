@@ -68,7 +68,7 @@ public class GraphQLEventConsumer {
         FlexmodelGraphQL fg = new FlexmodelGraphQL();
         graphQLManger.addGraphQL(
           project.getId(),
-          fg.generateGraphQLWithSchemaObject(sf, "system")
+          fg.generateGraphQLWithSchemaObject(sf, databaseName)
         );
         log.info("GraphQL schema generated for project '{}', models={}", project.getId(), sf.getModels(databaseName).size());
       }

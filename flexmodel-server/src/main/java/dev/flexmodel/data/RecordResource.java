@@ -21,7 +21,7 @@ import java.util.Map;
  * @author cjbi
  */
 @Tag(name = "记录", description = "模型数据记录管理")
-@Path("/v1/projects/{projectId}/models/{modelName}/records")
+@Path("/projects/{projectId}/models/{modelName}/records")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class RecordResource {

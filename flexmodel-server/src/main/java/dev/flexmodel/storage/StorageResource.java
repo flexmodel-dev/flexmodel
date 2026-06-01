@@ -23,7 +23,7 @@ import java.util.List;
  * @author cjbi
  */
 @Tag(name = "文件存储", description = "文件存储管理")
-@Path("/v1/projects/{projectId}/storages")
+@Path("/projects/{projectId}/storages")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class StorageResource {

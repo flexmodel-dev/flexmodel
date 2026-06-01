@@ -28,7 +28,7 @@ import java.util.UUID;
 
 
 @Slf4j
-@Path("/v1/ai")
+@Path("/ai")
 @ApplicationScoped
 public class AiResource {
 

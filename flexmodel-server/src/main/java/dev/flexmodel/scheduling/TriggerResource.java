@@ -15,7 +15,7 @@ import dev.flexmodel.codegen.entity.Trigger;
  */
 @ApplicationScoped
 @Tag(name = "触发器", description = "触发器管理")
-@Path("/v1/projects/{projectId}/triggers")
+@Path("/projects/{projectId}/triggers")
 public class TriggerResource {
   @Inject
   TriggerService scheduleApplicationService;

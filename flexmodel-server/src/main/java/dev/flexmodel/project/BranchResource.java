@@ -23,7 +23,7 @@ import java.util.List;
  * @author cjbi
  */
 @Tag(name = "分支", description = "项目分支管理")
-@Path("/v1/projects/{projectId}/branches")
+@Path("/projects/{projectId}/branches")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class BranchResource {

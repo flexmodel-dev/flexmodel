@@ -28,7 +28,7 @@ import java.util.List;
  * @author cjbi
  */
 @Tag(name = "服务编排-流程执行", description = "流程启动、任务提交/回滚及执行历史查询")
-@Path("/v1/projects/{projectId}/flows")
+@Path("/projects/{projectId}/flows")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class FlowExecutionResource {

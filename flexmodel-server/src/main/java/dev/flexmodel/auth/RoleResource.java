@@ -19,7 +19,7 @@ import dev.flexmodel.auth.dto.RoleResponse;
 import java.util.List;
 
 @Tag(name = "角色", description = "角色管理")
-@Path("/v1/roles")
+@Path("/roles")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class RoleResource {

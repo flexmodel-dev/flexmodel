@@ -22,7 +22,7 @@ import java.util.List;
  * @author cjbi
  */
 @Tag(name = "用户", description = "用户管理")
-@Path("/v1/users")
+@Path("/users")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class UserResource {

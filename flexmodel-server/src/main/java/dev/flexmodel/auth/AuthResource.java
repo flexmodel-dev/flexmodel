@@ -19,7 +19,7 @@ import java.time.Duration;
  */
 @Tag(name = "认证", description = "认证授权管理")
 @Slf4j
-@Path("/v1/auth")
+@Path("/auth")
 @Produces(MediaType.APPLICATION_JSON)
 public class AuthResource {
 

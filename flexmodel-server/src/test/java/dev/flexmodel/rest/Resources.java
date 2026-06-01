@@ -5,6 +5,6 @@ package dev.flexmodel.rest;
  */
 public class Resources {
 
-  public static final String ROOT_PATH = "/api/v1";
+  public static final String ROOT_PATH = "/api";
 
 }

@@ -47,7 +47,7 @@ public class AuthFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
     String path = requestContext.getUriInfo().getPath();
-    boolean isFlexmodelPath = path.startsWith("/v1/");
+    boolean isFlexmodelPath = path.startsWith("/");
     if (isFlexmodelPath) {
       PermitAll permitAll = resourceInfo.getResourceMethod().getAnnotation(PermitAll.class);
       if (permitAll == null) {

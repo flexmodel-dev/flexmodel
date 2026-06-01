@@ -21,7 +21,7 @@ import java.util.List;
  * @author cjbi
  */
 @Tag(name = "项目", description = "项目管理")
-@Path("/v1/projects")
+@Path("/projects")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class ProjectResource {

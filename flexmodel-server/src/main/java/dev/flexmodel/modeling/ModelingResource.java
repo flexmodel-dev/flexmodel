@@ -22,7 +22,7 @@ import java.util.List;
  * @author cjbi
  */
 @Tag(name = "模型", description = "模型管理")
-@Path("/v1/projects/{projectId}/models")
+@Path("/projects/{projectId}/models")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class ModelingResource {

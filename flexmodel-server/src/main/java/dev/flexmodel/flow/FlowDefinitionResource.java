@@ -28,7 +28,7 @@ import dev.flexmodel.flow.service.FlowDefinitionService;
  * @author cjbi
  */
 @Tag(name = "服务编排-流程定义", description = "流程模块的增删改查与部署管理")
-@Path("/v1/projects/{projectId}/flows")
+@Path("/projects/{projectId}/flows")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class FlowDefinitionResource {

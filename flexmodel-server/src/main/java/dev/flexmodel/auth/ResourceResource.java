@@ -15,7 +15,7 @@ import dev.flexmodel.auth.dto.ResourceResponse;
 import java.util.List;
 
 @Tag(name = "资源", description = "资源管理")
-@Path("/v1/resources")
+@Path("/resources")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class ResourceResource {

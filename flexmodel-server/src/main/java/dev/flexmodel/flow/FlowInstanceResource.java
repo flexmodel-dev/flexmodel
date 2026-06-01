@@ -28,7 +28,7 @@ import dev.flexmodel.flow.common.ErrorEnum;
  * @author cjbi
  */
 @Tag(name = "服务编排-流程实例", description = "流程实例的查询与生命周期管理")
-@Path("/v1/projects/{projectId}/flows")
+@Path("/projects/{projectId}/flows")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class FlowInstanceResource {

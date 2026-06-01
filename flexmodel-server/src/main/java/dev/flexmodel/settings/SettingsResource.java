@@ -11,7 +11,7 @@ import dev.flexmodel.settings.SettingsService;
  * @author cjbi
  */
 @Tag(name = "设置", description = "系统设置")
-@Path("/v1/settings")
+@Path("/settings")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class SettingsResource {

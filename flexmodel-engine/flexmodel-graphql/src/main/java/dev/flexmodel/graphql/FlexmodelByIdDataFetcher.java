@@ -39,7 +39,7 @@ public class FlexmodelByIdDataFetcher extends FlexmodelAbstractDataFetcher<Map<S
 
       List<Map<String, Object>> list = session.dsl()
         .select(projection -> {
-          projection.field(idField.getName(), Query.field(entity.getName() + "." + idField.getName()));
+          projection.field(idField.getName(), Query.field(idField.getName()));
           for (SelectedField selectedField : selectedFields) {
             TypedField<?, ?> flexModelField = entity.getField(selectedField.getName());
             if (flexModelField == null) {
@@ -49,12 +49,12 @@ public class FlexmodelByIdDataFetcher extends FlexmodelAbstractDataFetcher<Map<S
               relationFields.add(secondaryRelationField);
               continue;
             }
-            projection.field(selectedField.getName(), Query.field(flexModelField.getModelName() + "." + flexModelField.getName()));
+            projection.field(selectedField.getName(), Query.field(flexModelField.getName()));
           }
           return projection;
         })
         .from(entity.getName())
-        .where(Expressions.field(entity.getName() + "." + idField.getName()).eq(id))
+        .where(Expressions.field(idField.getName()).eq(id))
         .page(1, 1)
         .execute();
 

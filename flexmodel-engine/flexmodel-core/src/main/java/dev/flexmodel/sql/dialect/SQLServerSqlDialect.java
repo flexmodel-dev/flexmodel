@@ -237,4 +237,9 @@ public class SQLServerSqlDialect extends SqlDialect {
         };
     }
 
+    @Override
+    public String jsonExtract(String column, String jsonPath) {
+        return "JSON_VALUE(" + column + ", '" + jsonPath + "')";
+    }
+
 }

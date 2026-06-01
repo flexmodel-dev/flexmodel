@@ -559,4 +559,18 @@ public abstract class SqlDialect {
     return true;
   }
 
+  /**
+   * 生成从 JSON 列中提取指定路径值的 SQL 表达式。
+   * <p>
+   * 默认实现使用 {@code JSON_EXTRACT(column, '$.path')} 语法，
+   * 各数据库方言可覆写此方法以适配自身的 JSON 提取函数。
+   *
+   * @param column   已加引号的列名，如 {@code `metadata`}
+   * @param jsonPath JSON 路径，如 {@code $.color} 或 {@code $.database.host}
+   * @return SQL 表达式字符串
+   */
+  public String jsonExtract(String column, String jsonPath) {
+    return "JSON_EXTRACT(" + column + ", '" + jsonPath + "')";
+  }
+
 }

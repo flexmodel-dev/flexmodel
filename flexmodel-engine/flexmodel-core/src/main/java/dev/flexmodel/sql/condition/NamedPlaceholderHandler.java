@@ -13,8 +13,11 @@ public class NamedPlaceholderHandler implements PlaceholderHandler {
 
   @Override
   public String handle(String key, Object value) {
-    String sanitized = key.replace(".", "_")
-      .replaceAll("[\"'`]", "");
+    // 将列表达式清理为合法的命名参数名：只保留字母、数字和下划线
+    String sanitized = key.replaceAll("[^a-zA-Z0-9_]", "_")
+      .replaceAll("_+", "_");
+    // 去除首尾下划线
+    sanitized = sanitized.replaceAll("^_+|_+$", "");
     String name = sanitized + "_" + placeholderIndex++;
     parameters.put(name, value);
     return ":" + name;

@@ -115,4 +115,11 @@ public class DB2SqlDialect extends SqlDialect {
     return new String[]{ "DROP SCHEMA " + quoteIdentifier(schemaName) + " RESTRICT" };
   }
 
+  @Override
+  public String jsonExtract(String column, String jsonPath) {
+    // DB2 JSON_VAL2 路径格式为 path.a.b（不带 $ 前缀）
+    String path = jsonPath.startsWith("$.") ? jsonPath.substring(2) : jsonPath;
+    return "JSON_VAL2(" + column + ", '" + path + "')";
+  }
+
 }

@@ -166,4 +166,9 @@ public class OracleSqlDialect extends SqlDialect {
     return new String[]{ "DROP USER " + quoteIdentifier(schemaName) + " CASCADE" };
   }
 
+  @Override
+  public String jsonExtract(String column, String jsonPath) {
+    return "JSON_VALUE(" + column + ", '" + jsonPath + "')";
+  }
+
 }

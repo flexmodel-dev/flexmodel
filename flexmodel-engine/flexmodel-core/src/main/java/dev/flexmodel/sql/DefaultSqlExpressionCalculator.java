@@ -26,7 +26,7 @@ public class DefaultSqlExpressionCalculator extends SqlExpressionCalculator {
     }
     try {
       ConditionNode condition = parseCondition(expression);
-      SqlRenderContext context = new SqlRenderContext(sqlDialect.getIdentifierQuoteString(), new InlinePlaceholderHandler());
+      SqlRenderContext context = new SqlRenderContext(sqlDialect.getIdentifierQuoteString(), new InlinePlaceholderHandler(), sqlDialect);
       return SqlConditionRenderer.render(condition, context);
     } catch (RuntimeException e) {
       throw new ExpressionCalculatorException(e.getMessage(), e);
@@ -41,7 +41,7 @@ public class DefaultSqlExpressionCalculator extends SqlExpressionCalculator {
     try {
       ConditionNode condition = parseCondition(expression);
       NamedPlaceholderHandler placeholderHandler = new NamedPlaceholderHandler();
-      SqlRenderContext context = new SqlRenderContext(sqlDialect.getIdentifierQuoteString(), placeholderHandler);
+      SqlRenderContext context = new SqlRenderContext(sqlDialect.getIdentifierQuoteString(), placeholderHandler, sqlDialect);
       String sql = SqlConditionRenderer.render(condition, context);
       return new SqlClauseResult(sql, placeholderHandler.getParameters());
     } catch (RuntimeException e) {

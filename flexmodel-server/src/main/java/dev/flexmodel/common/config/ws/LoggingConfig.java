@@ -14,9 +14,11 @@ import java.util.logging.SimpleFormatter;
 @ApplicationScoped
 public class LoggingConfig {
   void onStart(@Observes StartupEvent ev) {
-    Logger appLog = Logger.getLogger(Constants.APP_LOG_CATEGORY_NAME);
     WebSocketLogHandler handler = new WebSocketLogHandler();
     handler.setFormatter(new SimpleFormatter());
+    Logger appLog = Logger.getLogger(Constants.APP_LOG_CATEGORY_NAME);
     appLog.addHandler(handler);
+    Logger defaultLogger = Logger.getLogger("");
+    defaultLogger.addHandler(handler);
   }
 }

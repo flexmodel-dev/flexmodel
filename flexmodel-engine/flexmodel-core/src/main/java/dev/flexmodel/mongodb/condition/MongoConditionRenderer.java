@@ -60,8 +60,7 @@ public final class MongoConditionRenderer {
   }
 
   private static Map<String, Object> renderField(FieldConditionNode field) {
-    String[] splits = field.getFieldPath().split("\\.");
-    String name = splits[splits.length - 1];
+    String name = field.getFieldPath();
     Object value = field.getValue();
     return switch (field.getOperator()) {
       case EQ -> Map.of(name, Map.of("$eq", value));

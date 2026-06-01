@@ -119,4 +119,9 @@ public class SQLiteSqlDialect extends SqlDialect {
     return new String[]{ "" };
   }
 
+  @Override
+  public String jsonExtract(String column, String jsonPath) {
+    return "json_extract(" + column + ", '" + jsonPath + "')";
+  }
+
 }

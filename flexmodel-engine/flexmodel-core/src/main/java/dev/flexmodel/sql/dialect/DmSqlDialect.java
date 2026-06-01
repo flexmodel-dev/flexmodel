@@ -121,4 +121,9 @@ public class DmSqlDialect extends SqlDialect {
   public String[] getDropSchemaIfExistsSql(String schemaName) {
     return new String[]{ "DROP USER " + quoteIdentifier(schemaName) + " CASCADE" };
   }
+
+  @Override
+  public String jsonExtract(String column, String jsonPath) {
+    return "JSON_VALUE(" + column + ", '" + jsonPath + "')";
+  }
 }

@@ -5,6 +5,8 @@ import dev.flexmodel.sql.SqlClauseResult;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.ExpressionCalculatorException;
 import dev.flexmodel.sql.dialect.MySQLSqlDialect;
+import dev.flexmodel.sql.dialect.PostgreSQLSqlDialect;
+import dev.flexmodel.sql.dialect.SQLServerSqlDialect;
 
 import java.util.List;
 import java.util.Map;
@@ -100,6 +102,74 @@ class DefaultSqlExpressionCalculatorTest {
     DefaultSqlExpressionCalculator calculator = newCalculator();
     assertThrows(ExpressionCalculatorException.class, () -> calculator.calculate(null, Map.of()));
     assertThrows(ExpressionCalculatorException.class, () -> calculator.calculateIncludeValue(null));
+  }
+
+  @Test
+  void shouldRenderJsonPathWithMySqlDialect() throws ExpressionCalculatorException {
+    DefaultSqlExpressionCalculator calculator = newCalculator();
+    String filter = """
+      { "metadata.color": { "_eq": "red" } }
+      """;
+
+    // 验证 inline 模式的 SQL 输出
+    String inline = calculator.calculateIncludeValue(filter);
+    assertEquals("JSON_EXTRACT(`metadata`, '$.color') = 'red'", inline);
+
+    // 验证 prepared 模式的参数绑定
+    SqlClauseResult result = calculator.calculate(filter, Map.of());
+    assertEquals(1, result.args().size());
+    assertEquals("red", result.args().values().iterator().next());
+  }
+
+  @Test
+  void shouldRenderMultiLevelJsonPath() throws ExpressionCalculatorException {
+    DefaultSqlExpressionCalculator calculator = newCalculator();
+    String filter = """
+      { "config.database.host": { "_eq": "localhost" } }
+      """;
+
+    String inline = calculator.calculateIncludeValue(filter);
+    assertEquals("JSON_EXTRACT(`config`, '$.database.host') = 'localhost'", inline);
+  }
+
+  @Test
+  void shouldRenderMixedPlainAndJsonPathFields() throws ExpressionCalculatorException {
+    DefaultSqlExpressionCalculator calculator = newCalculator();
+    String filter = """
+      {
+        "name": { "_eq": "test" },
+        "metadata.color": { "_eq": "red" }
+      }
+      """;
+
+    String inline = calculator.calculateIncludeValue(filter);
+    assertEquals("(`name` = 'test' AND JSON_EXTRACT(`metadata`, '$.color') = 'red')", inline);
+  }
+
+  @Test
+  void shouldRenderJsonPathWithPostgresDialect() throws ExpressionCalculatorException {
+    PostgreSQLSqlDialect dialect = new PostgreSQLSqlDialect();
+    dialect.setIdentifierQuoteString("\"");
+    DefaultSqlExpressionCalculator calculator = new DefaultSqlExpressionCalculator(dialect);
+    String filter = """
+      { "metadata.color": { "_eq": "red" } }
+      """;
+
+    String inline = calculator.calculateIncludeValue(filter);
+    assertEquals("jsonb_extract_path_text(\"metadata\"::jsonb,'color') = 'red'", inline);
+  }
+
+  @Test
+  void shouldRenderJsonPathWithSqlServerDialect() throws ExpressionCalculatorException {
+    SQLServerSqlDialect dialect = new SQLServerSqlDialect();
+    dialect.setIdentifierQuoteString("");
+    DefaultSqlExpressionCalculator calculator = new DefaultSqlExpressionCalculator(dialect);
+    String filter = """
+      { "metadata.color": { "_eq": "red" } }
+      """;
+
+    String inline = calculator.calculateIncludeValue(filter);
+    assertEquals("JSON_VALUE(metadata, '$.color') = 'red'", inline);
   }
 }
 

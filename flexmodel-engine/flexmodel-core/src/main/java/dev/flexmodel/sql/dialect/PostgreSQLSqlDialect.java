@@ -3,8 +3,10 @@ package dev.flexmodel.sql.dialect;
 import dev.flexmodel.sql.SqlExecutor;
 
 import java.sql.Types;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * @author cjbi
@@ -118,6 +120,16 @@ public class PostgreSQLSqlDialect extends SqlDialect {
     @Override
     public String[] getDropSchemaIfExistsSql(String schemaName) {
         return new String[]{ "DROP SCHEMA IF EXISTS " + quoteIdentifier(schemaName) + " CASCADE" };
+    }
+
+    @Override
+    public String jsonExtract(String column, String jsonPath) {
+        // jsonPath 格式如 $.a.b -> 转为 'a','b'
+        String path = jsonPath.startsWith("$.") ? jsonPath.substring(2) : jsonPath;
+        String keys = Arrays.stream(path.split("\\."))
+            .map(k -> "'" + k + "'")
+            .collect(Collectors.joining(","));
+        return "jsonb_extract_path_text(" + column + "::jsonb," + keys + ")";
     }
 
 }

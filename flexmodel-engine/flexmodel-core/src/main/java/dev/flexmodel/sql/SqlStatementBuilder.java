@@ -4,11 +4,15 @@ import dev.flexmodel.ExpressionCalculatorException;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.ModelDefinition;
 import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ScalarType;
+import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.service.BaseService;
 import dev.flexmodel.sql.dialect.SqlDialect;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static dev.flexmodel.query.Query.Join.JoinType.INNER_JOIN;
 import static dev.flexmodel.query.Query.Join.JoinType.LEFT_JOIN;
@@ -36,12 +40,13 @@ public class SqlStatementBuilder extends BaseService {
     if (model == null) {
       throw new IllegalArgumentException("modelName " + modelName + " not found");
     }
+    Function<String, Set<String>> modelResolver = createModelResolver(modelName);
     StringBuilder sqlBuilder = new StringBuilder("\nselect ");
     Map<String, String> projectionMap = new HashMap<>();
     appendProjection(modelName, query, model, projectionMap, sqlBuilder);
     appendFromClause(modelName, sqlBuilder);
-    appendJoins(modelName, query, model, sqlBuilder, params, true);
-    appendWhereClause(query, sqlBuilder, params, true);
+    appendJoins(modelName, query, model, sqlBuilder, params, true, modelResolver);
+    appendWhereClause(query, sqlBuilder, params, true, modelResolver);
     appendGroupByClause(query, projectionMap, sqlBuilder);
     appendOrderByClause(query, sqlBuilder);
     appendLimitClause(query, sqlBuilder);
@@ -85,19 +90,19 @@ public class SqlStatementBuilder extends BaseService {
     }
   }
 
-  private void appendWhereClause(Query query, StringBuilder sqlBuilder, Map<String, Object> params, boolean prepared) {
+  private void appendWhereClause(Query query, StringBuilder sqlBuilder, Map<String, Object> params, boolean prepared, Function<String, Set<String>> modelResolver) {
     if (query.getFilter() != null) {
       if (prepared) {
-        SqlClauseResult sqlClauseResult = toSqlWhereClauseWithPrepared(query.getFilter());
+        SqlClauseResult sqlClauseResult = toSqlWhereClauseWithPrepared(query.getFilter(), modelResolver);
         sqlBuilder.append("\nwhere (").append(sqlClauseResult.sqlClause()).append(")");
         params.putAll(sqlClauseResult.args());
       } else {
-        sqlBuilder.append("\nwhere (").append(toSqlWhereClause(query.getFilter())).append(")");
+        sqlBuilder.append("\nwhere (").append(toSqlWhereClause(query.getFilter(), modelResolver)).append(")");
       }
     }
   }
 
-  private void appendJoins(String modelName, Query query, ModelDefinition model, StringBuilder sqlBuilder, Map<String, Object> params, boolean prepared) {
+  private void appendJoins(String modelName, Query query, ModelDefinition model, StringBuilder sqlBuilder, Map<String, Object> params, boolean prepared, Function<String, Set<String>> modelResolver) {
     Query.Joins joins = query.getJoins();
     if (joins != null) {
       StringBuilder joinCause = new StringBuilder();
@@ -121,12 +126,14 @@ public class SqlStatementBuilder extends BaseService {
         }
         StringBuilder joinCondition = new StringBuilder();
         if (joiner.getFilter() != null) {
+          // 关联表的过滤条件使用关联表的模型解析器
+          Function<String, Set<String>> joinModelResolver = createModelResolver(joiner.getAs());
           if (prepared) {
-            SqlClauseResult leftSqlWhere = toSqlWhereClauseWithPrepared(joiner.getFilter());
+            SqlClauseResult leftSqlWhere = toSqlWhereClauseWithPrepared(joiner.getFilter(), joinModelResolver);
             joinCondition.append(" and ").append(leftSqlWhere.sqlClause());
             params.putAll(leftSqlWhere.args());
           } else {
-            joinCondition.append(" and ").append(toSqlWhereClause(joiner.getFilter()));
+            joinCondition.append(" and ").append(toSqlWhereClause(joiner.getFilter(), joinModelResolver));
           }
           joinCause.append(joinCondition);
         }
@@ -184,19 +191,19 @@ public class SqlStatementBuilder extends BaseService {
     return null;
   }
 
-  private String toSqlWhereClause(String condition) {
+  private String toSqlWhereClause(String condition, Function<String, Set<String>> modelResolver) {
     SqlExpressionCalculator conditionCalculator = sqlContext.getConditionCalculator();
     try {
-      return conditionCalculator.calculateIncludeValue(condition);
+      return conditionCalculator.calculateIncludeValue(condition, modelResolver);
     } catch (ExpressionCalculatorException e) {
       throw new SqlExecutionException("Calculate sql where error: " + e.getMessage(), e);
     }
   }
 
-  private SqlClauseResult toSqlWhereClauseWithPrepared(String condition) {
+  private SqlClauseResult toSqlWhereClauseWithPrepared(String condition, Function<String, Set<String>> modelResolver) {
     SqlExpressionCalculator conditionCalculator = sqlContext.getConditionCalculator();
     try {
-      return conditionCalculator.calculate(condition, null);
+      return conditionCalculator.calculate(condition, null, modelResolver);
     } catch (ExpressionCalculatorException e) {
       throw new SqlExecutionException("Calculate sql where error: " + e.getMessage(), e);
     }
@@ -213,6 +220,30 @@ public class SqlStatementBuilder extends BaseService {
   private String toPhysicalTableNameQuoteString(String name, String alias) {
     SqlDialect sqlDialect = sqlContext.getSqlDialect();
     return sqlDialect.quoteIdentifier(name) + " " + sqlDialect.quoteIdentifier(alias);
+  }
+
+  /**
+   * 创建模型解析器，用于判断字段路径中的第一段是否为 JSON 类型列。
+   * <p>
+   * 解析器接受一个名称（表名或别名），返回该模型中 JSON 类型列名集合。
+   * 返回 {@code null} 表示该名称不是已知模型。
+   *
+   * @param primaryModelName 主模型名称
+   * @return 模型解析函数
+   */
+  private Function<String, Set<String>> createModelResolver(String primaryModelName) {
+    return name -> {
+      // 优先匹配主模型
+      String lookupName = name.equals(primaryModelName) ? primaryModelName : name;
+      ModelDefinition modelDef = (ModelDefinition) sqlContext.getModelDefinition(lookupName);
+      if (modelDef instanceof EntityDefinition entity) {
+        return entity.getFields().stream()
+          .filter(f -> ScalarType.JSON_TYPE.equals(f.getType()))
+          .map(TypedField::getName)
+          .collect(Collectors.toSet());
+      }
+      return null;
+    };
   }
 
   public record Pair<T, U>(T first, U second) {

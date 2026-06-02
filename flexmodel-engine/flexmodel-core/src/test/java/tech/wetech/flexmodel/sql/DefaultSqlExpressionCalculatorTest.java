@@ -10,6 +10,8 @@ import dev.flexmodel.sql.dialect.SQLServerSqlDialect;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -170,6 +172,107 @@ class DefaultSqlExpressionCalculatorTest {
 
     String inline = calculator.calculateIncludeValue(filter);
     assertEquals("JSON_VALUE(metadata, '$.color') = 'red'", inline);
+  }
+
+  // ==================== Schema 感知模式测试 ====================
+
+  /**
+   * 当模型解析器存在时，第一段是已知模型且第二段不是 JSON 列 → 渲染为 table.column
+   */
+  @Test
+  void shouldRenderTableColumnWhenModelResolverPresent() throws ExpressionCalculatorException {
+    DefaultSqlExpressionCalculator calculator = newCalculator();
+    // studentDetail 模型的 JSON 列集合为空，表示 description 不是 JSON 列
+    Function<String, Set<String>> modelResolver = name -> {
+      if ("studentDetail".equals(name)) {
+        return Set.of(); // 无 JSON 列
+      }
+      return null; // 未知模型
+    };
+    String filter = """
+      { "studentDetail.description": { "_eq": "some text" } }
+      """;
+
+    String inline = calculator.calculateIncludeValue(filter, modelResolver);
+    assertEquals("`studentDetail`.`description` = 'some text'", inline);
+  }
+
+  /**
+   * 当模型解析器存在时，第一段是已知模型且第二段是 JSON 列 → 渲染为 JSON 提取
+   */
+  @Test
+  void shouldRenderJsonExtractWhenFieldIsJsonColumn() throws ExpressionCalculatorException {
+    DefaultSqlExpressionCalculator calculator = newCalculator();
+    // 主模型的 metadata 字段是 JSON 类型
+    Function<String, Set<String>> modelResolver = name -> {
+      if ("Student".equals(name)) {
+        return Set.of("metadata", "config"); // metadata 和 config 是 JSON 列
+      }
+      return null;
+    };
+    String filter = """
+      { "metadata.color": { "_eq": "red" } }
+      """;
+
+    String inline = calculator.calculateIncludeValue(filter, modelResolver);
+    assertEquals("JSON_EXTRACT(`metadata`, '$.color') = 'red'", inline);
+  }
+
+  /**
+   * 当模型解析器存在时，第一段不是已知模型 → 向后兼容，视为 JSON 路径
+   */
+  @Test
+  void shouldFallbackToJsonPathWhenModelUnknown() throws ExpressionCalculatorException {
+    DefaultSqlExpressionCalculator calculator = newCalculator();
+    Function<String, Set<String>> modelResolver = name -> null; // 所有名称都未知
+    String filter = """
+      { "metadata.color": { "_eq": "red" } }
+      """;
+
+    String inline = calculator.calculateIncludeValue(filter, modelResolver);
+    assertEquals("JSON_EXTRACT(`metadata`, '$.color') = 'red'", inline);
+  }
+
+  /**
+   * Schema 感知模式下同时包含 JSON 查询和关联查询
+   */
+  @Test
+  void shouldDistinguishJsonAndAssociationInSameQuery() throws ExpressionCalculatorException {
+    DefaultSqlExpressionCalculator calculator = newCalculator();
+    // 主模型 Student 有 metadata JSON 列，studentDetail 模型无 JSON 列
+    Function<String, Set<String>> modelResolver = name -> {
+      if ("Student".equals(name)) {
+        return Set.of("metadata");
+      }
+      if ("studentDetail".equals(name)) {
+        return Set.of();
+      }
+      return null;
+    };
+    String filter = """
+      {
+        "metadata.color": { "_eq": "red" },
+        "studentDetail.description": { "_eq": "good" }
+      }
+      """;
+
+    String inline = calculator.calculateIncludeValue(filter, modelResolver);
+    assertEquals("(JSON_EXTRACT(`metadata`, '$.color') = 'red' AND `studentDetail`.`description` = 'good')", inline);
+  }
+
+  /**
+   * 无模型解析器时保持向后兼容行为
+   */
+  @Test
+  void shouldMaintainBackwardCompatibilityWithoutModelResolver() throws ExpressionCalculatorException {
+    DefaultSqlExpressionCalculator calculator = newCalculator();
+    String filter = """
+      { "metadata.color": { "_eq": "red" } }
+      """;
+
+    // 不带 modelResolver 的调用应与原来行为一致
+    String inline = calculator.calculateIncludeValue(filter);
+    assertEquals("JSON_EXTRACT(`metadata`, '$.color') = 'red'", inline);
   }
 }
 

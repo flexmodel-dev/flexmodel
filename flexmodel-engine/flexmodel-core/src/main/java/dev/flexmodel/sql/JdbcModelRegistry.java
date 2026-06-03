@@ -38,7 +38,7 @@ public class JdbcModelRegistry implements ModelRegistry {
   public JdbcModelRegistry(DataSource dataSource) {
     this.dataSource = dataSource;
     try (Connection connection = dataSource.getConnection()) {
-      sqlDialect = SqlDialectFactory.create(dataSource.getConnection().getMetaData());
+      sqlDialect = SqlDialectFactory.create(connection.getMetaData());
       if (!existSchema(connection)) {
         initSchema(connection);
       }

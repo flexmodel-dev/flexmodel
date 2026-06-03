@@ -51,8 +51,8 @@ public class SessionDatasourceImpl implements SessionDatasource {
     String jdbcUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", databaseName);
     String username = datasource.username().orElse(null);
     String password = datasource.password().orElse(null);
-    try (var conn = DriverManager.getConnection(jdbcUrl, username, password)) {
-      ResultSet tables = conn.getMetaData().getTables(null, null, "%", new String[]{"TABLE"});
+    try (var conn = DriverManager.getConnection(jdbcUrl, username, password);
+        ResultSet tables = conn.getMetaData().getTables(null, null, "%", new String[] { "TABLE" })) {
       while (tables.next()) {
         String tableName = tables.getString("TABLE_NAME");
         list.add(tableName);
@@ -77,7 +77,8 @@ public class SessionDatasourceImpl implements SessionDatasource {
       if (configDs != null) {
         // 配置文件中已定义该数据源，如果SchemaProvider已注册则跳过
         if (sessionFactory.isSchemaExists(actualSchemaName)) {
-          log.info("SchemaProvider '{}' already registered from config, skipping dynamic registration", actualSchemaName);
+          log.info("SchemaProvider '{}' already registered from config, skipping dynamic registration",
+              actualSchemaName);
           return;
         }
         // 配置存在但SchemaProvider未注册，使用配置URL创建

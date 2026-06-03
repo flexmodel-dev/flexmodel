@@ -114,12 +114,13 @@ public class SqlMetadata {
   private void traceIfEnabled(String key, ResetSetSupplier consumer) throws SQLException {
     if (log.isTraceEnabled()) {
       log.trace("{} start========================", key);
-      ResultSet rs = consumer.get();
-      while (rs.next()) {
-        log.trace("--------------------------");
-        int columnCount = rs.getMetaData().getColumnCount();
-        for (int i = 1; i < columnCount; i++) {
-          log.trace(rs.getMetaData().getColumnLabel(i) + ":" + rs.getObject(i));
+      try (ResultSet rs = consumer.get()) {
+        while (rs.next()) {
+          log.trace("--------------------------");
+          int columnCount = rs.getMetaData().getColumnCount();
+          for (int i = 1; i < columnCount; i++) {
+            log.trace(rs.getMetaData().getColumnLabel(i) + ":" + rs.getObject(i));
+          }
         }
       }
       log.trace("{} end========================", key);

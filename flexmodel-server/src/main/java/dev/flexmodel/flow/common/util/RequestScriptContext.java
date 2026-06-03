@@ -106,7 +106,7 @@ public class RequestScriptContext {
     context.put("log", new Logger(projectId));
 
     if(sessionFactory!=null) {
-      Session session = sessionFactory.createSession(projectId);
+      context.put("db", new ScriptExecutionDB(projectId, sessionFactory));
     }
 
     return context;

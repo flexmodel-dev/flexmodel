@@ -74,11 +74,11 @@
     },
     {
       "id": "feat-010",
-      "name": "替换此占位符为你的下一个特性",
-      "description": "将本条目替换为你接下来要实现的具体功能特性，设置 status 为 not-started",
-      "dependencies": [],
-      "status": "not-started",
-      "evidence": ""
+      "name": "MCP Server - AI 工具集成",
+      "description": "基于 Quarkus MCP Server 扩展实现 MCP 协议，通过 @Tool 注解暴露 P0 核心工具（Project/Modeling/Data），支持 AI 客户端直接管理项目、建模和数据",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "flexmodel-server/mcp 特性包已实现，15 个 MCP Tools（ProjectTools/ModelingTools/DataTools）已通过编译验证"
     }
   ]
 }

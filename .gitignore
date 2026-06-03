@@ -35,3 +35,4 @@ build/
 ### Project ###
 
 *.db
+flexmodel-server/logs/

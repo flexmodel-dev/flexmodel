@@ -1,9 +1,18 @@
 package dev.flexmodel.common.config.web.filter;
 
 
+import dev.flexmodel.codegen.entity.AuthApiKey;
+import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.idp.IdentityProviderService;
+import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.common.config.web.jwt.JwtUtil;
+import dev.flexmodel.auth.AuthException;
 import dev.flexmodel.project.ProjectService;
+import dev.flexmodel.projectauth.ApiKeyService;
+import dev.flexmodel.projectauth.AuthProviderConfigService;
+import dev.flexmodel.projectauth.provider.AuthContext;
+import dev.flexmodel.projectauth.provider.AuthProvider;
+import dev.flexmodel.projectauth.provider.AuthResult;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -12,23 +21,15 @@ import jakarta.ws.rs.container.ResourceInfo;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.settings.SettingsService;
-import dev.flexmodel.codegen.entity.IdentityProvider;
-import dev.flexmodel.auth.AuthException;
-import dev.flexmodel.idp.provider.ValidateParam;
-import dev.flexmodel.idp.provider.ValidateResult;
-import dev.flexmodel.settings.Settings;
-import dev.flexmodel.common.config.web.jwt.JwtUtil;
-import dev.flexmodel.common.SessionContextHolder;
-import dev.flexmodel.common.utils.JsonUtils;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
+ * 认证过滤器。
+ * <p>
+ * 认证链：PermitAll -> 系统 JWT -> API Key(fm_ak_ 前缀) -> 项目 Provider(OIDC/Script) -> 401
+ *
  * @author cjbi
  */
 @Slf4j
@@ -38,65 +39,140 @@ public class AuthFilter implements ContainerRequestFilter {
   @Context
   ResourceInfo resourceInfo;
   @Inject
-  SettingsService settingsService;
-  @Inject
-  IdentityProviderService identityProviderService;
-  @Inject
   ProjectService projectService;
+  @Inject
+  ApiKeyService apiKeyService;
+  @Inject
+  AuthProviderConfigService authProviderConfigService;
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
     String path = requestContext.getUriInfo().getPath();
     boolean isFlexmodelPath = path.startsWith("/");
-    if (isFlexmodelPath) {
-      PermitAll permitAll = resourceInfo.getResourceMethod().getAnnotation(PermitAll.class);
-      if (permitAll == null) {
-        String accessToken = Objects.toString(requestContext.getHeaderString("Authorization"), "").replaceFirst("Bearer ", "");
-        if (accessToken.isEmpty()) {
-          throw new AuthException("Token is missing");
-        }
-        // 默认使用内置的token，否则就使用idp提供的身份源验证
-        if (!JwtUtil.verify(accessToken) && !varifyWithIdp("default", requestContext)) {
-          throw new AuthException("Invalid token");
-        }
-        // 填充会话上下文
-        fillSessionContext(requestContext);
-      }
+    if (!isFlexmodelPath) {
+      return;
     }
+
+    // 1. PermitAll -> 直接放行
+    PermitAll permitAll = resourceInfo.getResourceMethod().getAnnotation(PermitAll.class);
+    if (permitAll != null) {
+      return;
+    }
+
+    // 2. 提取 Bearer token
+    String accessToken = Objects.toString(requestContext.getHeaderString("Authorization"), "")
+      .replaceFirst("Bearer ", "").trim();
+    if (accessToken.isEmpty()) {
+      throw new AuthException("Token is missing");
+    }
+
+    String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
+
+    // 3. 认证链
+    if (trySystemJwt(accessToken, requestContext, projectId)) {
+      return;
+    }
+    if (accessToken.startsWith("fm_ak_") && tryApiKey(accessToken, requestContext, projectId)) {
+      return;
+    }
+    if (projectId != null && tryProjectProviders(accessToken, requestContext, projectId)) {
+      return;
+    }
+
+    // 4. 全部失败 -> 401
+    throw new AuthException("Invalid token");
   }
 
   /**
-   * 使用idp验证
-   *
-   * @param requestContext 请求上下文
-   * @return 是否验证成功
+   * 尝试系统 JWT 验证（管理后台用户）。
    */
-  private boolean varifyWithIdp(String projectId, ContainerRequestContext requestContext) {
-    Settings.Security security = settingsService.getSettings().getSecurity();
-    String systemIdentityProvider = security.getSystemIdentityProvider();
-    IdentityProvider identityProvider = identityProviderService.find(systemIdentityProvider);
-    if (identityProvider == null) {
-      log.warn("system idp not found!");
+  private boolean trySystemJwt(String token, ContainerRequestContext requestContext, String projectId) {
+    try {
+      if (!JwtUtil.verify(token)) {
+        return false;
+      }
+    } catch (Exception e) {
       return false;
     }
-    dev.flexmodel.idp.provider.Provider provider = JsonUtils.getInstance().convertValue(identityProvider.getProvider(), dev.flexmodel.idp.provider.Provider.class);
-    ValidateParam param = new ValidateParam();
-    Map<String, String> headers = new HashMap<>();
-    requestContext.getHeaders().forEach((k, v) -> headers.put(k, v.getFirst()));
-    Collection<String> propertyNames = requestContext.getPropertyNames();
-    Map<String, String> query = new HashMap<>();
-    propertyNames.forEach(propertyName -> query.put(propertyName, Objects.toString(requestContext.getProperty(propertyName), null)));
-    param.setQuery(query);
-    param.setHeaders(headers);
-    ValidateResult result = provider.validate(projectId, param);
-    return result.isSuccess();
+    String userId = JwtUtil.getAccount(token);
+    fillSessionContextForUser(requestContext, projectId, userId);
+    return true;
   }
 
-  private void fillSessionContext(ContainerRequestContext requestContext) {
-    String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
-    String accessToken = Objects.toString(requestContext.getHeaderString("Authorization"), "")
-      .replaceFirst("Bearer ", "");
-    String userId = JwtUtil.getAccount(accessToken);
+  /**
+   * 尝试 API Key 验证（fm_ak_ 前缀）。
+   */
+  private boolean tryApiKey(String token, ContainerRequestContext requestContext, String projectId) {
+    AuthApiKey apiKey = apiKeyService.validate(token);
+    if (apiKey == null) {
+      return false;
+    }
+    // 如果请求路径包含 projectId，校验 key 归属
+    if (projectId != null && !projectId.equals(apiKey.getProjectId())) {
+      return false;
+    }
+    fillSessionContextForApiKey(requestContext, apiKey);
+    return true;
+  }
+
+  /**
+   * 尝试项目级外部 Provider 验证。
+   */
+  private boolean tryProjectProviders(String token, ContainerRequestContext requestContext, String projectId) {
+    List<AuthProviderConfig> configs = authProviderConfigService.listByProject(projectId);
+    if (configs == null || configs.isEmpty()) {
+      return false;
+    }
+
+    AuthContext authContext = buildAuthContext(projectId, token, requestContext);
+
+    for (AuthProviderConfig config : configs) {
+      if (!config.getEnabled()) {
+        continue;
+      }
+      try {
+        AuthProvider provider = authProviderConfigService.buildProvider(config);
+        if (provider == null) {
+          continue;
+        }
+        AuthResult result = provider.authenticate(authContext);
+        if (result != null && result.isSuccess()) {
+          fillSessionContextForProvider(requestContext, projectId, result);
+          return true;
+        }
+      } catch (Exception e) {
+        log.debug("Auth provider '{}' failed: {}", config.getName(), e.getMessage());
+      }
+    }
+    return false;
+  }
+
+  private AuthContext buildAuthContext(String projectId, String token, ContainerRequestContext requestContext) {
+    AuthContext ctx = new AuthContext();
+    ctx.setProjectId(projectId);
+    ctx.setBearerToken(token);
+    ctx.setMethod(requestContext.getMethod());
+    ctx.setUrl(requestContext.getUriInfo().getRequestUri().toString());
+
+    Map<String, String> headers = new HashMap<>();
+    requestContext.getHeaders().forEach((k, v) -> headers.put(k, v.getFirst()));
+    ctx.setHeaders(headers);
+
+    Map<String, String> query = new HashMap<>();
+    requestContext.getUriInfo().getQueryParameters().forEach((k, v) -> {
+      if (v != null && !v.isEmpty()) {
+        query.put(k, v.getFirst());
+      }
+    });
+    ctx.setQuery(query);
+
+    return ctx;
+  }
+
+  /**
+   * 系统 JWT 认证 -> 填充上下文（管理后台用户）。
+   */
+  private void fillSessionContextForUser(ContainerRequestContext requestContext, String projectId, String userId) {
     if (projectId != null) {
       Project project = projectService.findProject(projectId);
       if (project == null) {
@@ -105,13 +181,55 @@ public class AuthFilter implements ContainerRequestFilter {
       SessionContextHolder.setProjectId(projectId);
       SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
       SessionContextHolder.setBranchName(project.getCurrentBranch());
-    } else {
-      SessionContextHolder.setProjectId(null);
-      SessionContextHolder.setProjectDatabaseName(null);
     }
     SessionContextHolder.setUserId(userId);
+    SessionContextHolder.setCaller(userId);
+    SessionContextHolder.setScopes(Set.of("*"));
     requestContext.setProperty("projectId", projectId);
     requestContext.setProperty("userId", userId);
+  }
+
+  /**
+   * API Key 认证 -> 填充上下文。
+   */
+  private void fillSessionContextForApiKey(ContainerRequestContext requestContext, AuthApiKey apiKey) {
+    String projectId = apiKey.getProjectId();
+    Project project = projectService.findProject(projectId);
+    if (project == null) {
+      throw new AuthException("Project not found");
+    }
+    SessionContextHolder.setProjectId(projectId);
+    SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
+    SessionContextHolder.setBranchName(project.getCurrentBranch());
+    SessionContextHolder.setCaller(apiKey.getName());
+    SessionContextHolder.setScopes(parseScopes(apiKey.getScopes()));
+    requestContext.setProperty("projectId", projectId);
+  }
+
+  /**
+   * 外部 Provider 认证 -> 填充上下文。
+   */
+  private void fillSessionContextForProvider(ContainerRequestContext requestContext, String projectId, AuthResult result) {
+    Project project = projectService.findProject(projectId);
+    if (project == null) {
+      throw new AuthException("Project not found");
+    }
+    SessionContextHolder.setProjectId(projectId);
+    SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
+    SessionContextHolder.setBranchName(project.getCurrentBranch());
+    SessionContextHolder.setCaller(result.getCaller());
+    SessionContextHolder.setScopes(result.getScopes() != null ? result.getScopes() : Set.of());
+    requestContext.setProperty("projectId", projectId);
+  }
+
+  private Set<String> parseScopes(String scopes) {
+    if (scopes == null || scopes.isBlank()) {
+      return Set.of();
+    }
+    if ("*".equals(scopes.trim())) {
+      return Set.of("*");
+    }
+    return Set.of(scopes.split(","));
   }
 
 }

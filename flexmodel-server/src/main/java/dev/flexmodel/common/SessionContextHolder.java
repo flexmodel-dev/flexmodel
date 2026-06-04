@@ -3,6 +3,8 @@ package dev.flexmodel.common;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Set;
+
 /**
  * @author cjbi
  */
@@ -42,6 +44,22 @@ public class SessionContextHolder {
     return CONTEXT_HOLDER.get().getBranchName();
   }
 
+  public static void setCaller(String caller) {
+    CONTEXT_HOLDER.get().setCaller(caller);
+  }
+
+  public static String getCaller() {
+    return CONTEXT_HOLDER.get().getCaller();
+  }
+
+  public static void setScopes(Set<String> scopes) {
+    CONTEXT_HOLDER.get().setScopes(scopes);
+  }
+
+  public static Set<String> getScopes() {
+    return CONTEXT_HOLDER.get().getScopes();
+  }
+
 
   @Getter
   @Setter
@@ -50,6 +68,8 @@ public class SessionContextHolder {
     private String projectDatabaseName;
     private String userId;
     private String branchName;
+    private String caller;
+    private Set<String> scopes;
   }
 
 }

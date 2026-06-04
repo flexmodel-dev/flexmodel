@@ -8,6 +8,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Produces;
 import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.common.AuditDataEventListener;
+import dev.flexmodel.realtime.RealtimeEventListener;
 import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
@@ -48,7 +49,8 @@ public class SessionConfig {
   @ApplicationScoped
   public SessionFactory sessionFactory(FlexmodelConfig flexmodelConfig,
                                        TriggerDataChangedEventListener triggerDataChangedEventListener,
-                                       AuditDataEventListener auditDataEventListener) {
+                                       AuditDataEventListener auditDataEventListener,
+                                       RealtimeEventListener realtimeEventListener) {
     FlexmodelConfig.DatasourceConfig datasourceConfig = flexmodelConfig.datasources().get(SYSTEM_DS_KEY);
     HikariDataSource defaultDs = new HikariDataSource();
     defaultDs.setMaxLifetime(30000);
@@ -72,6 +74,7 @@ public class SessionConfig {
     SessionFactory sf = builder.build();
     sf.getEventPublisher().addListener(triggerDataChangedEventListener);
     sf.getEventPublisher().addListener(auditDataEventListener);
+    sf.getEventPublisher().addListener(realtimeEventListener);
     return sf;
   }
 

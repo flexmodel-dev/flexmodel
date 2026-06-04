@@ -34,16 +34,35 @@ model f_api_request_log {
   @comment("API请求日志")
 }
 
-model f_identity_provider {
+model auth_api_key {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目"),
+  name : String @length("255") @comment("Key 名称"),
+  key_hash : String @length("64") @comment("SHA-256 哈希"),
+  key_prefix : String @length("16") @comment("前缀(fm_ak_xxx)"),
+  key_type : String @length("50") @comment("类型: anon/service/custom"),
+  scopes? : String @length("500") @comment("权限范围,逗号分隔"),
+  read_only : Boolean @default("false") @comment("是否只读"),
+  expires_at? : DateTime @comment("过期时间"),
+  last_used_at? : DateTime @comment("最后使用时间"),
+  enabled : Boolean @default("true") @comment("是否启用"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_AUTH_AK_HASH", unique: true, fields: [key_hash]),
+  @index(name: "IDX_AUTH_AK_PROJECT", fields: [project_id]),
+  @comment("API Key")
+}
+
+model auth_provider_config {
   name : String @id,
-  provider? : JSON,
-  project_id?: String @comment("项目ID"),
-  created_by?: String @comment("创建人"),
-  updated_by?: String @comment("更新人"),
-  created_at?: DateTime @default(now()) @comment("创建时间"),
-  updated_at?: DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_PROJECT", fields: [project_id]),
-  @comment("身份源")
+  project_id : String @comment("所属项目"),
+  type : String @length("50") @comment("类型: oidc/script"),
+  enabled : Boolean @default("true") @comment("是否启用"),
+  config : JSON @comment("提供商配置"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_AUTH_PROV_PROJECT", unique: true, fields: [project_id, name]),
+  @comment("认证提供商配置")
 }
 
 model f_ai_chat_memory {
@@ -347,9 +366,9 @@ seed f_em_flow_deployment {
   {flow_deploy_id: "1fe532ae-33c4-4f57-aabe-62640da4f185", flow_module_id: "9243be36-9ced-4413-acd5-5fc93a05c698", flow_name: "脚本测试", flow_key: "script_test", flow_model: "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_miclvtzacagocb\"],\"properties\":{\"positionX\":-96,\"positionY\":64,\"name\":\"Start\"}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_miclvvbzb9t82p\"],\"outgoing\":[],\"properties\":{\"positionX\":800,\"positionY\":48,\"name\":\"End\"}},{\"key\":\"serviceTask_miclvseffazfuf\",\"type\":5,\"incoming\":[\"SequenceFlow_miclvtzacagocb\"],\"outgoing\":[\"SequenceFlow_miclvvbzb9t82p\"],\"properties\":{\"subType\":\"script\",\"script\":\"\"hello world\\...[truncated]", status: 1, create_time: "2025-10-14T11:23:02.659", modify_time: "2025-10-14T11:23:02.660", operator: "admin", remark: "Javascript脚本测试", archive: 0, caller: "admin", project_id: "dev_test"},
 }
 
-seed f_identity_provider {
-  {name: "demo", project_id: "dev_test", provider: {type: "oidc", issuer: "http://localhost/issuer", client_id: "test_client_id", client_secret: "test_client_secret"}},
-  {name: "default", created_at: "2024-07-13T23:21:09", updated_at: "2024-07-13T23:21:09", created_by: "admin", updated_by: "admin", project_id: "default", provider: {type: "script", script: "const request = context.request;\nconst response = context.response;\nconst log = context.log;\nconst jwtVerify = context.utils.jwtVerify;\n// Example: simple token check from header\nlog.info('identify context: {}', context);\nconst auth = request.headers['authorization'] || request.headers['Authorization'];\nif (!auth || !auth.startsWith('Bearer ')) {\n  response.body = { success: false, message: 'Missing bearer token' };\n} else {\n  const token = auth.substring('Bearer '.length);\n  try {\n    // verify...[truncated]"}},
+seed auth_provider_config {
+  {name: "demo", project_id: "dev_test", type: "oidc", enabled: true, config: {issuer: "http://localhost/issuer", clientId: "test_client_id", clientSecret: "test_client_secret"}},
+  {name: "default", project_id: "default", type: "script", enabled: true, config: {script: "const auth = context.headers['authorization'] || context.headers['Authorization'];\nif (!auth || !auth.startsWith('Bearer ')) {\n  return {success: false, message: 'Missing bearer token'};\n}\nreturn {success: true, caller: 'external', scopes: ['read']};"}},
 }
 
 seed f_trigger {

@@ -38,8 +38,6 @@ public class Settings {
     private int maxRequestCount = 500;
     private int intervalInSeconds = 60;
     private String graphqlEndpointPath = "/graphql";
-    private String graphqlEndpointIdentityProvider;
-    private String systemIdentityProvider = "default";
   }
 
   @Getter

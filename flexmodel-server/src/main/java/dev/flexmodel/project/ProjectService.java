@@ -15,6 +15,8 @@ import dev.flexmodel.project.dto.ProjectResponse;
 import dev.flexmodel.sql.JdbcSchemaManager;
 import dev.flexmodel.sql.SchemaManager;
 import dev.flexmodel.storage.StorageService;
+import dev.flexmodel.projectauth.ApiKeyService;
+import dev.flexmodel.projectauth.AuthProviderConfigService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.Project;
@@ -54,6 +56,10 @@ public class ProjectService {
   FlexmodelConfig flexmodelConfig;
   @Inject
   GraphQLEventConsumer graphQLEventConsumer;
+  @Inject
+  ApiKeyService apiKeyService;
+  @Inject
+  AuthProviderConfigService authProviderConfigService;
 
   private final SchemaManager schemaManager = new JdbcSchemaManager();
 
@@ -152,7 +158,10 @@ public class ProjectService {
     // 4. 保存 f_project 记录
     Project saved = projectRepository.save(project);
 
-    // 5. 为新项目生成 GraphQL Schema
+    // 5. 自动生成默认 API Key（anon + service）
+    apiKeyService.generateDefaultKeys(saved.getId());
+
+    // 6. 为新项目生成 GraphQL Schema
     graphQLEventConsumer.refreshProject(saved);
 
     return saved;
@@ -198,7 +207,11 @@ public class ProjectService {
       // 部分数据库（如 Oracle）可能无法自动删除
     }
 
-    // 3. 删除 f_project 记录
+    // 3. 删除关联的 API Key 和 Provider 配置
+    apiKeyService.deleteByProjectId(projectId);
+    authProviderConfigService.deleteByProjectId(projectId);
+
+    // 4. 删除 f_project 记录
     projectRepository.delete(projectId);
   }
 

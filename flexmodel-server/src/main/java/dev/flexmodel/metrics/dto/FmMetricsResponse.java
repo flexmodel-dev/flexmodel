@@ -13,21 +13,17 @@ import lombok.*;
 public class FmMetricsResponse {
 
   /**
-   * 自定义接口数量
-   */
-  private int customApiCount;
-  /**
    * 请求数量
    */
   private int requestCount;
   /**
-   * 数据源数量
-   */
-  private int dataSourceCount;
-  /**
    * 模型数量
    */
   private int modelCount;
+  /**
+   * 分支数量
+   */
+  private int branchCount;
   /**
    * 流程数量
    */

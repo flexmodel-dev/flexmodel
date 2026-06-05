@@ -152,6 +152,12 @@
       <groupId>io.quarkiverse.langchain4j</groupId>
       <artifactId>quarkus-langchain4j-easy-rag</artifactId>
     </dependency>-->
+    <!-- AWS SDK S3 -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>2.29.52</version>
+    </dependency>
     <!-- GraalVM JavaScript -->
     <dependency>
       <groupId>org.graalvm.polyglot</groupId>

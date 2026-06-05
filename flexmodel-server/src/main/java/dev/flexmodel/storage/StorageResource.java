@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.StreamingOutput;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.ParameterIn;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
@@ -15,8 +16,10 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import dev.flexmodel.codegen.entity.Storage;
+import dev.flexmodel.storage.dto.ValidateStorageResult;
 
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 
 /**
@@ -309,6 +312,66 @@ public class StorageResource {
     @QueryParam("path") @NotBlank String path) {
     long size = storageService.getFileSize(projectId, storageName, path);
     return Response.ok().entity(new FileSizeResponse(size)).build();
+  }
+
+  @APIResponse(
+    name = "200",
+    responseCode = "200",
+    description = "文件内容",
+    content = {
+      @Content(
+        mediaType = MediaType.APPLICATION_OCTET_STREAM
+      )
+    }
+  )
+  @Operation(summary = "下载文件")
+  @GET
+  @Path("/{storageName}/files/download")
+  @Produces(MediaType.APPLICATION_OCTET_STREAM)
+  public Response downloadFile(
+    @Parameter(name = "projectId", in = ParameterIn.PATH, description = "项目ID", required = true)
+    @PathParam("projectId") String projectId,
+    @Parameter(name = "storageName", in = ParameterIn.PATH, description = "存储名称", required = true)
+    @PathParam("storageName") String storageName,
+    @Parameter(name = "path", in = ParameterIn.QUERY, description = "文件路径", required = true)
+    @QueryParam("path") @NotBlank String path) {
+    InputStream inputStream = storageService.downloadFile(projectId, storageName, path);
+    String fileName = path.substring(path.lastIndexOf('/') + 1);
+    StreamingOutput stream = (OutputStream output) -> {
+      byte[] buffer = new byte[8192];
+      int bytesRead;
+      while ((bytesRead = inputStream.read(buffer)) != -1) {
+        output.write(buffer, 0, bytesRead);
+      }
+      inputStream.close();
+    };
+    return Response.ok(stream)
+      .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
+      .build();
+  }
+
+  @APIResponse(
+    name = "200",
+    responseCode = "200",
+    description = "OK",
+    content = {
+      @Content(
+        mediaType = "application/json",
+        schema = @Schema(
+          implementation = ValidateStorageResult.class
+        )
+      )
+    }
+  )
+  @Operation(summary = "验证存储配置")
+  @POST
+  @Path("/validate")
+  public ValidateStorageResult validate(
+    @Parameter(name = "projectId", in = ParameterIn.PATH, description = "项目ID", required = true)
+    @PathParam("projectId") String projectId,
+    Storage storage) {
+    storage.setProjectId(projectId);
+    return storageService.validateStorage(projectId, storage);
   }
 
   public static class StorageSchema {

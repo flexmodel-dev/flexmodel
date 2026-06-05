@@ -158,6 +158,19 @@ public class LocalStorageOperations implements StorageOperations {
     }
   }
 
+  @Override
+  public InputStream getInputStream(String path) {
+    Path targetPath = resolvePath(path);
+    try {
+      if (!Files.exists(targetPath) || Files.isDirectory(targetPath)) {
+        throw new RuntimeException("File not found or is a directory: " + path);
+      }
+      return Files.newInputStream(targetPath);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to open file for download: " + path, e);
+    }
+  }
+
   private Path resolvePath(String path) {
     path = path.startsWith("/") ? path.substring(1) : path;
     Path resolved = basePath.resolve(path).normalize();

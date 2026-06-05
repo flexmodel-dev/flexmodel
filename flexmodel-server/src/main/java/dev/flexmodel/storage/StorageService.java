@@ -113,4 +113,42 @@ public class StorageService {
   public Integer count(String projectId) {
     return storageRepository.count(projectId);
   }
+
+  public dev.flexmodel.storage.dto.ValidateStorageResult validateStorage(String projectId, Storage storage) {
+    long start = System.currentTimeMillis();
+    try {
+      StorageOperations operations = StorageOperationsFactory.create(storage);
+      // Test basic operations: list root and check connectivity
+      operations.listFiles("");
+      long elapsed = System.currentTimeMillis() - start;
+      return dev.flexmodel.storage.dto.ValidateStorageResult.builder()
+        .success(true)
+        .time(elapsed)
+        .build();
+    } catch (Exception e) {
+      long elapsed = System.currentTimeMillis() - start;
+      return dev.flexmodel.storage.dto.ValidateStorageResult.builder()
+        .success(false)
+        .errorMsg(e.getMessage())
+        .time(elapsed)
+        .build();
+    }
+  }
+
+  public InputStream downloadFile(String projectId, String storageName, String path) {
+    Storage storage = findOne(projectId, storageName)
+      .orElseThrow(() -> new RuntimeException("Storage not found: " + storageName));
+
+    StorageOperations operations = StorageOperationsFactory.create(storage);
+    return operations.getInputStream(path);
+  }
+
+  /**
+   * Get the StorageOperations for a given storage (for advanced streaming operations)
+   */
+  public StorageOperations getStorageOperations(String projectId, String storageName) {
+    Storage storage = findOne(projectId, storageName)
+      .orElseThrow(() -> new RuntimeException("Storage not found: " + storageName));
+    return StorageOperationsFactory.create(storage);
+  }
 }

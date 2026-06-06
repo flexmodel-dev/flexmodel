@@ -1,6 +1,7 @@
 package dev.flexmodel.project;
 
 import dev.flexmodel.project.dto.BranchCreateRequest;
+import dev.flexmodel.project.dto.BranchMergeRequest;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import jakarta.inject.Inject;
@@ -118,5 +119,25 @@ public class BranchResource {
     @Parameter(name = "branch", in = ParameterIn.PATH, description = "分支名称", required = true)
     @PathParam("branch") String branch) {
     return branchService.switchBranch(projectId, branch);
+  }
+
+  @APIResponse(
+    name = "200",
+    responseCode = "200",
+    description = "OK"
+  )
+  @Operation(summary = "合并分支", description = "将源分支的模型结构和数据合并到目标分支，支持冲突策略：OVERWRITE（覆盖）或 SKIP（跳过）")
+  @POST
+  @Path("/merge")
+  public void mergeBranch(
+    @Parameter(name = "projectId", in = ParameterIn.PATH, description = "项目ID", required = true)
+    @PathParam("projectId") String projectId,
+    BranchMergeRequest request) {
+    branchService.mergeBranch(
+      projectId,
+      request.getSourceBranch(),
+      request.getTargetBranch(),
+      request.getConflictStrategy()
+    );
   }
 }

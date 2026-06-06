@@ -43,7 +43,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class BranchService {
 
-  /** 分支名格式：小写字母开头，由小写字母、数字和下划线组成，长度2~63 */
+  /**
+   * 分支名格式：小写字母开头，由小写字母、数字和下划线组成，长度2~63
+   */
   private static final Pattern BRANCH_NAME_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{1,62}$");
 
   @Inject
@@ -71,19 +73,7 @@ public class BranchService {
     if (project == null) {
       return List.of();
     }
-    List<Branch> dbBranches = branchRepository.findByProjectId(projectId).stream()
-      .filter(b -> !"main".equals(b.getName()))
-      .toList();
-    List<Branch> result = new ArrayList<>();
-    // main 分支始终作为第一条，不存储在 f_branch 表中
-    Branch mainBranch = new Branch();
-    mainBranch.setId("main");
-    mainBranch.setProjectId(projectId);
-    mainBranch.setName("main");
-    mainBranch.setDatabaseName(resolveDatabaseName(project));
-    result.add(mainBranch);
-    result.addAll(dbBranches);
-    return result;
+    return branchRepository.findByProjectId(projectId);
   }
 
   public Branch createBranch(String projectId, String branchName, String sourceBranch, String description) {
@@ -104,19 +94,14 @@ public class BranchService {
     }
 
     // 2. 确定源分支的 databaseName
-    String sourceDbName;
-    if (sourceBranch == null || "main".equals(sourceBranch)) {
-      sourceDbName = resolveDatabaseName(project);
-    } else {
-      Branch sourceBranchRecord = branchRepository.findByProjectIdAndName(projectId, sourceBranch);
-      if (sourceBranchRecord == null) {
-        throw new IllegalArgumentException("源分支 " + sourceBranch + " 不存在");
-      }
-      sourceDbName = sourceBranchRecord.getDatabaseName();
+    Branch sourceBranchRecord = branchRepository.findByProjectIdAndName(projectId, sourceBranch);
+    if (sourceBranchRecord == null) {
+      throw new IllegalArgumentException("源分支 " + sourceBranch + " 不存在");
     }
+    String sourceDbName = sourceBranchRecord.getDatabaseName();
 
     // 3. 计算目标数据库名
-    String branchDbName = resolveDatabaseName(project) + "_" + branchName;
+    String branchDbName = project.getId() + "_" + branchName;
 
     // 4. 构建目标数据源并通过 FML 导出导入复制模型结构
     DataSource targetDs = sessionDatasourceImpl.buildJdbcDataSource(branchDbName);
@@ -172,11 +157,9 @@ public class BranchService {
     if (project == null) {
       throw new IllegalArgumentException("项目不存在");
     }
-    if (!"main".equals(branchName)) {
-      Branch branch = branchRepository.findByProjectIdAndName(projectId, branchName);
-      if (branch == null) {
-        throw new IllegalArgumentException("分支 " + branchName + " 不存在");
-      }
+    Branch branch = branchRepository.findByProjectIdAndName(projectId, branchName);
+    if (branch == null) {
+      throw new IllegalArgumentException("分支 " + branchName + " 不存在");
     }
     project.setCurrentBranch(branchName);
     return projectRepository.save(project);
@@ -210,7 +193,7 @@ public class BranchService {
     List<SchemaObject> sourceModels = sessionFactory.getModels(sourceDbName);
     List<SchemaObject> targetModels = sessionFactory.getModels(targetDbName);
     Map<String, SchemaObject> targetModelMap = targetModels.stream()
-        .collect(Collectors.toMap(SchemaObject::getName, m -> m));
+      .collect(Collectors.toMap(SchemaObject::getName, m -> m));
 
     try (Session targetSession = sessionFactory.createSession(targetDbName)) {
       for (SchemaObject sourceModel : sourceModels) {
@@ -221,7 +204,7 @@ public class BranchService {
             createSchemaObject(targetSession, sourceModel);
             log.info("新增模型: {}", sourceModel.getName());
           } else if (sourceModel instanceof EntityDefinition sourceEntity
-              && targetModel instanceof EntityDefinition targetEntity) {
+            && targetModel instanceof EntityDefinition targetEntity) {
             // 字段级 diff
             diffEntityFields(targetSession, sourceEntity, targetEntity);
           } else if (sourceModel instanceof EnumDefinition sourceEnum) {
@@ -325,12 +308,6 @@ public class BranchService {
    * 解析指定分支对应的 databaseName。
    */
   private String resolveBranchDatabaseName(Project project, String branchName) {
-    if ("main".equals(branchName)) {
-      if (project.getDatabaseName() != null && !project.getDatabaseName().isBlank()) {
-        return project.getDatabaseName();
-      }
-      return project.getId();
-    }
     Branch branch = branchRepository.findByProjectIdAndName(project.getId(), branchName);
     if (branch == null) {
       throw new IllegalArgumentException("分支 " + branchName + " 不存在");
@@ -365,24 +342,4 @@ public class BranchService {
     }
   }
 
-  /**
-   * 根据项目当前活跃分支解析对应的 databaseName。
-   * 优先从 f_branch 表查询，若未找到则回退到 project.databaseName（向后兼容），最终回退到 projectId。
-   */
-  private String resolveDatabaseName(Project project) {
-    String currentBranch = project.getCurrentBranch();
-    // 非 main 分支：从 f_branch 表查询
-    if (currentBranch != null && !"main".equals(currentBranch)) {
-      Branch branch = branchRepository.findByProjectIdAndName(project.getId(), currentBranch);
-      if (branch == null) {
-        throw new IllegalArgumentException("当前分支 " + currentBranch + " 不存在");
-      }
-      return branch.getDatabaseName();
-    }
-    // main 分支：优先使用 project.databaseName（向后兼容），否则回退到 projectId
-    if (project.getDatabaseName() != null && !project.getDatabaseName().isBlank()) {
-      return project.getDatabaseName();
-    }
-    return project.getId();
-  }
 }

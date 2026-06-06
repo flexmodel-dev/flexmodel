@@ -1,10 +1,10 @@
 model f_project {
   id : String @id @default(uuid()),
   name: String,
-  database_name?: String,
   description?: String,
   enabled : Boolean @comment("是否启用") @default("true"),
   current_branch?: String @default("main") @comment("当前活跃分支"),
+  current_database_name?: String,
   owner_id?: String @comment("所有者 ID"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),

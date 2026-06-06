@@ -80,6 +80,9 @@ public class FlexmodelMojo extends AbstractMojo {
       } else {
         getLog().warn("No generator configuration provided, skipping execution.");
       }
+    } catch (Exception e) {
+      getLog().error("Flexmodel code generation failed: " + e.getMessage(), e);
+      throw new MojoExecutionException("Flexmodel code generation failed: " + e.getMessage(), e);
     } finally {
       project.addCompileSourceRoot(outputDirectory);
     }

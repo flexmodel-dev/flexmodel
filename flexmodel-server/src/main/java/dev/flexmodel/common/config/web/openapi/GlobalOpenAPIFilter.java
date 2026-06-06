@@ -16,8 +16,7 @@ import static org.eclipse.microprofile.openapi.models.parameters.Parameter.In;
 /**
  * 此Filter用于全局设置OpenAPI文档，如添加响应、安全要求和参数验证等
  */
-@SuppressWarnings("deprecation")
-@OpenApiFilter(OpenApiFilter.RunStage.BUILD)
+@OpenApiFilter(stages = {OpenApiFilter.RunStage.BUILD})
 @Priority(1)
 public class GlobalOpenAPIFilter implements OASFilter {
   @Override

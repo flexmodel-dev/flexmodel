@@ -32,7 +32,9 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class ProjectService {
 
-  /** 项目ID格式：以小写字母开头，由小写字母、数字和下划线组成，长度2~63个字符 */
+  /**
+   * 项目ID格式：以小写字母开头，由小写字母、数字和下划线组成，长度2~63个字符
+   */
   private static final Pattern PROJECT_ID_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{1,62}$");
 
   @Inject
@@ -97,20 +99,7 @@ public class ProjectService {
     if (project == null) {
       throw new IllegalArgumentException("项目不存在: " + projectId);
     }
-    String currentBranch = project.getCurrentBranch();
-    // 非 main 分支：从 f_branch 表查询
-    if (currentBranch != null && !"main".equals(currentBranch)) {
-      Branch branch = branchRepository.findByProjectIdAndName(projectId, currentBranch);
-      if (branch == null) {
-        throw new IllegalArgumentException("当前分支 " + currentBranch + " 不存在");
-      }
-      return branch.getDatabaseName();
-    }
-    // main 分支：优先使用 project.databaseName（向后兼容），否则回退到 projectId
-    if (project.getDatabaseName() != null && !project.getDatabaseName().isBlank()) {
-      return project.getDatabaseName();
-    }
-    return projectId;
+    return project.getCurrentDatabaseName();
   }
 
   /**
@@ -142,8 +131,10 @@ public class ProjectService {
     }
     // main 分支的 databaseName 约定为 projectId
     String mainDatabaseName = project.getId();
-    project.setOwnerId(SessionContextHolder.getUserId());
+    project.setOwnerId(SessionContextHolder.getUserId() != null ? SessionContextHolder.getUserId() : "system");
     project.setCurrentBranch("main");
+    project.setCurrentDatabaseName(mainDatabaseName);
+
 
     // 1. 创建物理 Schema
     DataSource systemDs = getSystemDataSource(flexmodelConfig);

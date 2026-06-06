@@ -1,4 +1,4 @@
-model f_storage {
+model storage {
   name : String @id,
   type? : StorageType,
   config? : JSON,
@@ -12,7 +12,7 @@ model f_storage {
   @comment("文件存储")
 }
 
-model f_api_request_log {
+model api_request_log {
   id : String @id @default(uuid()),
   url : String @length("2000") @comment("请求地址"),
   http_method: String @length("255") @comment("请求方法"),
@@ -65,7 +65,7 @@ model auth_provider_config {
   @comment("认证提供商配置")
 }
 
-model f_ai_chat_memory {
+model ai_chat_memory {
   id : String @id @default(uuid()),
   messages : String @length("10000") @comment("消息"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
@@ -73,10 +73,10 @@ model f_ai_chat_memory {
   @comment("AI聊天记忆")
 }
 
-model f_ai_chat_conversation {
+model ai_chat_conversation {
   id : String @id @default(uuid()),
   title : String @length("255") @comment("标题"),
-  messages? : f_ai_chat_message[] @relation(localField: "id", foreignField: "conversation_id", cascadeDelete: "true"),
+  messages? : ai_chat_message[] @relation(localField: "id", foreignField: "conversation_id", cascadeDelete: "true"),
   project_id?: String @comment("项目ID"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
@@ -86,10 +86,10 @@ model f_ai_chat_conversation {
   @comment("AI聊天会话")
 }
 
-model f_ai_chat_message {
+model ai_chat_message {
   id : String @id @default(uuid()),
   conversation_id : String @length("255") @comment("会话ID"),
-//  conversation? : f_ai_chat_conversation @comment("会话") @relation(localField: "conversation_id", foreignField: "id", cascadeDelete: false),
+//  conversation? : ai_chat_conversation @comment("会话") @relation(localField: "conversation_id", foreignField: "id", cascadeDelete: false),
   role: String @length("255") @comment("角色"),
   content : String @length("4000") @comment("内容"),
   project_id?: String @comment("项目ID"),
@@ -102,7 +102,7 @@ model f_ai_chat_message {
   @comment("AI聊天消息")
 }
 
-model f_em_flow_definition {
+model em_flow_definition {
   id: Long @id @default(autoIncrement()),
   flow_module_id: String @comment("流程模型id") @unique,
   flow_name: String @comment("流程名称"),
@@ -126,7 +126,7 @@ model f_em_flow_definition {
   @comment("流程定义")
 }
 
-model f_em_flow_deployment {
+model em_flow_deployment {
   id: Long @id @default(autoIncrement()),
   flow_deploy_id: String @comment("流程模型部署id") @unique,
   flow_module_id: String @comment("流程模型id"),
@@ -151,7 +151,7 @@ model f_em_flow_deployment {
   @comment("流程部署")
 }
 
-model f_ei_flow_instance {
+model ei_flow_instance {
   id: Long @id @default(autoIncrement()),
   flow_instance_id: String @unique @comment("流程执行实例id"),
   parent_flow_instance_id?: String @comment("父流程执行实例id"),
@@ -172,7 +172,7 @@ model f_ei_flow_instance {
   @comment("流程执行实例")
 }
 
-model f_ei_flow_instance_mapping {
+model ei_flow_instance_mapping {
   id: Long @id @default(autoIncrement()),
   flow_instance_id: String @comment("流程执行实例id"),
   node_instance_id: String @comment("节点执行实例id"),
@@ -193,7 +193,7 @@ model f_ei_flow_instance_mapping {
   @comment("父子流程实例映射")
 }
 
-model f_ei_node_instance {
+model ei_node_instance {
   id: Long @id @default(autoIncrement()),
   node_instance_id: String @unique @comment("节点执行实例id"),
   flow_instance_id: String @comment("流程执行实例id"),
@@ -219,7 +219,7 @@ model f_ei_node_instance {
   @comment("节点执行实例")
 }
 
-model f_ei_node_instance_log {
+model ei_node_instance_log {
   id: Long @id @default(autoIncrement()),
   node_instance_id: String @comment("节点执行实例id"),
   flow_instance_id: String @comment("流程执行实例id"),
@@ -239,7 +239,7 @@ model f_ei_node_instance_log {
   @comment("节点执行记录")
 }
 
-model f_ei_instance_data {
+model ei_instance_data {
   id: Long @id @default(autoIncrement()),
   node_instance_id: String @comment("节点执行实例id"),
   flow_instance_id: String @comment("流程执行实例id"),
@@ -263,7 +263,7 @@ model f_ei_instance_data {
   @comment("实例数据")
 }
 
-model f_trigger {
+model trigger {
   id : String @id @default(uuid()),
   name : String @comment("描述"),
   description? : String @length("100") @comment("描述"),
@@ -283,7 +283,7 @@ model f_trigger {
   @comment("触发器配置")
 }
 
-model f_job_execution_log {
+model job_execution_log {
   id : String @id @default(uuid()),
   trigger_id : String @length("50") @comment("触发器ID"),
   job_id : String @length("50") @comment("作业ID"),
@@ -346,14 +346,14 @@ enum StorageType {
 // 种子数据 (seed)
 // ==============================
 
-seed f_em_flow_definition {
+seed em_flow_definition {
   {flow_module_id: "22203aa0-5f25-4b8a-974d-e4288c1bbd18", flow_name: "日志归档流程", flow_key: "log_archive_task", flow_model: "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgxfy945jnpgtk\"],\"properties\":{\"positionX\":-112,\"positionY\":96}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgxgy62ycwn9ca\"],\"outgoing\":[],\"properties\":{\"positionX\":576,\"positionY\":80}},{\"key\":\"serviceTask_mgxfv7fk1v40d9\",\"type\":5,\"incoming\":[\"SequenceFlow_mgxfy945jnpgtk\"],\"outgoing\":[\"SequenceFlow_mgxgy4t2xqtz2x\"],\"properties\":{\"subType\":\"sql\",\"datasourceName\":\"system\",\"script\":\"create table if no...[truncated]", status: 2, create_time: "2025-10-19 19:51:42", modify_time: "2025-10-19 19:51:42", operator: "admin", remark: "通过sql执行日志归档", archive: 0, caller: "admin", is_deleted: false, project_id: "default", created_by: null, updated_by: null, created_at: "2025-10-19 19:51:42", updated_at: "2025-10-19 19:51:42"},
   {flow_module_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", flow_name: "testFlowName_1757909108656", flow_key: "testFlowKey_1757909108656", flow_model: "{\"flowElementList\":[{\"key\":\"startEvent1\",\"type\":2,\"outgoing\":[\"sequenceFlow1\"]},{\"key\":\"sequenceFlow1\",\"type\":1,\"outgoing\":[\"userTask1\"],\"incoming\":[\"startEvent1\"]},{\"key\":\"userTask1\",\"type\":4,\"outgoing\":[\"sequenceFlow2\"],\"incoming\":[\"sequenceFlow1\"]},{\"key\":\"sequenceFlow2\",\"type\":1,\"outgoing\":[\"exclusiveGateway1\"],\"incoming\":[\"userTask1\"]},{\"key\":\"exclusiveGateway1\",\"type\":6,\"outgoing\":[\"sequenceFlow3\",\"sequenceFlow4\"],\"properties\":{\"hookInfoIds\":\"[1,2]\"},\"incoming\":[\"sequenceFlow2\"]},{\"key\":\"s...[truncated]", status: 2, create_time: "2025-09-15 12:05:09.000", modify_time: "2025-09-15 12:05:09.000", operator: "testOperator", remark: "testRemark", archive: 0, caller: "testCaller", project_id: "dev_test"},
   {flow_module_id: "9243be36-9ced-4413-acd5-5fc93a05c698", flow_name: "脚本测试", flow_key: "script_test", flow_model: "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_miclvtzacagocb\"],\"properties\":{\"positionX\":-96,\"positionY\":64,\"name\":\"Start\"}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_miclvvbzb9t82p\"],\"outgoing\":[],\"properties\":{\"positionX\":800,\"positionY\":48,\"name\":\"End\"}},{\"key\":\"serviceTask_miclvseffazfuf\",\"type\":5,\"incoming\":[\"SequenceFlow_miclvtzacagocb\"],\"outgoing\":[\"SequenceFlow_miclvvbzb9t82p\"],\"properties\":{\"subType\":\"script\",\"script\":\"\"hello world\\...[truncated]", status: 2, create_time: "2025-10-14T11:23:02.659", modify_time: "2025-10-14T11:23:02.660", operator: "admin", remark: "Javascript脚本测试", archive: 0, caller: "admin", project_id: "dev_test"},
   {flow_module_id: "da5835fe-e82a-447f-b614-c0ce9aaecb78", flow_name: "增删改查测试", flow_key: "crud_test", flow_model: "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"properties\":{\"positionX\":-496,\"positionY\":48}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgolxly85affbh\"],\"outgoing\":[],\"properties\":{\"positionX\":1408,\"positionY\":48}},{\"key\":\"serviceTask_mgokolh6ottxgz\",\"type\":5,\"incoming\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"outgoing\":[\"SequenceFlow_mgokv2z5j6tju7\"],\"properties\":{\"subType\":\"insert_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Te...[truncated]", status: 2, create_time: "2025-09-15 12:05:09.000", modify_time: "2025-09-15 12:05:09.000", operator: "admin", remark: "增删改查测试", archive: 0, project_id: "dev_test"},
 }
 
-seed f_em_flow_deployment {
+seed em_flow_deployment {
   {flow_deploy_id: "96933bb6-4e5a-43f2-9d0a-61b3fb7111fa", flow_module_id: "22203aa0-5f25-4b8a-974d-e4288c1bbd18", flow_name: "日志归档流程", flow_key: "log_archive_task", flow_model: "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgxfy945jnpgtk\"],\"properties\":{\"positionX\":-112,\"positionY\":96}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgxgy62ycwn9ca\"],\"outgoing\":[],\"properties\":{\"positionX\":576,\"positionY\":80}},{\"key\":\"serviceTask_mgxfv7fk1v40d9\",\"type\":5,\"incoming\":[\"SequenceFlow_mgxfy945jnpgtk\"],\"outgoing\":[\"SequenceFlow_mgxgy4t2xqtz2x\"],\"properties\":{\"subType\":\"sql\",\"datasourceName\":\"system\",\"script\":\"create table if no...[truncated]", status: 1, create_time: "2025-10-19 19:51:42", modify_time: "2025-10-19 19:51:42", operator: "admin", remark: "通过sql执行日志归档", archive: 0, caller: "admin", project_id: "default", created_by: null, updated_by: null, created_at: "2025-10-19 19:51:42", updated_at: "2025-10-19 19:51:42"},
   {flow_deploy_id: "c2d6f2bb-0d7b-4eb0-81a6-5a72262740d4", flow_module_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", flow_name: "testFlowName_1757909108656", flow_key: "testFlowKey_1757909108656", flow_model: "{\"flowElementList\":[{\"key\":\"startEvent1\",\"type\":2,\"outgoing\":[\"sequenceFlow1\"]},{\"key\":\"sequenceFlow1\",\"type\":1,\"outgoing\":[\"userTask1\"],\"incoming\":[\"startEvent1\"]},{\"key\":\"userTask1\",\"type\":4,\"outgoing\":[\"sequenceFlow2\"],\"incoming\":[\"sequenceFlow1\"]},{\"key\":\"sequenceFlow2\",\"type\":1,\"outgoing\":[\"exclusiveGateway1\"],\"incoming\":[\"userTask1\"]},{\"key\":\"exclusiveGateway1\",\"type\":6,\"outgoing\":[\"sequenceFlow3\",\"sequenceFlow4\"],\"properties\":{\"hookInfoIds\":\"[1,2]\"},\"incoming\":[\"sequenceFlow2\"]},{\"key\":\"s...[truncated]", status: 1, create_time: "2025-09-15 12:05:09.000", modify_time: "2025-09-15 12:05:09.000", operator: "testOperator", remark: "testRemark", archive: 0, caller: "testCaller", project_id: "dev_test"},
   {flow_deploy_id: "fce9c1e9-57dd-483e-bba1-dd7cb5a53ca7", flow_module_id: "da5835fe-e82a-447f-b614-c0ce9aaecb78", flow_name: "增删改查测试", flow_key: "crud_test", flow_model: "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"properties\":{\"positionX\":-496,\"positionY\":48}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgolxly85affbh\"],\"outgoing\":[],\"properties\":{\"positionX\":1408,\"positionY\":48}},{\"key\":\"serviceTask_mgokolh6ottxgz\",\"type\":5,\"incoming\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"outgoing\":[\"SequenceFlow_mgokv2z5j6tju7\"],\"properties\":{\"subType\":\"insert_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Te...[truncated]", status: 1, create_time: "2025-09-15 12:05:09.000", modify_time: "2025-09-15 12:05:09.000", operator: "admin", remark: "增删改查测试", archive: 0, caller: "admin", project_id: "dev_test"},
@@ -365,8 +365,8 @@ seed auth_provider_config {
   {name: "default", project_id: "default", type: "script", enabled: true, config: {script: "const auth = context.headers['authorization'] || context.headers['Authorization'];\nif (!auth || !auth.startsWith('Bearer ')) {\n  return {success: false, message: 'Missing bearer token'};\n}\nreturn {success: true, caller: 'external', scopes: ['read']};"}},
 }
 
-seed f_trigger {
-  {id: "4e8be2da-8ae7-4571-b347-61af5fdd3e9b", name: "请求日志归档任务", description: "写入日志归档表进行数据归档", type: "EVENT", config: {type: "event", modelName: "f_api_request_log", mutationTypes: ["create"], triggerTiming: "after", datasourceName: "system"}, job_type: "FLOW", job_group: "system_f_api_request_log", job_id: "22203aa0-5f25-4b8a-974d-e4288c1bbd18", state: false, created_at: "2025-10-19 17:59:45", updated_at: "2025-10-19 20:38:24", created_by: null, updated_by: null, project_id: "default"},
+seed trigger {
+  {id: "4e8be2da-8ae7-4571-b347-61af5fdd3e9b", name: "请求日志归档任务", description: "写入日志归档表进行数据归档", type: "EVENT", config: {type: "event", modelName: "api_request_log", mutationTypes: ["create"], triggerTiming: "after", datasourceName: "system"}, job_type: "FLOW", job_group: "system_api_request_log", job_id: "22203aa0-5f25-4b8a-974d-e4288c1bbd18", state: false, created_at: "2025-10-19 17:59:45", updated_at: "2025-10-19 20:38:24", created_by: null, updated_by: null, project_id: "default"},
   {id: "bf492f37-1f01-4eb8-b76d-d319299b4d8e", name: "定时触发-间隔触发", description: "定时触发-间隔触发-备注", type: "SCHEDULED", config: {type: "interval", interval: 1, intervalUnit: "minute", repeatCount: 100}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "testFlowName_1757909108656", state: false, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000", project_id: "dev_test"},
   {id: "d8c60d2a-19d8-4c3c-b370-96318733858f", name: "定时触发-Cron表达式", description: "定时触发-Cron表达式-备注", type: "SCHEDULED", config: {type: "cron", cronExpression: "0 0 * * * ? *"}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "testFlowName_1757909108656", state: false, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000", project_id: "dev_test"},
   {id: "9434666d-6b3b-417a-80e3-3352f40ded71", name: "事件触发-之前", description: "事件触发-之前-描述", type: "EVENT", config: {type: "event", datasourceName: "dev_test", modelName: "Student", mutationTypes: ["delete", "update", "create"], triggerTiming: "after"}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "dev_test_Student", state: true, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000", project_id: "dev_test"},

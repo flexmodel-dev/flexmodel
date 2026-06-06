@@ -196,7 +196,7 @@
                   src/main/resources/project.fml
                 </import-script>
                 <packageName>dev.flexmodel.codegen</packageName>
-                <replaceString>^f_ei_|^f_em_|^f_</replaceString>
+                <replaceString>^f_ei_|^f_em_|^f_|^em_|^ei_</replaceString>
               </schema>
               <schema>
                 <name>dev_test</name>

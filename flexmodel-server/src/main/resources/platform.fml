@@ -1,4 +1,4 @@
-model f_project {
+model project {
   id : String @id @default(uuid()),
   name: String,
   description?: String,
@@ -12,7 +12,7 @@ model f_project {
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @comment("租户")
 }
-model f_branch {
+model branch {
   id : String @id @default(uuid()),
   project_id : String @comment("所属项目ID"),
   name : String @comment("分支名称"),
@@ -24,7 +24,7 @@ model f_branch {
   @index(name: "IDX_BRANCH_PROJECT_NAME", unique: true, fields: [project_id, name]),
   @comment("项目分支")
 }
-model f_user {
+model user {
   id : String @id @default(uuid()),
   name? : String @length("255") @comment("名称"),
   email? : String @length("255") @comment("邮箱"),
@@ -38,7 +38,7 @@ model f_user {
   @index(name : "IDX_EMAIL", unique: "true", fields: [email]),
   @comment("用户")
 }
-model f_role {
+model role {
   id : String @id @unique @default(uuid()),
   name : String @length("255"),
   description? : String @length("255"),
@@ -50,7 +50,7 @@ model f_role {
   @index(name:"IDX_ROLE_NAME", unique: "true", fields: [name]),
   @comment("角色")
 }
-model f_resource {
+model resource {
   id: Long @id @default(autoIncrement()),
   name : String @length("255"),
   permission: String @length("255") @comment("权限标识"),
@@ -58,14 +58,14 @@ model f_resource {
   parent_id?: Long,
   @comment("资源")
 }
-model f_resource_template {
+model resource_template {
   id: Long @id @default(autoIncrement()),
   name: String @length("255"),
   permission: String @length("255") @comment("权限标识"),
   parent_id?: Long,
   @comment("资源模版")
 }
-model f_config {
+model config {
   id : String @id @unique @default(uuid()),
   key : String @comment("名称") @length("255"),
   value? : String @length("255"),
@@ -82,7 +82,7 @@ model f_config {
 // 2) 原表的 PRIMARY KEY（通常为复合键）用唯一索引实现，命名保持接近官方索引名。
 // 3) BLOB 字段以 JSON 存储；布尔型标志位(VARCHAR(1))以 Boolean 表示。
 
-model f_qrtz_job_detail {
+model qrtz_job_detail {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   job_name : String @length("190") @comment("任务名称"),
@@ -100,7 +100,7 @@ model f_qrtz_job_detail {
   @comment("Quartz 任务明细")
 }
 
-model f_qrtz_trigger {
+model qrtz_trigger {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   trigger_name : String @length("190") @comment("触发器名称"),
@@ -134,7 +134,7 @@ model f_qrtz_trigger {
   @comment("Quartz 触发器")
 }
 
-model f_qrtz_simple_trigger {
+model qrtz_simple_trigger {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   trigger_name : String @length("190") @comment("触发器名称"),
@@ -146,7 +146,7 @@ model f_qrtz_simple_trigger {
   @comment("Quartz Simple 类型触发器明细")
 }
 
-model f_qrtz_cron_trigger {
+model qrtz_cron_trigger {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   trigger_name : String @length("190") @comment("触发器名称"),
@@ -157,7 +157,7 @@ model f_qrtz_cron_trigger {
   @comment("Quartz Cron 类型触发器明细")
 }
 
-model f_qrtz_simprop_trigger {
+model qrtz_simprop_trigger {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   trigger_name : String @length("190") @comment("触发器名称"),
@@ -177,7 +177,7 @@ model f_qrtz_simprop_trigger {
   @comment("Quartz Simprop 类型触发器明细")
 }
 
-model f_qrtz_blob_trigger {
+model qrtz_blob_trigger {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   trigger_name : String @length("190") @comment("触发器名称"),
@@ -188,7 +188,7 @@ model f_qrtz_blob_trigger {
   @comment("Quartz Blob 类型触发器明细")
 }
 
-model f_qrtz_calendar {
+model qrtz_calendar {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   calendar_name : String @length("190") @comment("日历名称"),
@@ -197,7 +197,7 @@ model f_qrtz_calendar {
   @comment("Quartz 日历")
 }
 
-model f_qrtz_paused_trigger_grp {
+model qrtz_paused_trigger_grp {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   trigger_group : String @length("190") @comment("触发器分组"),
@@ -205,7 +205,7 @@ model f_qrtz_paused_trigger_grp {
   @comment("Quartz 已暂停触发器分组")
 }
 
-model f_qrtz_fired_trigger {
+model qrtz_fired_trigger {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   entry_id : String @length("95") @comment("触发记录条目ID"),
@@ -230,7 +230,7 @@ model f_qrtz_fired_trigger {
   @comment("Quartz 已触发触发器记录")
 }
 
-model f_qrtz_scheduler_state {
+model qrtz_scheduler_state {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   instance_name : String @length("190") @comment("调度实例名称"),
@@ -240,7 +240,7 @@ model f_qrtz_scheduler_state {
   @comment("Quartz 调度器状态")
 }
 
-model f_qrtz_lock {
+model qrtz_lock {
   id : String @id @default(uuid()),
   sched_name : String @length("120") @comment("调度器名称"),
   lock_name : String @length("40") @comment("锁名称"),
@@ -252,26 +252,26 @@ model f_qrtz_lock {
 // 种子数据 (seed)
 // ==============================
 
-seed f_project {
+seed project {
   {id: "default", name: "系统默认", current_database_name: "system", description: "默认项目", owner_id: "admin", enabled: true, current_branch: "main"},
   {id: "dev_test", name: "开发测试",current_database_name: "dev_test", description: "开发测试项目", owner_id: "admin", enabled: true, current_branch: "main"},
 }
 
-seed f_branch {
+seed branch {
   {id: "default", project_id: "default", name: "main", database_name: "system", description: "默认项目主干分支", created_by: "admin"},
   {id: "dev_test", project_id: "dev_test", name: "main", database_name: "dev_test", description: "开发测试项目主干分支", created_by: "admin"},
 }
 
-seed f_user {
+seed user {
   {id: "admin", name: "Admin", password_hash: "172eee54aa664e9dd0536b063796e54e", created_at: "2025-08-30 19:58:23.000", role_ids: "admin"},
 }
 
-seed f_role {
+seed role {
   {id: "admin", name: "管理员", description: "管理员拥有所有权限", resource_ids: "1"},
   {id: "developer", name: "开发", description: "开发人员拥有项目管理权限", resource_ids: "100"},
 }
 
-seed f_resource {
+seed resource {
   {id: 1, name: "所有资源", permission: "*", type: "system", parent_id: null},
   {id: 100, name: "项目", permission: "project:*", type: "system", parent_id: 1},
   {id: 101, name: "查看项目", permission: "project:view", type: "system", parent_id: 100},

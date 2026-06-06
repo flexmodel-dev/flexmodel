@@ -19,7 +19,7 @@ public abstract class AbstractRepository {
   SessionFactory sessionFactory;
 
   protected Session getProjectSession(String projectId) {
-    if (!StringUtils.isBlank(projectId)) {
+    if (projectId != null) {
       // 仅当缓存的 projectId 与请求的一致时才复用 databaseName
       String cachedProjectId = SessionContextHolder.getProjectId();
       if (projectId.equals(cachedProjectId)) {

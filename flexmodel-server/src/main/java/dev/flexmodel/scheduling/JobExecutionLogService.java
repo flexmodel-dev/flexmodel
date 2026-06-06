@@ -1,5 +1,6 @@
 package dev.flexmodel.scheduling;
 
+import dev.flexmodel.common.SessionContextHolder;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
@@ -69,7 +70,7 @@ public class JobExecutionLogService {
      * @return 作业执行日志列表
      */
     public List<JobExecutionLog> find(Predicate filter, Integer page, Integer size) {
-        return jobExecutionLogRepository.find("", filter, page, size);
+        return jobExecutionLogRepository.find(SessionContextHolder.getProjectId(), filter, page, size);
     }
 
     /**
@@ -79,7 +80,7 @@ public class JobExecutionLogService {
      * @return 日志数量
      */
     public long count(Predicate filter) {
-        return jobExecutionLogRepository.count("", filter);
+        return jobExecutionLogRepository.count(SessionContextHolder.getProjectId(), filter);
     }
 
     /**

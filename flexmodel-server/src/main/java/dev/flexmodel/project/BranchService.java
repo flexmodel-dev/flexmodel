@@ -162,6 +162,7 @@ public class BranchService {
       throw new IllegalArgumentException("分支 " + branchName + " 不存在");
     }
     project.setCurrentBranch(branchName);
+    project.setCurrentDatabaseName(branch.getDatabaseName());
     return projectRepository.save(project);
   }
 

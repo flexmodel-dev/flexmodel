@@ -1,5 +1,6 @@
 package dev.flexmodel.common;
 
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.codegen.entity.Project;
@@ -22,6 +23,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author cjbi

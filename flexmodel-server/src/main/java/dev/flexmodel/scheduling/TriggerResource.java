@@ -18,14 +18,14 @@ import dev.flexmodel.codegen.entity.Trigger;
 @Path("/projects/{projectId}/triggers")
 public class TriggerResource {
   @Inject
-  TriggerService scheduleApplicationService;
+  TriggerService triggerService;
 
   @Operation(summary = "获取单个触发器")
   @GET
   @Path("/{id}")
   public TriggerDTO findById(@PathParam("projectId") String projectId,
                              @PathParam("id") String id) {
-    return scheduleApplicationService.findById(projectId, id);
+    return triggerService.findById(projectId, id);
   }
 
   @Operation(summary = "获取触发器列表")
@@ -45,14 +45,14 @@ public class TriggerResource {
     request.setJobGroup(jobGroup);
     request.setPage(page);
     request.setSize(size);
-    return scheduleApplicationService.findPage(projectId, request);
+    return triggerService.findPage(projectId, request);
   }
 
   @Operation(summary = "创建触发器")
   @POST
   public Trigger create(@PathParam("projectId") String projectId, Trigger trigger) {
     trigger.setProjectId(projectId);
-    return scheduleApplicationService.create(projectId, trigger);
+    return triggerService.create(projectId, trigger);
   }
 
   @Operation(summary = "更新触发器")
@@ -61,33 +61,33 @@ public class TriggerResource {
   public Trigger update(@PathParam("projectId") String projectId, @PathParam("id") String id, Trigger req) {
     req.setId(id);
     req.setProjectId(projectId);
-    return scheduleApplicationService.update(projectId, req);
+    return triggerService.update(projectId, req);
   }
 
   @Operation(summary = "部分更新触发器")
   @PATCH
   @Path("/{id}")
   public Trigger patch(@PathParam("projectId") String projectId, @PathParam("id") String id, Trigger req) {
-    TriggerDTO dto = scheduleApplicationService.findById(projectId, id);
+    TriggerDTO dto = triggerService.findById(projectId, id);
     if (req.getState() != null) {
       dto.setState(req.getState());
     }
     dto.setProjectId(projectId);
-    return scheduleApplicationService.update(projectId, dto);
+    return triggerService.update(projectId, dto);
   }
 
   @Operation(summary = "删除触发器")
   @DELETE
   @Path("/{id}")
   public void deleteById(@PathParam("projectId") String projectId, @PathParam("id") String id) {
-    scheduleApplicationService.deleteById(projectId, id);
+    triggerService.deleteById(projectId, id);
   }
 
   @Operation(summary = "立即执行触发器")
   @POST
   @Path("/{id}/execute")
   public Trigger executeNow(@PathParam("projectId") String projectId, @PathParam("id") String id) {
-    return scheduleApplicationService.executeNow(projectId, id);
+    return triggerService.executeNow(projectId, id);
   }
 
 }

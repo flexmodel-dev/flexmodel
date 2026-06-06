@@ -149,10 +149,19 @@ public class ProjectService {
     // 4. 保存 f_project 记录
     Project saved = projectRepository.save(project);
 
-    // 5. 自动生成默认 API Key（anon + service）
+    // 5. 创建 main 分支记录
+    Branch mainBranch = new Branch();
+    mainBranch.setProjectId(saved.getId());
+    mainBranch.setName("main");
+    mainBranch.setDatabaseName(mainDatabaseName);
+    mainBranch.setDescription("主分支");
+    mainBranch.setCreatedBy(project.getOwnerId());
+    branchRepository.save(mainBranch);
+
+    // 6. 自动生成默认 API Key（anon + service）
     apiKeyService.generateDefaultKeys(saved.getId());
 
-    // 6. 为新项目生成 GraphQL Schema
+    // 7. 为新项目生成 GraphQL Schema
     graphQLEventConsumer.refreshProject(saved);
 
     return saved;

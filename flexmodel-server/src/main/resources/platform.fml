@@ -253,8 +253,13 @@ model f_qrtz_lock {
 // ==============================
 
 seed f_project {
-  {id: "default", name: "系统默认", database_name: "system", description: "默认项目", owner_id: "admin", enabled: true, current_branch: "main"},
-  {id: "dev_test", name: "开发测试", description: "开发测试项目", owner_id: "admin", enabled: true, current_branch: "main"},
+  {id: "default", name: "系统默认", current_database_name: "system", description: "默认项目", owner_id: "admin", enabled: true, current_branch: "main"},
+  {id: "dev_test", name: "开发测试",current_database_name: "dev_test", description: "开发测试项目", owner_id: "admin", enabled: true, current_branch: "main"},
+}
+
+seed f_branch {
+  {id: "default", project_id: "default", name: "main", database_name: "system", description: "默认项目主干分支", created_by: "admin"},
+  {id: "dev_test", project_id: "dev_test", name: "main", database_name: "dev_test", description: "开发测试项目主干分支", created_by: "admin"},
 }
 
 seed f_user {

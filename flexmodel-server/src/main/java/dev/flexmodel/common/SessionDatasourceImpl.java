@@ -1,6 +1,5 @@
 package dev.flexmodel.common;
 
-import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.codegen.entity.Project;
@@ -23,7 +22,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author cjbi
@@ -84,11 +82,7 @@ public class SessionDatasourceImpl implements SessionDatasource {
           return;
         }
         // 配置存在但SchemaProvider未注册，使用配置URL创建
-        HikariDataSource ds = new HikariDataSource();
-        ds.setMaxLifetime(30000);
-        ds.setJdbcUrl(configDs.url());
-        ds.setUsername(configDs.username().orElse(null));
-        ds.setPassword(configDs.password().orElse(null));
+        HikariDataSource ds = buildOptimizedDataSource(configDs.url(), configDs.username().orElse(null), configDs.password().orElse(null));
         SchemaProvider schemaProvider = new JdbcSchemaProvider(actualSchemaName, ds);
         sessionFactory.registerSchemaProvider(schemaProvider);
         log.info("Registered SchemaProvider '{}' from config URL: {}", actualSchemaName, configDs.url());
@@ -105,6 +99,15 @@ public class SessionDatasourceImpl implements SessionDatasource {
 
   @Override
   public void unregisterSchema(String schemaName) {
+    // 取消注册前关闭对应的 HikariDataSource
+    try {
+      dev.flexmodel.SchemaProvider sp = sessionFactory.getSchemaProvider(schemaName);
+      if (sp instanceof JdbcSchemaProvider jsp) {
+        jsp.dataSource().unwrap(HikariDataSource.class).close();
+      }
+    } catch (Exception e) {
+      log.warn("Failed to close HikariDataSource for schema '{}'", schemaName, e);
+    }
     sessionFactory.unregisterSchemaProvider(schemaName);
     log.info("Unregistered SchemaProvider '{}'", schemaName);
   }
@@ -114,12 +117,24 @@ public class SessionDatasourceImpl implements SessionDatasource {
     String jdbcUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", databaseName);
     String username = datasource.username().orElse(null);
     String password = datasource.password().orElse(null);
-    HikariDataSource dataSource = new HikariDataSource();
-    dataSource.setMaxLifetime(30000);
-    dataSource.setJdbcUrl(getContent(jdbcUrl));
-    dataSource.setUsername(getContent(username));
-    dataSource.setPassword(getContent(password));
-    return dataSource;
+    return buildOptimizedDataSource(getContent(jdbcUrl), getContent(username), getContent(password));
+  }
+
+  /**
+   * 创建优化配置的 HikariDataSource，统一连接池参数。
+   */
+  private HikariDataSource buildOptimizedDataSource(String jdbcUrl, String username, String password) {
+    HikariDataSource ds = new HikariDataSource();
+    ds.setJdbcUrl(jdbcUrl);
+    if (username != null) ds.setUsername(username);
+    if (password != null) ds.setPassword(password);
+    ds.setMaximumPoolSize(10);
+    ds.setConnectionTimeout(10000);
+    ds.setMaxLifetime(600000);
+    ds.setIdleTimeout(300000);
+    ds.setLeakDetectionThreshold(60000);
+    ds.setValidationTimeout(3000);
+    return ds;
   }
 
   @Override

@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.AuthApiKey;
 import dev.flexmodel.session.Session;
+import dev.flexmodel.session.SessionFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,46 +13,56 @@ import java.util.List;
 public class ApiKeyFmRepository implements ApiKeyRepository {
 
   @Inject
-  Session session;
+  SessionFactory sessionFactory;
 
   @Override
   public List<AuthApiKey> findAll() {
-    return session.dsl()
-      .selectFrom(AuthApiKey.class)
-      .execute();
+    try (Session session = sessionFactory.createSession()) {
+      return session.dsl()
+        .selectFrom(AuthApiKey.class)
+        .execute();
+    }
   }
 
   @Override
   public AuthApiKey findByKeyHash(String keyHash) {
-    return session.dsl()
-      .selectFrom(AuthApiKey.class)
-      .where(dev.flexmodel.query.Expressions.field(AuthApiKey::getKeyHash).eq(keyHash))
-      .executeOne();
+    try (Session session = sessionFactory.createSession()) {
+      return session.dsl()
+        .selectFrom(AuthApiKey.class)
+        .where(dev.flexmodel.query.Expressions.field(AuthApiKey::getKeyHash).eq(keyHash))
+        .executeOne();
+    }
   }
 
   @Override
   public AuthApiKey find(String id) {
-    return session.dsl()
-      .selectFrom(AuthApiKey.class)
-      .where(dev.flexmodel.query.Expressions.field(AuthApiKey::getId).eq(id))
-      .executeOne();
+    try (Session session = sessionFactory.createSession()) {
+      return session.dsl()
+        .selectFrom(AuthApiKey.class)
+        .where(dev.flexmodel.query.Expressions.field(AuthApiKey::getId).eq(id))
+        .executeOne();
+    }
   }
 
   @Override
   public AuthApiKey save(AuthApiKey apiKey) {
-    session.dsl()
-      .mergeInto(AuthApiKey.class)
-      .values(apiKey)
-      .execute();
+    try (Session session = sessionFactory.createSession()) {
+      session.dsl()
+        .mergeInto(AuthApiKey.class)
+        .values(apiKey)
+        .execute();
+    }
     return apiKey;
   }
 
   @Override
   public void delete(String id) {
-    session.dsl()
-      .deleteFrom(AuthApiKey.class)
-      .where(dev.flexmodel.query.Expressions.field(AuthApiKey::getId).eq(id))
-      .execute();
+    try (Session session = sessionFactory.createSession()) {
+      session.dsl()
+        .deleteFrom(AuthApiKey.class)
+        .where(dev.flexmodel.query.Expressions.field(AuthApiKey::getId).eq(id))
+        .execute();
+    }
   }
 
   @Override

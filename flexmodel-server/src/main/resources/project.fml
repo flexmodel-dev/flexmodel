@@ -24,43 +24,6 @@ model f_auth_provider_config {
   @comment("认证提供商配置")
 }
 
-model f_ai_chat_memory {
-  id : String @id @default(uuid()),
-  messages : String @length("10000") @comment("消息"),
-  created_at?: DateTime @default(now()) @comment("创建时间"),
-  updated_at?: DateTime @default(now()) @comment("更新时间"),
-  @comment("AI聊天记忆")
-}
-
-model f_ai_chat_conversation {
-  id : String @id @default(uuid()),
-  title : String @length("255") @comment("标题"),
-  messages? : f_ai_chat_message[] @relation(localField: "id", foreignField: "conversation_id", cascadeDelete: "true"),
-  project_id?: String @comment("项目ID"),
-  created_by?: String @comment("创建人"),
-  updated_by?: String @comment("更新人"),
-  created_at?: DateTime @default(now()) @comment("创建时间"),
-  updated_at?: DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_PROJECT", fields: [project_id]),
-  @comment("AI聊天会话")
-}
-
-model f_ai_chat_message {
-  id : String @id @default(uuid()),
-  conversation_id : String @length("255") @comment("会话ID"),
-//  conversation? : f_ai_chat_conversation @comment("会话") @relation(localField: "conversation_id", foreignField: "id", cascadeDelete: false),
-  role: String @length("255") @comment("角色"),
-  content : String @length("4000") @comment("内容"),
-  project_id?: String @comment("项目ID"),
-  created_by?: String @comment("创建人"),
-  updated_by?: String @comment("更新人"),
-  created_at?: DateTime @default(now()) @comment("创建时间"),
-  updated_at?: DateTime @default(now()) @comment("更新时间"),
-  @index(name:"IDX_CONVERSATION_ID", unique: false, fields: [conversation_id]),
-  @index(name: "IDX_PROJECT", fields: [project_id]),
-  @comment("AI聊天消息")
-}
-
 model f_em_flow_definition {
   id: Long @id @default(autoIncrement()),
   flow_module_id: String @comment("流程模型id") @unique,

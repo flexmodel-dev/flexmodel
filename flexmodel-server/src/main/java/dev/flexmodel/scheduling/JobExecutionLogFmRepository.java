@@ -3,7 +3,6 @@ package dev.flexmodel.scheduling;
 import dev.flexmodel.common.AbstractRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
-import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.session.Session;
@@ -17,15 +16,14 @@ import static dev.flexmodel.query.Expressions.field;
 @ActivateRequestContext
 public class JobExecutionLogFmRepository extends AbstractRepository implements JobExecutionLogRepository {
 
-  @Inject
-  Session session;
-
   @Override
   public JobExecutionLog findById(String id) {
-    return session.dsl()
-      .selectFrom(JobExecutionLog.class)
-      .where(field(JobExecutionLog::getId).eq(id))
-      .executeOne();
+    try (Session session = sessionFactory.createSession()) {
+      return session.dsl()
+        .selectFrom(JobExecutionLog.class)
+        .where(field(JobExecutionLog::getId).eq(id))
+        .executeOne();
+    }
   }
 
   @Override

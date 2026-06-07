@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.Config;
 import dev.flexmodel.session.Session;
+import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.common.utils.JsonUtils;
 
 import java.util.HashMap;
@@ -19,47 +20,49 @@ import static dev.flexmodel.query.Expressions.field;
 public class SettingsFmRepository implements SettingsRepository {
 
   @Inject
-  Session session;
+  SessionFactory sessionFactory;
 
   @Override
   @SuppressWarnings("unchecked")
   public Settings saveSettings(Settings settings) {
-    Map<String, Object> settingsMap = JsonUtils.getInstance().convertValue(settings, Map.class);
-    settingsMap.forEach((key, value) -> {
-      if (value != null) {
+    try (Session session = sessionFactory.createSession()) {
+      Map<String, Object> settingsMap = JsonUtils.getInstance().convertValue(settings, Map.class);
+      settingsMap.forEach((key, value) -> {
+        if (value != null) {
 
-        Config config = session.dsl()
-          .selectFrom(Config.class)
-          .where(field(Config::getKey).eq(key))
-          .executeOne();
+          Config config = session.dsl()
+            .selectFrom(Config.class)
+            .where(field(Config::getKey).eq(key))
+            .executeOne();
 
-        if (config == null) {
-          config = new Config();
+          if (config == null) {
+            config = new Config();
+          }
+          config.setKey(key);
+          config.setValue(JsonUtils.getInstance().stringify(value));
+
+          session.dsl()
+            .mergeInto(Config.class)
+            .values(config)
+            .execute();
         }
-        config.setKey(key);
-        config.setValue(JsonUtils.getInstance().stringify(value));
-
-        session.dsl()
-          .mergeInto(Config.class)
-          .values(config)
-          .execute();
-      }
-    });
+      });
+    }
     return settings;
   }
 
   @Override
   public Settings getSettings() {
+    try (Session session = sessionFactory.createSession()) {
+      List<Config> list = session.dsl()
+        .selectFrom(Config.class)
+        .execute();
 
-    List<Config> list = session.dsl()
-      .selectFrom(Config.class)
-      .execute();
-
-
-    Map<String, Object> settingsMap = new HashMap<>();
-    for (Config config : list) {
-      settingsMap.put(config.getKey(), JsonUtils.getInstance().parseToObject(config.getValue(), Object.class));
+      Map<String, Object> settingsMap = new HashMap<>();
+      for (Config config : list) {
+        settingsMap.put(config.getKey(), JsonUtils.getInstance().parseToObject(config.getValue(), Object.class));
+      }
+      return JsonUtils.getInstance().convertValue(settingsMap, Settings.class);
     }
-    return JsonUtils.getInstance().convertValue(settingsMap, Settings.class);
   }
 }

@@ -2,7 +2,6 @@ package dev.flexmodel.flow.repository;
 
 import dev.flexmodel.common.AbstractRepository;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.InstanceData;
 import dev.flexmodel.session.Session;
 
@@ -10,9 +9,6 @@ import static dev.flexmodel.query.Expressions.field;
 
 @ApplicationScoped
 public class InstanceDataFmRepository extends AbstractRepository implements InstanceDataRepository {
-
-  @Inject
-  Session session;
 
   @Override
   public InstanceData select(String projectId, String flowInstanceId, String instanceDataId) {
@@ -37,7 +33,9 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
 
   @Override
   public int insert(InstanceData instanceData) {
-    return session.dsl().insertInto(InstanceData.class).values(instanceData).execute();
+    try (Session session = sessionFactory.createSession()) {
+      return session.dsl().insertInto(InstanceData.class).values(instanceData).execute();
+    }
   }
 
   @Override

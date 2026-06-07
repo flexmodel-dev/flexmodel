@@ -2,7 +2,6 @@ package dev.flexmodel.flow.repository;
 
 import dev.flexmodel.common.AbstractRepository;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.NodeInstance;
 import dev.flexmodel.flow.common.NodeInstanceStatus;
 import dev.flexmodel.session.Session;
@@ -14,27 +13,26 @@ import static dev.flexmodel.query.Expressions.field;
 @ApplicationScoped
 public class NodeInstanceFmRepository extends AbstractRepository implements NodeInstanceRepository {
 
-  @Inject
-  Session session;
-
   @Override
   public boolean insertOrUpdateList(List<NodeInstance> nodeInstanceList) {
-    boolean ok = true;
-    for (NodeInstance ni : nodeInstanceList) {
-      if (ni.getId() == null) {
-        int r = session.dsl().insertInto(NodeInstance.class).values(ni).execute();
-        ok = ok && r > 0;
-      } else {
-        int r = session.dsl()
-          .update(NodeInstance.class)
-          .set(NodeInstance::getStatus, ni.getStatus())
-          .set(NodeInstance::getModifyTime, ni.getModifyTime())
-          .where(field(NodeInstance::getId).eq(ni.getId()))
-          .execute();
-        ok = ok && r > 0;
+    try (Session session = sessionFactory.createSession()) {
+      boolean ok = true;
+      for (NodeInstance ni : nodeInstanceList) {
+        if (ni.getId() == null) {
+          int r = session.dsl().insertInto(NodeInstance.class).values(ni).execute();
+          ok = ok && r > 0;
+        } else {
+          int r = session.dsl()
+            .update(NodeInstance.class)
+            .set(NodeInstance::getStatus, ni.getStatus())
+            .set(NodeInstance::getModifyTime, ni.getModifyTime())
+            .where(field(NodeInstance::getId).eq(ni.getId()))
+            .execute();
+          ok = ok && r > 0;
+        }
       }
+      return ok;
     }
-    return ok;
   }
 
   @Override

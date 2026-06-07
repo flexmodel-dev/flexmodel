@@ -128,7 +128,7 @@ public class ProjectService {
     }
     // main 分支的 databaseName 约定为 projectId
     String mainDatabaseName = project.getId();
-    project.setOwnerId(SessionContextHolder.getUserId() != null ? SessionContextHolder.getUserId() : "system");
+    project.setOwnerId(SessionContextHolder.getUserId() != null ? SessionContextHolder.getUserId() : "admin");
     project.setCurrentBranch("main");
     project.setCurrentDatabaseName(mainDatabaseName);
 

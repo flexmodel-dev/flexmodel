@@ -108,15 +108,8 @@ public class AuthFilter implements ContainerRequestFilter {
       return false;
     }
     // 系统级 Key（project_id 为空）：检查 project_ids 白名单
-    if (apiKey.getProjectId() == null || apiKey.getProjectId().isBlank()) {
-      if (!isProjectAllowed(apiKey, projectId)) {
-        return false;
-      }
-    } else {
-      // 项目级 Key：校验归属
-      if (projectId != null && !projectId.equals(apiKey.getProjectId())) {
-        return false;
-      }
+    if (!isProjectAllowed(apiKey, projectId)) {
+      return false;
     }
     fillSessionContextForApiKey(requestContext, apiKey, projectId);
     return true;
@@ -205,7 +198,6 @@ public class AuthFilter implements ContainerRequestFilter {
     }
     SessionContextHolder.setUserId(userId);
     SessionContextHolder.setCaller(userId);
-    SessionContextHolder.setScopes(Set.of("*"));
     requestContext.setProperty("projectId", projectId);
     requestContext.setProperty("userId", userId);
   }
@@ -214,9 +206,7 @@ public class AuthFilter implements ContainerRequestFilter {
    * API Key 认证 -> 填充上下文。
    */
   private void fillSessionContextForApiKey(ContainerRequestContext requestContext, AuthApiKey apiKey, String requestProjectId) {
-    String projectId = (apiKey.getProjectId() != null && !apiKey.getProjectId().isBlank())
-      ? apiKey.getProjectId()
-      : requestProjectId;
+    String projectId = requestProjectId;
     if (projectId != null) {
       Project project = projectService.findProject(projectId);
       if (project == null) {
@@ -227,7 +217,6 @@ public class AuthFilter implements ContainerRequestFilter {
       SessionContextHolder.setBranchName(project.getCurrentBranch());
     }
     SessionContextHolder.setCaller(apiKey.getName());
-    SessionContextHolder.setScopes(parseScopes(apiKey.getScopes()));
     requestContext.setProperty("projectId", projectId);
   }
 
@@ -243,18 +232,7 @@ public class AuthFilter implements ContainerRequestFilter {
     SessionContextHolder.setProjectDatabaseName(project.getCurrentDatabaseName());
     SessionContextHolder.setBranchName(project.getCurrentBranch());
     SessionContextHolder.setCaller(result.getCaller());
-    SessionContextHolder.setScopes(result.getScopes() != null ? result.getScopes() : Set.of());
     requestContext.setProperty("projectId", projectId);
-  }
-
-  private Set<String> parseScopes(String scopes) {
-    if (scopes == null || scopes.isBlank()) {
-      return Set.of();
-    }
-    if ("*".equals(scopes.trim())) {
-      return Set.of("*");
-    }
-    return Set.of(scopes.split(","));
   }
 
 }

@@ -49,7 +49,6 @@ model f_api_request_log {
 
 model f_auth_api_key {
   id : String @id @default(uuid()),
-  project_id? : String @comment("所属项目(可选,空为系统级)"),
   name : String @length("255") @comment("Key 名称"),
   key_hash : String @length("64") @comment("SHA-256 哈希"),
   key_prefix : String @length("16") @comment("前缀(fm_ak_xxx)"),

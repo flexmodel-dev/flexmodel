@@ -22,7 +22,7 @@ import dev.flexmodel.flow.exception.SuspendException;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
 import dev.flexmodel.common.utils.CollectionUtils;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
@@ -69,7 +69,7 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
   @Override
   protected void preCommit(RuntimeContext runtimeContext) throws ProcessException {
     NodeInstanceBO suspendNodeInstance = runtimeContext.getSuspendNodeInstance();
-    NodeInstanceBO currentNodeInstance = JsonUtils.getInstance().convertValue(suspendNodeInstance, NodeInstanceBO.class);
+    NodeInstanceBO currentNodeInstance = JsonUtils.convertValue(suspendNodeInstance, NodeInstanceBO.class);
     runtimeContext.setCurrentNodeInstance(currentNodeInstance);
   }
 
@@ -220,7 +220,7 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
     runtimeResult.setFlowInstanceId(subFlowInstance.getFlowInstanceId());
     runtimeResult.setStatus(subFlowInstance.getStatus());
 
-    dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.getInstance().convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
+    dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
     nodeInstance.setCreateTime(null);
     nodeInstance.setModifyTime(null);
     nodeInstance.setKey(nodeInstancePO.getNodeKey());
@@ -262,7 +262,7 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
     currentNodeInstance.setStatus(NodeInstanceStatus.DISABLED);
     runtimeContext.getNodeInstanceList().add(currentNodeInstance);
 
-    NodeInstanceBO newNodeInstanceBO = JsonUtils.getInstance().convertValue(currentNodeInstance, NodeInstanceBO.class);
+    NodeInstanceBO newNodeInstanceBO = JsonUtils.convertValue(currentNodeInstance, NodeInstanceBO.class);
     newNodeInstanceBO.setId(null);
     String newNodeInstanceId = genId();
     newNodeInstanceBO.setNodeInstanceId(newNodeInstanceId);
@@ -272,7 +272,7 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
     FlowInstanceMapping oldFlowInstanceMappingPO = flowInstanceMappingRepository.selectFlowInstanceMapping(runtimeContext.getProjectId(), runtimeContext.getFlowInstanceId(), currentNodeInstance.getNodeInstanceId());
     flowInstanceMappingRepository.updateType(runtimeContext.getProjectId(), oldFlowInstanceMappingPO.getFlowInstanceId(), oldFlowInstanceMappingPO.getNodeInstanceId(), FlowInstanceMappingType.TERMINATED);
 
-    FlowInstanceMapping newFlowInstanceMappingPO = JsonUtils.getInstance().convertValue(oldFlowInstanceMappingPO, FlowInstanceMapping.class);
+    FlowInstanceMapping newFlowInstanceMappingPO = JsonUtils.convertValue(oldFlowInstanceMappingPO, FlowInstanceMapping.class);
     newFlowInstanceMappingPO.setId(null);
     newFlowInstanceMappingPO.setProjectId(runtimeContext.getProjectId());
     newFlowInstanceMappingPO.setNodeInstanceId(newNodeInstanceId);

@@ -3,7 +3,7 @@ package dev.flexmodel.projectauth.provider;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -75,7 +75,7 @@ public class OidcAuthProvider implements AuthProvider {
     String body = response.body();
     log.debug("OIDC introspect response: {}", body);
 
-    Map<?, ?> result = JsonUtils.getInstance().parseToObject(body, Map.class);
+    Map<?, ?> result = JsonUtils.parseToObject(body, Map.class);
     Boolean active = (Boolean) result.get("active");
     if (active == null || !active) {
       return AuthResult.fail("Token is not active");
@@ -107,6 +107,6 @@ public class OidcAuthProvider implements AuthProvider {
         .build(),
       HttpResponse.BodyHandlers.ofString()
     );
-    return JsonUtils.getInstance().parseToObject(response.body(), Map.class);
+    return JsonUtils.parseToObject(response.body(), Map.class);
   }
 }

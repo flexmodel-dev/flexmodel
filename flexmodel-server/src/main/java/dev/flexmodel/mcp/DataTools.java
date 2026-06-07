@@ -1,7 +1,7 @@
 package dev.flexmodel.mcp;
 
 import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.data.DataService;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
@@ -21,7 +21,6 @@ public class DataTools {
   @Inject
   DataService dataService;
 
-  private final JsonUtils json = JsonUtils.getInstance();
 
   @Tool(description = """
     Query records of a model with pagination, optional filtering and sorting. \
@@ -63,7 +62,7 @@ public class DataTools {
       PageDTO<Map<String, Object>> result = dataService.findPagingRecords(
         projectId, modelName, page, size, filterParam, sortParam, false
       );
-      return json.stringify(result);
+      return JsonUtils.toJsonString(result);
     } catch (Exception e) {
       log.errorf(e, "query_records failed, projectId=%s, modelName=%s", projectId, modelName);
       return "Error: query_records failed - " + e.getMessage();
@@ -85,7 +84,7 @@ public class DataTools {
       if (record == null) {
         return "Error: Record not found: " + recordId;
       }
-      return json.stringify(record);
+      return JsonUtils.toJsonString(record);
     } catch (Exception e) {
       log.errorf(e, "get_record failed, projectId=%s, modelName=%s, recordId=%s", projectId, modelName, recordId);
       return "Error: get_record failed - " + e.getMessage();
@@ -110,9 +109,9 @@ public class DataTools {
   ) {
     log.infof("create_record called, projectId=%s, modelName=%s, recordJson=%s", projectId, modelName, recordJson);
     try {
-      Map<String, Object> data = json.parseToObject(recordJson, Map.class);
+      Map<String, Object> data = JsonUtils.parseToObject(recordJson, Map.class);
       Map<String, Object> created = dataService.createRecord(projectId, modelName, data);
-      return "Record created: " + json.stringify(created);
+      return "Record created: " + JsonUtils.toJsonString(created);
     } catch (Exception e) {
       log.errorf(e, "create_record failed, projectId=%s, modelName=%s, recordJson=%s", projectId, modelName, recordJson);
       return "Error: create_record failed - " + e.getMessage();
@@ -136,9 +135,9 @@ public class DataTools {
     log.infof("update_record called, projectId=%s, modelName=%s, recordId=%s, recordJson=%s",
       projectId, modelName, recordId, recordJson);
     try {
-      Map<String, Object> data = json.parseToObject(recordJson, Map.class);
+      Map<String, Object> data = JsonUtils.parseToObject(recordJson, Map.class);
       Map<String, Object> updated = dataService.updateRecord(projectId, modelName, recordId, data);
-      return "Record updated: " + json.stringify(updated);
+      return "Record updated: " + JsonUtils.toJsonString(updated);
     } catch (Exception e) {
       log.errorf(e, "update_record failed, projectId=%s, modelName=%s, recordId=%s", projectId, modelName, recordId);
       return "Error: update_record failed - " + e.getMessage();

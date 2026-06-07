@@ -2,7 +2,7 @@ package dev.flexmodel.flow.config;
 
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.util.Map;
 import java.util.Optional;
@@ -35,7 +35,7 @@ public class BusinessConfig {
     if (callActivityNestedLevel.isEmpty() || callActivityNestedLevel.get().isBlank()) {
       return MAX_FLOW_NESTED_LEVEL;
     }
-    Map<String, Object> callActivityNestedLevelJO = JsonUtils.getInstance().parseToObject(callActivityNestedLevel.get(), Map.class);
+    Map<String, Object> callActivityNestedLevelJO = JsonUtils.parseToObject(callActivityNestedLevel.get(), Map.class);
     if (callActivityNestedLevelJO != null && callActivityNestedLevelJO.containsKey(caller)) {
       Object levelObj = callActivityNestedLevelJO.get(caller);
       int callActivityNestedLevel = levelObj instanceof Number ? ((Number) levelObj).intValue() : MAX_FLOW_NESTED_LEVEL;

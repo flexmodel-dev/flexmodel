@@ -1,6 +1,6 @@
 package dev.flexmodel.flow.common.util;
 
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
@@ -120,7 +120,7 @@ public class RequestScriptContext {
    */
   @SuppressWarnings("all")
   public void syncFromMap(Map<String, Object> contextMap) {
-    JsonUtils.getInstance().updateValue(this, contextMap);
+    JsonUtils.updateValue(this, contextMap);
   }
 
 
@@ -183,7 +183,7 @@ public class RequestScriptContext {
       try (Session session = sessionFactory.createSession(datasourceName)) {
         Query query = new Query();
         if (queryMap.containsKey("filter")) {
-          query.setFilter(dev.flexmodel.common.utils.JsonUtils.getInstance().stringify(queryMap.get("filter")));
+          query.setFilter(JsonUtils.toJsonString(queryMap.get("filter")));
         }
         return session.data().find(modelName, query);
       }

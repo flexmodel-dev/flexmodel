@@ -10,7 +10,7 @@ import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -88,10 +88,10 @@ public class AuditDataEventListener implements EventListener {
     andList.add(Map.of("tenant_id", Map.of("_eq", projectId)));
     if (query.getFilter() != null) {
       @SuppressWarnings("all")
-      Map<String, Object> filterMap = JsonUtils.getInstance().parseToObject(query.getFilter(), Map.class);
+      Map<String, Object> filterMap = JsonUtils.parseToObject(query.getFilter(), Map.class);
       andList.add(filterMap);
     }
-    query.setFilter(JsonUtils.getInstance().stringify(Map.of("_and", andList)));
+    query.setFilter(JsonUtils.toJsonString(Map.of("_and", andList)));
   }
 
 }

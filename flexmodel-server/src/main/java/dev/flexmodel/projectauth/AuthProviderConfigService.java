@@ -1,7 +1,7 @@
 package dev.flexmodel.projectauth;
 
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.projectauth.provider.AuthProvider;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -55,6 +55,6 @@ public class AuthProviderConfigService {
     if (config.getConfig() == null) {
       return null;
     }
-    return JsonUtils.getInstance().convertValue(config.getConfig(), AuthProvider.class);
+    return JsonUtils.convertValue(config.getConfig(), AuthProvider.class);
   }
 }

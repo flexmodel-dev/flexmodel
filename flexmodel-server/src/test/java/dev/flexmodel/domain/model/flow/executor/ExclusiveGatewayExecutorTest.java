@@ -13,7 +13,7 @@ import dev.flexmodel.flow.dto.model.FlowModel;
 import dev.flexmodel.domain.model.flow.EntityBuilder;
 import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +37,7 @@ public class ExclusiveGatewayExecutorTest {
 
     FlowModel flowModel = new FlowModel();
     flowModel.setFlowElementList(flowElementList);
-    Map<String, FlowElement> flowElementMap = FlowModelUtil.getFlowElementMap(JsonUtils.getInstance().stringify(flowModel));
+    Map<String, FlowElement> flowElementMap = FlowModelUtil.getFlowElementMap(JsonUtils.toJsonString(flowModel));
 
     FlowElement exclusiveGateway = FlowModelUtil.getFlowElement(flowElementMap, "exclusiveGateway1");
 

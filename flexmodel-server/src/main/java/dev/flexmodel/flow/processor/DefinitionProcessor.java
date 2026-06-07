@@ -27,7 +27,7 @@ import dev.flexmodel.flow.common.util.IdGenerator;
 import dev.flexmodel.flow.common.util.StrongUuidGenerator;
 import dev.flexmodel.flow.validator.ModelValidator;
 import dev.flexmodel.flow.validator.ParamValidator;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.time.LocalDateTime;
@@ -67,7 +67,7 @@ public class DefinitionProcessor {
     try {
       ParamValidator.validate(createFlowParam);
 
-      FlowDefinition flowDefinitionPO = JsonUtils.getInstance().convertValue(createFlowParam, FlowDefinition.class);
+      FlowDefinition flowDefinitionPO = JsonUtils.convertValue(createFlowParam, FlowDefinition.class);
       String flowModuleId = idGenerator.getNextId();
       flowDefinitionPO.setFlowModuleId(flowModuleId);
       flowDefinitionPO.setStatus(FlowDefinitionStatus.INIT);
@@ -78,7 +78,7 @@ public class DefinitionProcessor {
         throw new DefinitionException(ErrorEnum.DEFINITION_INSERT_INVALID);
       }
 
-      createFlowResult = JsonUtils.getInstance().convertValue(flowDefinitionPO, CreateFlowResult.class);
+      createFlowResult = JsonUtils.convertValue(flowDefinitionPO, CreateFlowResult.class);
       fillCommonResult(createFlowResult, ErrorEnum.SUCCESS);
     } catch (TurboException te) {
       fillCommonResult(createFlowResult, te);
@@ -91,7 +91,7 @@ public class DefinitionProcessor {
     try {
       ParamValidator.validate(updateFlowParam);
 
-      FlowDefinition flowDefinitionPO = JsonUtils.getInstance().convertValue(updateFlowParam, FlowDefinition.class);
+      FlowDefinition flowDefinitionPO = JsonUtils.convertValue(updateFlowParam, FlowDefinition.class);
       flowDefinitionPO.setStatus(FlowDefinitionStatus.EDITING);
 
       int rows = flowDefinitionRepository.updateByModuleId(flowDefinitionPO);
@@ -142,7 +142,7 @@ public class DefinitionProcessor {
       String flowModel = flowDefinitionPO.getFlowModel();
       modelValidator.validate(flowModel, deployFlowParam);
 
-      FlowDeployment flowDeploymentPO = JsonUtils.getInstance().convertValue(flowDefinitionPO, FlowDeployment.class);
+      FlowDeployment flowDeploymentPO = JsonUtils.convertValue(flowDefinitionPO, FlowDeployment.class);
       // fix primary key duplicated
       flowDeploymentPO.setId(null);
       String flowDeployId = idGenerator.getNextId();
@@ -154,7 +154,7 @@ public class DefinitionProcessor {
         LOGGER.warn("deploy flow failed: insert to db failed.||deployFlowParam={}", deployFlowParam);
         throw new DefinitionException(ErrorEnum.DEFINITION_INSERT_INVALID);
       }
-      deployFlowResult = JsonUtils.getInstance().convertValue(flowDeploymentPO, DeployFlowResult.class);
+      deployFlowResult = JsonUtils.convertValue(flowDeploymentPO, DeployFlowResult.class);
       fillCommonResult(deployFlowResult, ErrorEnum.SUCCESS);
     } catch (TurboException te) {
       fillCommonResult(deployFlowResult, te);
@@ -187,10 +187,10 @@ public class DefinitionProcessor {
       LOGGER.warn("getFlowModuleByFlowModuleId failed: can not find flowDefinitionPO.||flowModuleId={}", flowModuleId);
       throw new ParamException(ErrorEnum.PARAM_INVALID.getErrNo(), "flowDefinitionPO is not exist");
     }
-    FlowModuleResult flowModuleResult = JsonUtils.getInstance().convertValue(flowDefinitionPO, FlowModuleResult.class);
+    FlowModuleResult flowModuleResult = JsonUtils.convertValue(flowDefinitionPO, FlowModuleResult.class);
     Integer status = FlowModuleEnum.getStatusByDefinitionStatus(flowDefinitionPO.getStatus());
     flowModuleResult.setStatus(status);
-    LOGGER.info("getFlowModuleByFlowModuleId||flowModuleId={}||FlowModuleResult={}", flowModuleId, JsonUtils.getInstance().stringify(flowModuleResult));
+    LOGGER.info("getFlowModuleByFlowModuleId||flowModuleId={}||FlowModuleResult={}", flowModuleId, JsonUtils.toJsonString(flowModuleResult));
     return flowModuleResult;
   }
 
@@ -200,10 +200,10 @@ public class DefinitionProcessor {
       LOGGER.warn("getFlowModuleByFlowDeployId failed: can not find flowDeploymentPO.||projectId={}, flowDeployId={}", projectId, flowDeployId);
       throw new ParamException(ErrorEnum.PARAM_INVALID.getErrNo(), "flowDeploymentPO is not exist");
     }
-    FlowModuleResult flowModuleResult = JsonUtils.getInstance().convertValue(flowDeploymentPO, FlowModuleResult.class);
+    FlowModuleResult flowModuleResult = JsonUtils.convertValue(flowDeploymentPO, FlowModuleResult.class);
     Integer status = FlowModuleEnum.getStatusByDeploymentStatus(flowDeploymentPO.getStatus());
     flowModuleResult.setStatus(status);
-    LOGGER.info("getFlowModuleByFlowDeployId||flowDeployId={}||response={}", flowDeployId, JsonUtils.getInstance().stringify(flowModuleResult));
+    LOGGER.info("getFlowModuleByFlowDeployId||flowDeployId={}||response={}", flowDeployId, JsonUtils.toJsonString(flowModuleResult));
     return flowModuleResult;
   }
 

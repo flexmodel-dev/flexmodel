@@ -1,6 +1,6 @@
 package dev.flexmodel.mcp;
 
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.*;
 import dev.flexmodel.modeling.ModelingService;
 import io.quarkiverse.mcp.server.Tool;
@@ -21,7 +21,6 @@ public class ModelingTools {
   @Inject
   ModelingService modelingService;
 
-  private final JsonUtils json = JsonUtils.getInstance();
 
   @Tool(description = """
     List all models (entities, enums, native queries) in a project. \
@@ -35,7 +34,7 @@ public class ModelingTools {
     log.infof("list_models called, projectId=%s", projectId);
     try {
       List<SchemaObject> models = modelingService.findModels(projectId);
-      return json.stringify(models);
+      return JsonUtils.toJsonString(models);
     } catch (Exception e) {
       log.errorf(e, "list_models failed, projectId=%s", projectId);
       return "Error: list_models failed - " + e.getMessage();
@@ -54,7 +53,7 @@ public class ModelingTools {
     log.infof("get_model called, projectId=%s, modelName=%s", projectId, modelName);
     try {
       SchemaObject model = modelingService.findModel(projectId, modelName);
-      return json.stringify(model);
+      return JsonUtils.toJsonString(model);
     } catch (Exception e) {
       log.errorf(e, "get_model failed, projectId=%s, modelName=%s", projectId, modelName);
       return "Error: get_model failed - " + e.getMessage();
@@ -85,9 +84,9 @@ public class ModelingTools {
   ) {
     log.infof("create_entity_model called, projectId=%s, entityJson=%s", projectId, entityJson);
     try {
-      SchemaObject model = json.parseToObject(entityJson, SchemaObject.class);
+      SchemaObject model = JsonUtils.parseToObject(entityJson, SchemaObject.class);
       SchemaObject created = modelingService.createModel(projectId, model);
-      return "Entity model created: " + json.stringify(created);
+      return "Entity model created: " + JsonUtils.toJsonString(created);
     } catch (Exception e) {
       log.errorf(e, "create_entity_model failed, projectId=%s, entityJson=%s", projectId, entityJson);
       return "Error: create_entity_model failed - " + e.getMessage();
@@ -108,9 +107,9 @@ public class ModelingTools {
   ) {
     log.infof("create_enum_model called, projectId=%s, enumJson=%s", projectId, enumJson);
     try {
-      SchemaObject model = json.parseToObject(enumJson, SchemaObject.class);
+      SchemaObject model = JsonUtils.parseToObject(enumJson, SchemaObject.class);
       SchemaObject created = modelingService.createModel(projectId, model);
-      return "Enum model created: " + json.stringify(created);
+      return "Enum model created: " + JsonUtils.toJsonString(created);
     } catch (Exception e) {
       log.errorf(e, "create_enum_model failed, projectId=%s, enumJson=%s", projectId, enumJson);
       return "Error: create_enum_model failed - " + e.getMessage();
@@ -151,6 +150,6 @@ public class ModelingTools {
 //       names = Set.of(modelNames.split(","));
 //     }
 //     List<SchemaObject> result = modelingService.syncModels(projectId, names);
-//     return "Schema synced. Affected models: " + json.stringify(result);
+//     return "Schema synced. Affected models: " + JsonUtils.toJsonString(result);
 //   }
 }

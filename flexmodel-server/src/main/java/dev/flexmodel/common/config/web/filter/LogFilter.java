@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.settings.SettingsService;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.settings.Settings;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -83,7 +83,7 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     apiLog.setClientIp(ipAddress);
     if (statusCode >= 400) {
       apiLog.setIsSuccess(false);
-      apiLog.setErrorMessage(JsonUtils.getInstance().stringify(responseContext.getEntity()));
+      apiLog.setErrorMessage(JsonUtils.toJsonString(responseContext.getEntity()));
     }
     apiLog.setResponseTime((int) execTime);
     CDI.current().select(EventBus.class).get().send("request.logging", apiLog);

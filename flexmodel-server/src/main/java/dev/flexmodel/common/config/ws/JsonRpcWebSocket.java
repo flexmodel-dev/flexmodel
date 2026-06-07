@@ -9,7 +9,7 @@ import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.common.config.ws.dto.JsonRpcRequest;
 import dev.flexmodel.common.config.ws.dto.JsonRpcResponse;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.io.IOException;
 import java.util.Map;
@@ -53,7 +53,7 @@ public class JsonRpcWebSocket {
   @OnMessage
   public void onMessage(String message, Session session) throws IOException {
     try {
-      JsonRpcRequest request = JsonUtils.getInstance().parseToObject(message, JsonRpcRequest.class);
+      JsonRpcRequest request = JsonUtils.parseToObject(message, JsonRpcRequest.class);
       String method = request.getMethod();
       Object params = request.getParams();
       String id = request.getId();

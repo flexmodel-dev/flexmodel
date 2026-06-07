@@ -17,7 +17,7 @@ import dev.flexmodel.flow.dto.param.StartProcessParam;
 import dev.flexmodel.flow.repository.FlowDeploymentRepository;
 import dev.flexmodel.domain.model.flow.EntityBuilder;
 import dev.flexmodel.flow.common.ErrorEnum;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -467,8 +467,8 @@ public class RuntimeProcessorTest {
 
     instanceDataList = runtimeProcessor.getInstanceData(rollbackTaskParam1.getProjectId(), flowInstanceId, false);
     log.info("testGetInstanceData 5.||instanceDataList={}", instanceDataList);
-    String initData = JsonUtils.getInstance().stringify(startProcessResult.getVariables());
-    String rollbackData = JsonUtils.getInstance().stringify(rollbackTaskResult1.getVariables());
+    String initData = JsonUtils.toJsonString(startProcessResult.getVariables());
+    String rollbackData = JsonUtils.toJsonString(rollbackTaskResult1.getVariables());
     Assertions.assertEquals(initData, rollbackData);
   }
 

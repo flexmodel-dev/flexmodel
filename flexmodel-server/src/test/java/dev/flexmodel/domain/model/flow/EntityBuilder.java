@@ -6,7 +6,7 @@ import dev.flexmodel.flow.dto.bo.NodeInstanceBO;
 import dev.flexmodel.flow.dto.model.*;
 import dev.flexmodel.flow.dto.param.*;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -33,7 +33,7 @@ public class EntityBuilder {
     FlowDefinition flowDefinition = new FlowDefinition();
     flowDefinition.setFlowKey(flowKey);
     flowDefinition.setFlowModuleId(flowModuleId);
-    flowDefinition.setFlowModel(JsonUtils.getInstance().stringify(buildFlowElementList()));
+    flowDefinition.setFlowModel(JsonUtils.toJsonString(buildFlowElementList()));
     flowDefinition.setStatus(FlowDefinitionStatus.INIT);
     flowDefinition.setCreateTime(LocalDateTime.now());
     flowDefinition.setModifyTime(LocalDateTime.now());
@@ -48,7 +48,7 @@ public class EntityBuilder {
     flowDeployment.setFlowKey(flowKey);
     flowDeployment.setFlowModuleId(flowModuleId);
     flowDeployment.setFlowDeployId(flowDeployId);
-    flowDeployment.setFlowModel(JsonUtils.getInstance().stringify(buildFlowElementList()));
+    flowDeployment.setFlowModel(JsonUtils.toJsonString(buildFlowElementList()));
     flowDeployment.setStatus(FlowDeploymentStatus.DEPLOYED);
     flowDeployment.setCreateTime(LocalDateTime.now());
     flowDeployment.setModifyTime(LocalDateTime.now());
@@ -451,7 +451,7 @@ public class EntityBuilder {
     instanceData.setInstanceDataId(instanceDataId);
     instanceData.setNodeKey(nodeKey);
     Map<String, Object> instanceDataMap = buildInstanceDataMap();
-    instanceData.setInstanceData(JsonUtils.getInstance().stringify(instanceDataMap));
+    instanceData.setInstanceData(JsonUtils.toJsonString(instanceDataMap));
     instanceData.setType(InstanceDataType.EXECUTE);
     instanceData.setCreateTime(LocalDateTime.now());
     instanceData.setCaller("caller");
@@ -693,7 +693,7 @@ public class EntityBuilder {
 
     flowElementList.add(endEvent2);
     flowModel.setFlowElementList(flowElementList);
-    return JsonUtils.getInstance().stringify(flowModel);
+    return JsonUtils.toJsonString(flowModel);
   }
 
   public static String buildModelString() {
@@ -807,7 +807,7 @@ public class EntityBuilder {
     }
     flowElementList.add(sequenceFlow3);
     flowModel.setFlowElementList(flowElementList);
-    String flowModelStr = JsonUtils.getInstance().stringify(flowModel);
+    String flowModelStr = JsonUtils.toJsonString(flowModel);
     return flowModelStr;
   }
 
@@ -840,7 +840,7 @@ public class EntityBuilder {
 
     FlowModel flowModel = new FlowModel();
     flowModel.setFlowElementList(flowElementList);
-    runtimeContext.setFlowElementMap(FlowModelUtil.getFlowElementMap(JsonUtils.getInstance().stringify(flowModel)));
+    runtimeContext.setFlowElementMap(FlowModelUtil.getFlowElementMap(JsonUtils.toJsonString(flowModel)));
 
     runtimeContext.setNodeInstanceList(new ArrayList<>());
     runtimeContext.setCurrentNodeInstance(new NodeInstanceBO());
@@ -859,7 +859,7 @@ public class EntityBuilder {
     flowDeployment.setFlowKey(flowKey);
     flowDeployment.setFlowModuleId("flowModuleId");
     flowDeployment.setFlowDeployId("flowDeployId");
-    flowDeployment.setFlowModel(JsonUtils.getInstance().stringify(buildSpecialFlowModel()));
+    flowDeployment.setFlowModel(JsonUtils.toJsonString(buildSpecialFlowModel()));
     flowDeployment.setStatus(FlowDeploymentStatus.DEPLOYED);
     flowDeployment.setCreateTime(LocalDateTime.now());
     flowDeployment.setModifyTime(LocalDateTime.now());

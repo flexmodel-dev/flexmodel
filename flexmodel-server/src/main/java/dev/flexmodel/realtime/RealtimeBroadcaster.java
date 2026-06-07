@@ -1,6 +1,6 @@
 package dev.flexmodel.realtime;
 
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -211,7 +211,7 @@ public class RealtimeBroadcaster {
           payload.put("new", newData);
           payload.put("old", oldData);
 
-          String json = JsonUtils.getInstance().stringify(payload);
+          String json = JsonUtils.toJsonString(payload);
           session.getBasicRemote().sendText(json);
         } catch (IOException e) {
           log.warn("Failed to send realtime event to session={}, subId={}: {}",

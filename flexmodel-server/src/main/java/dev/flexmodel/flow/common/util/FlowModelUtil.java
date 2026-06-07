@@ -1,6 +1,6 @@
 package dev.flexmodel.flow.common.util;
 
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.flexmodel.flow.dto.model.FlowElement;
@@ -99,7 +99,7 @@ public class FlowModelUtil {
    * @return flowModel
    */
   public static FlowModel parseModelFromString(String flowModelStr) {
-    return JsonUtils.getInstance().parseToObject(flowModelStr, FlowModel.class);
+    return JsonUtils.parseToObject(flowModelStr, FlowModel.class);
   }
 
   public static String getConditionFromSequenceFlow(FlowElement flowElement) {

@@ -22,7 +22,7 @@ import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.common.utils.CollectionUtils;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.util.*;
@@ -237,7 +237,7 @@ public class FlowInstanceService {
     }
     List<FlowInstanceResponse> list = find(request.getProjectId(), predicate, request.getPage(), request.getSize()).stream()
       .map(entity -> {
-        FlowInstanceResponse response = JsonUtils.getInstance().convertValue(entity, FlowInstanceResponse.class);
+        FlowInstanceResponse response = JsonUtils.convertValue(entity, FlowInstanceResponse.class);
         FlowDeployment flowDeployment = flowDeploymentService.findByFlowDeployId(request.getProjectId(), entity.getFlowDeployId());
         if (flowDeployment != null) {
           response.setFlowName(flowDeployment.getFlowName());

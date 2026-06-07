@@ -4,7 +4,7 @@ import dev.flexmodel.codegen.entity.Storage;
 import dev.flexmodel.codegen.enumeration.StorageType;
 import dev.flexmodel.storage.config.LocalStorageOperations;
 import dev.flexmodel.storage.config.S3StorageOperations;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.util.Map;
 
@@ -25,7 +25,7 @@ public class StorageOperationsFactory {
   }
 
   private static StorageOperations createLocalStorage(Storage storage) {
-    Map<String, Object> config = JsonUtils.getInstance().convertValue(storage.getConfig(), Map.class);
+    Map<String, Object> config = JsonUtils.convertValue(storage.getConfig(), Map.class);
     String basePath = (String) config.get("basePath");
     if (basePath == null || basePath.isEmpty()) {
       throw new IllegalArgumentException("Local storage config must include 'basePath'");
@@ -34,7 +34,7 @@ public class StorageOperationsFactory {
   }
 
   private static StorageOperations createS3Storage(Storage storage) {
-    Map<String, Object> config = JsonUtils.getInstance().convertValue(storage.getConfig(), Map.class);
+    Map<String, Object> config = JsonUtils.convertValue(storage.getConfig(), Map.class);
     String accessKey = (String) config.get("accessKey");
     String secretKey = (String) config.get("secretKey");
     String bucket = (String) config.get("bucket");

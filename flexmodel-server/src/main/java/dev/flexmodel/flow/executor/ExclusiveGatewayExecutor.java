@@ -15,7 +15,7 @@ import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
 import dev.flexmodel.flow.spi.HookService;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.time.LocalDateTime;
@@ -98,7 +98,7 @@ public class ExclusiveGatewayExecutor extends ElementExecutor {
   }
 
   private InstanceData buildHookInstanceData(String instanceDataId, RuntimeContext runtimeContext) {
-    InstanceData instanceDataPO = JsonUtils.getInstance().convertValue(runtimeContext, InstanceData.class);
+    InstanceData instanceDataPO = JsonUtils.convertValue(runtimeContext, InstanceData.class);
     instanceDataPO.setProjectId(runtimeContext.getProjectId());
     instanceDataPO.setInstanceDataId(instanceDataId);
     instanceDataPO.setInstanceData(InstanceDataUtil.getInstanceDataStr(runtimeContext.getInstanceDataMap()));

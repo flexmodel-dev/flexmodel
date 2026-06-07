@@ -18,7 +18,7 @@ import dev.flexmodel.flow.service.FlowDeploymentService;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.common.SessionContextHolder;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -85,7 +85,7 @@ public class TriggerService {
 
   //  @Transactional
   public Trigger create(String projectId, Trigger trigger) {
-    TriggerConfig triggerConfig = JsonUtils.getInstance().convertValue(trigger.getConfig(), TriggerConfig.class);
+    TriggerConfig triggerConfig = JsonUtils.convertValue(trigger.getConfig(), TriggerConfig.class);
     trigger.setJobGroup(getJobGroup(trigger, triggerConfig));
     trigger = triggerRepository.save(projectId, trigger);
     // 规则校验
@@ -114,7 +114,7 @@ public class TriggerService {
     }
     req.setCreatedAt(record.getCreatedAt());
     req.setUpdatedAt(LocalDateTime.now());
-    TriggerConfig triggerConfig = JsonUtils.getInstance().convertValue(req.getConfig(), TriggerConfig.class);
+    TriggerConfig triggerConfig = JsonUtils.convertValue(req.getConfig(), TriggerConfig.class);
     // 规则校验
     triggerConfig.validate();
     req.setJobGroup(getJobGroup(req, triggerConfig));

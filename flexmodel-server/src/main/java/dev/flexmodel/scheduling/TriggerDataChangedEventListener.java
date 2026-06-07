@@ -13,7 +13,7 @@ import dev.flexmodel.event.EventType;
 import dev.flexmodel.event.PreChangeEvent;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.common.SessionContextHolder;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -126,7 +126,7 @@ public class TriggerDataChangedEventListener implements EventListener {
               startProcessParam.setStartTime(System.currentTimeMillis());
 
               @SuppressWarnings("unchecked")
-              Map<String, Object> variables = JsonUtils.getInstance().convertValue(event.getNewData(), Map.class);
+              Map<String, Object> variables = JsonUtils.convertValue(event.getNewData(), Map.class);
               startProcessParam.setVariables(variables);
               eventBus.send("flow.start", startProcessParam);
             }

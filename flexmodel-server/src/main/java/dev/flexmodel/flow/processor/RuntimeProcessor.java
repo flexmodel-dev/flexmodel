@@ -33,7 +33,7 @@ import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
 import dev.flexmodel.flow.validator.ParamValidator;
 import dev.flexmodel.common.utils.CollectionUtils;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.util.*;
@@ -99,12 +99,12 @@ public class RuntimeProcessor {
   }
 
   private StartProcessResult buildStartProcessResult(RuntimeContext runtimeContext) {
-    StartProcessResult startProcessResult = JsonUtils.getInstance().convertValue(runtimeContext, StartProcessResult.class);
+    StartProcessResult startProcessResult = JsonUtils.convertValue(runtimeContext, StartProcessResult.class);
     return (StartProcessResult) fillRuntimeResult(startProcessResult, runtimeContext);
   }
 
   private StartProcessResult buildStartProcessResult(RuntimeContext runtimeContext, TurboException e) {
-    StartProcessResult startProcessResult = JsonUtils.getInstance().convertValue(runtimeContext, StartProcessResult.class);
+    StartProcessResult startProcessResult = JsonUtils.convertValue(runtimeContext, StartProcessResult.class);
     return (StartProcessResult) fillRuntimeResult(startProcessResult, runtimeContext, e);
   }
 
@@ -161,13 +161,13 @@ public class RuntimeProcessor {
 
   private CommitTaskResult buildCommitTaskResult(RuntimeContext runtimeContext) {
     CommitTaskResult commitTaskResult = runtimeContext == null ? new CommitTaskResult()
-      : JsonUtils.getInstance().convertValue(runtimeContext, CommitTaskResult.class);
+      : JsonUtils.convertValue(runtimeContext, CommitTaskResult.class);
     return (CommitTaskResult) fillRuntimeResult(commitTaskResult, runtimeContext);
   }
 
   private CommitTaskResult buildCommitTaskResult(RuntimeContext runtimeContext, TurboException e) {
     CommitTaskResult commitTaskResult = runtimeContext == null ? new CommitTaskResult()
-      : JsonUtils.getInstance().convertValue(runtimeContext, CommitTaskResult.class);
+      : JsonUtils.convertValue(runtimeContext, CommitTaskResult.class);
     return (CommitTaskResult) fillRuntimeResult(commitTaskResult, runtimeContext, e);
   }
 
@@ -221,13 +221,13 @@ public class RuntimeProcessor {
 
   private RollbackTaskResult buildRollbackTaskResult(RuntimeContext runtimeContext) {
     RollbackTaskResult rollbackTaskResult = runtimeContext == null ? new RollbackTaskResult()
-      : JsonUtils.getInstance().convertValue(runtimeContext, RollbackTaskResult.class);
+      : JsonUtils.convertValue(runtimeContext, RollbackTaskResult.class);
     return (RollbackTaskResult) fillRuntimeResult(rollbackTaskResult, runtimeContext);
   }
 
   private RollbackTaskResult buildRollbackTaskResult(RuntimeContext runtimeContext, TurboException e) {
     RollbackTaskResult rollbackTaskResult = runtimeContext == null ? new RollbackTaskResult()
-      : JsonUtils.getInstance().convertValue(runtimeContext, RollbackTaskResult.class);
+      : JsonUtils.convertValue(runtimeContext, RollbackTaskResult.class);
     return (RollbackTaskResult) fillRuntimeResult(rollbackTaskResult, runtimeContext, e);
   }
 
@@ -304,7 +304,7 @@ public class RuntimeProcessor {
         }
 
         //build effective userTask instance
-        dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.getInstance().convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
+        dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
         FlowElement flowElement = FlowModelUtil.getFlowElement(flowElementMap, nodeInstancePO.getNodeKey());
         nodeInstance.setKey(flowElement.getKey());
         nodeInstance.setName(FlowModelUtil.getElementName(flowElement));
@@ -436,7 +436,7 @@ public class RuntimeProcessor {
       NodeInstance nodeInstancePO = nodeInstanceService.selectByNodeInstanceId(projectId, flowInstanceId, nodeInstanceId, effectiveForSubFlowInstance);
       String flowDeployId = nodeInstancePO.getFlowDeployId();
       Map<String, FlowElement> flowElementMap = getFlowElementMap(projectId, flowDeployId);
-      dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.getInstance().convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
+      dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
       FlowElement flowElement = FlowModelUtil.getFlowElement(flowElementMap, nodeInstancePO.getNodeKey());
       nodeInstance.setKey(flowElement.getKey());
       nodeInstance.setName(FlowModelUtil.getElementName(flowElement));
@@ -494,7 +494,7 @@ public class RuntimeProcessor {
       LOGGER.warn("getFlowInfoByFlowDeployId failed.||flowDeployId={}", flowDeployId);
       throw new ProcessException(ErrorEnum.GET_FLOW_DEPLOYMENT_FAILED);
     }
-    return JsonUtils.getInstance().convertValue(flowDeploymentPO, FlowInfo.class);
+    return JsonUtils.convertValue(flowDeploymentPO, FlowInfo.class);
   }
 
   private FlowInfo getFlowInfoByFlowModuleId(String projectId, String flowModuleId) throws ProcessException {
@@ -503,7 +503,7 @@ public class RuntimeProcessor {
       LOGGER.warn("getFlowInfoByFlowModuleId failed.||flowModuleId={}", flowModuleId);
       throw new ProcessException(ErrorEnum.GET_FLOW_DEPLOYMENT_FAILED);
     }
-    return JsonUtils.getInstance().convertValue(flowDeploymentPO, FlowInfo.class);
+    return JsonUtils.convertValue(flowDeploymentPO, FlowInfo.class);
   }
 
   private FlowInstanceBO getFlowInstanceBO(String projectId, String flowInstanceId) throws ProcessException {
@@ -512,11 +512,11 @@ public class RuntimeProcessor {
       LOGGER.warn("getFlowInstancePO failed: cannot find flowInstancePO from db.||flowInstanceId={}", flowInstanceId);
       throw new ProcessException(ErrorEnum.GET_FLOW_INSTANCE_FAILED);
     }
-    return JsonUtils.getInstance().convertValue(flowInstancePO, FlowInstanceBO.class);
+    return JsonUtils.convertValue(flowInstancePO, FlowInstanceBO.class);
   }
 
   private RuntimeContext buildRuntimeContext(FlowInfo flowInfo) {
-    RuntimeContext runtimeContext = JsonUtils.getInstance().convertValue(flowInfo, RuntimeContext.class);
+    RuntimeContext runtimeContext = JsonUtils.convertValue(flowInfo, RuntimeContext.class);
     runtimeContext.setFlowElementMap(FlowModelUtil.getFlowElementMap(flowInfo.getFlowModel()));
     return runtimeContext;
   }
@@ -574,7 +574,7 @@ public class RuntimeProcessor {
   }
 
   private dev.flexmodel.flow.dto.bo.NodeInstance buildActiveTaskInstance(NodeInstanceBO nodeInstanceBO, RuntimeContext runtimeContext) {
-    dev.flexmodel.flow.dto.bo.NodeInstance activeNodeInstance = JsonUtils.getInstance().convertValue(nodeInstanceBO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
+    dev.flexmodel.flow.dto.bo.NodeInstance activeNodeInstance = JsonUtils.convertValue(nodeInstanceBO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
     activeNodeInstance.setKey(nodeInstanceBO.getNodeKey());
     FlowElement flowElement = runtimeContext.getFlowElementMap().get(nodeInstanceBO.getNodeKey());
     activeNodeInstance.setName(FlowModelUtil.getElementName(flowElement));

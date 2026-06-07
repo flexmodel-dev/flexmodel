@@ -16,7 +16,7 @@ import dev.flexmodel.flow.common.ErrorEnum;
 import dev.flexmodel.flow.common.InstanceDataType;
 import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -83,7 +83,7 @@ public abstract class AbstractCallActivityExecutor extends ElementExecutor {
     if (callActivityInParamType.equals(Constants.CALL_ACTIVITY_PARAM_TYPE.PART)) {
       Map<String, Object> resultDataMap = new HashMap<>();
       String callActivityInParam = (String) currentNodeModel.getProperties().getOrDefault(callActivityParam, "");
-      List<DataTransferBO> callActivityDataTransfers = JsonUtils.getInstance().parseToList(callActivityInParam, DataTransferBO.class);
+      List<DataTransferBO> callActivityDataTransfers = JsonUtils.parseToList(callActivityInParam, DataTransferBO.class);
       for (DataTransferBO callActivityDataTransfer : callActivityDataTransfers) {
         if (Constants.CALL_ACTIVITY_DATA_TRANSFER_TYPE.SOURCE_TYPE_CONTEXT.equals(callActivityDataTransfer.getSourceType())) {
           Object sourceValue = instanceDataMap.get(callActivityDataTransfer.getSourceKey());
@@ -103,7 +103,7 @@ public abstract class AbstractCallActivityExecutor extends ElementExecutor {
   }
 
   protected InstanceData buildCallActivityEndInstanceData(String instanceDataId, RuntimeContext runtimeContext) {
-    InstanceData instanceDataPO = JsonUtils.getInstance().convertValue(runtimeContext, InstanceData.class);
+    InstanceData instanceDataPO = JsonUtils.convertValue(runtimeContext, InstanceData.class);
     instanceDataPO.setInstanceDataId(instanceDataId);
     instanceDataPO.setInstanceData(InstanceDataUtil.getInstanceDataStr(runtimeContext.getInstanceDataMap()));
     instanceDataPO.setNodeInstanceId(runtimeContext.getCurrentNodeInstance().getNodeInstanceId());

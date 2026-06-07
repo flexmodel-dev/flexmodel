@@ -1,6 +1,6 @@
 package dev.flexmodel.flow.common.util;
 
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.util.HashMap;
@@ -21,7 +21,7 @@ public class InstanceDataUtil {
     if (StringUtils.isBlank(instanceDataStr)) {
       return new HashMap<>();
     }
-    return JsonUtils.getInstance().parseToObject(instanceDataStr, Map.class);
+    return JsonUtils.parseToObject(instanceDataStr, Map.class);
   }
 
   /**
@@ -31,8 +31,8 @@ public class InstanceDataUtil {
    */
   public static String getInstanceDataStr(Map<String, Object> instanceDataMap) {
     if (instanceDataMap == null || instanceDataMap.isEmpty()) {
-      return JsonUtils.getInstance().stringify(new HashMap<>());
+      return JsonUtils.toJsonString(new HashMap<>());
     }
-    return JsonUtils.getInstance().stringify(instanceDataMap);
+    return JsonUtils.toJsonString(instanceDataMap);
   }
 }

@@ -6,7 +6,7 @@ import dev.flexmodel.flow.exception.ProcessException;
 import dev.flexmodel.flow.common.ErrorEnum;
 import dev.flexmodel.flow.common.util.ExpressionCalculator;
 import dev.flexmodel.flow.common.util.JavaScriptUtil;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.text.MessageFormat;
 import java.util.Map;
@@ -27,7 +27,7 @@ public class JavaScriptExpressionCalculator implements ExpressionCalculator {
         return (Boolean) result;
       } else {
         LOGGER.warn("the result of expression is not boolean.||expression={}||result={}||dataMap={}",
-          expression, result, JsonUtils.getInstance().stringify(dataMap));
+          expression, result, JsonUtils.toJsonString(dataMap));
         throw new ProcessException(ErrorEnum.MISSING_DATA.getErrNo(), "expression is not instanceof bool.");
       }
     } catch (Exception e) {
@@ -35,7 +35,7 @@ public class JavaScriptExpressionCalculator implements ExpressionCalculator {
       String jsExFormat = "{0}: expression={1}";
       throw new ProcessException(ErrorEnum.MISSING_DATA, MessageFormat.format(jsExFormat, e.getMessage(), expression));
     } finally {
-      LOGGER.info("calculate expression.||expression={}||dataMap={}||result={}", expression, JsonUtils.getInstance().stringify(dataMap), result);
+      LOGGER.info("calculate expression.||expression={}||dataMap={}||result={}", expression, JsonUtils.toJsonString(dataMap), result);
     }
   }
 }

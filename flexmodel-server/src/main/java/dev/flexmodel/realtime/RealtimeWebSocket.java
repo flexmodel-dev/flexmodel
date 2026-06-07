@@ -1,6 +1,6 @@
 package dev.flexmodel.realtime;
 
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.websocket.OnClose;
@@ -48,7 +48,7 @@ public class RealtimeWebSocket {
   public void onMessage(String message, Session session) {
     try {
       @SuppressWarnings("unchecked")
-      Map<String, Object> msg = JsonUtils.getInstance().parseToObject(message, Map.class);
+      Map<String, Object> msg = JsonUtils.parseToObject(message, Map.class);
       String type = (String) msg.get("type");
 
       if (type == null) {
@@ -117,7 +117,7 @@ public class RealtimeWebSocket {
       payload.put(extraKeyValues[i], extraKeyValues[i + 1]);
     }
 
-    String json = JsonUtils.getInstance().stringify(payload);
+    String json = JsonUtils.toJsonString(payload);
     session.getBasicRemote().sendText(json);
   }
 }

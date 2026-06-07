@@ -12,7 +12,7 @@ import dev.flexmodel.flow.common.ErrorEnum;
 import dev.flexmodel.flow.common.NodeInstanceStatus;
 import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.text.MessageFormat;
 import java.util.Map;
@@ -53,7 +53,7 @@ public class UserTaskExecutor extends ElementExecutor {
     String nodeName = FlowModelUtil.getElementName(flowElement);
     String nodeKey = flowElement.getKey();
 
-    NodeInstanceBO currentNodeInstance = JsonUtils.getInstance().convertValue(suspendNodeInstance, NodeInstanceBO.class);
+    NodeInstanceBO currentNodeInstance = JsonUtils.convertValue(suspendNodeInstance, NodeInstanceBO.class);
     runtimeContext.setCurrentNodeInstance(currentNodeInstance);
 
     //invalid commit node
@@ -103,7 +103,7 @@ public class UserTaskExecutor extends ElementExecutor {
     currentNodeInstance.setStatus(NodeInstanceStatus.DISABLED);
     runtimeContext.getNodeInstanceList().add(currentNodeInstance);
     if (currentStatus == NodeInstanceStatus.COMPLETED) {
-      NodeInstanceBO newNodeInstanceBO = JsonUtils.getInstance().convertValue(currentNodeInstance, NodeInstanceBO.class);
+      NodeInstanceBO newNodeInstanceBO = JsonUtils.convertValue(currentNodeInstance, NodeInstanceBO.class);
       // TODO: 2019/12/31 to insert new record
       newNodeInstanceBO.setId(null);
       String newNodeInstanceId = genId();

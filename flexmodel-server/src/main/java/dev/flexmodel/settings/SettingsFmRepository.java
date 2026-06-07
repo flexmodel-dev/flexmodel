@@ -5,7 +5,7 @@ import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.Config;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +26,7 @@ public class SettingsFmRepository implements SettingsRepository {
   @SuppressWarnings("unchecked")
   public Settings saveSettings(Settings settings) {
     try (Session session = sessionFactory.createSession()) {
-      Map<String, Object> settingsMap = JsonUtils.getInstance().convertValue(settings, Map.class);
+      Map<String, Object> settingsMap = JsonUtils.convertValue(settings, Map.class);
       settingsMap.forEach((key, value) -> {
         if (value != null) {
 
@@ -39,7 +39,7 @@ public class SettingsFmRepository implements SettingsRepository {
             config = new Config();
           }
           config.setKey(key);
-          config.setValue(JsonUtils.getInstance().stringify(value));
+          config.setValue(JsonUtils.toJsonString(value));
 
           session.dsl()
             .mergeInto(Config.class)
@@ -60,9 +60,9 @@ public class SettingsFmRepository implements SettingsRepository {
 
       Map<String, Object> settingsMap = new HashMap<>();
       for (Config config : list) {
-        settingsMap.put(config.getKey(), JsonUtils.getInstance().parseToObject(config.getValue(), Object.class));
+        settingsMap.put(config.getKey(), JsonUtils.parseToObject(config.getValue(), Object.class));
       }
-      return JsonUtils.getInstance().convertValue(settingsMap, Settings.class);
+      return JsonUtils.convertValue(settingsMap, Settings.class);
     }
   }
 }

@@ -7,7 +7,7 @@ import org.quartz.Trigger;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.spi.*;
 import dev.flexmodel.codegen.entity.*;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -843,7 +843,7 @@ public class FmJobStore implements JobStore {
     }
     try {
       @SuppressWarnings("unchecked")
-      Map<String, Object> dataMap = JsonUtils.getInstance().convertValue(jobDataObj, Map.class);
+      Map<String, Object> dataMap = JsonUtils.convertValue(jobDataObj, Map.class);
       return new JobDataMap(dataMap);
     } catch (Exception e) {
       log.warn("Failed to deserialize job data: {}", jobDataObj, e);

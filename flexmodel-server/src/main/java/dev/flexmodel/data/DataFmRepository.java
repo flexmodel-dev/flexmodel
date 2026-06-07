@@ -11,7 +11,7 @@ import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -53,7 +53,7 @@ public class DataFmRepository implements DataRepository {
 
       if (!StringUtils.isBlank(sortString)) {
         try {
-          List<Query.OrderBy.Sort> sorts = JsonUtils.getInstance().parseToList(sortString, Query.OrderBy.Sort.class);
+          List<Query.OrderBy.Sort> sorts = JsonUtils.parseToList(sortString, Query.OrderBy.Sort.class);
           Query.OrderBy sort = new Query.OrderBy();
           sort.getSorts().addAll(sorts);
           queryBuilder.orderBy(sort);

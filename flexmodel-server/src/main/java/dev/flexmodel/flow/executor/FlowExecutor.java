@@ -18,7 +18,7 @@ import dev.flexmodel.flow.repository.FlowInstanceRepository;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
 import dev.flexmodel.common.utils.CollectionUtils;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.time.LocalDateTime;
@@ -87,7 +87,7 @@ public class FlowExecutor extends RuntimeExecutor {
   }
 
   private FlowInstance buildFlowInstance(RuntimeContext runtimeContext) {
-    FlowInstance flowInstance = JsonUtils.getInstance().convertValue(runtimeContext, FlowInstance.class);
+    FlowInstance flowInstance = JsonUtils.convertValue(runtimeContext, FlowInstance.class);
     // generate flowInstanceId
     flowInstance.setFlowInstanceId(genId());
     RuntimeContext parentRuntimeContext = runtimeContext.getParentRuntimeContext();
@@ -118,7 +118,7 @@ public class FlowExecutor extends RuntimeExecutor {
   }
 
   private InstanceData buildInstanceDataPO(FlowInstance flowInstancePO, Map<String, Object> instanceDataMap) {
-    InstanceData instanceDataPO = JsonUtils.getInstance().convertValue(flowInstancePO, InstanceData.class);
+    InstanceData instanceDataPO = JsonUtils.convertValue(flowInstancePO, InstanceData.class);
     // fix primary key duplicated
     instanceDataPO.setId(null);
 
@@ -286,7 +286,7 @@ public class FlowExecutor extends RuntimeExecutor {
 
   private InstanceData buildCommitInstanceData(RuntimeContext runtimeContext, String nodeInstanceId, String nodeKey,
                                                String newInstanceDataId, Map<String, Object> instanceDataMap) {
-    InstanceData instanceDataPO = JsonUtils.getInstance().convertValue(runtimeContext, InstanceData.class);
+    InstanceData instanceDataPO = JsonUtils.convertValue(runtimeContext, InstanceData.class);
     instanceDataPO.setProjectId(runtimeContext.getProjectId());
     instanceDataPO.setNodeInstanceId(nodeInstanceId);
     instanceDataPO.setNodeKey(nodeKey);
@@ -380,7 +380,7 @@ public class FlowExecutor extends RuntimeExecutor {
     if (isCompleted(runtimeContext)) {
       LOGGER.warn("invalid preRollback: FlowInstance has been processed completely."
                   + "||flowInstanceId={}||flowDeployId={}", flowInstanceId, runtimeContext.getFlowDeployId());
-      NodeInstanceBO suspendNodeInstance = JsonUtils.getInstance().convertValue(rollbackNodeInstance, NodeInstanceBO.class);
+      NodeInstanceBO suspendNodeInstance = JsonUtils.convertValue(rollbackNodeInstance, NodeInstanceBO.class);
       runtimeContext.setSuspendNodeInstance(suspendNodeInstance);
       runtimeContext.setFlowInstanceStatus(FlowInstanceStatus.COMPLETED);
       throw new ProcessException(ErrorEnum.ROLLBACK_FAILED);
@@ -493,7 +493,7 @@ public class FlowExecutor extends RuntimeExecutor {
   }
 
   private NodeInstanceBO buildSuspendNodeInstanceBO(NodeInstance nodeInstancePO) {
-    NodeInstanceBO suspendNodeInstanceBO = JsonUtils.getInstance().convertValue(nodeInstancePO, NodeInstanceBO.class);
+    NodeInstanceBO suspendNodeInstanceBO = JsonUtils.convertValue(nodeInstancePO, NodeInstanceBO.class);
     return suspendNodeInstanceBO;
   }
 
@@ -602,7 +602,7 @@ public class FlowExecutor extends RuntimeExecutor {
       nodeInstanceBO.setStatus(NodeInstanceStatus.FAILED);
     }
 
-    NodeInstance nodeInstancePO = JsonUtils.getInstance().convertValue(nodeInstanceBO, NodeInstance.class);
+    NodeInstance nodeInstancePO = JsonUtils.convertValue(nodeInstanceBO, NodeInstance.class);
     nodeInstancePO.setProjectId(runtimeContext.getProjectId());
     nodeInstancePO.setFlowInstanceId(runtimeContext.getFlowInstanceId());
     nodeInstancePO.setFlowDeployId(runtimeContext.getFlowDeployId());
@@ -615,7 +615,7 @@ public class FlowExecutor extends RuntimeExecutor {
   }
 
   private NodeInstanceLog buildNodeInstanceLogPO(NodeInstance nodeInstancePO, int nodeInstanceType) {
-    NodeInstanceLog nodeInstanceLogPO = JsonUtils.getInstance().convertValue(nodeInstancePO, NodeInstanceLog.class);
+    NodeInstanceLog nodeInstanceLogPO = JsonUtils.convertValue(nodeInstancePO, NodeInstanceLog.class);
     nodeInstanceLogPO.setId(null);
     nodeInstanceLogPO.setType(nodeInstanceType);
     nodeInstanceLogPO.setProjectId(nodeInstancePO.getProjectId());

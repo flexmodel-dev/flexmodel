@@ -81,6 +81,11 @@ public class JsonUtils {
     return target;
   }
 
+  @SuppressWarnings("all")
+  public static <T> List<T> parseToList(String json, Class<T> clz) {
+    return convertValueList(parseToObject(json, List.class), clz);
+  }
+
   public static <T> List<T> convertValueList(List<?> fromValues, Class<T> cls) {
     List<T> list = new ArrayList<>();
     for (Object fromValue : fromValues) {

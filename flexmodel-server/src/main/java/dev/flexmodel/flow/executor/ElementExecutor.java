@@ -17,7 +17,7 @@ import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.ExpressionCalculator;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.util.List;
@@ -71,7 +71,7 @@ public abstract class ElementExecutor extends RuntimeExecutor {
         sourceNodeInstance.getNodeInstanceId(), nodeKey);
       //reentrant check
       if (nodeInstance != null) {
-        currentNodeInstance = JsonUtils.getInstance().convertValue(nodeInstance, NodeInstanceBO.class);
+        currentNodeInstance = JsonUtils.convertValue(nodeInstance, NodeInstanceBO.class);
         runtimeContext.setCurrentNodeInstance(currentNodeInstance);
         LOGGER.warn("preExecute reentrant.||nodeInstancePO={}", nodeInstance);
         return;
@@ -180,7 +180,7 @@ public abstract class ElementExecutor extends RuntimeExecutor {
                     + "||flowInstanceId={}||nodeInstanceId={}", flowInstanceId, nodeInstanceId);
         throw new ProcessException(ErrorEnum.GET_NODE_INSTANCE_FAILED);
       }
-      currentNodeInstance = JsonUtils.getInstance().convertValue(currentNodeInstancePO, NodeInstanceBO.class);
+      currentNodeInstance = JsonUtils.convertValue(currentNodeInstancePO, NodeInstanceBO.class);
 
       String currentInstanceDataId = currentNodeInstance.getInstanceDataId();
       runtimeContext.setInstanceDataId(currentInstanceDataId);

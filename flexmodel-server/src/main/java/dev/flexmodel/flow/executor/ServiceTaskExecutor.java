@@ -16,7 +16,7 @@ import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.time.LocalDateTime;
@@ -131,7 +131,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
     instanceData.setFlowDeployId(runtimeContext.getFlowDeployId());
     instanceData.setFlowModuleId(runtimeContext.getFlowModuleId());
     instanceData.setNodeKey(runtimeContext.getCurrentNodeModel().getKey());
-    instanceData.setInstanceData(JsonUtils.getInstance().stringify(instanceDataMap));
+    instanceData.setInstanceData(JsonUtils.toJsonString(instanceDataMap));
     instanceData.setInstanceDataId(instanceDataId);
     instanceData.setType(InstanceDataType.EXECUTE);
     instanceData.setCreateTime(LocalDateTime.now());
@@ -366,7 +366,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
       // 处理排序
       if (StringUtils.isNotBlank(sortString)) {
         try {
-          List<Map> orders = JsonUtils.getInstance().parseToList(sortString, Map.class);
+          List<Map> orders = JsonUtils.parseToList(sortString, Map.class);
           Query.OrderBy orderBy = new Query.OrderBy();
           for (Map order : orders) {
             orderBy.addOrder(order.get("field").toString(), Direction.fromString(order.get("direction").toString()));

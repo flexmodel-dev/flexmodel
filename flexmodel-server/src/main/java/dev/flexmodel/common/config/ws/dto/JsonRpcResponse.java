@@ -2,7 +2,7 @@ package dev.flexmodel.common.config.ws.dto;
 
 import lombok.Getter;
 import lombok.Setter;
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 
 /**
  * @author cjbi
@@ -37,7 +37,7 @@ public class JsonRpcResponse {
 
   @Override
   public String toString() {
-    return JsonUtils.getInstance().stringify(this);
+    return JsonUtils.toJsonString(this);
   }
 
 }

@@ -1,6 +1,6 @@
 package dev.flexmodel.mcp;
 
-import dev.flexmodel.common.utils.JsonUtils;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.project.dto.ProjectListRequest;
@@ -23,7 +23,6 @@ public class ProjectTools {
   @Inject
   ProjectService projectService;
 
-  private final JsonUtils json = JsonUtils.getInstance();
 
   @Tool(description = """
     List all projects in the Flexmodel system. \
@@ -35,7 +34,7 @@ public class ProjectTools {
     log.info("list_projects called");
     try {
       List<ProjectResponse> projects = projectService.findProjects(new ProjectListRequest());
-      return json.stringify(projects);
+      return JsonUtils.toJsonString(projects);
     } catch (Exception e) {
       log.error("list_projects failed", e);
       return "Error: list_projects failed - " + e.getMessage();
@@ -55,7 +54,7 @@ public class ProjectTools {
       if (project == null) {
         return "Error: Project not found: " + projectId;
       }
-      return json.stringify(project);
+      return JsonUtils.toJsonString(project);
     } catch (Exception e) {
       log.errorf(e, "get_project failed, projectId=%s", projectId);
       return "Error: get_project failed - " + e.getMessage();
@@ -83,7 +82,7 @@ public class ProjectTools {
       project.setName(projectName);
       project.setDescription(description);
       Project created = projectService.createProject(project);
-      return "Project created successfully: " + json.stringify(created);
+      return "Project created successfully: " + JsonUtils.toJsonString(created);
     } catch (Exception e) {
       log.errorf(e, "create_project failed, projectId=%s", projectId);
       return "Error: create_project failed - " + e.getMessage();

@@ -110,7 +110,26 @@ public class BranchService {
     SchemaCopier copier = SchemaCopierFactory.create(sessionFactory);
     copier.copySchema(sourceProvider, branchDbName, targetProvider);
 
-    // 5. 保存分支记录
+    // 5. 迁移源分支数据到新分支
+    try (Session sourceSession = sessionFactory.createFailsafeSession(sourceDbName);
+         Session targetSession = sessionFactory.createFailsafeSession(branchDbName)) {
+      List<SchemaObject> models = sessionFactory.getModels(sourceDbName);
+      for (SchemaObject model : models) {
+        if (!(model instanceof EntityDefinition entity)) continue;
+        String modelName = entity.getName();
+        try {
+          List<Map<String, Object>> records = sourceSession.data().find(modelName, new Query());
+          if (!records.isEmpty()) {
+            targetSession.data().insertAll(modelName, records);
+            log.info("分支创建: 模型 {} 迁移 {} 条数据", modelName, records.size());
+          }
+        } catch (Exception e) {
+          log.warn("分支创建: 迁移模型 {} 数据失败: {}", modelName, e.getMessage());
+        }
+      }
+    }
+
+    // 6. 保存分支记录
     Branch branch = new Branch();
     branch.setProjectId(projectId);
     branch.setName(branchName);

@@ -1,4 +1,4 @@
-package dev.flexmodel.projectauth.dto;
+package dev.flexmodel.auth.dto;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +13,7 @@ public class ApiKeyResponse {
   private String keyPrefix;
   private String keyType;
   private String scopes;
+  private String projectIds;
   private boolean readOnly;
   private LocalDateTime expiresAt;
   private LocalDateTime lastUsedAt;
@@ -30,6 +31,7 @@ public class ApiKeyResponse {
     resp.setKeyPrefix(entity.getKeyPrefix());
     resp.setKeyType(entity.getKeyType());
     resp.setScopes(entity.getScopes());
+    resp.setProjectIds(entity.getProjectIds());
     resp.setReadOnly(entity.getReadOnly());
     resp.setExpiresAt(entity.getExpiresAt());
     resp.setLastUsedAt(entity.getLastUsedAt());

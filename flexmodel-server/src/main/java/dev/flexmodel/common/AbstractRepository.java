@@ -16,7 +16,7 @@ import static dev.flexmodel.query.Expressions.field;
 public abstract class AbstractRepository {
 
   @Inject
-  SessionFactory sessionFactory;
+  protected SessionFactory sessionFactory;
 
   protected Session getProjectSession(String projectId) {
     if (projectId != null) {

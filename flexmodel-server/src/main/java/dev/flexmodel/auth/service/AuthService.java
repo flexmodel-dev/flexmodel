@@ -1,4 +1,4 @@
-package dev.flexmodel.auth;
+package dev.flexmodel.auth.service;
 
 import dev.flexmodel.auth.dto.*;
 import dev.flexmodel.codegen.entity.Resource;

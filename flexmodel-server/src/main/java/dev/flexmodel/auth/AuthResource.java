@@ -1,5 +1,6 @@
 package dev.flexmodel.auth;
 
+import dev.flexmodel.auth.service.AuthService;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;

@@ -1,4 +1,4 @@
-package dev.flexmodel.auth;
+package dev.flexmodel.auth.service;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;

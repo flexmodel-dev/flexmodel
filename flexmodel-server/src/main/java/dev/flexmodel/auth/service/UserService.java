@@ -1,5 +1,7 @@
-package dev.flexmodel.auth;
+package dev.flexmodel.auth.service;
 
+import dev.flexmodel.auth.exception.AuthException;
+import dev.flexmodel.auth.repository.UserRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.User;

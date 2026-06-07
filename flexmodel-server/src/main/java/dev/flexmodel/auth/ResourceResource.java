@@ -1,6 +1,7 @@
 package dev.flexmodel.auth;
 
 import dev.flexmodel.auth.dto.ResourceTreeResponse;
+import dev.flexmodel.auth.service.AuthService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;

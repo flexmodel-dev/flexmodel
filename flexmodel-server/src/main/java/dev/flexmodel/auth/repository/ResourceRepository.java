@@ -1,4 +1,4 @@
-package dev.flexmodel.auth;
+package dev.flexmodel.auth.repository;
 
 import dev.flexmodel.codegen.entity.Resource;
 

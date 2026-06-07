@@ -18,7 +18,7 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public List<ApiRequestLog> find(String projectId, Predicate filter, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(ApiRequestLog.class)
         .where(dev.flexmodel.query.Expressions.field(ApiRequestLog::getProjectId).eq(projectId).and(filter))
         .orderBy("id", Direction.DESC)
@@ -30,7 +30,7 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public List<LogStat> stat(String projectId, Predicate filter, String fmt) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .select(query -> query
           .field("date", dateFormat(field("created_at"), fmt))
@@ -44,7 +44,7 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public List<LogApiRank> ranking(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .select(query -> query
           .field("name", field("path"))
@@ -60,7 +60,7 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public ApiRequestLog save(ApiRequestLog record) {
-    try (Session session = getProjectSession(record.getProjectId())) {
+    try (Session session = sessionFactory.createSession()) {
       session.dsl()
         .mergeInto(ApiRequestLog.class)
         .values(record)
@@ -70,13 +70,18 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
   }
 
   @Override
-  public void delete(Predicate unaryOperator) {
-    throw new UnsupportedOperationException("Delete with predicate requires projectId");
+  public void delete(Predicate filter) {
+    try (Session session = sessionFactory.createSession()) {
+      session.dsl()
+        .deleteFrom(ApiRequestLog.class)
+        .where(filter)
+        .execute();
+    }
   }
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(ApiRequestLog.class)
         .where(dev.flexmodel.query.Expressions.field(ApiRequestLog::getProjectId).eq(projectId).and(filter))

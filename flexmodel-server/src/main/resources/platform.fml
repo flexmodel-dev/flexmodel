@@ -24,6 +24,49 @@ model f_branch {
   @index(name: "IDX_BRANCH_PROJECT_NAME", unique: true, fields: [project_id, name]),
   @comment("项目分支")
 }
+
+model f_api_request_log {
+  id : String @id @default(uuid()),
+  url : String @length("2000") @comment("请求地址"),
+  http_method: String @length("255") @comment("请求方法"),
+  path: String @length("1000") @comment("请求路径"),
+  request_body : JSON @comment("请求参数"),
+  request_headers : JSON @comment("请求头"),
+  status_code : Int,
+  response_time : Int,
+  client_ip?: String @length("45") @comment("IP地址"),
+  created_at : DateTime @default(now()),
+  is_success: Boolean @comment("是否成功") @default("true"),
+  error_message? : JSON @comment("异常信息"),
+  project_id?: String @comment("项目ID"),
+  @index(name: "IDX_API_REQUEST_LOG_CREATED_AT", fields: [created_at]),
+  @index(name: "IDX_API_REQUEST_LOG_IS_ERROR", fields: [is_success]),
+  @index(name: "IDX_API_REQUEST_LOG_PATH_CREATED_AT", fields: [path, created_at]),
+  @index(name: "IDX_API_REQUEST_LOG_STATUS_CREATED_AT", fields: [status_code, created_at]),
+  @index(name: "IDX_PROJECT", fields: [project_id]),
+  @comment("API请求日志")
+}
+
+model f_auth_api_key {
+  id : String @id @default(uuid()),
+  project_id? : String @comment("所属项目(可选,空为系统级)"),
+  name : String @length("255") @comment("Key 名称"),
+  key_hash : String @length("64") @comment("SHA-256 哈希"),
+  key_prefix : String @length("16") @comment("前缀(fm_ak_xxx)"),
+  key_type : String @length("50") @comment("类型: anon/service/custom"),
+  scopes? : String @length("500") @comment("权限范围,逗号分隔"),
+  project_ids? : String @length("1000") @comment("可访问的项目ID列表,逗号分隔,空表示全部"),
+  read_only : Boolean @default("false") @comment("是否只读"),
+  expires_at? : DateTime @comment("过期时间"),
+  last_used_at? : DateTime @comment("最后使用时间"),
+  enabled : Boolean @default("true") @comment("是否启用"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_AUTH_AK_HASH", unique: true, fields: [key_hash]),
+  @index(name: "IDX_AUTH_AK_PROJECT", fields: [project_id]),
+  @comment("API Key")
+}
+
 model f_user {
   id : String @id @default(uuid()),
   name? : String @length("255") @comment("名称"),
@@ -290,5 +333,10 @@ seed f_resource {
   {id: 300, name: "设置", permission: "settings:*", type: "system", parent_id: 1},
   {id: 301, name: "查看", permission: "settings:view", type: "system", parent_id: 300},
   {id: 302, name: "保存", permission: "settings:save", type: "system", parent_id: 300},
+  {id: 400, name: "API Key", permission: "apikey:*", type: "system", parent_id: 1},
+  {id: 401, name: "查看API Key", permission: "apikey:view", type: "system", parent_id: 400},
+  {id: 402, name: "新增API Key", permission: "apikey:create", type: "system", parent_id: 400},
+  {id: 403, name: "修改API Key", permission: "apikey:update", type: "system", parent_id: 400},
+  {id: 404, name: "删除API Key", permission: "apikey:delete", type: "system", parent_id: 400},
 }
 

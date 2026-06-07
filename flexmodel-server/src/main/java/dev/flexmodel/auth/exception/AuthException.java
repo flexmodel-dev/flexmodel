@@ -1,4 +1,4 @@
-package dev.flexmodel.auth;
+package dev.flexmodel.auth.exception;
 
 import dev.flexmodel.common.BusinessException;
 

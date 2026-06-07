@@ -6,9 +6,9 @@ import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.SessionContextHolder;
 import dev.flexmodel.common.config.web.jwt.JwtUtil;
-import dev.flexmodel.auth.AuthException;
+import dev.flexmodel.auth.exception.AuthException;
 import dev.flexmodel.project.ProjectService;
-import dev.flexmodel.projectauth.ApiKeyService;
+import dev.flexmodel.auth.service.ApiKeyService;
 import dev.flexmodel.projectauth.AuthProviderConfigService;
 import dev.flexmodel.projectauth.provider.AuthContext;
 import dev.flexmodel.projectauth.provider.AuthProvider;
@@ -107,12 +107,33 @@ public class AuthFilter implements ContainerRequestFilter {
     if (apiKey == null) {
       return false;
     }
-    // 如果请求路径包含 projectId，校验 key 归属
-    if (projectId != null && !projectId.equals(apiKey.getProjectId())) {
-      return false;
+    // 系统级 Key（project_id 为空）：检查 project_ids 白名单
+    if (apiKey.getProjectId() == null || apiKey.getProjectId().isBlank()) {
+      if (!isProjectAllowed(apiKey, projectId)) {
+        return false;
+      }
+    } else {
+      // 项目级 Key：校验归属
+      if (projectId != null && !projectId.equals(apiKey.getProjectId())) {
+        return false;
+      }
     }
-    fillSessionContextForApiKey(requestContext, apiKey);
+    fillSessionContextForApiKey(requestContext, apiKey, projectId);
     return true;
+  }
+
+  /**
+   * 检查系统级 API Key 是否允许访问指定项目。
+   */
+  private boolean isProjectAllowed(AuthApiKey apiKey, String projectId) {
+    if (projectId == null) {
+      return true;
+    }
+    String projectIds = apiKey.getProjectIds();
+    if (projectIds == null || projectIds.isBlank()) {
+      return true; // 空表示可访问所有项目
+    }
+    return Set.of(projectIds.split(",")).contains(projectId);
   }
 
   /**
@@ -192,15 +213,19 @@ public class AuthFilter implements ContainerRequestFilter {
   /**
    * API Key 认证 -> 填充上下文。
    */
-  private void fillSessionContextForApiKey(ContainerRequestContext requestContext, AuthApiKey apiKey) {
-    String projectId = apiKey.getProjectId();
-    Project project = projectService.findProject(projectId);
-    if (project == null) {
-      throw new AuthException("Project not found");
+  private void fillSessionContextForApiKey(ContainerRequestContext requestContext, AuthApiKey apiKey, String requestProjectId) {
+    String projectId = (apiKey.getProjectId() != null && !apiKey.getProjectId().isBlank())
+      ? apiKey.getProjectId()
+      : requestProjectId;
+    if (projectId != null) {
+      Project project = projectService.findProject(projectId);
+      if (project == null) {
+        throw new AuthException("Project not found");
+      }
+      SessionContextHolder.setProjectId(projectId);
+      SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
+      SessionContextHolder.setBranchName(project.getCurrentBranch());
     }
-    SessionContextHolder.setProjectId(projectId);
-    SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
-    SessionContextHolder.setBranchName(project.getCurrentBranch());
     SessionContextHolder.setCaller(apiKey.getName());
     SessionContextHolder.setScopes(parseScopes(apiKey.getScopes()));
     requestContext.setProperty("projectId", projectId);

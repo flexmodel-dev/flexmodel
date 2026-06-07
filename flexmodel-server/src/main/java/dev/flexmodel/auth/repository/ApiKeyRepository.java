@@ -1,4 +1,4 @@
-package dev.flexmodel.projectauth;
+package dev.flexmodel.auth.repository;
 
 import dev.flexmodel.codegen.entity.AuthApiKey;
 
@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface ApiKeyRepository {
 
-  List<AuthApiKey> findByProjectId(String projectId);
+  List<AuthApiKey> findAll();
 
   AuthApiKey findByKeyHash(String keyHash);
 
@@ -15,8 +15,6 @@ public interface ApiKeyRepository {
   AuthApiKey save(AuthApiKey apiKey);
 
   void delete(String id);
-
-  void deleteByProjectId(String projectId);
 
   void updateLastUsedAt(String id, java.time.LocalDateTime lastUsedAt);
 }

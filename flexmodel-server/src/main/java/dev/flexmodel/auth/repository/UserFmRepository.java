@@ -1,4 +1,4 @@
-package dev.flexmodel.auth;
+package dev.flexmodel.auth.repository;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

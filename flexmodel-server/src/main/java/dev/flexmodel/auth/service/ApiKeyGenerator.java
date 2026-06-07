@@ -1,4 +1,4 @@
-package dev.flexmodel.projectauth;
+package dev.flexmodel.auth.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

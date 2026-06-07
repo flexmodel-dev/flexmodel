@@ -1,7 +1,6 @@
 package dev.flexmodel.common.config.web.exception;
 
-import dev.flexmodel.auth.AuthException;
-import jakarta.ws.rs.WebApplicationException;
+import dev.flexmodel.auth.exception.AuthException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;

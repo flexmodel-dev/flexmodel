@@ -1,8 +1,9 @@
-package dev.flexmodel.projectauth;
+package dev.flexmodel.auth.service;
 
+import dev.flexmodel.auth.repository.ApiKeyRepository;
 import dev.flexmodel.codegen.entity.AuthApiKey;
-import dev.flexmodel.projectauth.dto.ApiKeyResponse;
-import dev.flexmodel.projectauth.dto.CreateApiKeyRequest;
+import dev.flexmodel.auth.dto.ApiKeyResponse;
+import dev.flexmodel.auth.dto.CreateApiKeyRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -17,26 +18,26 @@ public class ApiKeyService {
   @Inject
   ApiKeyRepository apiKeyRepository;
 
-  public List<ApiKeyResponse> listByProject(String projectId) {
-    return apiKeyRepository.findByProjectId(projectId).stream()
+  public List<ApiKeyResponse> listAll() {
+    return apiKeyRepository.findAll().stream()
       .map(ApiKeyResponse::fromEntity)
       .toList();
   }
 
   /**
-   * 创建自定义 API Key，返回包含明文 key 的响应（仅此一次）。
+   * 创建 API Key，返回包含明文 key 的响应（仅此一次）。
    */
-  public ApiKeyResponse create(String projectId, CreateApiKeyRequest request) {
+  public ApiKeyResponse create(CreateApiKeyRequest request) {
     String keyType = request.keyType() != null ? request.keyType() : "custom";
     ApiKeyGenerator.GeneratedKey generated = ApiKeyGenerator.generate(keyType);
 
     AuthApiKey entity = new AuthApiKey();
-    entity.setProjectId(projectId);
     entity.setName(request.name());
     entity.setKeyHash(generated.hash());
     entity.setKeyPrefix(generated.prefix());
     entity.setKeyType(keyType);
     entity.setScopes(request.scopes());
+    entity.setProjectIds(request.projectIds());
     entity.setReadOnly(request.readOnly());
     entity.setEnabled(true);
 
@@ -69,10 +70,6 @@ public class ApiKeyService {
     apiKeyRepository.delete(id);
   }
 
-  public void deleteByProjectId(String projectId) {
-    apiKeyRepository.deleteByProjectId(projectId);
-  }
-
   /**
    * 验证 API Key 明文，返回对应的实体（如果有效）。
    */
@@ -95,28 +92,5 @@ public class ApiKeyService {
       log.warn("Failed to update last_used_at for API Key {}", apiKey.getId(), e);
     }
     return apiKey;
-  }
-
-  /**
-   * 项目创建时自动生成 anon + service 两个内置 API Key。
-   */
-  public void generateDefaultKeys(String projectId) {
-    createDefaultKey(projectId, "Anon Key", "anon", "read", true);
-    createDefaultKey(projectId, "Service Key", "service", "*", false);
-  }
-
-  private void createDefaultKey(String projectId, String name, String keyType, String scopes, boolean readOnly) {
-    ApiKeyGenerator.GeneratedKey generated = ApiKeyGenerator.generate(keyType);
-    AuthApiKey entity = new AuthApiKey();
-    entity.setProjectId(projectId);
-    entity.setName(name);
-    entity.setKeyHash(generated.hash());
-    entity.setKeyPrefix(generated.prefix());
-    entity.setKeyType(keyType);
-    entity.setScopes(scopes);
-    entity.setReadOnly(readOnly);
-    entity.setEnabled(true);
-    apiKeyRepository.save(entity);
-    log.info("Generated default {} key for project {}: {}...", keyType, projectId, generated.prefix());
   }
 }

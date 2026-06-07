@@ -10,12 +10,11 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * 系统监控资源类
- * 提供JVM、CPU、内存、线程、磁盘（含I/O）、网络等监控信息
  *
  * @author cjbi
  */
 @Path("/projects/{projectId}/metrics")
-@Tag(name = "系统监控", description = "系统监控相关接口，包括JVM、CPU、内存、线程、磁盘（含I/O）、网络等监控信息")
+@Tag(name = "系统监控", description = "系统监控相关接口")
 @SecurityRequirement(name = "BearerAuth")
 public class MetricsResource {
   @Inject

@@ -118,6 +118,13 @@ jobs:
         run: |
           mkdir -p ~/.m2
           cp .github/settings.xml ~/.m2/settings.xml
+      - name: Restore Maven cache from install-dependencies
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
       - name: Build Image with Maven
         run: |
           cd flexmodel-server

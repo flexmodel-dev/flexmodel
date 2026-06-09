@@ -100,6 +100,113 @@ public class SqlDataService extends BaseService implements DataService {
     }
   }
 
+  @Override
+  public int insertAll(String modelName, List<Map<String, Object>> records) {
+    if (records == null || records.isEmpty()) {
+      return 0;
+    }
+    if (records.size() == 1) {
+      return insert(modelName, records.getFirst());
+    }
+
+    log.debug("Starting SQL batch insert for model: {}, record count: {}", modelName, records.size());
+    long startTime = System.currentTimeMillis();
+
+    try {
+      // Step 1: Process each record (type conversion, default values, etc.)
+      List<Map<String, Object>> processedList = new ArrayList<>();
+      for (Map<String, Object> data : records) {
+        processedList.add(generateFieldValues(modelName, data, false));
+      }
+
+      EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+      Optional<TypedField<?, ?>> idFieldOpt = entity.findIdField();
+
+      // Step 2: Check if any record needs auto-generated ID
+      boolean needsAutoGenId = false;
+      if (idFieldOpt.isPresent()) {
+        String idName = idFieldOpt.get().getName();
+        for (Map<String, Object> pd : processedList) {
+          if (pd.get(idName) == null) {
+            needsAutoGenId = true;
+            break;
+          }
+        }
+      }
+
+      int totalRows;
+
+      if (needsAutoGenId) {
+        // Auto-generated IDs: fallback to individual inserts for reliable ID retrieval
+        log.debug("Batch insert with auto-generated IDs, falling back to individual inserts for model: {}", modelName);
+        totalRows = 0;
+        for (int i = 0; i < records.size(); i++) {
+          totalRows += insert(modelName, records.get(i));
+        }
+      } else {
+        // Step 3: Collect unified column set (union of all record keys)
+        LinkedHashSet<String> allColumns = new LinkedHashSet<>();
+        for (Map<String, Object> pd : processedList) {
+          allColumns.addAll(pd.keySet());
+        }
+
+        // Step 4: Generate INSERT SQL using unified columns
+        String sql = buildBatchInsertSql(modelName, allColumns);
+        log.debug("Generated batch INSERT SQL: {}", sql);
+
+        // Step 5: Fill missing columns with null for each record
+        for (Map<String, Object> pd : processedList) {
+          for (String col : allColumns) {
+            pd.putIfAbsent(col, null);
+          }
+        }
+
+        // Step 6: Execute batch insert
+        int[] results = sqlExecutor.batchUpdate(sql, processedList);
+        totalRows = 0;
+        for (int r : results) {
+          if (r >= 0) totalRows += r;
+          else if (r == java.sql.Statement.SUCCESS_NO_INFO) totalRows++;
+        }
+
+        // Step 7: ID backfill and related record insertion
+        for (int i = 0; i < records.size(); i++) {
+          Map<String, Object> data = records.get(i);
+          Map<String, Object> pd = processedList.get(i);
+          Object id = null;
+          if (idFieldOpt.isPresent()) {
+            id = pd.get(idFieldOpt.get().getName());
+            data.put(idFieldOpt.get().getName(), id);
+          }
+          insertRelatedRecords(modelName, data, id);
+        }
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("SQL batch insert completed for model: {} in {}ms, affected rows: {}", modelName, duration, totalRows);
+      }
+
+      return totalRows;
+    } catch (Exception e) {
+      long duration = System.currentTimeMillis() - startTime;
+      log.error("SQL batch insert failed for model: {} after {}ms", modelName, duration, e);
+      throw e;
+    }
+  }
+
+  private String buildBatchInsertSql(String modelName, LinkedHashSet<String> columns) {
+    String physicalTableName = toPhysicalTablenameQuoteString(modelName);
+
+    StringJoiner colsJoiner = new StringJoiner(", ", "(", ")");
+    StringJoiner valsJoiner = new StringJoiner(", ", "(", ")");
+
+    for (String col : columns) {
+      colsJoiner.add(sqlDialect.quoteIdentifier(col));
+      valsJoiner.add(":" + col);
+    }
+
+    return "insert into " + physicalTableName + colsJoiner + " values " + valsJoiner;
+  }
+
   private String getInsertSqlString(String modelName, Map<String, Object> record) {
     String physicalTableName = toPhysicalTablenameQuoteString(modelName);
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);

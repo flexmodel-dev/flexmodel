@@ -261,6 +261,25 @@ public class NamedParameterSqlExecutor implements SqlExecutor {
     }, sql, paramMap);
   }
 
+  @Override
+  public int[] batchUpdate(String sql, List<Map<String, Object>> paramsList) {
+    return metrics(() -> {
+      NamedParamStatement stmt = null;
+      try {
+        stmt = new NamedParamStatement(connection, sql);
+        for (Map<String, Object> params : paramsList) {
+          setParameters(stmt, params);
+          stmt.addBatch();
+        }
+        return stmt.executeBatch();
+      } catch (SQLException e) {
+        throw new SqlExecutionException("Could not execute JDBC batch Statement: " + sql + ", Reason: " + e.getMessage(), e);
+      } finally {
+        closeStatement(stmt);
+      }
+    }, sql, paramsList);
+  }
+
   private void setParameters(NamedParamStatement stmt, Map<String, Object> paramMap) throws SQLException {
     stmt.setParameters(paramMap);
   }

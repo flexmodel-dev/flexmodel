@@ -79,6 +79,14 @@
       "dependencies": ["feat-001"],
       "status": "done",
       "evidence": "flexmodel-server/mcp 特性包已实现，15 个 MCP Tools（ProjectTools/ModelingTools/DataTools）已通过编译验证"
+    },
+    {
+      "id": "feat-011",
+      "name": "Functions - 云函数 (Flexmodel Functions)",
+      "description": "对标 Supabase Edge Functions 的云函数能力。Deno Sidecar (Hono.js) 提供 Worker 隔离执行，Java 后端提供 CRUD、状态机、版本管理、HTTP Trigger 鉴权。支持 lazy load 源码 + LRU 缓存。",
+      "dependencies": ["feat-001", "feat-002"],
+      "status": "in-progress",
+      "evidence": "Phase 1: Deno Sidecar 完成 (10 files), Phase 2: Java 后端完成 (17 files), Phase 3: 前端 UI 完成 (5 files + 路由 + i18n), 数据模型扩展完毕, 编译通过 (Java 424 files + TypeScript 0 errors), Vite build 成功. 待: Phase 4 端到端集成测试 + Deno 运行时验证."
     }
   ]
 }

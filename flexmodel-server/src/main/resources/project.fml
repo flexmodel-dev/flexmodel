@@ -247,9 +247,42 @@ model f_job_execution_log {
   @comment("作业执行日志")
 }
 
+model f_function {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  name : String @comment("函数名称"),
+  slug : String @comment("函数标识符(URL安全)"),
+  description? : String @comment("函数描述"),
+  entry_point : String @default("default") @comment("入口函数名"),
+  status : String @default("CREATING") @comment("部署状态: CREATING, ACTIVE, DEPLOY_FAILED, UPDATING, DELETING, INACTIVE"),
+  current_version : Int @default("1") @comment("当前生效版本号"),
+  timeout : Int @default("30") @comment("超时时间(秒)"),
+  memory_limit : Int @default("128") @comment("内存限制(MB)预留字段，V1 仅配置不强制，V2 监控+超限 terminate"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_FUNCTION_PROJECT_SLUG", unique: true, fields: [project_id, slug]),
+  @index(name: "IDX_FUNCTION_PROJECT", unique: false, fields: [project_id]),
+  @index(name: "IDX_FUNCTION_STATUS", unique: false, fields: [status]),
+  @comment("云函数")
+}
+
+model f_function_version {
+  id : String @id @default(uuid()),
+  function_id : String @comment("所属函数ID"),
+  version : Int @comment("版本号"),
+  source_code : String @comment("函数源代码(TypeScript/JavaScript)"),
+  created_by? : String @comment("创建人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  @index(name: "IDX_FUNCTION_VERSION", unique: true, fields: [function_id, version]),
+  @comment("云函数版本")
+}
+
 enum TriggerType {
   EVENT,
-  SCHEDULED
+  SCHEDULED,
+  HTTP
 }
 
 enum ApiType {

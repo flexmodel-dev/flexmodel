@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * 本地文件存储实现
+ * 本地对象存储实现
  * @author cjbi
  */
 public class LocalStorageOperations implements StorageOperations {

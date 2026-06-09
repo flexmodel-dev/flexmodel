@@ -42,8 +42,8 @@
     },
     {
       "id": "feat-006",
-      "name": "Storage - 文件存储抽象",
-      "description": "支持本地/S3/OSS 的文件存储抽象层，含完整 S3 实现和文件下载",
+      "name": "Storage - 对象存储抽象",
+      "description": "支持本地/S3/OSS 的对象存储抽象层，含完整 S3 实现和文件下载",
       "dependencies": ["feat-001"],
       "status": "done",
       "evidence": "flexmodel-server/storage 特性包已实现，S3StorageOperations 完整实现（AWS SDK v2），LocalStorageOperationsTest 20个测试全部通过，支持文件下载和存储验证"

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * S3 文件存储实现 (AWS SDK v2)
+ * S3 对象存储实现 (AWS SDK v2)
  * <p>
  * 兼容 AWS S3、MinIO、阿里云 OSS 等 S3 兼容存储。
  * 使用外部注入的 S3Client 和前缀路径，支持多租户 Bucket 隔离。

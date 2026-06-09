@@ -4,7 +4,7 @@
 
 **Last Updated:** 2026-06-05 08:45
 **Session ID:** storage-improvement
-**Active Feature:** feat-006 - Storage - 文件存储抽象
+**Active Feature:** feat-006 - Storage - 对象存储抽象
 
 ## Status
 

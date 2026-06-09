@@ -16,6 +16,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import dev.flexmodel.settings.SettingsService;
 import dev.flexmodel.common.FlexmodelConfig;
+import dev.flexmodel.storage.config.StorageProvider;
 
 import java.util.Map;
 
@@ -35,6 +36,9 @@ public class GlobalResource {
   @Inject
   FlexmodelConfig config;
 
+  @Inject
+  StorageProvider storageProvider;
+
   @APIResponse(
     name = "200",
     responseCode = "200",
@@ -47,6 +51,7 @@ public class GlobalResource {
           @SchemaProperty(name = "properties", description = "配置属性"),
           @SchemaProperty(name = "application", description = "应用程序配置"),
           @SchemaProperty(name = "settings", description = "系统设置"),
+          @SchemaProperty(name = "storageProvider", description = "存储后端信息"),
         }
       )
     )
@@ -57,7 +62,8 @@ public class GlobalResource {
   @PermitAll
   public Map<String, Object> getProfile() {
     return Map.of("settings", settingsService.getSettings(),
-    "apiRootPath", config.apiRootPath()
+    "apiRootPath", config.apiRootPath(),
+    "storageProvider", storageProvider.getProviderInfo()
     );
   }
 

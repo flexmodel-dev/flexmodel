@@ -1,15 +1,18 @@
-model f_storage {
-  name : String @id,
-  type? : StorageType,
-  config? : JSON,
-  enabled : Boolean @comment("是否启用") @default("true"),
-  project_id?: String @comment("项目ID"),
+model f_bucket {
+  id : String @id @default(uuid()),
+  name : String @comment("Bucket 名称"),
+  description? : String @length("500") @comment("Bucket 描述"),
+  visibility : BucketVisibility @default("PRIVATE") @comment("访问可见性"),
+  max_file_size? : Long @comment("单文件大小限制(字节)"),
+  owner_type : String @comment("归属类型(如 PROJECT)"),
+  owner_id : String @comment("归属ID"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_PROJECT", fields: [project_id]),
-  @comment("文件存储")
+  @index(name: "IDX_OWNER", fields: [owner_type, owner_id]),
+  @index(name: "UQ_BUCKET_NAME", unique: true, fields: [owner_type, owner_id, name]),
+  @comment("存储 Bucket")
 }
 
 model f_auth_provider_config {
@@ -259,9 +262,10 @@ enum DatasourceType {
   USER
 }
 
-enum StorageType {
-  S3,
-  LOCAL
+enum BucketVisibility {
+  PRIVATE,
+  AUTHENTICATED,
+  PUBLIC
 }
 
 // ==============================

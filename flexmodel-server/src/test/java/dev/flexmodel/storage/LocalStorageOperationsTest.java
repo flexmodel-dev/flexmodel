@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 
@@ -47,40 +46,43 @@ public class LocalStorageOperationsTest {
   }
 
   @Test
-  void testCreateFolder() {
-    storage.createFolder("/test-folder");
-    assertTrue(storage.exists("/test-folder"));
-  }
-
-  @Test
-  void testCreateNestedFolder() {
-    storage.createFolder("/a/b/c");
-    assertTrue(storage.exists("/a/b/c"));
-    assertTrue(storage.exists("/a"));
-  }
-
-  @Test
   void testUploadFile() throws IOException {
     String content = "Hello, Flexmodel!";
     byte[] bytes = content.getBytes();
     storage.uploadFile("/test.txt", new ByteArrayInputStream(bytes), bytes.length);
-    assertTrue(storage.exists("/test.txt"));
-    assertEquals(bytes.length, storage.getFileSize("/test.txt"));
+
+    FileItem file = storage.getFile("/test.txt");
+    assertNotNull(file);
+    assertEquals(bytes.length, file.getSize());
   }
 
   @Test
   void testUploadFileInFolder() throws IOException {
-    storage.createFolder("/uploads");
+    // Create folder via empty object marker
+    storage.uploadFile("/uploads/", new ByteArrayInputStream(new byte[0]), 0);
     String content = "Uploaded content";
     byte[] bytes = content.getBytes();
     storage.uploadFile("/uploads/doc.txt", new ByteArrayInputStream(bytes), bytes.length);
-    assertTrue(storage.exists("/uploads/doc.txt"));
+
+    FileItem file = storage.getFile("/uploads/doc.txt");
+    assertNotNull(file);
+  }
+
+  @Test
+  void testUploadEmptyObject() {
+    // Folder marker: PUT empty object with trailing slash
+    storage.uploadFile("/my-folder/", new ByteArrayInputStream(new byte[0]), 0);
+
+    FileItem item = storage.getFile("/my-folder");
+    assertNotNull(item);
+    assertEquals(FileItem.FileType.folder, item.getType());
   }
 
   @Test
   void testListFiles() {
-    storage.createFolder("/folder1");
-    storage.createFolder("/folder2");
+    // Create folders via empty object markers
+    storage.uploadFile("/folder1/", new ByteArrayInputStream(new byte[0]), 0);
+    storage.uploadFile("/folder2/", new ByteArrayInputStream(new byte[0]), 0);
     storage.uploadFile("/readme.txt", new ByteArrayInputStream("readme".getBytes()), 6);
     storage.uploadFile("/notes.txt", new ByteArrayInputStream("notes".getBytes()), 5);
 
@@ -95,20 +97,13 @@ public class LocalStorageOperationsTest {
 
   @Test
   void testListFilesInSubfolder() {
-    storage.createFolder("/sub");
+    storage.uploadFile("/sub/", new ByteArrayInputStream(new byte[0]), 0);
     storage.uploadFile("/sub/file1.txt", new ByteArrayInputStream("f1".getBytes()), 2);
     storage.uploadFile("/sub/file2.txt", new ByteArrayInputStream("f2".getBytes()), 2);
 
     List<FileItem> files = storage.listFiles("/sub");
     assertEquals(2, files.size());
     assertTrue(files.stream().allMatch(f -> f.getType() == FileItem.FileType.file));
-  }
-
-  @Test
-  void testListEmptyFolder() {
-    storage.createFolder("/empty");
-    List<FileItem> files = storage.listFiles("/empty");
-    assertEquals(0, files.size());
   }
 
   @Test
@@ -126,7 +121,7 @@ public class LocalStorageOperationsTest {
 
   @Test
   void testGetFolder() {
-    storage.createFolder("/mydir");
+    storage.uploadFile("/mydir/", new ByteArrayInputStream(new byte[0]), 0);
 
     FileItem folder = storage.getFile("/mydir");
     assertNotNull(folder);
@@ -143,47 +138,21 @@ public class LocalStorageOperationsTest {
   @Test
   void testDeleteFile() {
     storage.uploadFile("/deleteme.txt", new ByteArrayInputStream("del".getBytes()), 3);
-    assertTrue(storage.exists("/deleteme.txt"));
+    assertNotNull(storage.getFile("/deleteme.txt"));
 
     storage.deleteFile("/deleteme.txt");
-    assertFalse(storage.exists("/deleteme.txt"));
+    assertNull(storage.getFile("/deleteme.txt"));
   }
 
   @Test
   void testDeleteFolder() {
-    storage.createFolder("/deldir");
+    storage.uploadFile("/deldir/", new ByteArrayInputStream(new byte[0]), 0);
     storage.uploadFile("/deldir/f1.txt", new ByteArrayInputStream("f1".getBytes()), 2);
     storage.uploadFile("/deldir/f2.txt", new ByteArrayInputStream("f2".getBytes()), 2);
 
-    assertTrue(storage.exists("/deldir"));
+    assertNotNull(storage.getFile("/deldir"));
     storage.deleteFile("/deldir");
-    assertFalse(storage.exists("/deldir"));
-  }
-
-  @Test
-  void testExists() {
-    assertFalse(storage.exists("/nothing"));
-
-    storage.createFolder("/something");
-    assertTrue(storage.exists("/something"));
-  }
-
-  @Test
-  void testGetFileSize() {
-    storage.uploadFile("/bigfile.txt", new ByteArrayInputStream(new byte[1024]), 1024);
-    assertEquals(1024, storage.getFileSize("/bigfile.txt"));
-  }
-
-  @Test
-  void testGetFileSizeForFolder() {
-    storage.createFolder("/sizedir");
-    // Folder size is 0 for local storage
-    assertEquals(0, storage.getFileSize("/sizedir"));
-  }
-
-  @Test
-  void testGetFileSizeNonExistent() {
-    assertThrows(RuntimeException.class, () -> storage.getFileSize("/no-such-file.txt"));
+    assertNull(storage.getFile("/deldir"));
   }
 
   @Test

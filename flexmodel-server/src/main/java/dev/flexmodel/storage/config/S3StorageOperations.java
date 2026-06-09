@@ -206,67 +206,6 @@ public class S3StorageOperations implements StorageOperations {
   }
 
   @Override
-  public void createFolder(String path) {
-    String key = prefix + normalizeKey(path);
-    if (!key.endsWith("/")) {
-      key = key + "/";
-    }
-    try {
-      s3Client.putObject(
-        PutObjectRequest.builder()
-          .bucket(bucket)
-          .key(key)
-          .build(),
-        RequestBody.empty()
-      );
-    } catch (S3Exception e) {
-      throw new RuntimeException("Failed to create folder in S3: " + path, e);
-    }
-  }
-
-  @Override
-  public boolean exists(String path) {
-    String key = prefix + normalizeKey(path);
-    try {
-      // Try headObject first
-      s3Client.headObject(b -> b.bucket(bucket).key(key));
-      return true;
-    } catch (NoSuchKeyException e) {
-      // Not a file, check if it's a folder
-      return existsAsFolder(key);
-    } catch (S3Exception e) {
-      return existsAsFolder(key);
-    }
-  }
-
-  private boolean existsAsFolder(String key) {
-    try {
-      ListObjectsV2Request request = ListObjectsV2Request.builder()
-        .bucket(bucket)
-        .prefix(key.endsWith("/") ? key : key + "/")
-        .maxKeys(1)
-        .build();
-      ListObjectsV2Response response = s3Client.listObjectsV2(request);
-      return !response.contents().isEmpty() || !response.commonPrefixes().isEmpty();
-    } catch (S3Exception e) {
-      return false;
-    }
-  }
-
-  @Override
-  public long getFileSize(String path) {
-    String key = prefix + normalizeKey(path);
-    try {
-      HeadObjectResponse head = s3Client.headObject(b -> b.bucket(bucket).key(key));
-      return head.contentLength();
-    } catch (NoSuchKeyException e) {
-      return 0;
-    } catch (S3Exception e) {
-      throw new RuntimeException("Failed to get file size from S3: " + path, e);
-    }
-  }
-
-  @Override
   public InputStream getInputStream(String path) {
     String key = prefix + normalizeKey(path);
     try {

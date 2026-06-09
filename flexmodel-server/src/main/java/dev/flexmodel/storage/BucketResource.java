@@ -2,23 +2,21 @@ package dev.flexmodel.storage;
 
 import dev.flexmodel.codegen.entity.Bucket;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.enums.ParameterIn;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
-import org.eclipse.microprofile.openapi.annotations.media.SchemaProperty;
-import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -95,119 +93,54 @@ public class BucketResource {
     bucketService.deleteBucket(OWNER_TYPE, projectId, bucketName, force);
   }
 
-  // ==================== 文件操作 ====================
+  // ==================== 对象操作 ====================
 
   @APIResponse(name = "200", responseCode = "200", description = "OK",
     content = @Content(mediaType = "application/json",
       schema = @Schema(type = SchemaType.ARRAY, implementation = FileItem.class)))
-  @Operation(summary = "列出文件")
+  @Operation(summary = "列出对象")
   @GET
-  @Path("/{bucketName}/files")
-  public List<FileItem> listFiles(
+  @Path("/{bucketName}/objects")
+  public List<FileItem> listObjects(
     @PathParam("projectId") String projectId,
     @PathParam("bucketName") String bucketName,
-    @QueryParam("path") String path) {
+    @QueryParam("prefix") String prefix) {
     Bucket bucket = resolveBucket(projectId, bucketName);
-    return bucketService.listFiles(bucket, path != null ? path : "");
+    return bucketService.listFiles(bucket, prefix != null ? prefix : "");
   }
 
-  @APIResponse(name = "200", responseCode = "200", description = "OK",
-    content = @Content(mediaType = "application/json",
-      schema = @Schema(implementation = FileItem.class)))
-  @Operation(summary = "获取文件信息")
-  @GET
-  @Path("/{bucketName}/files/info")
-  public FileItem getFile(
+  @APIResponse(name = "200", responseCode = "200", description = "上传成功")
+  @Operation(summary = "上传对象")
+  @PUT
+  @Path("/{bucketName}/objects/{path: .*}")
+  @Consumes(MediaType.APPLICATION_OCTET_STREAM)
+  public Response uploadObject(
     @PathParam("projectId") String projectId,
     @PathParam("bucketName") String bucketName,
-    @QueryParam("path") @NotBlank String path) {
+    @PathParam("path") String path,
+    @QueryParam("folder") @DefaultValue("false") boolean folder,
+    @HeaderParam("Content-Length") long contentLength,
+    InputStream body) {
     Bucket bucket = resolveBucket(projectId, bucketName);
-    return bucketService.getFile(bucket, path);
-  }
-
-  @APIResponse(name = "200", responseCode = "200", description = "OK")
-  @Operation(summary = "上传文件")
-  @POST
-  @Path("/{bucketName}/files/upload")
-  @Consumes(MediaType.MULTIPART_FORM_DATA)
-  public Response uploadFile(
-    @PathParam("projectId") String projectId,
-    @PathParam("bucketName") String bucketName,
-    @QueryParam("path") @NotBlank String path,
-    @org.jboss.resteasy.reactive.RestForm("file") @org.jboss.resteasy.reactive.PartType(MediaType.APPLICATION_OCTET_STREAM) InputStream fileStream,
-    @org.jboss.resteasy.reactive.RestForm("fileSize") Long fileSize) {
-    Bucket bucket = resolveBucket(projectId, bucketName);
-    bucketService.uploadFile(bucket, path, fileStream, fileSize != null ? fileSize : 0);
+    // When folder=true, append trailing slash to mark as directory
+    String objectPath = folder && !path.endsWith("/") ? path + "/" : path;
+    bucketService.uploadFile(bucket, objectPath, body, contentLength);
     return Response.ok().build();
-  }
-
-  @APIResponse(name = "200", responseCode = "200", description = "OK")
-  @Operation(summary = "删除文件")
-  @DELETE
-  @Path("/{bucketName}/files/delete")
-  public void deleteFile(
-    @PathParam("projectId") String projectId,
-    @PathParam("bucketName") String bucketName,
-    @QueryParam("path") @NotBlank String path) {
-    Bucket bucket = resolveBucket(projectId, bucketName);
-    bucketService.deleteFile(bucket, path);
-  }
-
-  @APIResponse(name = "200", responseCode = "200", description = "OK")
-  @Operation(summary = "创建文件夹")
-  @POST
-  @Path("/{bucketName}/folders/create")
-  public void createFolder(
-    @PathParam("projectId") String projectId,
-    @PathParam("bucketName") String bucketName,
-    @QueryParam("path") @NotBlank String path) {
-    Bucket bucket = resolveBucket(projectId, bucketName);
-    bucketService.createFolder(bucket, path);
-  }
-
-  @APIResponse(name = "200", responseCode = "200", description = "OK",
-    content = @Content(mediaType = "application/json",
-      schema = @Schema(properties = @SchemaProperty(name = "exists", description = "是否存在"))))
-  @Operation(summary = "检查文件是否存在")
-  @GET
-  @Path("/{bucketName}/files/exists")
-  public Response exists(
-    @PathParam("projectId") String projectId,
-    @PathParam("bucketName") String bucketName,
-    @QueryParam("path") @NotBlank String path) {
-    Bucket bucket = resolveBucket(projectId, bucketName);
-    boolean fileExists = bucketService.exists(bucket, path);
-    return Response.ok().entity(new ExistsResponse(fileExists)).build();
-  }
-
-  @APIResponse(name = "200", responseCode = "200", description = "OK",
-    content = @Content(mediaType = "application/json",
-      schema = @Schema(properties = @SchemaProperty(name = "size", description = "文件大小"))))
-  @Operation(summary = "获取文件大小")
-  @GET
-  @Path("/{bucketName}/files/size")
-  public Response getFileSize(
-    @PathParam("projectId") String projectId,
-    @PathParam("bucketName") String bucketName,
-    @QueryParam("path") @NotBlank String path) {
-    Bucket bucket = resolveBucket(projectId, bucketName);
-    long size = bucketService.getFileSize(bucket, path);
-    return Response.ok().entity(new FileSizeResponse(size)).build();
   }
 
   @APIResponse(name = "200", responseCode = "200", description = "文件内容",
     content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM))
-  @Operation(summary = "下载文件")
+  @Operation(summary = "下载对象")
   @GET
-  @Path("/{bucketName}/files/download")
+  @Path("/{bucketName}/objects/{path: .*}")
   @Produces(MediaType.APPLICATION_OCTET_STREAM)
-  public Response downloadFile(
+  public Response downloadObject(
     @PathParam("projectId") String projectId,
     @PathParam("bucketName") String bucketName,
-    @QueryParam("path") @NotBlank String path) {
+    @PathParam("path") String path) {
     Bucket bucket = resolveBucket(projectId, bucketName);
-    InputStream inputStream = bucketService.downloadFile(bucket, path);
-    String fileName = path.substring(path.lastIndexOf('/') + 1);
+    InputStream inputStream = bucketService.getInputStream(bucket, path);
+    String fileName = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
     StreamingOutput stream = (OutputStream output) -> {
       byte[] buffer = new byte[8192];
       int bytesRead;
@@ -221,26 +154,62 @@ public class BucketResource {
       .build();
   }
 
+  @APIResponse(name = "200", responseCode = "200", description = "删除成功")
+  @Operation(summary = "删除对象")
+  @DELETE
+  @Path("/{bucketName}/objects/{path: .*}")
+  public Response deleteObject(
+    @PathParam("projectId") String projectId,
+    @PathParam("bucketName") String bucketName,
+    @PathParam("path") String path) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    bucketService.deleteFile(bucket, path);
+    return Response.noContent().build();
+  }
+
+  @APIResponse(name = "200", responseCode = "200", description = "对象存在")
+  @APIResponse(name = "404", responseCode = "404", description = "对象不存在")
+  @Operation(summary = "检查对象是否存在并获取元数据头")
+  @HEAD
+  @Path("/{bucketName}/objects/{path: .*}")
+  public Response headObject(
+    @PathParam("projectId") String projectId,
+    @PathParam("bucketName") String bucketName,
+    @PathParam("path") String path) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    FileItem item = bucketService.getFile(bucket, path);
+    if (item == null) {
+      return Response.status(Response.Status.NOT_FOUND).build();
+    }
+    Response.ResponseBuilder rb = Response.ok();
+    if (item.getSize() != null) {
+      rb.header("Content-Length", item.getSize());
+    }
+    if (item.getLastModified() != null) {
+      rb.header("Last-Modified", DateTimeFormatter.RFC_1123_DATE_TIME
+        .withZone(ZoneOffset.UTC).format(item.getLastModified()));
+    }
+    return rb.build();
+  }
+
+  @APIResponse(name = "200", responseCode = "200", description = "OK",
+    content = @Content(mediaType = "application/json",
+      schema = @Schema(implementation = FileItem.class)))
+  @Operation(summary = "获取对象元数据")
+  @GET
+  @Path("/{bucketName}/objects/{path}/metadata")
+  public FileItem getObjectMetadata(
+    @PathParam("projectId") String projectId,
+    @PathParam("bucketName") String bucketName,
+    @PathParam("path") String path) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    return bucketService.getFile(bucket, path);
+  }
+
   // ==================== 内部方法 ====================
 
   private Bucket resolveBucket(String projectId, String bucketName) {
     return bucketService.getBucket(OWNER_TYPE, projectId, bucketName)
       .orElseThrow(() -> new RuntimeException("Bucket not found: " + bucketName));
-  }
-
-  public static class ExistsResponse {
-    public boolean exists;
-
-    public ExistsResponse(boolean exists) {
-      this.exists = exists;
-    }
-  }
-
-  public static class FileSizeResponse {
-    public long size;
-
-    public FileSizeResponse(long size) {
-      this.size = size;
-    }
   }
 }

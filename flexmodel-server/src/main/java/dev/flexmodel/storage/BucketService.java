@@ -121,22 +121,7 @@ public class BucketService {
     ops.deleteFile(path);
   }
 
-  public void createFolder(Bucket bucket, String path) {
-    StorageOperations ops = storageOperationsFactory.forBucket(bucket);
-    ops.createFolder(path);
-  }
-
-  public boolean exists(Bucket bucket, String path) {
-    StorageOperations ops = storageOperationsFactory.forBucket(bucket);
-    return ops.exists(path);
-  }
-
-  public long getFileSize(Bucket bucket, String path) {
-    StorageOperations ops = storageOperationsFactory.forBucket(bucket);
-    return ops.getFileSize(path);
-  }
-
-  public InputStream downloadFile(Bucket bucket, String path) {
+  public InputStream getInputStream(Bucket bucket, String path) {
     StorageOperations ops = storageOperationsFactory.forBucket(bucket);
     return ops.getInputStream(path);
   }

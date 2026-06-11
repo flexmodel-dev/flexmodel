@@ -1,4 +1,4 @@
-package tech.wetech.flexmodel.event.test;
+package dev.flexmodel.event.test;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

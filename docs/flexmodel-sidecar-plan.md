@@ -31,20 +31,20 @@
 │              flexmodel-sidecar (Deno + Hono.js)               │
 │  ┌──────────────────────────────▼────────────────────────┐     │
 │  │                  Hono.js HTTP Server                    │     │
-│  │  POST /functions/deploy       (部署函数)               │     │
-│  │  DELETE /functions/:id/:name  (删除函数)               │     │
-│  │  POST /functions/:id/:name/invoke (调用函数)           │     │
-│  │  GET /health                  (健康检查)               │     │
+│  │  POST /functions/deploy            (部署函数)          │     │
+│  │  DELETE /functions/:projectId/:name (删除函数)          │     │
+│  │  POST /functions/:projectId/:name/invoke (调用函数)     │     │
+│  │  GET /health                       (健康检查)          │     │
 │  └──────────────┬────────────────────────────────────────┘     │
 │                 │                                                │
 │  ┌──────────────▼────────────────────────────────────────┐     │
 │  │             Function Registry (内存缓存)               │     │
-│  │  Map<projectId:branch:functionName, FunctionMeta>     │     │
+│  │  Map<projectId:functionName, FunctionMeta>            │     │
 │  └──────────────┬────────────────────────────────────────┘     │
 │                 │                                                │
 │  ┌──────────────▼────────────────────────────────────────┐     │
 │  │         Function Files (磁盘目录，支持多文件 import)    │     │
-│  │  {FUNCTIONS_DIR}/{projectId}/{branch}/{functionId}/    │     │
+│  │  {FUNCTIONS_DIR}/{projectId}/{functionId}/              │     │
 │  │    ├── index.ts          (用户入口)                     │     │
 │  │    ├── utils.ts          (用户辅助文件)                 │     │
 │  │    └── _worker_wrapper.ts (自动生成，Worker 消息循环)   │     │
@@ -115,7 +115,6 @@ flexmodel-server/src/main/resources/
 model f_function {
   id : String @id @default(uuid()),
   project_id : String @comment("所属项目ID"),
-  branch : String @default("main") @comment("所属分支名称，函数是分支级资源"),
   name : String @comment("函数名称"),
   slug : String @comment("函数标识符(URL安全)"),
   description? : String @comment("函数描述"),
@@ -126,8 +125,8 @@ model f_function {
   updated_by? : String @comment("更新人"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_FUNCTION_PROJECT_BRANCH_SLUG", unique: true, fields: [project_id, branch, slug]),
-  @comment("云函数(分支级资源)")
+  @index(name: "IDX_FUNCTION_PROJECT_SLUG", unique: true, fields: [project_id, slug]),
+  @comment("云函数(项目级资源)")
 }
 ```
 
@@ -136,7 +135,7 @@ model f_function {
 - `source_files` 为 JSON 字段，存储所有文件内容，格式：`{"index.ts": "...", "utils.ts": "..."}`
 - 单文件函数只需包含 `{"index.ts": "..."}`
 - 状态只有 2 种：`ACTIVE`（可用）、`FAILED`（部署失败），删除时直接物理删除记录
-- **分支级资源**：函数属于 `project_id + branch` 组合，不同分支的函数相互隔离，各有独立的命名空间。同一项目下不同分支可以有同名函数，互不影响
+- **项目级资源**：函数属于 `project_id`，每个项目下的函数命名空间独立。由于新增分支时实际是新增项目，分支隔离通过项目隔离自然实现，无需单独标识 `branch` 字段
 
 **source_files JSON 示例（单文件）：**
 ```json
@@ -249,7 +248,6 @@ Content-Type: application/json
 
 {
   "projectId": "dev_test",
-  "branch": "main",
   "functionId": "uuid-xxx",
   "name": "hello-world",
   "sourceFiles": {
@@ -260,9 +258,9 @@ Content-Type: application/json
 }
 
 // Sidecar 处理:
-// 1. 将 sourceFiles 写入磁盘 {FUNCTIONS_DIR}/{projectId}/{branch}/{functionId}/
+// 1. 将 sourceFiles 写入磁盘 {FUNCTIONS_DIR}/{projectId}/{functionId}/
 // 2. 自动生成 _worker_wrapper.ts
-// 3. Registry 缓存元数据 + entryUrl (key: projectId:branch:name)
+// 3. Registry 缓存元数据 + entryUrl (key: projectId:name)
 
 Response 200:
 {
@@ -273,7 +271,7 @@ Response 200:
 
 ### 5.2 调用函数
 ```
-POST /functions/:projectId/:branch/:name/invoke
+POST /functions/:projectId/:name/invoke
 Content-Type: application/json
 
 {
@@ -293,11 +291,11 @@ Response 200:
 
 ### 5.3 删除函数
 ```
-DELETE /functions/:projectId/:branch/:name
+DELETE /functions/:projectId/:name
 
 // Sidecar 处理:
 // 1. 清除 Registry 缓存
-// 2. 删除磁盘目录 {FUNCTIONS_DIR}/{projectId}/{branch}/{functionId}/
+// 2. 删除磁盘目录 {FUNCTIONS_DIR}/{projectId}/{functionId}/
 
 Response 200:
 { "success": true }
@@ -396,7 +394,6 @@ export const JAVA_PORT = Deno.env.get("JAVA_PORT") || "8080";
 interface FunctionMeta {
   id: string;
   projectId: string;
-  branch: string;          // 分支名称，函数的命名空间
   name: string;
   timeout: number;
   entryUrl: string;       // file:// URL 指向 _worker_wrapper.ts
@@ -404,18 +401,18 @@ interface FunctionMeta {
 }
 
 class Registry {
-  private functions = new Map<string, FunctionMeta>();  // key: projectId:branch:name
+  private functions = new Map<string, FunctionMeta>();  // key: projectId:name
 
   deploy(meta: FunctionMeta) {
-    this.functions.set(`${meta.projectId}:${meta.branch}:${meta.name}`, meta);
+    this.functions.set(`${meta.projectId}:${meta.name}`, meta);
   }
 
-  get(projectId: string, branch: string, name: string): FunctionMeta | undefined {
-    return this.functions.get(`${projectId}:${branch}:${name}`);
+  get(projectId: string, name: string): FunctionMeta | undefined {
+    return this.functions.get(`${projectId}:${name}`);
   }
 
-  remove(projectId: string, branch: string, name: string) {
-    this.functions.delete(`${projectId}:${branch}:${name}`);
+  remove(projectId: string, name: string) {
+    this.functions.delete(`${projectId}:${name}`);
   }
 }
 ```
@@ -512,7 +509,7 @@ import { generateWrapperCode } from "./wrapper.ts";
 
 /** Deploy: 将文件写入磁盘 + 生成 wrapper + 注册到 Registry */
 async function deployFunction(deployReq: DeployRequest): Promise<void> {
-  const functionDir = `${FUNCTIONS_DIR}/${deployReq.projectId}/${deployReq.branch}/${deployReq.functionId}`;
+  const functionDir = `${FUNCTIONS_DIR}/${deployReq.projectId}/${deployReq.functionId}`;
 
   // 确保父目录存在
   try { await Deno.mkdir(functionDir, { recursive: true }); } catch { /* 已存在则忽略 */ }
@@ -532,12 +529,11 @@ async function deployFunction(deployReq: DeployRequest): Promise<void> {
   // 生成 _worker_wrapper.ts
   await Deno.writeTextFile(`${functionDir}/_worker_wrapper.ts`, generateWrapperCode());
 
-  // 注册到 Registry (key: projectId:branch:name)
+  // 注册到 Registry (key: projectId:name)
   const entryUrl = `file://${functionDir}/_worker_wrapper.ts`;
   registry.deploy({
     id: deployReq.functionId,
     projectId: deployReq.projectId,
-    branch: deployReq.branch,
     name: deployReq.name,
     timeout: deployReq.timeout,
     entryUrl,
@@ -546,11 +542,11 @@ async function deployFunction(deployReq: DeployRequest): Promise<void> {
 }
 
 /** Delete: 清除 Registry + 删除磁盘目录 */
-async function deleteFunction(projectId: string, branch: string, name: string): Promise<void> {
-  const meta = registry.get(projectId, branch, name);
+async function deleteFunction(projectId: string, name: string): Promise<void> {
+  const meta = registry.get(projectId, name);
   if (meta) {
     try { await Deno.remove(meta.functionDir, { recursive: true }); } catch { /* 忽略 */ }
-    registry.remove(projectId, branch, name);
+    registry.remove(projectId, name);
   }
 }
 
@@ -645,15 +641,15 @@ async function invokeFunction(
 ### 7.4 多文件 import 解析流程
 
 ```
-Worker 加载 file://{FUNCTIONS_DIR}/{projectId}/{branch}/{id}/_worker_wrapper.ts
+Worker 加载 file://{FUNCTIONS_DIR}/{projectId}/{id}/_worker_wrapper.ts
   → wrapper 内 import("./index.ts")
-    → Deno 解析为 file://{FUNCTIONS_DIR}/{projectId}/{branch}/{id}/index.ts
+    → Deno 解析为 file://{FUNCTIONS_DIR}/{projectId}/{id}/index.ts
   → index.ts 内 import("./utils.ts")
-    → Deno 解析为 file://{FUNCTIONS_DIR}/{projectId}/{branch}/{id}/utils.ts  ✓
+    → Deno 解析为 file://{FUNCTIONS_DIR}/{projectId}/{id}/utils.ts  ✓
   → index.ts 内 import("./db.ts")
-    → Deno 解析为 file://{FUNCTIONS_DIR}/{projectId}/{branch}/{id}/db.ts  ✓
+    → Deno 解析为 file://{FUNCTIONS_DIR}/{projectId}/{id}/db.ts  ✓
 
-注意: 仅支持扁平文件（同目录），不支持子目录 import。不同分支的函数文件存储在不同子目录下，天然隔离。
+注意: 仅支持扁平文件（同目录），不支持子目录 import。不同项目的函数文件存储在不同子目录下，天然隔离。
 ```
 
 ## 八、Java 端实现
@@ -668,8 +664,8 @@ public class FunctionService {
   @Inject FunctionInvoker functionInvoker;
 
   /** 创建函数: 保存DB → 部署到 Deno → 返回 */
-  public FunctionResponse create(String projectId, String branch, FunctionCreateRequest req) {
-    FunctionEntity entity = functionRepository.save(req.toEntity(projectId, branch));
+  public FunctionResponse create(String projectId, FunctionCreateRequest req) {
+    FunctionEntity entity = functionRepository.save(req.toEntity(projectId));
 
     try {
       functionInvoker.deploy(entity);
@@ -683,8 +679,8 @@ public class FunctionService {
   }
 
   /** 更新函数: 更新文件，重新部署 */
-  public FunctionResponse update(String projectId, String branch, String slug, FunctionUpdateRequest req) {
-    FunctionEntity entity = functionRepository.findByProjectBranchAndSlug(projectId, branch, slug);
+  public FunctionResponse update(String projectId, String slug, FunctionUpdateRequest req) {
+    FunctionEntity entity = functionRepository.findByProjectAndSlug(projectId, slug);
 
     if (req.sourceFiles() != null) {
       entity.setSourceFiles(req.sourceFiles());
@@ -702,19 +698,19 @@ public class FunctionService {
   }
 
   /** 调用函数: 转发到 Deno */
-  public FunctionInvokeResponse invoke(String projectId, String branch, String slug, FunctionInvokeRequest req) {
-    FunctionEntity entity = functionRepository.findByProjectBranchAndSlug(projectId, branch, slug);
-    return functionInvoker.invoke(projectId, branch, slug, req);
+  public FunctionInvokeResponse invoke(String projectId, String slug, FunctionInvokeRequest req) {
+    FunctionEntity entity = functionRepository.findByProjectAndSlug(projectId, slug);
+    return functionInvoker.invoke(projectId, slug, req);
   }
 
   /** 删除函数: 物理删除 DB 记录 + 清理 Deno */
-  public void delete(String projectId, String branch, String slug) {
-    FunctionEntity entity = functionRepository.findByProjectBranchAndSlug(projectId, branch, slug);
-    functionInvoker.delete(projectId, branch, slug);  // Deno: 清 Registry + 删磁盘目录
-    functionRepository.delete(entity);                  // DB: 物理删除
+  public void delete(String projectId, String slug) {
+    FunctionEntity entity = functionRepository.findByProjectAndSlug(projectId, slug);
+    functionInvoker.delete(projectId, slug);  // Deno: 清 Registry + 删磁盘目录
+    functionRepository.delete(entity);         // DB: 物理删除
   }
 
-  /** 启动时同步: 将所有 ACTIVE 函数重新部署到 Deno（涵盖所有分支） */
+  /** 启动时同步: 将所有 ACTIVE 函数重新部署到 Deno（涵盖所有项目） */
   void onStart(@Observes StartupEvent event) {
     List<FunctionEntity> functions = functionRepository.findByStatus("ACTIVE");
     for (FunctionEntity fn : functions) {
@@ -726,7 +722,7 @@ public class FunctionService {
         log.error("Startup deploy failed: " + fn.getSlug(), e);
       }
     }
-    log.info("Startup: deployed {} functions across all branches", functions.size());
+    log.info("Startup: deployed {} functions across all projects", functions.size());
   }
 }
 ```
@@ -740,19 +736,19 @@ public class FunctionInvoker {
 
   void deploy(FunctionEntity fn) {
     DeployRequest req = new DeployRequest(
-      fn.getProjectId(), fn.getBranch(), fn.getId(), fn.getSlug(),
+      fn.getProjectId(), fn.getId(), fn.getSlug(),
       fn.getSourceFiles(), fn.getTimeout()
     );
     client.post("/functions/deploy").body(req).send();
   }
 
-  FunctionInvokeResponse invoke(String projectId, String branch, String name, FunctionInvokeRequest req) {
-    return client.post("/functions/" + projectId + "/" + branch + "/" + name + "/invoke")
+  FunctionInvokeResponse invoke(String projectId, String name, FunctionInvokeRequest req) {
+    return client.post("/functions/" + projectId + "/" + name + "/invoke")
       .body(req).send().bodyAsJson(FunctionInvokeResponse.class);
   }
 
-  void delete(String projectId, String branch, String name) {
-    client.delete("/functions/" + projectId + "/" + branch + "/" + name).send();
+  void delete(String projectId, String name) {
+    client.delete("/functions/" + projectId + "/" + name).send();
   }
 }
 ```
@@ -760,18 +756,18 @@ public class FunctionInvoker {
 ### 8.3 FunctionResource.java (REST API)
 
 ```
-# 函数管理 (分支级资源，与 BranchResource 路径风格一致)
-POST   /projects/{projectId}/branches/{branch}/functions                    → 创建函数
-GET    /projects/{projectId}/branches/{branch}/functions                    → 函数列表
-GET    /projects/{projectId}/branches/{branch}/functions/{slug}             → 函数详情
-PUT    /projects/{projectId}/branches/{branch}/functions/{slug}             → 更新函数
-DELETE /projects/{projectId}/branches/{branch}/functions/{slug}             → 删除函数
+# 函数管理 (项目级资源)
+POST   /projects/{projectId}/functions                    → 创建函数
+GET    /projects/{projectId}/functions                    → 函数列表
+GET    /projects/{projectId}/functions/{slug}             → 函数详情
+PUT    /projects/{projectId}/functions/{slug}             → 更新函数
+DELETE /projects/{projectId}/functions/{slug}             → 删除函数
 
 # 函数调用入口 (跟随项目鉴权)
-POST   /projects/{projectId}/branches/{branch}/functions/{slug}/invoke      → 调用函数
+POST   /projects/{projectId}/functions/{slug}/invoke      → 调用函数
 
-# 函数模板 (只读，平台级，与分支无关)
-GET    /function-templates                                                   → 模板列表 (返回 name/description/sourceFiles/tags 等)
+# 函数模板 (只读，平台级)
+GET    /function-templates                                → 模板列表 (返回 name/description/sourceFiles/tags 等)
 ```
 
 ## 九、生命周期流程
@@ -781,14 +777,14 @@ GET    /function-templates                                                   →
 User → 前端查询模板列表 GET /function-templates
   → 前端展示模板卡片（name, description, tags）
   → 用户选择模板 → 前端自动填充 sourceFiles 到创建表单
-  → 用户可编辑代码 → 提交创建（自动携带当前分支）
+  → 用户可编辑代码 → 提交创建
 
-User → POST /projects/{projectId}/branches/{branch}/functions
-  → Java: save DB (project_id + branch + source_files JSON)
-  → Java: POST Deno /deploy (含 projectId, branch, sourceFiles)
-    → Deno: 写入磁盘 {FUNCTIONS_DIR}/{projectId}/{branch}/{id}/
+User → POST /projects/{projectId}/functions
+  → Java: save DB (project_id + source_files JSON)
+  → Java: POST Deno /deploy (含 projectId, sourceFiles)
+    → Deno: 写入磁盘 {FUNCTIONS_DIR}/{projectId}/{id}/
     → Deno: 生成 _worker_wrapper.ts
-    → Deno: Registry 缓存 {id, projectId, branch, name, entryUrl, timeout} → 返回成功
+    → Deno: Registry 缓存 {id, projectId, name, entryUrl, timeout} → 返回成功
   → Java: update status = ACTIVE
   → 返回成功
 
@@ -798,10 +794,10 @@ User → POST /projects/{projectId}/branches/{branch}/functions
 
 ### 函数调用流程
 ```
-Client → POST /projects/{projectId}/branches/{branch}/functions/{slug}/invoke
-  → Java: 查找函数 (projectId + branch + slug) → POST Deno /invoke
-    → Deno: Registry 查找函数 (key: projectId:branch:name)
-    → Deno: 创建 Worker，加载 file://{FUNCTIONS_DIR}/{projectId}/{branch}/{id}/_worker_wrapper.ts
+Client → POST /projects/{projectId}/functions/{slug}/invoke
+  → Java: 查找函数 (projectId + slug) → POST Deno /invoke
+    → Deno: Registry 查找函数 (key: projectId:name)
+    → Deno: 创建 Worker，加载 file://{FUNCTIONS_DIR}/{projectId}/{id}/_worker_wrapper.ts
     → Deno: wrapper 内 import("./index.ts") → 用户代码执行
       → 用户 import("./utils.ts") → Deno 原生解析  ✓
       → SDK RPC → postMessage → 主进程 → HTTP → Java → DB → 返回
@@ -811,31 +807,30 @@ Client → POST /projects/{projectId}/branches/{branch}/functions/{slug}/invoke
 
 ### 函数删除流程
 ```
-User → DELETE /projects/{projectId}/branches/{branch}/functions/{slug}
-  → Java: DELETE Deno /:projectId/:branch/:name
-    → Deno: 清除 Registry (key: projectId:branch:name) + 删除磁盘目录 {FUNCTIONS_DIR}/{projectId}/{branch}/{id}/
+User → DELETE /projects/{projectId}/functions/{slug}
+  → Java: DELETE Deno /:projectId/:name
+    → Deno: 清除 Registry (key: projectId:name) + 删除磁盘目录 {FUNCTIONS_DIR}/{projectId}/{id}/
   → Java: 物理删除 f_function 记录
 ```
 
 ### 重启恢复流程
 ```
 Java @Observes StartupEvent
-  → 查询所有 status=ACTIVE 的函数（涵盖所有项目、所有分支）
-  → 逐一 POST Deno /deploy (含 projectId, branch, sourceFiles)
-    → Deno: 写入磁盘 + 生成 wrapper + 注册 (key: projectId:branch:name)
+  → 查询所有 status=ACTIVE 的函数（涵盖所有项目）
+  → 逐一 POST Deno /deploy (含 projectId, sourceFiles)
+    → Deno: 写入磁盘 + 生成 wrapper + 注册 (key: projectId:name)
   → 部署失败的标记为 FAILED
 ```
 
-### 分支切换时的函数行为
-```
-User → PUT /projects/{projectId}/branches/{branch}/switch
-  → Java: 更新 f_project.current_branch = targetBranch
-  → 无需触发函数重新部署（所有分支的函数已在 Deno sidecar 中保持热部署）
-  → 后续函数调用自动路由到新分支的命名空间
+### 项目间函数隔离
 
-关键设计：每个分支的函数独立部署、独立存储，分支切换只是
-f_project.current_branch 字段更新。Deno sidecar 中所有分支的
-函数同时在线，通过 projectId:branch:name 路由，互不干扰。
+由于新增分支即新增项目，函数天然按项目隔离：
+
+- 每个项目下的函数独立部署、独立存储，拥有独立的命名空间
+- 不同项目可以有同名函数，互不影响
+- 函数目录结构：`{FUNCTIONS_DIR}/{projectId}/{functionId}/`
+- Registry 路由 key：`projectId:name`，无需额外的分支维度
+- 切换到不同项目时，前端切换 `projectId` 即可自动路由到对应项目的函数
 ```
 
 ## 十、实施步骤
@@ -866,9 +861,8 @@ f_project.current_branch 字段更新。Deno sidecar 中所有分支的
 19. 验证函数内 SDK 调用 Flexmodel 数据 API
 20. 验证 Worker 隔离: 死循环函数不影响主进程
 21. 验证超时终止: `worker.terminate()` 生效
-22. 验证重启恢复（所有分支的函数重新部署到磁盘）
-23. 验证分支隔离: 同一项目下 main 和 dev 分支创建同名函数，互不影响
-24. 验证分支切换: 切换分支后函数调用自动路由到对应分支命名空间
+22. 验证重启恢复（所有项目的函数重新部署到磁盘）
+23. 验证项目隔离: 不同项目创建同名函数，互不影响
 
 ## 十一、验证方案
 
@@ -885,7 +879,6 @@ curl -X POST http://localhost:9999/functions/deploy \
   -H "Content-Type: application/json" \
   -d '{
     "projectId": "dev_test",
-    "branch": "main",
     "functionId": "test-1",
     "name": "hello",
     "sourceFiles": {
@@ -895,7 +888,7 @@ curl -X POST http://localhost:9999/functions/deploy \
   }'
 
 # 4. 调用函数
-curl -X POST http://localhost:9999/functions/dev_test/main/hello/invoke \
+curl -X POST http://localhost:9999/functions/dev_test/hello/invoke \
   -H "Content-Type: application/json" \
   -d '{}'
 
@@ -904,7 +897,6 @@ curl -X POST http://localhost:9999/functions/deploy \
   -H "Content-Type: application/json" \
   -d '{
     "projectId": "dev_test",
-    "branch": "main",
     "functionId": "test-3",
     "name": "multi-file",
     "sourceFiles": {
@@ -915,7 +907,7 @@ curl -X POST http://localhost:9999/functions/deploy \
     "timeout": 30
   }'
 
-curl -X POST http://localhost:9999/functions/dev_test/main/multi-file/invoke -d '{}'
+curl -X POST http://localhost:9999/functions/dev_test/multi-file/invoke -d '{}'
 # 预期: { "msg": "Hello, Flexmodel!" }
 
 # 6. 验证死循环函数被 terminate (不影响主进程)
@@ -923,7 +915,6 @@ curl -X POST http://localhost:9999/functions/deploy \
   -H "Content-Type: application/json" \
   -d '{
     "projectId": "dev_test",
-    "branch": "main",
     "functionId": "test-2",
     "name": "bad-loop",
     "sourceFiles": {
@@ -932,7 +923,7 @@ curl -X POST http://localhost:9999/functions/deploy \
     "timeout": 5
   }'
 
-curl -X POST http://localhost:9999/functions/dev_test/main/bad-loop/invoke -d '{}'
+curl -X POST http://localhost:9999/functions/dev_test/bad-loop/invoke -d '{}'
 # 预期: 5秒后返回超时错误，主进程仍可用
 
 # 7. 编译 Java 侧

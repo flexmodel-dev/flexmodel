@@ -28,7 +28,7 @@ public class ProjectTools {
     List all projects in the Flexmodel system. \
     A project is the top-level container that holds models (entities, enums, native queries), \
     branches, data records, and configurations. \
-    Returns an array of project objects with id, name, description, currentBranch, etc.\
+    Returns an array of project objects with id, name, description, databaseName, etc.\
     """)
   public String list_projects() {
     log.info("list_projects called");

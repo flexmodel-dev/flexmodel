@@ -45,7 +45,8 @@ public class GraphQLEventConsumer {
   public void consume(GraphQLRefreshEvent event) {
     long beginTime = System.currentTimeMillis();
     log.info("Received graphql message");
-    List<Project> projects = projectService.findProjects();
+    // 仅刷新顶级项目（分支项目通过 refreshProject 内部处理）
+    List<Project> projects = projectService.findTopLevelProjects();
     for (Project project : projects) {
       refreshProject(project);
     }
@@ -63,19 +64,30 @@ public class GraphQLEventConsumer {
       List<Branch> branches = branchService.listBranches(project.getId());
       for (Branch branch : branches) {
         String databaseName = branch.getDatabaseName();
-        log.info("Refreshing GraphQL for project '{}', schemaName='{}'", project.getId(), databaseName);
+        // main 分支使用父项目 ID，其他分支使用复合 ID
+        String graphqlKey = "main".equals(branch.getName())
+          ? project.getId()
+          : project.getId() + "_" + branch.getName();
+        log.info("Refreshing GraphQL for project '{}', schemaName='{}', graphqlKey='{}'",
+          project.getId(), databaseName, graphqlKey);
 
         FlexmodelGraphQL fg = new FlexmodelGraphQL();
         graphQLManger.addGraphQL(
-          project.getId(),
+          graphqlKey,
           fg.generateGraphQLWithSchemaObject(sf, databaseName)
         );
-        log.info("GraphQL schema generated for project '{}', models={}", project.getId(), sf.getModels(databaseName).size());
+        log.info("GraphQL schema generated for '{}', models={}", graphqlKey, sf.getModels(databaseName).size());
       }
-
     } catch (Exception e) {
       log.warn("Failed to generate GraphQL for project '{}': {}", project.getId(), e.getMessage(), e);
     }
+  }
+
+  /**
+   * 移除指定项目的 GraphQL Schema。
+   */
+  public void removeProject(String projectId) {
+    graphQLManger.removeGraphQL(projectId);
   }
 
 }

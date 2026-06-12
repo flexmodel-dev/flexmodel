@@ -30,6 +30,10 @@ public class GraphQLManager {
     tenantGraphqlMap.put(projectId, graphQL);
   }
 
+  public void removeGraphQL(String projectId) {
+    tenantGraphqlMap.remove(projectId);
+  }
+
   public ExecutionResult execute(String projectId, String operationName, String query, Map<String, Object> variables) {
     GraphQL graphQL = getGraphQL(projectId);
     if (variables == null) {

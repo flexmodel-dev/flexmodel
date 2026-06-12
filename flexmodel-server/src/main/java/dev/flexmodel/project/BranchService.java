@@ -1,6 +1,8 @@
 package dev.flexmodel.project;
 
 import dev.flexmodel.SchemaProvider;
+import dev.flexmodel.api.GraphQLManager;
+import dev.flexmodel.api.consumer.GraphQLEventConsumer;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.FlexmodelConfig;
@@ -65,6 +67,12 @@ public class BranchService {
 
   @Inject
   SessionFactory sessionFactory;
+
+  @Inject
+  GraphQLEventConsumer graphQLEventConsumer;
+
+  @Inject
+  GraphQLManager graphQLManager;
 
   private final SchemaManager schemaManager = new JdbcSchemaManager();
 
@@ -137,7 +145,23 @@ public class BranchService {
     branch.setSourceBranch(sourceBranch != null ? sourceBranch : "main");
     branch.setDescription(description);
     branch.setCreatedBy(SessionContextHolder.getUserId());
-    return branchRepository.save(branch);
+    Branch saved = branchRepository.save(branch);
+
+    // 7. 创建分支项目记录（Supabase 风格：每个分支是独立可寻址的项目）
+    String branchProjectId = projectId + "_" + branchName;
+    Project branchProject = new Project();
+    branchProject.setId(branchProjectId);
+    branchProject.setName(project.getName() + " (" + branchName + ")");
+    branchProject.setParentProjectId(projectId);
+    branchProject.setDatabaseName(branchDbName);
+    branchProject.setOwnerId(project.getOwnerId());
+    branchProject.setEnabled(true);
+    projectRepository.save(branchProject);
+
+    // 8. 刷新父项目的所有分支 GraphQL
+    graphQLEventConsumer.refreshProject(project);
+
+    return saved;
   }
 
   public void deleteBranch(String projectId, String branchName) {
@@ -147,9 +171,6 @@ public class BranchService {
     Project project = projectRepository.findProject(projectId);
     if (project == null) {
       throw new IllegalArgumentException("项目不存在");
-    }
-    if (branchName.equals(project.getCurrentBranch())) {
-      throw new IllegalArgumentException("不能删除当前活跃分支，请先切换到其他分支");
     }
     Branch branch = branchRepository.findByProjectIdAndName(projectId, branchName);
     if (branch == null) {
@@ -167,22 +188,13 @@ public class BranchService {
       log.warn("删除分支数据库失败: {}", e.getMessage());
     }
 
-    // 3. 删除分支记录
-    branchRepository.delete(projectId, branchName);
-  }
+    // 3. 删除分支项目记录
+    String branchProjectId = projectId + "_" + branchName;
+    graphQLManager.removeGraphQL(branchProjectId);
+    projectRepository.delete(branchProjectId);
 
-  public Project switchBranch(String projectId, String branchName) {
-    Project project = projectRepository.findProject(projectId);
-    if (project == null) {
-      throw new IllegalArgumentException("项目不存在");
-    }
-    Branch branch = branchRepository.findByProjectIdAndName(projectId, branchName);
-    if (branch == null) {
-      throw new IllegalArgumentException("分支 " + branchName + " 不存在");
-    }
-    project.setCurrentBranch(branchName);
-    project.setCurrentDatabaseName(branch.getDatabaseName());
-    return projectRepository.save(project);
+    // 4. 删除分支记录
+    branchRepository.delete(projectId, branchName);
   }
 
   public void mergeBranch(String projectId, String sourceBranch, String targetBranch,

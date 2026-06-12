@@ -29,6 +29,20 @@ public class ProjectFmRepository implements ProjectRepository {
   }
 
   @Override
+  public List<Project> findTopLevelProjects() {
+    return findProjects().stream()
+      .filter(p -> p.getParentProjectId() == null)
+      .toList();
+  }
+
+  @Override
+  public List<Project> findBranchProjects(String parentProjectId) {
+    return findProjects().stream()
+      .filter(p -> parentProjectId.equals(p.getParentProjectId()))
+      .toList();
+  }
+
+  @Override
   public Project findProject(String projectId) {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(Project.class)

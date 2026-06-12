@@ -3,7 +3,6 @@ package dev.flexmodel.project;
 import dev.flexmodel.project.dto.BranchCreateRequest;
 import dev.flexmodel.project.dto.BranchMergeRequest;
 import dev.flexmodel.codegen.entity.Branch;
-import dev.flexmodel.codegen.entity.Project;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -95,30 +94,6 @@ public class BranchResource {
     @Parameter(name = "branch", in = ParameterIn.PATH, description = "分支名称", required = true)
     @PathParam("branch") String branch) {
     branchService.deleteBranch(projectId, branch);
-  }
-
-  @APIResponse(
-    name = "200",
-    responseCode = "200",
-    description = "OK",
-    content = {
-      @Content(
-        mediaType = "application/json",
-        schema = @Schema(
-          implementation = Project.class
-        )
-      )
-    }
-  )
-  @Operation(summary = "切换到指定分支")
-  @PUT
-  @Path("/{branch}/switch")
-  public Project switchBranch(
-    @Parameter(name = "projectId", in = ParameterIn.PATH, description = "项目ID", required = true)
-    @PathParam("projectId") String projectId,
-    @Parameter(name = "branch", in = ParameterIn.PATH, description = "分支名称", required = true)
-    @PathParam("branch") String branch) {
-    return branchService.switchBranch(projectId, branch);
   }
 
   @APIResponse(

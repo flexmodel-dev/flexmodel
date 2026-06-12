@@ -23,11 +23,12 @@ public class ProjectResponse extends Project {
     response.setName(project.getName());
     response.setDescription(project.getDescription());
     response.setEnabled(project.getEnabled());
+    response.setParentProjectId(project.getParentProjectId());
     response.setOwnerId(project.getOwnerId());
     response.setCreatedBy(project.getCreatedBy());
     response.setUpdatedBy(project.getUpdatedBy());
     response.setCreatedAt(project.getCreatedAt());
-    response.setCurrentBranch(project.getCurrentBranch());
+    response.setDatabaseName(project.getDatabaseName());
     return response;
   }
 

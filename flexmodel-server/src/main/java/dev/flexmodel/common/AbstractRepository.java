@@ -33,12 +33,12 @@ public abstract class AbstractRepository {
         Project project = session.dsl().selectFrom(Project.class)
           .where(field(Project::getId).eq(projectId))
           .executeOne();
-        if (project == null || project.getCurrentDatabaseName() == null) {
+        if (project == null || project.getDatabaseName() == null) {
           throw new IllegalArgumentException("项目不存在或 databaseName 为空: " + projectId);
         }
         SessionContextHolder.setProjectId(projectId);
-        SessionContextHolder.setProjectDatabaseName(project.getCurrentDatabaseName());
-        return sessionFactory.createSession(project.getCurrentDatabaseName());
+        SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
+        return sessionFactory.createSession(project.getDatabaseName());
       }
     }
     String projectDatabaseName = SessionContextHolder.getProjectDatabaseName();

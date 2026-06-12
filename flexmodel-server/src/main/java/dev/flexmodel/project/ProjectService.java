@@ -66,8 +66,16 @@ public class ProjectService {
     return projectRepository.findProjects();
   }
 
+  public List<Project> findTopLevelProjects() {
+    return projectRepository.findTopLevelProjects();
+  }
+
+  public List<Project> findBranchProjects(String parentProjectId) {
+    return projectRepository.findBranchProjects(parentProjectId);
+  }
+
   public List<ProjectResponse> findProjects(ProjectListRequest request) {
-    return projectRepository.findProjects().stream()
+    return projectRepository.findTopLevelProjects().stream()
       .map(project -> {
           ProjectResponse response = toProjectResponse(project);
           if (Objects.equals(request.getIncldue(), "stats")) {
@@ -96,7 +104,7 @@ public class ProjectService {
     if (project == null) {
       throw new IllegalArgumentException("项目不存在: " + projectId);
     }
-    return project.getCurrentDatabaseName();
+    return project.getDatabaseName();
   }
 
   /**
@@ -112,7 +120,9 @@ public class ProjectService {
 
   private ProjectResponse toProjectResponse(Project project) {
     ProjectResponse response = ProjectResponse.fromProject(project);
-    response.setBranches(branchService.listBranches(project.getId()));
+    // 分支项目（parentProjectId 不为空）不拥有分支列表，使用父项目的分支
+    String branchOwnerId = project.getParentProjectId() != null ? project.getParentProjectId() : project.getId();
+    response.setBranches(branchService.listBranches(branchOwnerId));
     return response;
   }
 
@@ -129,8 +139,7 @@ public class ProjectService {
     // main 分支的 databaseName 约定为 projectId
     String mainDatabaseName = project.getId();
     project.setOwnerId(SessionContextHolder.getUserId() != null ? SessionContextHolder.getUserId() : "admin");
-    project.setCurrentBranch("main");
-    project.setCurrentDatabaseName(mainDatabaseName);
+    project.setDatabaseName(mainDatabaseName);
 
 
     // 1. 创建物理 Schema
@@ -180,31 +189,47 @@ public class ProjectService {
       throw new IllegalArgumentException("默认项目不能删除");
     }
     Project project = findProject(projectId);
+    DataSource systemDs = getSystemDataSource(flexmodelConfig);
 
-    // 0. 删除所有非 main 分支记录和取消注册 SchemaProvider
+    // 0. 删除所有分支项目（取消注册 SchemaProvider、删除物理数据库、删除 f_project 记录）
+    List<Project> branchProjects = projectRepository.findBranchProjects(projectId);
+    for (Project bp : branchProjects) {
+      sessionDatasource.unregisterSchema(bp.getDatabaseName());
+      try {
+        schemaManager.dropSchema(systemDs, bp.getDatabaseName());
+      } catch (Exception e) {
+        // 物理 Schema 删除失败不阻断流程
+      }
+      graphQLEventConsumer.removeProject(bp.getId());
+      projectRepository.delete(bp.getId());
+    }
+
+    // 1. 删除所有分支记录和取消注册 SchemaProvider
     List<Branch> branches = branchRepository.findByProjectId(projectId);
     for (Branch branch : branches) {
       sessionDatasource.unregisterSchema(branch.getDatabaseName());
       branchRepository.delete(projectId, branch.getName());
     }
 
-    // 1. 取消注册 main 分支 SchemaProvider
+    // 2. 取消注册 main 分支 SchemaProvider
     String mainDatabaseName = resolveDatabaseName(projectId);
     sessionDatasource.unregisterSchema(mainDatabaseName);
 
-    // 2. 删除物理 Schema
+    // 3. 删除物理 Schema
     try {
-      DataSource systemDs = getSystemDataSource(flexmodelConfig);
       schemaManager.dropSchema(systemDs, mainDatabaseName);
     } catch (Exception e) {
       // Schema 删除失败不影响记录删除，记录日志即可
       // 部分数据库（如 Oracle）可能无法自动删除
     }
 
-    // 3. 删除关联的 Provider 配置
+    // 4. 移除 GraphQL
+    graphQLEventConsumer.removeProject(projectId);
+
+    // 5. 删除关联的 Provider 配置
     authProviderConfigService.deleteByProjectId(projectId);
 
-    // 4. 删除 f_project 记录
+    // 6. 删除 f_project 记录
     projectRepository.delete(projectId);
   }
 

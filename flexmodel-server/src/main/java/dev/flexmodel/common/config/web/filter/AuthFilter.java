@@ -194,7 +194,6 @@ public class AuthFilter implements ContainerRequestFilter {
       }
       SessionContextHolder.setProjectId(projectId);
       SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
-      SessionContextHolder.setBranchName(project.getCurrentBranch());
     }
     SessionContextHolder.setUserId(userId);
     SessionContextHolder.setCaller(userId);
@@ -214,7 +213,6 @@ public class AuthFilter implements ContainerRequestFilter {
       }
       SessionContextHolder.setProjectId(projectId);
       SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
-      SessionContextHolder.setBranchName(project.getCurrentBranch());
     }
     SessionContextHolder.setCaller(apiKey.getName());
     requestContext.setProperty("projectId", projectId);
@@ -229,8 +227,7 @@ public class AuthFilter implements ContainerRequestFilter {
       throw new AuthException("Project not found");
     }
     SessionContextHolder.setProjectId(projectId);
-    SessionContextHolder.setProjectDatabaseName(project.getCurrentDatabaseName());
-    SessionContextHolder.setBranchName(project.getCurrentBranch());
+    SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
     SessionContextHolder.setCaller(result.getCaller());
     requestContext.setProperty("projectId", projectId);
   }

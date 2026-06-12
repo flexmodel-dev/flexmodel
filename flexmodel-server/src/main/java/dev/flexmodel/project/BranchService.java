@@ -81,7 +81,8 @@ public class BranchService {
     if (project == null) {
       return List.of();
     }
-    return branchRepository.findByProjectId(projectId);
+    String rootProjectId = resolveRootProjectId(project);
+    return branchRepository.findByProjectId(rootProjectId);
   }
 
   public Branch createBranch(String projectId, String branchName, String sourceBranch, String description) {
@@ -93,23 +94,25 @@ public class BranchService {
     if (project == null) {
       throw new IllegalArgumentException("项目不存在");
     }
+    // 解析根项目ID：如果当前项目是分支项目，分支记录归属于其父项目
+    String rootProjectId = resolveRootProjectId(project);
     if ("main".equals(branchName)) {
       throw new IllegalArgumentException("不能创建名为 main 的分支（已存在）");
     }
-    Branch existing = branchRepository.findByProjectIdAndName(projectId, branchName);
+    Branch existing = branchRepository.findByProjectIdAndName(rootProjectId, branchName);
     if (existing != null) {
       throw new IllegalArgumentException("分支 " + branchName + " 已存在");
     }
 
     // 2. 确定源分支的 databaseName
-    Branch sourceBranchRecord = branchRepository.findByProjectIdAndName(projectId, sourceBranch);
+    Branch sourceBranchRecord = branchRepository.findByProjectIdAndName(rootProjectId, sourceBranch);
     if (sourceBranchRecord == null) {
       throw new IllegalArgumentException("源分支 " + sourceBranch + " 不存在");
     }
     String sourceDbName = sourceBranchRecord.getDatabaseName();
 
     // 3. 计算目标数据库名
-    String branchDbName = project.getId() + "_" + branchName;
+    String branchDbName = rootProjectId + "_" + branchName;
 
     // 4. 构建目标数据源并通过 FML 导出导入复制模型结构
     DataSource targetDs = sessionDatasourceImpl.buildJdbcDataSource(branchDbName);
@@ -139,7 +142,7 @@ public class BranchService {
 
     // 6. 保存分支记录
     Branch branch = new Branch();
-    branch.setProjectId(projectId);
+    branch.setProjectId(rootProjectId);
     branch.setName(branchName);
     branch.setDatabaseName(branchDbName);
     branch.setSourceBranch(sourceBranch != null ? sourceBranch : "main");
@@ -148,11 +151,11 @@ public class BranchService {
     Branch saved = branchRepository.save(branch);
 
     // 7. 创建分支项目记录（Supabase 风格：每个分支是独立可寻址的项目）
-    String branchProjectId = projectId + "_" + branchName;
+    String branchProjectId = rootProjectId + "_" + branchName;
     Project branchProject = new Project();
     branchProject.setId(branchProjectId);
     branchProject.setName(project.getName() + " (" + branchName + ")");
-    branchProject.setParentProjectId(projectId);
+    branchProject.setParentProjectId(rootProjectId);
     branchProject.setDatabaseName(branchDbName);
     branchProject.setOwnerId(project.getOwnerId());
     branchProject.setEnabled(true);
@@ -172,7 +175,8 @@ public class BranchService {
     if (project == null) {
       throw new IllegalArgumentException("项目不存在");
     }
-    Branch branch = branchRepository.findByProjectIdAndName(projectId, branchName);
+    String rootProjectId = resolveRootProjectId(project);
+    Branch branch = branchRepository.findByProjectIdAndName(rootProjectId, branchName);
     if (branch == null) {
       throw new IllegalArgumentException("分支 " + branchName + " 不存在");
     }
@@ -189,12 +193,12 @@ public class BranchService {
     }
 
     // 3. 删除分支项目记录
-    String branchProjectId = projectId + "_" + branchName;
+    String branchProjectId = rootProjectId + "_" + branchName;
     graphQLManager.removeGraphQL(branchProjectId);
     projectRepository.delete(branchProjectId);
 
     // 4. 删除分支记录
-    branchRepository.delete(projectId, branchName);
+    branchRepository.delete(rootProjectId, branchName);
   }
 
   public void mergeBranch(String projectId, String sourceBranch, String targetBranch,
@@ -340,11 +344,23 @@ public class BranchService {
    * 解析指定分支对应的 databaseName。
    */
   private String resolveBranchDatabaseName(Project project, String branchName) {
-    Branch branch = branchRepository.findByProjectIdAndName(project.getId(), branchName);
+    String rootProjectId = resolveRootProjectId(project);
+    Branch branch = branchRepository.findByProjectIdAndName(rootProjectId, branchName);
     if (branch == null) {
       throw new IllegalArgumentException("分支 " + branchName + " 不存在");
     }
     return branch.getDatabaseName();
+  }
+
+  /**
+   * 解析根项目 ID：如果项目有 parentProjectId（即当前处于分支项目上下文），
+   * 返回父项目 ID，因为所有分支记录都归属于父项目。
+   */
+  private String resolveRootProjectId(Project project) {
+    if (project.getParentProjectId() != null) {
+      return project.getParentProjectId();
+    }
+    return project.getId();
   }
 
   private void createSchemaObject(Session session, SchemaObject model) {

@@ -11,7 +11,7 @@ model f_project {
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_PROJECT_PARENT", fields: [parent_project_id]),
-  @comment("租户")
+  @comment("项目")
 }
 model f_branch {
   id : String @id @default(uuid()),

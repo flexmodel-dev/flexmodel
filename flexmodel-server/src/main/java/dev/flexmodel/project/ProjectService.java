@@ -14,7 +14,7 @@ import dev.flexmodel.project.dto.ProjectListRequest;
 import dev.flexmodel.project.dto.ProjectResponse;
 import dev.flexmodel.sql.JdbcSchemaManager;
 import dev.flexmodel.sql.SchemaManager;
-import dev.flexmodel.storage.StorageService;
+import dev.flexmodel.storage.BucketRepository;
 import dev.flexmodel.projectauth.AuthProviderConfigService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -48,7 +48,7 @@ public class ProjectService {
   @Inject
   FlowDeploymentService flowDeploymentService;
   @Inject
-  StorageService storageService;
+  BucketRepository bucketRepository;
   @Inject
   SessionDatasource sessionDatasource;
   @Inject
@@ -74,7 +74,7 @@ public class ProjectService {
             ProjectResponse.ProjectStats projectStats = new ProjectResponse.ProjectStats(
               -1,
               flowDeploymentService.count(project.getId()),
-              storageService.count(project.getId())
+              bucketRepository.count("PROJECT", project.getId())
             );
             response.setStats(projectStats);
           }

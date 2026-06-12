@@ -7,6 +7,7 @@ PARSER_BEGIN(ModelParser)
 package dev.flexmodel.parser.impl;
 
 import java.util.*;
+import dev.flexmodel.JsonUtils;
 
 public class ModelParser {
 
@@ -241,6 +242,95 @@ public class ModelParser {
             if (value instanceof Map) return mapToString((Map<?, ?>) value);
             return value.toString();
         }
+    }
+
+    /**
+     * 从 token 链中读取一个完整的 JSON 对象（开头的 { 已被 tokenizer 消费）。
+     * 遍历 token 链拼接为 JSON 字符串，用 JsonUtils 解析。
+     * 读取结束后，token 指向最后一个内容 token，token.next 为 <RBRACE>。
+     */
+    private String readJsonObject() {
+        StringBuilder json = new StringBuilder();
+        json.append('{');
+        int depth = 1;
+        boolean prevWasValue = false;
+        while (depth > 0) {
+            if (token.next == null) token.next = token_source.getNextToken();
+            Token cur = token.next;
+            // 外层 RBRACE：只拼接，不推进 token（留给语法层的 <RBRACE> 消费）
+            if (cur.kind == RBRACE && depth == 1) {
+                json.append('}');
+                break;
+            }
+            // 推进 token 到当前内容 token
+            token = cur;
+            switch (cur.kind) {
+                case STRING_LITERAL:
+                    if (prevWasValue) json.append(' ');
+                    json.append(cur.image);
+                    prevWasValue = true;
+                    break;
+                case INTEGER_LITERAL:
+                    if (prevWasValue) json.append(' ');
+                    json.append(cur.image);
+                    prevWasValue = true;
+                    break;
+                case TRUE: case FALSE: case NULL:
+                    if (prevWasValue) json.append(' ');
+                    json.append(cur.image);
+                    prevWasValue = true;
+                    break;
+                case IDENTIFIER:
+                    if (prevWasValue) json.append(' ');
+                    json.append(cur.image);
+                    prevWasValue = true;
+                    break;
+                case LBRACE:
+                    depth++;
+                    json.append('{');
+                    prevWasValue = false;
+                    break;
+                case RBRACE:
+                    depth--;
+                    json.append('}');
+                    prevWasValue = true;
+                    break;
+                case LBRACKET:
+                    json.append('[');
+                    prevWasValue = false;
+                    break;
+                case RBRACKET:
+                    json.append(']');
+                    prevWasValue = true;
+                    break;
+                case COLON:
+                    json.append(':');
+                    prevWasValue = false;
+                    break;
+                case COMMA:
+                    json.append(',');
+                    prevWasValue = false;
+                    break;
+                case MINUS:
+                    json.append('-');
+                    if (token.next == null) token.next = token_source.getNextToken();
+                    token = token.next;
+                    json.append(token.image);
+                    prevWasValue = true;
+                    break;
+                case DOT:
+                    json.append('.');
+                    prevWasValue = false;
+                    break;
+                default:
+                    json.append(cur.image);
+                    prevWasValue = false;
+                    break;
+            }
+        }
+        // 重置 jj_ntk 使解析器重新读取下一个 token 类型
+        jj_ntk = -1;
+        return json.toString();
     }
 
     public static void main(String[] args) throws ParseException {
@@ -498,13 +588,17 @@ void SeedRecordList(Seed seed) : { Map<String, Object> record; }
     ( <COMMA> )?
 }
 
-/* 解析单条种子记录 { key: value, ... } */
+/* 解析单条种子记录 { key: value, ... }，支持 JSON 格式和 IDL 格式 */
 Map<String, Object> SeedRecord() : {
     Map<String, Object> record = new LinkedHashMap();
-}
-{
+    String jsonStr;
+} {
     <LBRACE>
-    ( SeedPairList(record) )?
+    (
+        /* JSON 格式：键名为双引号字符串（如 {"key": "value"}），手动读取字符流后用 JsonUtils 解析 */
+        LOOKAHEAD(<STRING_LITERAL>) { jsonStr = readJsonObject(); } { if (jsonStr != null) { record = JsonUtils.parseToMap(jsonStr); } }
+      | ( SeedPairList(record) )?
+    )
     <RBRACE>
     { return record; }
 }

@@ -81,3 +81,8 @@ seed Teacher {
   {id: 3, teacherName: "王老师", subject: "英语", students: [{id: 1}, {id: 3}]},
 }
 
+seed f_bucket {
+  {id: "dev_test_default", name: "default", description: "开发测试默认存储桶", visibility: "PRIVATE", max_file_size: 104857600, owner_type: "PROJECT", owner_id: "dev_test", created_by: "admin"},
+  {id: "dev_test_public", name: "public", description: "开发测试公共存储桶", visibility: "PUBLIC", max_file_size: 52428800, owner_type: "PROJECT", owner_id: "dev_test", created_by: "admin"},
+}
+

@@ -36,3 +36,4 @@ build/
 
 *.db
 flexmodel-server/logs/
+flexmodel-server/storage/

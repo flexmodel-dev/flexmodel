@@ -1,51 +1,38 @@
 package dev.flexmodel.storage;
 
-import dev.flexmodel.codegen.entity.Storage;
-import dev.flexmodel.codegen.enumeration.StorageType;
-import dev.flexmodel.storage.config.LocalStorageOperations;
-import dev.flexmodel.storage.config.S3StorageOperations;
-import dev.flexmodel.JsonUtils;
-
-import java.util.Map;
+import dev.flexmodel.codegen.entity.Bucket;
+import dev.flexmodel.storage.config.StorageProvider;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 /**
  * 存储操作工厂类
+ * <p>
+ * 根据 Bucket 对象创建带路径前缀的 StorageOperations 实例。
+ * 路径规则：{ownerType}/{ownerId}/{bucketName}
+ *
  * @author cjbi
  */
-@SuppressWarnings("all")
+@ApplicationScoped
 public class StorageOperationsFactory {
 
-  public static StorageOperations create(Storage storage) {
-    if (storage.getType() == StorageType.LOCAL) {
-      return createLocalStorage(storage);
-    } else if (storage.getType() == StorageType.S3) {
-      return createS3Storage(storage);
-    }
-    throw new IllegalArgumentException("Unsupported storage type: " + storage.getType());
+  @Inject
+  StorageProvider storageProvider;
+
+  /**
+   * 构建存储前缀：{ownerType}/{ownerId}/{bucketName}
+   */
+  private String buildPrefix(Bucket bucket) {
+    return bucket.getOwnerType() + "/" + bucket.getOwnerId() + "/" + bucket.getName();
   }
 
-  private static StorageOperations createLocalStorage(Storage storage) {
-    Map<String, Object> config = JsonUtils.convertValue(storage.getConfig(), Map.class);
-    String basePath = (String) config.get("basePath");
-    if (basePath == null || basePath.isEmpty()) {
-      throw new IllegalArgumentException("Local storage config must include 'basePath'");
-    }
-    return new LocalStorageOperations(basePath);
-  }
-
-  private static StorageOperations createS3Storage(Storage storage) {
-    Map<String, Object> config = JsonUtils.convertValue(storage.getConfig(), Map.class);
-    String accessKey = (String) config.get("accessKey");
-    String secretKey = (String) config.get("secretKey");
-    String bucket = (String) config.get("bucket");
-    String region = (String) config.getOrDefault("region", "us-east-1");
-    String endpoint = (String) config.get("endpoint");
-    Boolean pathStyle = (Boolean) config.getOrDefault("pathStyle", false);
-
-    if (accessKey == null || secretKey == null || bucket == null) {
-      throw new IllegalArgumentException("S3 storage config must include 'accessKey', 'secretKey', and 'bucket'");
-    }
-
-    return new S3StorageOperations(accessKey, secretKey, bucket, region, endpoint, pathStyle);
+  /**
+   * 根据 Bucket 创建带路径前缀的 StorageOperations
+   *
+   * @param bucket Bucket 实体
+   * @return 带前缀上下文的 StorageOperations
+   */
+  public StorageOperations forBucket(Bucket bucket) {
+    return storageProvider.getBackend().createOperations(buildPrefix(bucket));
   }
 }

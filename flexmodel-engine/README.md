@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/flexmodel-dev/flexmodel-engine)
 
-> **Flexmodel** 是面向下一代应用程序的统一数据访问层解决方案。它以 `flexmodel-engine` 为核心，提供了一站式的数据建模、服务编排、任务调度、文件存储和身份认证能力，旨在为开发者提供开源、灵活且高度可定制的后端基础架构。
+> **Flexmodel** 是面向下一代应用程序的统一数据访问层解决方案。它以 `flexmodel-engine` 为核心，提供了一站式的数据建模、服务编排、任务调度、对象存储和身份认证能力，旨在为开发者提供开源、灵活且高度可定制的后端基础架构。
 
 ## 🚀 核心支柱
 
@@ -14,7 +14,7 @@ Flexmodel 实现了 Supabase 核心功能的中国化适配与增强：
 - 📊 **统一数据管理 (Data)** - 运行时动态建模，支持 10+ 种主流及国产数据库，屏蔽底层差异。
 - ⚡ **服务编排 (Service Orchestration)** - 基于可视化流程的业务逻辑编排，实现低代码后端逻辑扩展。
 - ⏰ **任务调度 (Task Scheduling)** - 内置分布式任务触发与调度系统，支持 Cron、延迟任务及事件触发。
-- 📂 **文件存储 (File Storage)** - 抽象化的文件存储接口，无缝集成 S3、OSS 及本地存储系统。
+- 📂 **对象存储 (File Storage)** - 抽象化的对象存储接口，无缝集成 S3、OSS 及本地存储系统。
 - 🔐 **身份认证 (Identity Authentication)** - 完整的 RBAC 权限体系、多租户支持及基于 JWT 的安全验证。
 
 ## ✨ 引擎特性

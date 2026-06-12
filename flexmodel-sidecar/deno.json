@@ -1,0 +1,17 @@
+{
+  "name": "@flexmodel/sidecar",
+  "version": "0.0.1",
+  "exports": "./src/main.ts",
+  "tasks": {
+    "dev": "deno run --allow-net=localhost --allow-env --watch src/main.ts",
+    "start": "deno run --allow-net=localhost --allow-env src/main.ts"
+  },
+  "imports": {
+    "hono": "jsr:@hono/hono@^4.6.0"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

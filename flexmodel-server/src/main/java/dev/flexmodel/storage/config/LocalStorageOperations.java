@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * 本地文件存储实现
+ * 本地对象存储实现
  * @author cjbi
  */
 public class LocalStorageOperations implements StorageOperations {
@@ -89,6 +89,16 @@ public class LocalStorageOperations implements StorageOperations {
   public void uploadFile(String path, InputStream inputStream, long size) {
     Path targetPath = resolvePath(path);
 
+    // Path ending with / is a folder marker (object storage convention)
+    if (path.endsWith("/")) {
+      try {
+        Files.createDirectories(targetPath);
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to create folder marker: " + path, e);
+      }
+      return;
+    }
+
     try {
       Path parentDir = targetPath.getParent();
       if (parentDir != null && !Files.exists(parentDir)) {
@@ -125,36 +135,6 @@ public class LocalStorageOperations implements StorageOperations {
       }
     } catch (IOException e) {
       throw new RuntimeException("Failed to delete file: " + path, e);
-    }
-  }
-
-  @Override
-  public void createFolder(String path) {
-    Path targetPath = resolvePath(path);
-
-    try {
-      Files.createDirectories(targetPath);
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to create folder: " + path, e);
-    }
-  }
-
-  @Override
-  public boolean exists(String path) {
-    return Files.exists(resolvePath(path));
-  }
-
-  @Override
-  public long getFileSize(String path) {
-    Path targetPath = resolvePath(path);
-
-    try {
-      if (Files.isDirectory(targetPath)) {
-        return 0;
-      }
-      return Files.size(targetPath);
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to get file size: " + path, e);
     }
   }
 

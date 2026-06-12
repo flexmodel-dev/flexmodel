@@ -1,8 +1,6 @@
 package dev.flexmodel.codegen
 
-import dev.flexmodel.codegen.GenerationContext
-import dev.flexmodel.codegen.ObjectUtils
-import dev.flexmodel.codegen.StringUtils
+import dev.flexmodel.JsonUtils
 
 import java.nio.file.Path
 
@@ -59,9 +57,12 @@ class SchemaGenerator extends AbstractGenerator {
     out.println "    List<SchemaObject> list = new ArrayList<>();"
     out.println "    try {"
     modelClassList.each { model ->
+      out.println " //  ${JsonUtils.toJsonString(model.original)}  "
       out.println "      EntityDefinition ${model.variableName} = (EntityDefinition) ObjectUtils.deserialize(\"${ObjectUtils.serialize(model.original)}\");"
     }
     context.enumClassList.each { model ->
+      out.println " //  ${JsonUtils.toJsonString(model.original)}  "
+
       out.println "      EnumDefinition ${model.variableName} = (EnumDefinition) ObjectUtils.deserialize(\"${ObjectUtils.serialize(model.original)}\");"
     }
     modelClassList.each { model ->
@@ -83,6 +84,7 @@ class SchemaGenerator extends AbstractGenerator {
     out.println "    try {"
     List<?> list = context.import_data;
     list.each {
+      out.println " //  ${JsonUtils.toJsonString(it)}  "
       out.println "      list.add((ModelImportBundle.ImportData) ObjectUtils.deserialize(\"${ObjectUtils.serialize(it)}\"));"
     }
     out.println "    } catch (Exception e) {"

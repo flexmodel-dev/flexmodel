@@ -99,10 +99,12 @@ flexmodel-server/                     # Java 侧改动
     │   ├── FunctionCreateRequest.java
     │   ├── FunctionUpdateRequest.java
     │   ├── FunctionInvokeRequest.java
-    │   └── FunctionInvokeResponse.java
+    │   ├── FunctionInvokeResponse.java
+    │   └── FunctionTemplateResource.java (模板查询端点)
     │
 flexmodel-server/src/main/resources/
-    └── platform.fml                  # 新增 f_function
+    ├── platform.fml                  # 新增 f_function + f_function_template
+    └── platform_data.json            # f_function_template 预置模板 seed 数据
 ```
 
 ## 四、数据模型
@@ -117,7 +119,7 @@ model f_function {
   slug : String @comment("函数标识符(URL安全)"),
   description? : String @comment("函数描述"),
   source_files : String @comment("函数源代码(JSON: 文件名→内容)"),
-  status : String @default("ACTIVE") @comment("状态: ACTIVE, FAILED, DELETED"),
+  status : String @default("ACTIVE") @comment("状态: ACTIVE, FAILED"),
   timeout : Int @default("30") @comment("超时时间(秒)"),
   created_by? : String @comment("创建人"),
   updated_by? : String @comment("更新人"),
@@ -132,7 +134,7 @@ model f_function {
 - 入口文件固定为 `index.ts`，入口函数固定为 `export default`
 - `source_files` 为 JSON 字段，存储所有文件内容，格式：`{"index.ts": "...", "utils.ts": "..."}`
 - 单文件函数只需包含 `{"index.ts": "..."}`
-- 状态只有 3 种：`ACTIVE`（可用）、`FAILED`（部署失败）、`DELETED`（已删除）
+- 状态只有 2 种：`ACTIVE`（可用）、`FAILED`（部署失败），删除时直接物理删除记录
 
 **source_files JSON 示例（单文件）：**
 ```json
@@ -155,12 +157,82 @@ model f_function {
 - 不支持子目录（文件名中不能包含 `/`）
 - 入口文件固定为 `index.ts`
 
-### 4.2 状态流转
+## 4.2 f_function_template (函数模板表，平台级)
+
+```
+model f_function_template {
+  id : String @id @default(uuid()),
+  name : String @comment("模板名称"),
+  slug : String @comment("模板标识符"),
+  description : String @comment("模板描述"),
+  source_files : String @comment("模板源代码(JSON: 文件名→内容)"),
+  tags? : String @comment("标签(JSON数组，如 [\"beginner\", \"database\"])"),
+  icon? : String @comment("图标名称"),
+  sort_order : Int @default("0") @comment("排序权重"),
+  @index(name: "IDX_FUNCTION_TEMPLATE_SLUG", unique: true, fields: [slug]),
+  @comment("云函数模板(平台级)")
+}
+```
+
+**设计说明：**
+- 平台级表，无 `project_id`，所有项目共享
+- 模板数据通过 seed 脚本预置，不支持用户自定义
+- 前端查询模板列表 → 用户选择 → 前端将 `source_files` 填入创建表单 → 调用标准创建接口
+- 后端无需 `templateId` 参数，模板选择纯前端行为
+
+**预置模板示例：**
+
+| slug | name | description | tags |
+|------|------|-------------|------|
+| `hello-world` | Hello World | 最简单的函数，返回问候语 | `["beginner"]` |
+| `database-query` | Database Query | 查询 Flexmodel 数据表并返回结果 | `["database"]` |
+| `database-crud` | Database CRUD | 根据请求方法执行增删改查操作 | `["database"]` |
+| `webhook-handler` | Webhook Handler | 接收第三方 Webhook 并处理 | `["integration"]` |
+| `data-aggregation` | Data Aggregation | 聚合查询并生成统计报告 | `["database", "advanced"]` |
+
+**模板 source_files 示例：**
+
+`hello-world`:
+```json
+{
+  "index.ts": "export default async function(req: Request, ctx: Context) {\n  return new Response(JSON.stringify({ message: \"Hello, World!\" }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"
+}
+```
+
+`database-query`:
+```json
+{
+  "index.ts": "export default async function(req: Request, ctx: Context) {\n  const url = new URL(req.url);\n  const model = url.searchParams.get(\"model\") || \"Student\";\n  const page = Number(url.searchParams.get(\"page\") || \"1\");\n  const size = Number(url.searchParams.get(\"size\") || \"10\");\n\n  const result = await ctx.flexmodel.data.find(model, { page, size });\n\n  ctx.log.info(\"Query completed\", { model, total: result.total });\n\n  return new Response(JSON.stringify(result), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"
+}
+```
+
+`database-crud`:
+```json
+{
+  "index.ts": "export default async function(req: Request, ctx: Context) {\n  const url = new URL(req.url);\n  const model = url.searchParams.get(\"model\") || \"Student\";\n  const id = url.searchParams.get(\"id\");\n\n  if (req.method === \"GET\" && id) {\n    const record = await ctx.flexmodel.data.findOne(model, id);\n    return new Response(JSON.stringify(record), { headers: { \"content-type\": \"application/json\" } });\n  }\n\n  if (req.method === \"GET\") {\n    const result = await ctx.flexmodel.data.find(model, { page: 1, size: 10 });\n    return new Response(JSON.stringify(result), { headers: { \"content-type\": \"application/json\" } });\n  }\n\n  if (req.method === \"POST\") {\n    const body = await req.json();\n    const record = await ctx.flexmodel.data.create(model, body);\n    return new Response(JSON.stringify(record), { status: 201, headers: { \"content-type\": \"application/json\" } });\n  }\n\n  return new Response(JSON.stringify({ error: \"Method not supported\" }), { status: 405 });\n}"
+}
+```
+
+`webhook-handler`:
+```json
+{
+  "index.ts": "export default async function(req: Request, ctx: Context) {\n  const body = await req.json();\n  const eventType = body.type || \"unknown\";\n\n  ctx.log.info(\"Webhook received\", { type: eventType, body });\n\n  // 根据事件类型分发处理\n  switch (eventType) {\n    case \"order.created\":\n      await ctx.flexmodel.data.create(\"OrderLog\", {\n        event_type: eventType,\n        payload: JSON.stringify(body),\n        received_at: new Date().toISOString()\n      });\n      break;\n    default:\n      ctx.log.warn(\"Unhandled event type\", { type: eventType });\n  }\n\n  return new Response(JSON.stringify({ received: true }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"
+}
+```
+
+`data-aggregation`:
+```json
+{
+  "index.ts": "export default async function(req: Request, ctx: Context) {\n  const url = new URL(req.url);\n  const model = url.searchParams.get(\"model\") || \"Student\";\n\n  // 查询全部数据（分页拉取）\n  const allRecords = await ctx.flexmodel.data.find(model, { page: 1, size: 100 });\n\n  ctx.log.info(\"Aggregation started\", { model, total: allRecords.total });\n\n  // 示例: 按某个字段分组统计\n  const groups: Record<string, number> = {};\n  for (const record of allRecords.list) {\n    const key = record.status || \"unknown\";\n    groups[key] = (groups[key] || 0) + 1;\n  }\n\n  return new Response(JSON.stringify({\n    model,\n    total: allRecords.total,\n    groups\n  }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"
+}
+```
+
+### 4.3 状态流转
 
 ```
 创建:  → ACTIVE (成功) / FAILED (失败)
 更新:  ACTIVE → ACTIVE (成功) / FAILED (失败)
-删除:  ACTIVE → DELETED
+删除:  物理删除 f_function 记录 + 删除 Deno Registry + 删除磁盘目录
 重试:  FAILED → ACTIVE (重新部署成功)
 ```
 
@@ -626,12 +698,11 @@ public class FunctionService {
     return functionInvoker.invoke(projectId, slug, req);
   }
 
-  /** 删除函数 */
+  /** 删除函数: 物理删除 DB 记录 + 清理 Deno */
   public void delete(String projectId, String slug) {
     FunctionEntity entity = functionRepository.findByProjectAndSlug(projectId, slug);
-    functionInvoker.delete(projectId, slug);
-    entity.setStatus("DELETED");
-    functionRepository.update(entity);
+    functionInvoker.delete(projectId, slug);  // Deno: 清 Registry + 删磁盘目录
+    functionRepository.delete(entity);        // DB: 物理删除
   }
 
   /** 启动时同步: 将所有 ACTIVE 函数重新部署到 Deno */
@@ -689,12 +760,20 @@ DELETE /projects/{projectId}/functions/{slug}             → 删除函数
 
 # 函数调用入口 (跟随项目鉴权)
 POST   /projects/{projectId}/functions/{slug}/invoke      → 调用函数
+
+# 函数模板 (只读)
+GET    /function-templates                                 → 模板列表 (返回 name/description/sourceFiles/tags 等)
 ```
 
 ## 九、生命周期流程
 
 ### 函数创建流程
 ```
+User → 前端查询模板列表 GET /function-templates
+  → 前端展示模板卡片（name, description, tags）
+  → 用户选择模板 → 前端自动填充 sourceFiles 到创建表单
+  → 用户可编辑代码 → 提交创建
+
 User → POST /projects/{projectId}/functions
   → Java: save DB (source_files JSON)
   → Java: POST Deno /deploy (含 sourceFiles)
@@ -726,7 +805,7 @@ Client → POST /projects/{projectId}/functions/{slug}/invoke
 User → DELETE /projects/{projectId}/functions/{slug}
   → Java: DELETE Deno /:projectId/:name
     → Deno: 清除 Registry + 删除磁盘目录
-  → Java: update status = DELETED
+  → Java: 物理删除 f_function 记录
 ```
 
 ### 重启恢复流程
@@ -751,19 +830,22 @@ Java @Observes StartupEvent
 8. 编写 Deno 端测试（含多文件 import 场景）
 
 ### Phase 2: Java 端集成
-9. `platform.fml` 新增 `f_function` 模型（`source_files` JSON 字段）
-10. 代码生成 → Entity 类
-11. 实现 `FunctionInvoker.java` (Quarkus REST Client 或 Vert.x WebClient)
-12. 实现 `FunctionService.java` (CRUD + 状态管理 + 启动恢复)
-13. 实现 `FunctionResource.java` (REST 端点)
+9. `platform.fml` 新增 `f_function` + `f_function_template` 模型
+10. `platform_data.json` 预置 5 个函数模板 seed 数据
+11. 代码生成 → Entity 类
+12. 实现 `FunctionInvoker.java` (Quarkus REST Client 或 Vert.x WebClient)
+13. 实现 `FunctionService.java` (CRUD + 状态管理 + 启动恢复)
+14. 实现 `FunctionResource.java` (REST 端点)
+15. 实现 `FunctionTemplateResource.java` (模板查询端点)
 
 ### Phase 3: 集成测试与验证
-14. 验证端到端: 创建函数 → 调用函数 → 更新函数 → 删除函数
-15. 验证多文件 import: index.ts 引用同目录下的 utils.ts 和 db.ts
-16. 验证函数内 SDK 调用 Flexmodel 数据 API
-17. 验证 Worker 隔离: 死循环函数不影响主进程
-18. 验证超时终止: `worker.terminate()` 生效
-19. 验证重启恢复（磁盘目录重新写入）
+16. 验证端到端: 创建函数 → 调用函数 → 更新函数 → 删除函数
+17. 验证多文件 import: index.ts 引用同目录下的 utils.ts 和 db.ts
+18. 验证模板查询 + 模板创建函数
+19. 验证函数内 SDK 调用 Flexmodel 数据 API
+20. 验证 Worker 隔离: 死循环函数不影响主进程
+21. 验证超时终止: `worker.terminate()` 生效
+22. 验证重启恢复（磁盘目录重新写入）
 
 ## 十一、验证方案
 
@@ -867,8 +949,6 @@ mvn quarkus:dev -pl flexmodel-server
 
 | 能力 | 说明 |
 |------|------|
-| **函数市场 (Templates)** | 预置常用函数模板 |
-| **多实例部署** | Sidecar 水平扩展，Registry 迁移到 Redis |
 | **流式响应 (SSE)** | 支持函数返回 ReadableStream |
 | **多租户隔离** | 资源配额、网络策略隔离 |
 

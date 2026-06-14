@@ -37,14 +37,14 @@ public class RuntimeProcessorTest {
   private StartProcessResult startProcess() throws Exception {
     // prepare
     FlowDeployment flowDeployment = EntityBuilder.buildSpecialFlowDeployment();
-    FlowDeployment _flowDeployment = flowDeploymentRepository.findByDeployId(flowDeployment.getProjectId(), flowDeployment.getFlowDeployId());
+    FlowDeployment _flowDeployment = flowDeploymentRepository.findByDeployId("dev_test", flowDeployment.getFlowDeployId());
     if (_flowDeployment != null) {
       if (!Objects.equals(_flowDeployment.getFlowModel(), flowDeployment.getFlowModel())) {
-        flowDeploymentRepository.deleteById(flowDeployment.getProjectId(), _flowDeployment.getId());
-        flowDeploymentRepository.insert(flowDeployment);
+        flowDeploymentRepository.deleteById("dev_test", _flowDeployment.getId());
+        flowDeploymentRepository.insert("dev_test",flowDeployment);
       }
     } else {
-      flowDeploymentRepository.insert(flowDeployment);
+      flowDeploymentRepository.insert("dev_test",flowDeployment);
     }
 
     // start process

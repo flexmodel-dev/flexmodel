@@ -56,6 +56,7 @@ public class FunctionInvoker {
     public void deploy(SidecarDeployRequest req) {
         try {
             String json = objectMapper.writeValueAsString(req);
+            log.debug("Deploying function to sidecar: {}:{} payload={}", req.getProjectId(), req.getName(), json);
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl() + "/functions/deploy"))
                 .header("Content-Type", "application/json")
@@ -67,7 +68,7 @@ public class FunctionInvoker {
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 log.info("Deployed function to sidecar: {}:{}", req.getProjectId(), req.getName());
             } else {
-                log.error("Deploy failed: HTTP {} body: {}", response.statusCode(), response.body());
+                log.error("Deploy failed: HTTP {} body: {} request: {}", response.statusCode(), response.body(), json);
                 throw new RuntimeException("Deploy failed: HTTP " + response.statusCode());
             }
         } catch (IOException | InterruptedException e) {

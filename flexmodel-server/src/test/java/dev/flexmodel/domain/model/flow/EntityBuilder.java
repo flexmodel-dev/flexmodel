@@ -380,7 +380,6 @@ public class EntityBuilder {
     flowInstance.setCreateTime(LocalDateTime.now());
     flowInstance.setModifyTime(LocalDateTime.now());
     flowInstance.setCaller("caller");
-    flowInstance.setProjectId("project");
     return flowInstance;
   }
 
@@ -403,7 +402,6 @@ public class EntityBuilder {
     nodeInstance.setCreateTime(LocalDateTime.now());
     nodeInstance.setModifyTime(LocalDateTime.now());
     nodeInstance.setCaller("caller");
-    nodeInstance.setProjectId("project");
     return nodeInstance;
   }
 
@@ -424,7 +422,6 @@ public class EntityBuilder {
     nodeInstanceLog.setStatus(NodeInstanceStatus.ACTIVE);
     nodeInstanceLog.setCreateTime(LocalDateTime.now());
     nodeInstanceLog.setCaller("caller");
-    nodeInstanceLog.setProjectId("project");
     return nodeInstanceLog;
   }
 
@@ -438,7 +435,6 @@ public class EntityBuilder {
     nodeInstanceLog.setStatus(NodeInstanceStatus.ACTIVE);
     nodeInstanceLog.setCreateTime(LocalDateTime.now());
     nodeInstanceLog.setCaller("caller");
-    nodeInstanceLog.setProjectId("project");
     return nodeInstanceLog;
   }
 
@@ -455,7 +451,6 @@ public class EntityBuilder {
     instanceData.setType(InstanceDataType.EXECUTE);
     instanceData.setCreateTime(LocalDateTime.now());
     instanceData.setCaller("caller");
-    instanceData.setProjectId("project");
     return instanceData;
   }
 
@@ -865,7 +860,6 @@ public class EntityBuilder {
     flowDeployment.setModifyTime(LocalDateTime.now());
     flowDeployment.setOperator(operator);
     flowDeployment.setRemark(remark);
-    flowDeployment.setProjectId("dev_test");
     return flowDeployment;
   }
 

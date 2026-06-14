@@ -149,8 +149,16 @@ public class FunctionService {
     // ============================================================
 
     private void deployToSidecar(String projectId, Function fn) {
+        if (fn.getId() == null || fn.getId().isBlank()) {
+            throw new FunctionException("Function ID is required for deployment: " + fn.getName());
+        }
+
         Map<String, String> sourceFiles = objectMapper.convertValue(
             fn.getSourceFiles(), new TypeReference<Map<String, String>>() {});
+
+        if (sourceFiles == null || sourceFiles.isEmpty()) {
+            throw new FunctionException("Function source files are required for deployment: " + fn.getName());
+        }
 
         SidecarDeployRequest deployReq = SidecarDeployRequest.builder()
             .projectId(projectId)

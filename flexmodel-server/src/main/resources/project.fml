@@ -292,5 +292,5 @@ seed f_trigger {
 }
 
 seed f_function {
-  { "id": "hello", "name": "hello", "sourceFiles": { "index.ts": "export default async function(req: Request, ctx: Context) {\n  return new Response(JSON.stringify({ message: \"Hello, World!\" }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}" }}
+  { "id": "hello", "name": "hello", "source_files": { "index.ts": "export default async function(req: Request, ctx: Context) {\n  return new Response(JSON.stringify({ message: \"Hello, World!\" }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}" }}
 }

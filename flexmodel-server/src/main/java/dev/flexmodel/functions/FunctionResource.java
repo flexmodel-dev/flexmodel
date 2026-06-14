@@ -66,6 +66,17 @@ public class FunctionResource {
         return functionService.deploy(projectId, name, request);
     }
 
+    /**
+     * Re-push an existing function to the Deno sidecar without modifying DB data.
+     * Useful when the sidecar was restarted and needs to recover function state.
+     */
+    @POST
+    @Path("/{name}/redeploy")
+    public FunctionResponse redeploy(@PathParam("projectId") String projectId,
+                                      @PathParam("name") String name) {
+        return functionService.redeploy(projectId, name);
+    }
+
     // ============================================================
     // Invocation
     // ============================================================

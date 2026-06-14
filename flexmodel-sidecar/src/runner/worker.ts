@@ -40,12 +40,19 @@ async function executeInWorker(
   meta: FunctionMeta,
   req: InvokeRequest,
 ): Promise<InvokeResult> {
-  return new Promise((resolve, reject) => {
-    const startTime = performance.now();
-    const collectedLogs: Array<{ level: string; message: string; data?: unknown }> = [];
+  // Validate that the function directory exists before attempting Worker creation
+  try {
+    await Deno.stat(meta.functionDir);
+  } catch {
+    throw new Error(
+      `Function directory not found: ${meta.functionDir}. The function may need to be re-deployed.`,
+    );
+  }
 
+  let worker: Worker;
+  try {
     // 1. Create Worker with minimal permissions, loading via file:// URL
-    const worker = new Worker(meta.entryUrl, {
+    worker = new Worker(meta.entryUrl, {
       type: "module",
       deno: {
         permissions: {
@@ -59,6 +66,14 @@ async function executeInWorker(
         },
       },
     });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to create Worker: ${message}`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const startTime = performance.now();
+    const collectedLogs: Array<{ level: string; message: string; data?: unknown }> = [];
 
     // 2. Timeout enforcement
     const timer = setTimeout(() => {

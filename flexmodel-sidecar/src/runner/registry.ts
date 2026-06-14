@@ -114,14 +114,17 @@ class Registry {
 
   /** Deploy: write source files to disk + generate wrapper + store metadata */
   async deploy(req: DeployRequest): Promise<void> {
-    const functionDir = `${FUNCTIONS_DIR}/${req.projectId}/${req.functionId}`;
+    const rawDir = `${FUNCTIONS_DIR}/${req.projectId}/${req.functionId}`;
 
     // Ensure parent directory exists
-    try { await Deno.mkdir(functionDir, { recursive: true }); } catch { /* ignore */ }
+    try { await Deno.mkdir(rawDir, { recursive: true }); } catch { /* ignore */ }
 
     // Clean old directory (for redeploy)
-    try { await Deno.remove(functionDir, { recursive: true }); } catch { /* ignore */ }
-    await Deno.mkdir(functionDir, { recursive: true });
+    try { await Deno.remove(rawDir, { recursive: true }); } catch { /* ignore */ }
+    await Deno.mkdir(rawDir, { recursive: true });
+
+    // Resolve to real absolute path (critical for Worker permissions on Windows)
+    const functionDir = Deno.realPathSync(rawDir);
 
     // Write all user source files (flat structure, no subdirectories)
     for (const [filename, content] of Object.entries(req.sourceFiles)) {
@@ -134,8 +137,8 @@ class Registry {
     // Generate wrapper
     await Deno.writeTextFile(`${functionDir}/_worker_wrapper.ts`, generateWrapperCode());
 
-    // Store metadata
-    const entryUrl = `file://${functionDir}/_worker_wrapper.ts`;
+    // Store metadata — entryUrl must use forward slashes for file:// URL
+    const entryUrl = `file:///${functionDir.replace(/\\/g, "/")}/_worker_wrapper.ts`;
     const key = `${req.projectId}:${req.name}`;
     this.functions.set(key, {
       id: req.functionId,

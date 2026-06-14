@@ -60,7 +60,9 @@ public class FunctionService {
         }
 
         // sourceFiles is JSON type — pass Map directly, engine handles serialization
-        fn.setSourceFiles(req.getSourceFiles());
+        if (req.getSourceFiles() != null && !req.getSourceFiles().isEmpty()) {
+            fn.setSourceFiles(req.getSourceFiles());
+        }
         fn.setUpdatedAt(LocalDateTime.now());
 
         functionRepository.save(projectId, fn);
@@ -71,6 +73,24 @@ public class FunctionService {
             deployToSidecar(fn);
         } catch (Exception e) {
             log.error("Deploy failed for function: {}:{}", projectId, name, e);
+        }
+
+        return FunctionResponse.from(fn);
+    }
+
+    /** Re-push an existing function to the Deno sidecar without modifying DB data */
+    public FunctionResponse redeploy(String projectId, String name) {
+        Function fn = functionRepository.findByName(projectId, name);
+        if (fn == null) {
+            throw new FunctionException("Function not found: " + name);
+        }
+
+        try {
+            deployToSidecar(fn);
+            log.info("Function redeployed to sidecar: {}:{}", projectId, name);
+        } catch (Exception e) {
+            log.error("Redeploy failed for function: {}:{}", projectId, name, e);
+            throw new RuntimeException("Failed to redeploy function to sidecar: " + e.getMessage(), e);
         }
 
         return FunctionResponse.from(fn);
@@ -150,9 +170,17 @@ public class FunctionService {
     // Startup Recovery
     // ============================================================
 
-    /** On startup: sync all functions to Deno sidecar */
+    /** On startup: wait for sidecar to be healthy, then sync all functions */
     void onStart(@Observes StartupEvent event) {
-        log.info("Starting function recovery: syncing functions to sidecar...");
+        log.info("Starting function recovery: waiting for sidecar to be healthy...");
+
+        if (!waitForSidecar()) {
+            log.warn("Sidecar not available after waiting; skipping startup function recovery. "
+                + "Functions will be deployed on next manual deploy action.");
+            return;
+        }
+
+        log.info("Sidecar is healthy, syncing functions...");
         int success = 0;
         int failed = 0;
 
@@ -172,6 +200,26 @@ public class FunctionService {
         } catch (Exception e) {
             log.warn("Function startup recovery encountered an error", e);
         }
+    }
+
+    /** Wait up to 30 seconds for the sidecar to become healthy */
+    private boolean waitForSidecar() {
+        int maxRetries = 30;
+        for (int i = 0; i < maxRetries; i++) {
+            if (functionInvoker.healthCheck()) {
+                return true;
+            }
+            if (i == 0) {
+                log.info("Sidecar not ready, waiting (up to {}s)...", maxRetries);
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return false;
     }
 
     // ============================================================

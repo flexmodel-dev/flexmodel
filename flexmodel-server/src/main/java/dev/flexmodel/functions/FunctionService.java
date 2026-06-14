@@ -7,9 +7,7 @@ import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.functions.dto.*;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
-import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Function lifecycle management: CRUD, deploy to Deno sidecar, invoke, startup recovery.
+ * Function lifecycle management: CRUD, deploy to Deno sidecar, invoke.
  *
  * @author cjbi
  */
@@ -59,7 +57,6 @@ public class FunctionService {
             }
         }
 
-        // sourceFiles is JSON type — pass Map directly, engine handles serialization
         if (req.getSourceFiles() != null && !req.getSourceFiles().isEmpty()) {
             fn.setSourceFiles(req.getSourceFiles());
         }
@@ -78,24 +75,6 @@ public class FunctionService {
         return FunctionResponse.from(fn);
     }
 
-    /** Re-push an existing function to the Deno sidecar without modifying DB data */
-    public FunctionResponse redeploy(String projectId, String name) {
-        Function fn = functionRepository.findByName(projectId, name);
-        if (fn == null) {
-            throw new FunctionException("Function not found: " + name);
-        }
-
-        try {
-            deployToSidecar(fn);
-            log.info("Function redeployed to sidecar: {}:{}", projectId, name);
-        } catch (Exception e) {
-            log.error("Redeploy failed for function: {}:{}", projectId, name, e);
-            throw new RuntimeException("Failed to redeploy function to sidecar: " + e.getMessage(), e);
-        }
-
-        return FunctionResponse.from(fn);
-    }
-
     /** Delete a function: delete from Deno → delete from DB */
     public void delete(String projectId, String name) {
         Function fn = functionRepository.findByName(projectId, name);
@@ -103,10 +82,7 @@ public class FunctionService {
             throw new FunctionException("Function not found: " + name);
         }
 
-        // Delete from Deno sidecar
         functionInvoker.delete(projectId, name);
-
-        // Delete from DB
         functionRepository.deleteById(projectId, fn.getId());
         log.info("Function deleted: {}:{}", projectId, name);
     }
@@ -147,21 +123,13 @@ public class FunctionService {
     /** Invoke a function via the Deno sidecar — deploy first to ensure it's available */
     public FunctionInvokeResponse invoke(String projectId, String name,
                                           FunctionInvokeRequest req) {
-        log.info(">>> INVOKE {}:{} — deploying to sidecar first...", projectId, name);
-
         Function fn = functionRepository.findByName(projectId, name);
         if (fn == null) {
             throw new FunctionException("Function not found: " + name);
         }
 
-        // Always deploy before invoke — ensures the sidecar has the function
-        try {
-            log.info(">>> Deploying {}:{} (id={})", projectId, name, fn.getId());
-            deployToSidecar(fn);
-            log.info(">>> Deploy OK for {}:{}", projectId, name);
-        } catch (Exception e) {
-            log.warn(">>> Deploy FAILED for {}:{}, proceeding anyway: {}", projectId, name, e.getMessage());
-        }
+        // Always deploy before invoke to keep sidecar in sync
+        deployToSidecar(fn);
 
         FunctionInvokeResponse response = functionInvoker.invoke(projectId, name, req);
 
@@ -178,66 +146,9 @@ public class FunctionService {
     }
 
     // ============================================================
-    // Startup Recovery
-    // ============================================================
-
-    /** On startup: wait for sidecar to be healthy, then sync all functions */
-    void onStart(@Observes StartupEvent event) {
-        log.info("Starting function recovery: waiting for sidecar to be healthy...");
-
-        if (!waitForSidecar()) {
-            log.warn("Sidecar not available after waiting; skipping startup function recovery. "
-                + "Functions will be deployed on next manual deploy action.");
-            return;
-        }
-
-        log.info("Sidecar is healthy, syncing functions...");
-        int success = 0;
-        int failed = 0;
-
-        String projectId = "dev_test";
-        try {
-            List<Function> functions = functionRepository.find(projectId, Expressions.TRUE, 1, 1000);
-            for (Function fn : functions) {
-                try {
-                    deployToSidecar(fn);
-                    success++;
-                } catch (Exception e) {
-                    failed++;
-                    log.error("Startup deploy failed: {}:{}", projectId, fn.getName(), e);
-                }
-            }
-            log.info("Function recovery complete: {} success, {} failed", success, failed);
-        } catch (Exception e) {
-            log.warn("Function startup recovery encountered an error", e);
-        }
-    }
-
-    /** Wait up to 30 seconds for the sidecar to become healthy */
-    private boolean waitForSidecar() {
-        int maxRetries = 30;
-        for (int i = 0; i < maxRetries; i++) {
-            if (functionInvoker.healthCheck()) {
-                return true;
-            }
-            if (i == 0) {
-                log.info("Sidecar not ready, waiting (up to {}s)...", maxRetries);
-            }
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return false;
-            }
-        }
-        return false;
-    }
-
-    // ============================================================
     // Private Helpers
     // ============================================================
 
-    /** Deploy function source files to Deno sidecar */
     private void deployToSidecar(Function fn) {
         Map<String, String> sourceFiles = objectMapper.convertValue(
             fn.getSourceFiles(), new TypeReference<Map<String, String>>() {});

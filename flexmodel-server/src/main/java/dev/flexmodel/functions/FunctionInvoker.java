@@ -117,22 +117,4 @@ public class FunctionInvoker {
         }
     }
 
-    /**
-     * Check if the sidecar is healthy.
-     */
-    public boolean healthCheck() {
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl() + "/health"))
-                .GET()
-                .timeout(Duration.ofSeconds(5))
-                .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            return response.statusCode() == 200;
-        } catch (Exception e) {
-            log.debug("Sidecar health check failed: {}", e.getMessage());
-            return false;
-        }
-    }
 }

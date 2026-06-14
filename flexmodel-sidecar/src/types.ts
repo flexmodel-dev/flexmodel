@@ -52,6 +52,14 @@ export interface LogEntry {
   data?: unknown;
 }
 
+// ---- Batch Operation (for SDK data.batch) ----
+
+export interface BatchOp {
+  op: string;
+  model: string;
+  params?: Record<string, unknown>;
+}
+
 // ---- Worker Messages ----
 
 export type WorkerOutMessage =

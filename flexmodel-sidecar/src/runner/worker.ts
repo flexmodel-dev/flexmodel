@@ -62,7 +62,6 @@ async function executeInWorker(
           env: false,
           run: false,
           ffi: false,
-          hrtime: false,
         },
       },
     });
@@ -73,7 +72,7 @@ async function executeInWorker(
 
   return new Promise((resolve, reject) => {
     const startTime = performance.now();
-    const collectedLogs: Array<{ level: string; message: string; data?: unknown }> = [];
+    const collectedLogs: Array<{ level: "info" | "warn" | "error"; message: string; data?: unknown }> = [];
 
     // 2. Timeout enforcement
     const timer = setTimeout(() => {

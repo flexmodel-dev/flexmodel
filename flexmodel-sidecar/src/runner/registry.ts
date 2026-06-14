@@ -1,16 +1,15 @@
 // ============================================================
-// Function Registry — In-memory metadata cache with disk persistence
+// Function Registry — In-memory metadata cache
 //
 // - deploy() writes source files to disk + stores metadata
 // - delete() removes metadata + disk directory
 // - Key: "projectId:name"
-// - Persists metadata to JSON file so functions survive sidecar restarts
+// - Deploy-before-invoke pattern ensures consistency with Java server
 // ============================================================
 
 import type { DeployRequest, FunctionMeta } from "../types.ts";
 
 const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions";
-const REGISTRY_FILE = `${FUNCTIONS_DIR}/_registry.json`;
 
 // ---- Wrapper Code Generator ----
 
@@ -114,58 +113,6 @@ function buildContext(callbackUrl) {
 class Registry {
   private functions = new Map<string, FunctionMeta>();  // key: "projectId:name"
 
-  // ============================================================
-  // Persistence
-  // ============================================================
-
-  /** Persist current registry state to JSON file */
-  private async persist(): Promise<void> {
-    try {
-      await Deno.mkdir(FUNCTIONS_DIR, { recursive: true });
-      const data: Record<string, FunctionMeta> = {};
-      for (const [key, meta] of this.functions) {
-        data[key] = meta;
-      }
-      await Deno.writeTextFile(REGISTRY_FILE, JSON.stringify(data, null, 2));
-    } catch (err) {
-      console.error("[registry] Failed to persist registry:", err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  /** Restore registry state from JSON file on startup */
-  async restore(): Promise<void> {
-    try {
-      const raw = await Deno.readTextFile(REGISTRY_FILE);
-      const data = JSON.parse(raw) as Record<string, FunctionMeta>;
-      let restored = 0;
-      let stale = 0;
-
-      for (const [key, meta] of Object.entries(data)) {
-        // Verify the function directory still exists (may have been cleaned)
-        try {
-          await Deno.stat(meta.functionDir);
-          this.functions.set(key, meta);
-          restored++;
-        } catch {
-          stale++;
-          console.log(`[registry] Skipping stale entry: ${key} (directory not found: ${meta.functionDir})`);
-        }
-      }
-
-      console.log(`[registry] Restored ${restored} functions from disk${stale > 0 ? `, ${stale} stale skipped` : ""}`);
-    } catch (err) {
-      if (err instanceof Deno.errors.NotFound) {
-        console.log("[registry] No persisted registry found — starting fresh");
-      } else {
-        console.error("[registry] Failed to restore registry:", err instanceof Error ? err.message : String(err));
-      }
-    }
-  }
-
-  // ============================================================
-  // CRUD
-  // ============================================================
-
   /** Deploy: write source files to disk + generate wrapper + store metadata */
   async deploy(req: DeployRequest): Promise<void> {
     const rawDir = `${FUNCTIONS_DIR}/${req.projectId}/${req.functionId}`;
@@ -191,7 +138,7 @@ class Registry {
     // Generate wrapper
     await Deno.writeTextFile(`${functionDir}/_worker_wrapper.ts`, generateWrapperCode());
 
-    // Store metadata — entryUrl must use forward slashes for file:// URL
+    // Store metadata
     const entryUrl = `file:///${functionDir.replace(/\\/g, "/")}/_worker_wrapper.ts`;
     const key = `${req.projectId}:${req.name}`;
     this.functions.set(key, {
@@ -203,10 +150,7 @@ class Registry {
       entryUrl,
     });
 
-    console.log(`[registry] Deployed function: ${key} → ${functionDir}`);
-
-    // Persist to disk
-    await this.persist();
+    console.log(`[registry] Deployed: ${key}`);
   }
 
   /** Get function metadata */
@@ -226,14 +170,10 @@ class Registry {
     if (meta) {
       try { await Deno.remove(meta.functionDir, { recursive: true }); } catch { /* ignore */ }
       this.functions.delete(key);
-      console.log(`[registry] Removed function: ${key}`);
-
-      // Persist to disk
-      await this.persist();
+      console.log(`[registry] Removed: ${key}`);
     }
   }
 
-  /** Get count of registered functions */
   get size(): number {
     return this.functions.size;
   }

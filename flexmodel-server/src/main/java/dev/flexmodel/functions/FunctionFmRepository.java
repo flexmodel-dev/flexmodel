@@ -29,13 +29,13 @@ public class FunctionFmRepository extends AbstractRepository implements Function
     }
 
     @Override
-    public Function findBySlug(String projectId, String slug) {
+    public Function findByName(String projectId, String name) {
         try (Session session = getProjectSession(projectId)) {
             return session.dsl()
                 .select()
                 .from(Function.class)
                 .where(field(Function::getProjectId).eq(projectId)
-                    .and(field(Function::getSlug).eq(slug)))
+                    .and(field(Function::getName).eq(name)))
                 .executeOne();
         }
     }

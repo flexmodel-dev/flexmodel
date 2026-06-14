@@ -251,14 +251,13 @@ model f_function {
   id : String @id @default(uuid()),
   project_id : String @comment("所属项目ID"),
   name : String @comment("函数名称"),
-  slug : String @comment("函数标识符(URL安全)"),
   source_files : String @comment("函数源代码(JSON: 文件名→内容)"),
   timeout : Int @default("30") @comment("超时时间(秒)"),
   created_by? : String @comment("创建人"),
   updated_by? : String @comment("更新人"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_FUNCTION_PROJECT_SLUG", unique: true, fields: [project_id, slug]),
+  @index(name: "IDX_FUNCTION_PROJECT_NAME", unique: true, fields: [project_id, name]),
   @index(name: "IDX_FUNCTION_PROJECT", unique: false, fields: [project_id]),
   @comment("云函数(项目级资源)")
 }

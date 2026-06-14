@@ -79,11 +79,11 @@ public class FunctionInvoker {
     /**
      * Invoke a function via the Deno sidecar.
      */
-    public FunctionInvokeResponse invoke(String projectId, String slug, FunctionInvokeRequest req) {
+    public FunctionInvokeResponse invoke(String projectId, String name, FunctionInvokeRequest req) {
         try {
             String json = objectMapper.writeValueAsString(req);
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl() + "/functions/" + projectId + "/" + slug + "/invoke"))
+                .uri(URI.create(baseUrl() + "/functions/" + projectId + "/" + name + "/invoke"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .timeout(Duration.ofSeconds(60))
@@ -92,7 +92,7 @@ public class FunctionInvoker {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             return objectMapper.readValue(response.body(), FunctionInvokeResponse.class);
         } catch (IOException | InterruptedException e) {
-            log.error("Failed to invoke function: {}:{}", projectId, slug, e);
+            log.error("Failed to invoke function: {}:{}", projectId, name, e);
             throw new RuntimeException("Failed to invoke function: " + e.getMessage(), e);
         }
     }
@@ -100,19 +100,19 @@ public class FunctionInvoker {
     /**
      * Delete a function from the Deno sidecar.
      */
-    public boolean delete(String projectId, String slug) {
+    public boolean delete(String projectId, String name) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl() + "/functions/" + projectId + "/" + slug))
+                .uri(URI.create(baseUrl() + "/functions/" + projectId + "/" + name))
                 .DELETE()
                 .timeout(Duration.ofSeconds(10))
                 .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            log.info("Deleted function from sidecar: {}:{} status={}", projectId, slug, response.statusCode());
+            log.info("Deleted function from sidecar: {}:{} status={}", projectId, name, response.statusCode());
             return response.statusCode() >= 200 && response.statusCode() < 300;
         } catch (Exception e) {
-            log.warn("Failed to delete function from sidecar: {}:{}", projectId, slug, e);
+            log.warn("Failed to delete function from sidecar: {}:{}", projectId, name, e);
             return false;
         }
     }

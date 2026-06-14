@@ -16,7 +16,6 @@ public class FunctionResponse {
     private String id;
     private String projectId;
     private String name;
-    private String slug;
     private String sourceFiles;
     private int timeout;
     private String createdBy;
@@ -29,7 +28,6 @@ public class FunctionResponse {
             .id(fn.getId())
             .projectId(fn.getProjectId())
             .name(fn.getName())
-            .slug(fn.getSlug())
             .sourceFiles(fn.getSourceFiles())
             .timeout(fn.getTimeout() != null ? fn.getTimeout() : 30)
             .createdBy(fn.getCreatedBy())

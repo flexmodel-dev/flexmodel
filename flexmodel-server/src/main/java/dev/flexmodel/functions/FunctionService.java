@@ -41,15 +41,14 @@ public class FunctionService {
     // ============================================================
 
     /** Deploy (upsert) a function: save DB → deploy to Deno */
-    public FunctionResponse deploy(String projectId, String slug, FunctionDeployRequest req) {
-        Function fn = functionRepository.findBySlug(projectId, slug);
+    public FunctionResponse deploy(String projectId, String name, FunctionDeployRequest req) {
+        Function fn = functionRepository.findByName(projectId, name);
         boolean isNew = (fn == null);
 
         if (isNew) {
             fn = new Function();
             fn.setProjectId(projectId);
-            fn.setSlug(slug);
-            fn.setName(req.getName());
+            fn.setName(name);
             fn.setTimeout(req.getTimeout() != null ? req.getTimeout() : 30);
             fn.setCreatedAt(LocalDateTime.now());
         } else {
@@ -70,38 +69,38 @@ public class FunctionService {
         fn.setUpdatedAt(LocalDateTime.now());
 
         functionRepository.save(projectId, fn);
-        log.info("Function {}: {}:{}", isNew ? "created" : "updated", projectId, slug);
+        log.info("Function {}: {}:{}", isNew ? "created" : "updated", projectId, name);
 
         // Deploy to Deno sidecar
         try {
             deployToSidecar(fn);
         } catch (Exception e) {
-            log.error("Deploy failed for function: {}:{}", projectId, slug, e);
+            log.error("Deploy failed for function: {}:{}", projectId, name, e);
         }
 
         return FunctionResponse.from(fn);
     }
 
     /** Delete a function: delete from Deno → delete from DB */
-    public void delete(String projectId, String slug) {
-        Function fn = functionRepository.findBySlug(projectId, slug);
+    public void delete(String projectId, String name) {
+        Function fn = functionRepository.findByName(projectId, name);
         if (fn == null) {
-            throw new FunctionException("Function not found: " + slug);
+            throw new FunctionException("Function not found: " + name);
         }
 
         // Delete from Deno sidecar
-        functionInvoker.delete(projectId, slug);
+        functionInvoker.delete(projectId, name);
 
         // Delete from DB
         functionRepository.deleteById(projectId, fn.getId());
-        log.info("Function deleted: {}:{}", projectId, slug);
+        log.info("Function deleted: {}:{}", projectId, name);
     }
 
     /** Get function detail */
-    public FunctionResponse findById(String projectId, String slug) {
-        Function fn = functionRepository.findBySlug(projectId, slug);
+    public FunctionResponse findByName(String projectId, String name) {
+        Function fn = functionRepository.findByName(projectId, name);
         if (fn == null) {
-            throw new FunctionException("Function not found: " + slug);
+            throw new FunctionException("Function not found: " + name);
         }
         return FunctionResponse.from(fn);
     }
@@ -131,20 +130,20 @@ public class FunctionService {
     // ============================================================
 
     /** Invoke a function via the Deno sidecar */
-    public FunctionInvokeResponse invoke(String projectId, String slug,
+    public FunctionInvokeResponse invoke(String projectId, String name,
                                           FunctionInvokeRequest req) {
-        Function fn = functionRepository.findBySlug(projectId, slug);
+        Function fn = functionRepository.findByName(projectId, name);
         if (fn == null) {
-            throw new FunctionException("Function not found: " + slug);
+            throw new FunctionException("Function not found: " + name);
         }
 
-        FunctionInvokeResponse response = functionInvoker.invoke(projectId, slug, req);
+        FunctionInvokeResponse response = functionInvoker.invoke(projectId, name, req);
 
         if (response.getMeta() != null) {
-            log.info("Function {} executed in {}ms", slug, response.getMeta().getExecutionTimeMs());
+            log.info("Function {} executed in {}ms", name, response.getMeta().getExecutionTimeMs());
             if (response.getMeta().getLogs() != null) {
                 for (FunctionInvokeResponse.LogEntry entry : response.getMeta().getLogs()) {
-                    log.info("[fn:{}][{}] {}", slug, entry.getLevel(), entry.getMessage());
+                    log.info("[fn:{}][{}] {}", name, entry.getLevel(), entry.getMessage());
                 }
             }
         }
@@ -171,7 +170,7 @@ public class FunctionService {
                     success++;
                 } catch (Exception e) {
                     failed++;
-                    log.error("Startup deploy failed: {}:{}", projectId, fn.getSlug(), e);
+                    log.error("Startup deploy failed: {}:{}", projectId, fn.getName(), e);
                 }
             }
             log.info("Function recovery complete: {} success, {} failed", success, failed);
@@ -197,7 +196,7 @@ public class FunctionService {
         SidecarDeployRequest deployReq = SidecarDeployRequest.builder()
             .projectId(fn.getProjectId())
             .functionId(fn.getId())
-            .name(fn.getSlug())
+            .name(fn.getName())
             .sourceFiles(sourceFiles)
             .timeout(fn.getTimeout() != null ? fn.getTimeout() : 30)
             .build();

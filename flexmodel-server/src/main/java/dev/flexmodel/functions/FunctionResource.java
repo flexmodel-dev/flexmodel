@@ -38,17 +38,17 @@ public class FunctionResource {
     }
 
     @GET
-    @Path("/{slug}")
+    @Path("/{name}")
     public FunctionResponse get(@PathParam("projectId") String projectId,
-                                 @PathParam("slug") String slug) {
-        return functionService.findById(projectId, slug);
+                                 @PathParam("name") String name) {
+        return functionService.findByName(projectId, name);
     }
 
     @DELETE
-    @Path("/{slug}")
+    @Path("/{name}")
     public void delete(@PathParam("projectId") String projectId,
-                       @PathParam("slug") String slug) {
-        functionService.delete(projectId, slug);
+                       @PathParam("name") String name) {
+        functionService.delete(projectId, name);
     }
 
     // ============================================================
@@ -59,11 +59,11 @@ public class FunctionResource {
      * Deploy (upsert) a function: create if not exists, update if exists.
      */
     @POST
-    @Path("/{slug}/deploy")
+    @Path("/{name}/deploy")
     public FunctionResponse deploy(@PathParam("projectId") String projectId,
-                                    @PathParam("slug") String slug,
+                                    @PathParam("name") String name,
                                     FunctionDeployRequest request) {
-        return functionService.deploy(projectId, slug, request);
+        return functionService.deploy(projectId, name, request);
     }
 
     // ============================================================
@@ -71,10 +71,10 @@ public class FunctionResource {
     // ============================================================
 
     @POST
-    @Path("/{slug}/invoke")
+    @Path("/{name}/invoke")
     public FunctionInvokeResponse invoke(@PathParam("projectId") String projectId,
-                                          @PathParam("slug") String slug,
+                                          @PathParam("name") String name,
                                           FunctionInvokeRequest request) {
-        return functionService.invoke(projectId, slug, request);
+        return functionService.invoke(projectId, name, request);
     }
 }

@@ -12,7 +12,7 @@ public interface FunctionRepository {
 
     Function findById(String projectId, String id);
 
-    Function findBySlug(String projectId, String slug);
+    Function findByName(String projectId, String name);
 
     Function save(String projectId, Function function);
 

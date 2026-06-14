@@ -1,6 +1,5 @@
 package dev.flexmodel.functions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.flexmodel.codegen.entity.Function;
@@ -60,12 +59,8 @@ public class FunctionService {
             }
         }
 
-        // Serialize sourceFiles to JSON string
-        try {
-            fn.setSourceFiles(objectMapper.writeValueAsString(req.getSourceFiles()));
-        } catch (JsonProcessingException e) {
-            throw new FunctionException("Failed to serialize source files", e);
-        }
+        // sourceFiles is JSON type — pass Map directly, engine handles serialization
+        fn.setSourceFiles(req.getSourceFiles());
         fn.setUpdatedAt(LocalDateTime.now());
 
         functionRepository.save(projectId, fn);
@@ -185,13 +180,8 @@ public class FunctionService {
 
     /** Deploy function source files to Deno sidecar */
     private void deployToSidecar(Function fn) {
-        Map<String, String> sourceFiles;
-        try {
-            sourceFiles = objectMapper.readValue(fn.getSourceFiles(),
-                new TypeReference<Map<String, String>>() {});
-        } catch (Exception e) {
-            throw new FunctionException("Failed to parse source files", e);
-        }
+        Map<String, String> sourceFiles = objectMapper.convertValue(
+            fn.getSourceFiles(), new TypeReference<Map<String, String>>() {});
 
         SidecarDeployRequest deployReq = SidecarDeployRequest.builder()
             .projectId(fn.getProjectId())

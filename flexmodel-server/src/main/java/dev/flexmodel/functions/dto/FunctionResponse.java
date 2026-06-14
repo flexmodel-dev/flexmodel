@@ -16,7 +16,7 @@ public class FunctionResponse {
     private String id;
     private String projectId;
     private String name;
-    private String sourceFiles;
+    private Object sourceFiles;
     private int timeout;
     private String createdBy;
     private String updatedBy;

@@ -72,7 +72,7 @@ public class DefinitionProcessor {
       flowDefinitionPO.setFlowModuleId(flowModuleId);
       flowDefinitionPO.setStatus(FlowDefinitionStatus.INIT);
 
-      int rows = flowDefinitionRepository.insert(flowDefinitionPO);
+      int rows = flowDefinitionRepository.insert(createFlowParam.getProjectId(), flowDefinitionPO);
       if (rows != 1) {
         LOGGER.warn("create flow failed: insert to db failed.||createFlowParam={}", createFlowParam);
         throw new DefinitionException(ErrorEnum.DEFINITION_INSERT_INVALID);
@@ -94,7 +94,7 @@ public class DefinitionProcessor {
       FlowDefinition flowDefinitionPO = JsonUtils.convertValue(updateFlowParam, FlowDefinition.class);
       flowDefinitionPO.setStatus(FlowDefinitionStatus.EDITING);
 
-      int rows = flowDefinitionRepository.updateByModuleId(flowDefinitionPO);
+      int rows = flowDefinitionRepository.updateByModuleId(updateFlowParam.getProjectId(), flowDefinitionPO);
       if (rows != 1) {
         LOGGER.warn("update flow failed: update to db failed.||updateFlowParam={}", updateFlowParam);
         throw new DefinitionException(ErrorEnum.DEFINITION_UPDATE_INVALID);
@@ -119,7 +119,7 @@ public class DefinitionProcessor {
     }
     flowDefinition.setIsDeleted(true);
     flowDefinition.setModifyTime(LocalDateTime.now());
-    flowDefinitionRepository.updateByModuleId(flowDefinition);
+    flowDefinitionRepository.updateByModuleId(projectId, flowDefinition);
   }
 
   public DeployFlowResult deploy(DeployFlowParam deployFlowParam) {
@@ -149,7 +149,7 @@ public class DefinitionProcessor {
       flowDeploymentPO.setFlowDeployId(flowDeployId);
       flowDeploymentPO.setStatus(FlowDeploymentStatus.DEPLOYED);
 
-      int rows = flowDeploymentRepository.insert(flowDeploymentPO);
+      int rows = flowDeploymentRepository.insert(deployFlowParam.getProjectId(), flowDeploymentPO);
       if (rows != 1) {
         LOGGER.warn("deploy flow failed: insert to db failed.||deployFlowParam={}", deployFlowParam);
         throw new DefinitionException(ErrorEnum.DEFINITION_INSERT_INVALID);

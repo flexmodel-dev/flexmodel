@@ -19,7 +19,7 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
       return session.dsl()
         .select()
         .from(Trigger.class)
-        .where(field(Trigger::getProjectId).eq(projectId).and(field(Trigger::getId).eq(id)))
+        .where(field(Trigger::getId).eq(id))
         .executeOne();
     }
   }
@@ -40,7 +40,7 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
     try (Session session = getProjectSession(projectId)) {
       session.dsl()
         .deleteFrom(Trigger.class)
-        .where(field(Trigger::getProjectId).eq(projectId).and(field(Trigger::getId).eq(id)))
+        .where(field(Trigger::getId).eq(id))
         .execute();
     }
   }
@@ -51,7 +51,7 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
       return session.dsl()
         .select()
         .from(Trigger.class)
-        .where(field(Trigger::getProjectId).eq(projectId).and(filter))
+        .where(filter)
         .page(page, size)
         .orderByDesc(Trigger::getCreatedAt)
         .execute();
@@ -64,7 +64,7 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
       return session.dsl()
         .select()
         .from(Trigger.class)
-        .where(field(Trigger::getProjectId).eq(projectId).and(filter))
+        .where(filter)
         .count();
     }
   }

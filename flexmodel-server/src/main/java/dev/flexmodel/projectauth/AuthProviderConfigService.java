@@ -25,7 +25,6 @@ public class AuthProviderConfigService {
   }
 
   public AuthProviderConfig create(String projectId, AuthProviderConfig config) {
-    config.setProjectId(projectId);
     return authProviderConfigRepository.save(config);
   }
 
@@ -35,7 +34,6 @@ public class AuthProviderConfigService {
       throw new IllegalArgumentException("Auth provider not found: " + name);
     }
     config.setName(name);
-    config.setProjectId(projectId);
     config.setCreatedAt(existing.getCreatedAt());
     return authProviderConfigRepository.save(config);
   }

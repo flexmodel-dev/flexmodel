@@ -39,8 +39,8 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public NodeInstance selectByNodeInstanceId(String projectId, String flowInstanceId, String nodeInstanceId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
-          .and(field(NodeInstance::getNodeInstanceId).eq(nodeInstanceId))))
+        .where(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
+          .and(field(NodeInstance::getNodeInstanceId).eq(nodeInstanceId)))
         .executeOne();
     }
   }
@@ -49,9 +49,9 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public NodeInstance selectBySourceInstanceId(String projectId, String flowInstanceId, String sourceNodeInstanceId, String nodeKey) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
+        .where(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
           .and(field(NodeInstance::getSourceNodeInstanceId).eq(sourceNodeInstanceId))
-          .and(field(NodeInstance::getNodeKey).eq(nodeKey))))
+          .and(field(NodeInstance::getNodeKey).eq(nodeKey)))
         .executeOne();
     }
   }
@@ -60,7 +60,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public NodeInstance selectRecentOne(String projectId, String flowInstanceId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)))
+        .where(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId))
         .orderByDesc(NodeInstance::getId)
         .limit(1)
         .executeOne();
@@ -71,8 +71,8 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public NodeInstance selectRecentActiveOne(String projectId, String flowInstanceId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
-          .and(field(NodeInstance::getStatus).eq(NodeInstanceStatus.ACTIVE))))
+        .where(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
+          .and(field(NodeInstance::getStatus).eq(NodeInstanceStatus.ACTIVE)))
         .orderByDesc(NodeInstance::getId)
         .limit(1)
         .executeOne();
@@ -83,8 +83,8 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public NodeInstance selectRecentCompletedOne(String projectId, String flowInstanceId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
-          .and(field(NodeInstance::getStatus).eq(NodeInstanceStatus.COMPLETED))))
+        .where(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
+          .and(field(NodeInstance::getStatus).eq(NodeInstanceStatus.COMPLETED)))
         .orderByDesc(NodeInstance::getId)
         .limit(1)
         .executeOne();
@@ -104,7 +104,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public List<NodeInstance> selectByFlowInstanceId(String projectId, String flowInstanceId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)))
+        .where(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId))
         .orderBy(NodeInstance::getId)
         .execute();
     }
@@ -114,7 +114,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public List<NodeInstance> selectDescByFlowInstanceId(String projectId, String flowInstanceId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)))
+        .where(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId))
         .orderByDesc(NodeInstance::getId)
         .execute();
     }
@@ -125,7 +125,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
     try (Session session = getProjectSession(projectId)) {
       session.dsl().update(NodeInstance.class)
         .set(NodeInstance::getStatus, status)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getId).eq(nodeInstance.getId())))
+        .where(field(NodeInstance::getId).eq(nodeInstance.getId()))
         .execute();
     }
   }
@@ -134,8 +134,8 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public List<NodeInstance> selectByFlowInstanceIdAndNodeKey(String projectId, String flowInstanceId, String nodeKey) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(field(NodeInstance::getProjectId).eq(projectId).and(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
-          .and(field(NodeInstance::getNodeKey).eq(nodeKey))))
+        .where(field(NodeInstance::getFlowInstanceId).eq(flowInstanceId)
+          .and(field(NodeInstance::getNodeKey).eq(nodeKey)))
         .execute();
     }
   }

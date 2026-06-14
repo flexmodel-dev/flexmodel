@@ -78,7 +78,7 @@ public class FlowExecutor extends RuntimeExecutor {
 
   private FlowInstance saveFlowInstance(RuntimeContext runtimeContext) throws ProcessException {
     FlowInstance flowInstance = buildFlowInstance(runtimeContext);
-    int result = flowInstanceRepository.insert(flowInstance);
+    int result = flowInstanceRepository.insert(runtimeContext.getProjectId(), flowInstance);
     if (result == 1) {
       return flowInstance;
     }
@@ -97,7 +97,6 @@ public class FlowExecutor extends RuntimeExecutor {
     flowInstance.setStatus(FlowInstanceStatus.RUNNING);
     flowInstance.setCreateTime(LocalDateTime.now());
     flowInstance.setModifyTime(LocalDateTime.now());
-    flowInstance.setProjectId(runtimeContext.getProjectId());
     flowInstance.setCaller(runtimeContext.getCaller());
     return flowInstance;
   }
@@ -130,7 +129,6 @@ public class FlowExecutor extends RuntimeExecutor {
     instanceDataPO.setNodeKey("");
     instanceDataPO.setCreateTime(LocalDateTime.now());
     instanceDataPO.setType(InstanceDataType.INIT);
-    instanceDataPO.setProjectId(flowInstancePO.getProjectId());
     return instanceDataPO;
   }
 
@@ -287,7 +285,6 @@ public class FlowExecutor extends RuntimeExecutor {
   private InstanceData buildCommitInstanceData(RuntimeContext runtimeContext, String nodeInstanceId, String nodeKey,
                                                String newInstanceDataId, Map<String, Object> instanceDataMap) {
     InstanceData instanceDataPO = JsonUtils.convertValue(runtimeContext, InstanceData.class);
-    instanceDataPO.setProjectId(runtimeContext.getProjectId());
     instanceDataPO.setNodeInstanceId(nodeInstanceId);
     instanceDataPO.setNodeKey(nodeKey);
     instanceDataPO.setType(InstanceDataType.COMMIT);
@@ -603,10 +600,8 @@ public class FlowExecutor extends RuntimeExecutor {
     }
 
     NodeInstance nodeInstancePO = JsonUtils.convertValue(nodeInstanceBO, NodeInstance.class);
-    nodeInstancePO.setProjectId(runtimeContext.getProjectId());
     nodeInstancePO.setFlowInstanceId(runtimeContext.getFlowInstanceId());
     nodeInstancePO.setFlowDeployId(runtimeContext.getFlowDeployId());
-    nodeInstancePO.setProjectId(runtimeContext.getProjectId());
     nodeInstancePO.setCaller(runtimeContext.getCaller());
     LocalDateTime currentTime = LocalDateTime.now();
     nodeInstancePO.setCreateTime(currentTime);
@@ -618,7 +613,6 @@ public class FlowExecutor extends RuntimeExecutor {
     NodeInstanceLog nodeInstanceLogPO = JsonUtils.convertValue(nodeInstancePO, NodeInstanceLog.class);
     nodeInstanceLogPO.setId(null);
     nodeInstanceLogPO.setType(nodeInstanceType);
-    nodeInstanceLogPO.setProjectId(nodeInstancePO.getProjectId());
     return nodeInstanceLogPO;
   }
 

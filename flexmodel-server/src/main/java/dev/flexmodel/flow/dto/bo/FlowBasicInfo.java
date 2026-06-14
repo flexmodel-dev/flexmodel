@@ -3,7 +3,6 @@ package dev.flexmodel.flow.dto.bo;
 public class FlowBasicInfo {
   private String flowDeployId;
   private String flowModuleId;
-  private String projectId;
   private String caller;
 
   public String getFlowDeployId() {
@@ -22,14 +21,6 @@ public class FlowBasicInfo {
     this.flowModuleId = flowModuleId;
   }
 
-  public String getProjectId() {
-    return projectId;
-  }
-
-  public void setProjectId(String projectId) {
-    this.projectId = projectId;
-  }
-
   public String getCaller() {
     return caller;
   }
@@ -43,7 +34,6 @@ public class FlowBasicInfo {
     return "FlowBasicInfo{" +
            "flowDeployId='" + flowDeployId + '\'' +
            ", flowModuleId='" + flowModuleId + '\'' +
-           ", tenant='" + projectId + '\'' +
            ", caller='" + caller + '\'' +
            '}';
   }

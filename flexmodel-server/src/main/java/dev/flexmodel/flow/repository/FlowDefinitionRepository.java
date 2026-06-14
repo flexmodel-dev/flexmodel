@@ -9,9 +9,9 @@ import java.util.List;
  * @author cjbi
  */
 public interface FlowDefinitionRepository {
-  int insert(FlowDefinition flowDefinition);
+  int insert(String projectId, FlowDefinition flowDefinition);
 
-  int updateByModuleId(FlowDefinition flowDefinition);
+  int updateByModuleId(String projectId, FlowDefinition flowDefinition);
 
   FlowDefinition selectByModuleId(String projectId, String flowModuleId);
 

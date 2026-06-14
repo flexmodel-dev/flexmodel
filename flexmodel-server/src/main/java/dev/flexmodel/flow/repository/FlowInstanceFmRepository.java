@@ -18,14 +18,14 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowInstance.class)
-        .where(field(FlowInstance::getProjectId).eq(projectId).and(field(FlowInstance::getFlowInstanceId).eq(flowInstanceId)))
+        .where(field(FlowInstance::getFlowInstanceId).eq(flowInstanceId))
         .executeOne();
     }
   }
 
   @Override
-  public int insert(FlowInstance flowInstance) {
-    try (Session session = getProjectSession(flowInstance.getProjectId())) {
+  public int insert(String projectId, FlowInstance flowInstance) {
+    try (Session session = getProjectSession(projectId)) {
       return session.dsl().insertInto(FlowInstance.class).values(flowInstance).execute();
     }
   }
@@ -36,7 +36,7 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
       session.dsl()
         .update(FlowInstance.class)
         .set(FlowInstance::getStatus, status)
-        .where(field(FlowInstance::getProjectId).eq(projectId).and(field(FlowInstance::getFlowInstanceId).eq(flowInstanceId)))
+        .where(field(FlowInstance::getFlowInstanceId).eq(flowInstanceId))
         .execute();
     }
   }
@@ -47,7 +47,7 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
       session.dsl()
         .update(FlowInstance.class)
         .set(FlowInstance::getStatus, status)
-        .where(field(FlowInstance::getProjectId).eq(projectId).and(field(FlowInstance::getFlowInstanceId).eq(flowInstance.getFlowInstanceId())))
+        .where(field(FlowInstance::getFlowInstanceId).eq(flowInstance.getFlowInstanceId()))
         .execute();
     }
   }
@@ -57,7 +57,7 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowInstance.class)
-        .where(field(FlowInstance::getProjectId).eq(projectId).and(predicate))
+        .where(predicate)
         .count();
     }
   }
@@ -67,7 +67,7 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowInstance.class)
-        .where(field(FlowInstance::getProjectId).eq(projectId).and(predicate))
+        .where(predicate)
         .page(page, size)
         .orderByDesc(FlowInstance::getCreateTime)
         .execute();

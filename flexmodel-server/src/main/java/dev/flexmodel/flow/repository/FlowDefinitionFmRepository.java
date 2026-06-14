@@ -14,19 +14,19 @@ import static dev.flexmodel.query.Expressions.field;
 public class FlowDefinitionFmRepository extends AbstractRepository implements FlowDefinitionRepository {
 
   @Override
-  public int insert(FlowDefinition flowDefinition) {
-    try (Session session = getProjectSession(flowDefinition.getProjectId())) {
+  public int insert(String projectId, FlowDefinition flowDefinition) {
+    try (Session session = getProjectSession(projectId)) {
       return session.dsl().insertInto(FlowDefinition.class).values(flowDefinition).execute();
     }
   }
 
   @Override
-  public int updateByModuleId(FlowDefinition flowDefinition) {
-    try (Session session = getProjectSession(flowDefinition.getProjectId())) {
+  public int updateByModuleId(String projectId, FlowDefinition flowDefinition) {
+    try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .update(FlowDefinition.class)
         .values(flowDefinition)
-        .where(field(FlowDefinition::getProjectId).eq(flowDefinition.getProjectId()).and(field(FlowDefinition::getFlowModuleId).eq(flowDefinition.getFlowModuleId())))
+        .where(field(FlowDefinition::getFlowModuleId).eq(flowDefinition.getFlowModuleId()))
         .execute();
     }
   }
@@ -36,7 +36,7 @@ public class FlowDefinitionFmRepository extends AbstractRepository implements Fl
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowDefinition.class)
-        .where(field(FlowDefinition::getProjectId).eq(projectId).and(field(FlowDefinition::getFlowModuleId).eq(flowModuleId)))
+        .where(field(FlowDefinition::getFlowModuleId).eq(flowModuleId))
         .executeOne();
     }
   }
@@ -46,7 +46,7 @@ public class FlowDefinitionFmRepository extends AbstractRepository implements Fl
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(FlowDefinition.class)
         .page(page, size)
-        .where(field(FlowDefinition::getProjectId).eq(projectId).and(filter))
+        .where(filter)
         .orderByDesc("id")
         .execute();
     }
@@ -56,7 +56,7 @@ public class FlowDefinitionFmRepository extends AbstractRepository implements Fl
   public long count(String projectId, Predicate filter) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(FlowDefinition.class)
-        .where(field(FlowDefinition::getProjectId).eq(projectId).and(filter))
+        .where(filter)
         .count();
     }
   }

@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.codegen.entity.Trigger;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
+import dev.flexmodel.functions.FunctionService;
+import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventListener;
 import dev.flexmodel.event.EventType;
@@ -29,6 +31,8 @@ public class TriggerDataChangedEventListener implements EventListener {
   TriggerRepository triggerRepository;
   @Inject
   JobExecutionLogService jobExecutionLogService;
+  @Inject
+  FunctionService functionService;
   @Inject
   EventBus eventBus;
 
@@ -70,18 +74,7 @@ public class TriggerDataChangedEventListener implements EventListener {
               // 记录事件触发日志
               String logId = recordEventTriggerLog(trigger, event, "PRE_CHANGE", mutationType);
 
-              // 构建启动流程参数
-              StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
-              startProcessParam.setProjectId(SessionContextHolder.getProjectId());
-              startProcessParam.setUserId(SessionContextHolder.getUserId());
-              startProcessParam.setFlowModuleId(trigger.getJobId());
-              @SuppressWarnings("unchecked")
-              Map<String, Object> variables = event.getNewData();
-              startProcessParam.setVariables(variables);
-              startProcessParam.setEventId(logId);
-              startProcessParam.setStartTime(System.currentTimeMillis());
-
-              eventBus.send("flow.start", startProcessParam);
+              dispatchEventTrigger(trigger, event.getNewData(), logId);
             }
           }
         }
@@ -117,18 +110,9 @@ public class TriggerDataChangedEventListener implements EventListener {
               // 记录事件触发日志
               String logId = recordEventTriggerLog(trigger, event, "POST_CHANGE", mutationType);
 
-              // 构建启动流程参数
-              StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
-              startProcessParam.setProjectId(SessionContextHolder.getProjectId());
-              startProcessParam.setUserId(SessionContextHolder.getUserId());
-              startProcessParam.setFlowModuleId(trigger.getJobId());
-              startProcessParam.setEventId(logId);
-              startProcessParam.setStartTime(System.currentTimeMillis());
-
               @SuppressWarnings("unchecked")
               Map<String, Object> variables = JsonUtils.convertValue(event.getNewData(), Map.class);
-              startProcessParam.setVariables(variables);
-              eventBus.send("flow.start", startProcessParam);
+              dispatchEventTrigger(trigger, variables, logId);
             }
           }
         }
@@ -141,6 +125,35 @@ public class TriggerDataChangedEventListener implements EventListener {
   @Override
   public boolean supports(String eventType) {
     return !eventType.equals(EventType.PRE_QUERY.getValue());
+  }
+
+  /**
+   * 根据触发器任务类型分派执行（流程或云函数）
+   */
+  private void dispatchEventTrigger(Trigger trigger, Object eventData, String logId) {
+    String projectId = SessionContextHolder.getProjectId();
+    if ("FUNCTION".equals(trigger.getJobType())) {
+      FunctionInvokeRequest invokeReq = new FunctionInvokeRequest();
+      invokeReq.setMethod("POST");
+      invokeReq.setBody(Map.of(
+        "triggerId", trigger.getId(),
+        "eventData", eventData,
+        "triggerTime", System.currentTimeMillis()
+      ));
+      functionService.invoke(projectId, trigger.getJobId(), invokeReq);
+    } else {
+      StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
+      startProcessParam.setProjectId(projectId);
+      startProcessParam.setUserId(SessionContextHolder.getUserId());
+      startProcessParam.setFlowModuleId(trigger.getJobId());
+      @SuppressWarnings("unchecked")
+      Map<String, Object> variables = JsonUtils.convertValue(eventData, Map.class);
+      startProcessParam.setVariables(variables);
+      startProcessParam.setEventId(logId);
+      startProcessParam.setStartTime(System.currentTimeMillis());
+
+      eventBus.send("flow.start", startProcessParam);
+    }
   }
 
   /**
@@ -170,7 +183,7 @@ public class TriggerDataChangedEventListener implements EventListener {
         System.currentTimeMillis(),
         System.currentTimeMillis(),
         inputData,
-        trigger.getProjectId()
+        SessionContextHolder.getProjectId()
       );
 
       log.debug("已记录事件触发日志: triggerId={}, phase={}, mutationType={}",

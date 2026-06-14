@@ -7,7 +7,7 @@ import dev.flexmodel.query.Predicate;
  * @author cjbi
  */
 public interface FlowDeploymentRepository {
-  int insert(FlowDeployment flowDeployment);
+  int insert(String projectId, FlowDeployment flowDeployment);
 
   FlowDeployment findByDeployId(String projectId, String flowDeployId);
 

@@ -42,7 +42,7 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
     try (Session session = getProjectSession(projectId)) {
       session.dsl()
         .deleteFrom(JobExecutionLog.class)
-        .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
+        .where(filter)
         .execute();
     }
   }
@@ -52,7 +52,7 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(JobExecutionLog.class)
-        .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
+        .where(filter)
         .page(page, size)
         .orderByDesc(JobExecutionLog::getStartTime)
         .execute();
@@ -64,7 +64,7 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(JobExecutionLog.class)
-        .where(field(JobExecutionLog::getProjectId).eq(projectId).and(filter))
+        .where(filter)
         .count();
     }
   }

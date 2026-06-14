@@ -44,7 +44,6 @@ public class FunctionService {
 
         if (isNew) {
             fn = new Function();
-            fn.setProjectId(projectId);
             fn.setName(name);
             fn.setTimeout(req.getTimeout() != null ? req.getTimeout() : 30);
             fn.setCreatedAt(LocalDateTime.now());
@@ -67,7 +66,7 @@ public class FunctionService {
 
         // Deploy to Deno sidecar
         try {
-            deployToSidecar(fn);
+            deployToSidecar(projectId, fn);
         } catch (Exception e) {
             log.error("Deploy failed for function: {}:{}", projectId, name, e);
         }
@@ -129,7 +128,7 @@ public class FunctionService {
         }
 
         // Always deploy before invoke to keep sidecar in sync
-        deployToSidecar(fn);
+        deployToSidecar(projectId, fn);
 
         FunctionInvokeResponse response = functionInvoker.invoke(projectId, name, req);
 
@@ -149,12 +148,12 @@ public class FunctionService {
     // Private Helpers
     // ============================================================
 
-    private void deployToSidecar(Function fn) {
+    private void deployToSidecar(String projectId, Function fn) {
         Map<String, String> sourceFiles = objectMapper.convertValue(
             fn.getSourceFiles(), new TypeReference<Map<String, String>>() {});
 
         SidecarDeployRequest deployReq = SidecarDeployRequest.builder()
-            .projectId(fn.getProjectId())
+            .projectId(projectId)
             .functionId(fn.getId())
             .name(fn.getName())
             .sourceFiles(sourceFiles)

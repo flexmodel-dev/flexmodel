@@ -18,7 +18,6 @@ public class FlowModuleResponse {
   private String flowKey;
   private Integer status;
   private String remark;
-  private String projectId;
   private String caller;
   private String operator;
   private LocalDateTime modifyTime;
@@ -32,7 +31,6 @@ public class FlowModuleResponse {
     this.flowKey = flowDefinition.getFlowKey();
     this.status = flowDefinition.getStatus();
     this.remark = flowDefinition.getRemark();
-    this.projectId = flowDefinition.getProjectId();
     this.caller = flowDefinition.getCaller();
     this.operator = flowDefinition.getOperator();
     this.modifyTime = flowDefinition.getModifyTime();

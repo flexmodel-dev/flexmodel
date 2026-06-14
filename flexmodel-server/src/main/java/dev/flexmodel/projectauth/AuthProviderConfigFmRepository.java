@@ -21,7 +21,6 @@ public class AuthProviderConfigFmRepository implements AuthProviderConfigReposit
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(AuthProviderConfig.class)
-        .where(field(AuthProviderConfig::getProjectId).eq(projectId))
         .execute();
     }
   }
@@ -31,8 +30,7 @@ public class AuthProviderConfigFmRepository implements AuthProviderConfigReposit
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(AuthProviderConfig.class)
-        .where(field(AuthProviderConfig::getProjectId).eq(projectId)
-          .and(field(AuthProviderConfig::getName).eq(name)))
+        .where(field(AuthProviderConfig::getName).eq(name))
         .executeOne();
     }
   }
@@ -53,8 +51,7 @@ public class AuthProviderConfigFmRepository implements AuthProviderConfigReposit
     try (Session session = sessionFactory.createSession()) {
       session.dsl()
         .deleteFrom(AuthProviderConfig.class)
-        .where(field(AuthProviderConfig::getProjectId).eq(projectId)
-          .and(field(AuthProviderConfig::getName).eq(name)))
+        .where(field(AuthProviderConfig::getName).eq(name))
         .execute();
     }
   }
@@ -64,7 +61,6 @@ public class AuthProviderConfigFmRepository implements AuthProviderConfigReposit
     try (Session session = sessionFactory.createSession()) {
       session.dsl()
         .deleteFrom(AuthProviderConfig.class)
-        .where(field(AuthProviderConfig::getProjectId).eq(projectId))
         .execute();
     }
   }

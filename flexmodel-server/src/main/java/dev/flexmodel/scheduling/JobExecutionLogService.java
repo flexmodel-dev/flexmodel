@@ -33,10 +33,10 @@ public class JobExecutionLogService {
      * @param jobExecutionLog 作业执行日志
      * @return 创建后的作业执行日志
      */
-    public JobExecutionLog create(JobExecutionLog jobExecutionLog) {
+    public JobExecutionLog create(String projectId, JobExecutionLog jobExecutionLog) {
         log.debug("创建作业执行日志: triggerId={}, jobId={}",
             jobExecutionLog.getTriggerId(), jobExecutionLog.getJobId());
-        return jobExecutionLogRepository.save(jobExecutionLog.getProjectId(), jobExecutionLog);
+        return jobExecutionLogRepository.save(projectId, jobExecutionLog);
     }
 
     /**
@@ -55,10 +55,10 @@ public class JobExecutionLogService {
      * @param jobExecutionLog 作业执行日志
      * @return 更新后的作业执行日志
      */
-    public JobExecutionLog update(JobExecutionLog jobExecutionLog) {
+    public JobExecutionLog update(String projectId, JobExecutionLog jobExecutionLog) {
         log.debug("更新作业执行日志: id={}, status={}",
             jobExecutionLog.getId(), jobExecutionLog.getExecutionStatus());
-        return jobExecutionLogRepository.save(jobExecutionLog.getProjectId(), jobExecutionLog);
+        return jobExecutionLogRepository.save(projectId, jobExecutionLog);
     }
 
     /**
@@ -116,11 +116,10 @@ public class JobExecutionLogService {
         log.setFiredTime(firedTime);
         log.setScheduledTime(scheduledTime);
         log.setInputData(inputData);
-        log.setProjectId(projectId);
         log.setRetryCount(0);
         log.setMaxRetryCount(0);
 
-        return create(log);
+        return create(projectId, log);
     }
 
     /**
@@ -138,7 +137,7 @@ public class JobExecutionLogService {
             log.setEndTime(LocalDateTime.now());
             log.setExecutionDuration(executionDuration);
             log.setOutputData(outputData);
-            update(log);
+            update(SessionContextHolder.getProjectId(), log);
         }
     }
 
@@ -159,7 +158,7 @@ public class JobExecutionLogService {
             log.setExecutionDuration(executionDuration);
             log.setErrorMessage(errorMessage);
             log.setErrorStackTrace(errorStackTrace);
-            update(log);
+            update(SessionContextHolder.getProjectId(), log);
         }
     }
 

@@ -91,7 +91,6 @@ public class FlowDefinitionResource {
       )
     )})
   public CreateFlowResult createFlow(@PathParam("projectId") String projectId, CreateFlowParam createFlowParam) {
-    createFlowParam.setProjectId(projectId);
     createFlowParam.setCaller("admin");
     createFlowParam.setOperator("admin");
     return flowDefinitionService.createFlow(createFlowParam);
@@ -125,7 +124,6 @@ public class FlowDefinitionResource {
     @PathParam("flowModuleId") String flowModuleId,
     UpdateFlowParam updateFlowParam) {
     updateFlowParam.setFlowModuleId(flowModuleId);
-    updateFlowParam.setProjectId(projectId);
     updateFlowParam.setCaller(updateFlowParam.getCaller());
     updateFlowParam.setOperator(updateFlowParam.getOperator());
     return flowDefinitionService.updateFlow(updateFlowParam);

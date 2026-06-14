@@ -51,7 +51,6 @@ public class TriggerResource {
   @Operation(summary = "创建触发器")
   @POST
   public Trigger create(@PathParam("projectId") String projectId, Trigger trigger) {
-    trigger.setProjectId(projectId);
     return triggerService.create(projectId, trigger);
   }
 
@@ -60,7 +59,6 @@ public class TriggerResource {
   @Path("/{id}")
   public Trigger update(@PathParam("projectId") String projectId, @PathParam("id") String id, Trigger req) {
     req.setId(id);
-    req.setProjectId(projectId);
     return triggerService.update(projectId, req);
   }
 
@@ -72,7 +70,6 @@ public class TriggerResource {
     if (req.getState() != null) {
       dto.setState(req.getState());
     }
-    dto.setProjectId(projectId);
     return triggerService.update(projectId, dto);
   }
 

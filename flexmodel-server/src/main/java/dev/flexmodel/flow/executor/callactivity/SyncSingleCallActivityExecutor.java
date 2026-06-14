@@ -164,18 +164,16 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
 
   private void saveFlowInstanceMapping(RuntimeContext runtimeContext, String subFlowInstanceId) {
     FlowInstanceMapping flowInstanceMapping = new FlowInstanceMapping();
-    flowInstanceMapping.setProjectId(runtimeContext.getProjectId());
     flowInstanceMapping.setFlowInstanceId(runtimeContext.getFlowInstanceId());
     NodeInstanceBO currentNodeInstance = runtimeContext.getCurrentNodeInstance();
     flowInstanceMapping.setNodeKey(currentNodeInstance.getNodeKey());
     flowInstanceMapping.setNodeInstanceId(currentNodeInstance.getNodeInstanceId());
     flowInstanceMapping.setSubFlowInstanceId(subFlowInstanceId);
     flowInstanceMapping.setType(FlowInstanceMappingType.EXECUTE);
-    flowInstanceMapping.setProjectId(runtimeContext.getProjectId());
     flowInstanceMapping.setCaller(runtimeContext.getCaller());
     flowInstanceMapping.setCreateTime(LocalDateTime.now());
     flowInstanceMapping.setModifyTime(LocalDateTime.now());
-    flowInstanceMappingRepository.insert(flowInstanceMapping);
+    flowInstanceMappingRepository.insert(runtimeContext.getProjectId(), flowInstanceMapping);
   }
 
   private void handleReentrantSubFlowInstance(RuntimeContext runtimeContext, FlowInstanceMapping flowInstanceMappingPO) throws ProcessException {
@@ -274,11 +272,10 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
 
     FlowInstanceMapping newFlowInstanceMappingPO = JsonUtils.convertValue(oldFlowInstanceMappingPO, FlowInstanceMapping.class);
     newFlowInstanceMappingPO.setId(null);
-    newFlowInstanceMappingPO.setProjectId(runtimeContext.getProjectId());
     newFlowInstanceMappingPO.setNodeInstanceId(newNodeInstanceId);
     newFlowInstanceMappingPO.setCreateTime(LocalDateTime.now());
     newFlowInstanceMappingPO.setModifyTime(LocalDateTime.now());
-    flowInstanceMappingRepository.insert(newFlowInstanceMappingPO);
+    flowInstanceMappingRepository.insert(runtimeContext.getProjectId(), newFlowInstanceMappingPO);
   }
 
   /**

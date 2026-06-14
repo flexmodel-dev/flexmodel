@@ -22,8 +22,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
             return session.dsl()
                 .select()
                 .from(Function.class)
-                .where(field(Function::getProjectId).eq(projectId)
-                    .and(field(Function::getId).eq(id)))
+                .where(field(Function::getId).eq(id))
                 .executeOne();
         }
     }
@@ -34,8 +33,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
             return session.dsl()
                 .select()
                 .from(Function.class)
-                .where(field(Function::getProjectId).eq(projectId)
-                    .and(field(Function::getName).eq(name)))
+                .where(field(Function::getName).eq(name))
                 .executeOne();
         }
     }
@@ -56,8 +54,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
         try (Session session = getProjectSession(projectId)) {
             session.dsl()
                 .deleteFrom(Function.class)
-                .where(field(Function::getProjectId).eq(projectId)
-                    .and(field(Function::getId).eq(id)))
+                .where(field(Function::getId).eq(id))
                 .execute();
         }
     }
@@ -68,7 +65,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
             return session.dsl()
                 .select()
                 .from(Function.class)
-                .where(field(Function::getProjectId).eq(projectId).and(filter))
+                .where(filter)
                 .page(page, size)
                 .orderByDesc(Function::getCreatedAt)
                 .execute();
@@ -81,7 +78,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
             return session.dsl()
                 .select()
                 .from(Function.class)
-                .where(field(Function::getProjectId).eq(projectId).and(filter))
+                .where(filter)
                 .count();
         }
     }

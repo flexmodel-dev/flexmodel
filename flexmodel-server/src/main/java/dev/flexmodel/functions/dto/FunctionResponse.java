@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 public class FunctionResponse {
 
     private String id;
-    private String projectId;
     private String name;
     private Object sourceFiles;
     private int timeout;
@@ -26,7 +25,6 @@ public class FunctionResponse {
     public static FunctionResponse from(Function fn) {
         return FunctionResponse.builder()
             .id(fn.getId())
-            .projectId(fn.getProjectId())
             .name(fn.getName())
             .sourceFiles(fn.getSourceFiles())
             .timeout(fn.getTimeout() != null ? fn.getTimeout() : 30)

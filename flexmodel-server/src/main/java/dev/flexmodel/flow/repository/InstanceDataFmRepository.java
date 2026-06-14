@@ -14,8 +14,8 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
   public InstanceData select(String projectId, String flowInstanceId, String instanceDataId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(InstanceData.class)
-        .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getFlowInstanceId).eq(flowInstanceId)
-          .and(field(InstanceData::getInstanceDataId).eq(instanceDataId))))
+        .where(field(InstanceData::getFlowInstanceId).eq(flowInstanceId)
+          .and(field(InstanceData::getInstanceDataId).eq(instanceDataId)))
         .executeOne();
     }
   }
@@ -24,7 +24,7 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
   public InstanceData selectRecentOne(String projectId, String flowInstanceId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(InstanceData.class)
-        .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getFlowInstanceId).eq(flowInstanceId)))
+        .where(field(InstanceData::getFlowInstanceId).eq(flowInstanceId))
         .orderByDesc(InstanceData::getId)
         .limit(1)
         .executeOne();
@@ -43,7 +43,7 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().update(InstanceData.class)
         .values(instanceData)
-        .where(field(InstanceData::getProjectId).eq(projectId).and(field(InstanceData::getId).eq(instanceData.getId())))
+        .where(field(InstanceData::getId).eq(instanceData.getId()))
         .execute();
     }
   }

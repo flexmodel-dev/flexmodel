@@ -12,8 +12,8 @@ import static dev.flexmodel.query.Expressions.field;
 public class FlowDeploymentFmRepository extends AbstractRepository implements FlowDeploymentRepository {
 
   @Override
-  public int insert(FlowDeployment flowDeployment) {
-    try (Session session = getProjectSession(flowDeployment.getProjectId())) {
+  public int insert(String projectId, FlowDeployment flowDeployment) {
+    try (Session session = getProjectSession(projectId)) {
       return session.dsl().insertInto(FlowDeployment.class).values(flowDeployment).execute();
     }
   }
@@ -23,7 +23,7 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowDeployment.class)
-        .where(field(FlowDeployment::getProjectId).eq(projectId).and(field(FlowDeployment::getFlowDeployId).eq(flowDeployId)))
+        .where(field(FlowDeployment::getFlowDeployId).eq(flowDeployId))
         .executeOne();
     }
   }
@@ -33,7 +33,7 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowDeployment.class)
-        .where(field(FlowDeployment::getProjectId).eq(projectId).and(field(FlowDeployment::getFlowModuleId).eq(flowModuleId)))
+        .where(field(FlowDeployment::getFlowModuleId).eq(flowModuleId))
         .orderByDesc(FlowDeployment::getId)
         .limit(1)
         .executeOne();
@@ -44,7 +44,7 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
   public void deleteById(String projectId, Long id) {
     try (Session session = getProjectSession(projectId)) {
       session.dsl().deleteFrom(FlowDeployment.class)
-        .where(field(FlowDeployment::getProjectId).eq(projectId).and(field(FlowDeployment::getId).eq(id)))
+        .where(field(FlowDeployment::getId).eq(id))
         .execute();
     }
   }
@@ -54,7 +54,7 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowDeployment.class)
-        .where(field(FlowDeployment::getProjectId).eq(projectId).and(filter))
+        .where(filter)
         .count();
     }
   }

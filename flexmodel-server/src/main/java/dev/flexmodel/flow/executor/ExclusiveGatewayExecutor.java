@@ -99,7 +99,6 @@ public class ExclusiveGatewayExecutor extends ElementExecutor {
 
   private InstanceData buildHookInstanceData(String instanceDataId, RuntimeContext runtimeContext) {
     InstanceData instanceDataPO = JsonUtils.convertValue(runtimeContext, InstanceData.class);
-    instanceDataPO.setProjectId(runtimeContext.getProjectId());
     instanceDataPO.setInstanceDataId(instanceDataId);
     instanceDataPO.setInstanceData(InstanceDataUtil.getInstanceDataStr(runtimeContext.getInstanceDataMap()));
     instanceDataPO.setNodeInstanceId(runtimeContext.getCurrentNodeInstance().getNodeInstanceId());

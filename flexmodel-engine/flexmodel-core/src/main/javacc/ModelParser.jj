@@ -333,6 +333,34 @@ public class ModelParser {
         return json.toString();
     }
 
+    /**
+     * 反转义字符串中的转义序列（如 \\n、\\\"、\\\\ 等）。
+     * JavaCC 的 STRING_LITERAL token 保留原始转义字符，此方法将其转换为实际字符。
+     */
+    private static String unescapeString(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) {
+                char next = s.charAt(i + 1);
+                switch (next) {
+                    case 'n': sb.append('\n'); i++; break;
+                    case 'r': sb.append('\r'); i++; break;
+                    case 't': sb.append('\t'); i++; break;
+                    case 'b': sb.append('\b'); i++; break;
+                    case 'f': sb.append('\f'); i++; break;
+                    case '"': sb.append('"'); i++; break;
+                    case '\\': sb.append('\\'); i++; break;
+                    case '/': sb.append('/'); i++; break;
+                    default: sb.append(c); break;
+                }
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
     public static void main(String[] args) throws ParseException {
         ModelParser parser = new ModelParser(System.in);
         List ast = parser.CompilationUnit();
@@ -467,7 +495,7 @@ void AnnotationArgument(Annotation ann) : { Object value; Token t; }
 Object AnnotationValue() : { Token t; Object s; }
 {
     LOOKAHEAD(<IDENTIFIER> <LPAREN>) s = FunctionCall() { return s; }
-  | t = <STRING_LITERAL> { return t.image.substring(1, t.image.length()-1); }
+  | t = <STRING_LITERAL> { return unescapeString(t.image.substring(1, t.image.length()-1)); }
   | t = <INTEGER_LITERAL> { return t.image; }
   | t = <TRUE> { return t.image; }
   | t = <FALSE> { return t.image; }
@@ -615,14 +643,14 @@ void SeedPairList(Map<String, Object> map) : { String key; Object value; }
 String SeedKey() : { Token t; }
 {
     t = <IDENTIFIER> { return t.image; }
-  | t = <STRING_LITERAL> { return t.image.substring(1, t.image.length()-1); }
+  | t = <STRING_LITERAL> { return unescapeString(t.image.substring(1, t.image.length()-1)); }
 }
 
 /* 解析种子值，支持多种类型 */
 Object SeedValue() : { Token t; Token t2; Object s; String id; }
 {
     LOOKAHEAD(<IDENTIFIER> <LPAREN>) s = FunctionCall() { return s; }
-  | t = <STRING_LITERAL> { return t.image.substring(1, t.image.length()-1); }
+  | t = <STRING_LITERAL> { return unescapeString(t.image.substring(1, t.image.length()-1)); }
   | LOOKAHEAD(<MINUS> <INTEGER_LITERAL> <DOT>) <MINUS> t = <INTEGER_LITERAL> <DOT> t2 = <INTEGER_LITERAL> { return -Double.parseDouble(t.image + "." + t2.image); }
   | LOOKAHEAD(<MINUS> <INTEGER_LITERAL>) <MINUS> t = <INTEGER_LITERAL> { return -Long.parseLong(t.image); }
   | LOOKAHEAD(<INTEGER_LITERAL> <DOT>) t = <INTEGER_LITERAL> <DOT> t2 = <INTEGER_LITERAL> { return Double.parseDouble(t.image + "." + t2.image); }

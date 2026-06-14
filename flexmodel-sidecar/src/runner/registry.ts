@@ -1,167 +1,179 @@
 // ============================================================
-// Function Registry — In-memory metadata cache + lazy source loading
+// Function Registry — In-memory metadata cache
 //
-// - deploy() stores metadata only (O(1) memory, no sourceCode)
-// - getSourceCode() lazy-loads from Java on first invoke
-// - LRU cache (50MB) for source code to prevent unbounded memory
+// - deploy() writes source files to disk + stores metadata
+// - delete() removes metadata + disk directory
+// - Key: "projectId:name"
 // ============================================================
 
 import type { DeployRequest, FunctionMeta } from "../types.ts";
 
-const JAVA_HOST = Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost";
-const JAVA_PORT = parseInt(Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080");
-const JAVA_BASE = `http://${JAVA_HOST}:${JAVA_PORT}`;
+const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions";
 
-// ---- LRU Cache (simple implementation) ----
+// ---- Wrapper Code Generator ----
 
-class LRUCache<K, V> {
-  private map = new Map<K, V>();
-  private maxBytes: number;
-  private currentBytes = 0;
+function generateWrapperCode(): string {
+  return `
+// Auto-generated wrapper — do not modify manually
+// Worker message loop + SDK build + user module loading
 
-  constructor(maxBytes: number) {
-    this.maxBytes = maxBytes;
+let requestIdCounter = 0;
+const pendingRequests = new Map();
+
+function sendRpcRequest(operation, params) {
+  return new Promise((resolve, reject) => {
+    const requestId = "req_" + (++requestIdCounter);
+    pendingRequests.set(requestId, { resolve, reject });
+    self.postMessage({ type: "sdk-request", data: { requestId, operation, params } });
+  });
+}
+
+self.addEventListener("message", async (e) => {
+  const { type } = e.data;
+
+  if (type === "sdk-response") {
+    const pending = pendingRequests.get(e.data.requestId);
+    if (pending) { pendingRequests.delete(e.data.requestId); pending.resolve(e.data.result); }
+    return;
+  }
+  if (type === "sdk-error") {
+    const pending = pendingRequests.get(e.data.requestId);
+    if (pending) { pendingRequests.delete(e.data.requestId); pending.reject(new Error(e.data.error)); }
+    return;
   }
 
-  get(key: K): V | undefined {
-    if (!this.map.has(key)) return undefined;
-    const value = this.map.get(key)!;
-    // Move to end (most recently used)
-    this.map.delete(key);
-    this.map.set(key, value);
-    return value;
-  }
-
-  set(key: K, value: V, byteSize: number): void {
-    // Evict old entries if needed
-    while (this.currentBytes + byteSize > this.maxBytes && this.map.size > 0) {
-      const firstKey = this.map.keys().next().value;
-      if (firstKey !== undefined) {
-        this.map.delete(firstKey);
-        this.currentBytes = Math.max(0, this.currentBytes - 1024); // approximate
+  if (type === "invoke") {
+    const { request, callbackUrl } = e.data;
+    try {
+      const mod = await import("./index.ts");
+      const handler = mod.default;
+      if (typeof handler !== "function") {
+        self.postMessage({ type: "error", data: { message: "export default is not a function in index.ts" } });
+        return;
       }
-    }
-    if (this.map.has(key)) {
-      this.map.delete(key);
-    }
-    this.map.set(key, value);
-    this.currentBytes += byteSize;
-  }
 
-  has(key: K): boolean {
-    return this.map.has(key);
-  }
+      const ctx = buildContext(callbackUrl);
+      const url = request.url || "http://localhost/function";
+      const req = new Request(url, {
+        method: request.method || "POST",
+        headers: request.headers,
+        body: request.body ? JSON.stringify(request.body) : undefined,
+      });
 
-  delete(key: K): void {
-    if (this.map.has(key)) {
-      this.map.delete(key);
-      this.currentBytes = Math.max(0, this.currentBytes - 1024);
+      const response = await handler(req, ctx);
+      let body = response;
+      let status = 200;
+      let headers = {};
+
+      if (response instanceof Response) {
+        status = response.status;
+        response.headers.forEach((value, key) => { headers[key] = value; });
+        try {
+          body = await response.json();
+        } catch {
+          body = await response.text();
+        }
+      }
+
+      self.postMessage({ type: "result", data: { status, headers, body } });
+    } catch (err) {
+      self.postMessage({ type: "error", data: { message: err instanceof Error ? err.message : String(err) } });
     }
   }
+});
+
+function buildContext(callbackUrl) {
+  return {
+    flexmodel: {
+      data: {
+        find:    (model, params)       => sendRpcRequest("data.find",    { model, params }),
+        findOne: (model, id)           => sendRpcRequest("data.findOne", { model, id }),
+        create:  (model, data)         => sendRpcRequest("data.create",  { model, data }),
+        update:  (model, id, data)     => sendRpcRequest("data.update",  { model, id, data }),
+        delete:  (model, id)           => sendRpcRequest("data.delete",  { model, id }),
+      },
+    },
+    log: {
+      info:  (message, data) => self.postMessage({ type: "log", data: { level: "info",  message, data } }),
+      warn:  (message, data) => self.postMessage({ type: "log", data: { level: "warn",  message, data } }),
+      error: (message, data) => self.postMessage({ type: "log", data: { level: "error", message, data } }),
+    },
+    json: (data, status = 200) =>
+      new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } }),
+    text: (data, status = 200) =>
+      new Response(data, { status, headers: { "content-type": "text/plain" } }),
+  };
+}
+`.trim();
 }
 
 // ---- Registry ----
 
 class Registry {
-  /** Metadata cache: key = "projectId:name" */
-  private meta = new Map<string, FunctionMeta>();
+  private functions = new Map<string, FunctionMeta>();  // key: "projectId:name"
 
-  /** Source code LRU cache: key = "functionId:v{version}", max 50MB */
-  private sourceCache = new LRUCache<string, string>(50 * 1024 * 1024);
+  /** Deploy: write source files to disk + generate wrapper + store metadata */
+  async deploy(req: DeployRequest): Promise<void> {
+    const functionDir = `${FUNCTIONS_DIR}/${req.projectId}/${req.functionId}`;
 
-  /** Get a function's metadata by projectId and name */
-  get(projectId: string, name: string): FunctionMeta | undefined {
-    return this.meta.get(`${projectId}:${name}`);
-  }
+    // Ensure parent directory exists
+    try { await Deno.mkdir(functionDir, { recursive: true }); } catch { /* ignore */ }
 
-  /** Check if a function is registered */
-  has(projectId: string, name: string): boolean {
-    return this.meta.has(`${projectId}:${name}`);
-  }
+    // Clean old directory (for redeploy)
+    try { await Deno.remove(functionDir, { recursive: true }); } catch { /* ignore */ }
+    await Deno.mkdir(functionDir, { recursive: true });
 
-  /** Deploy: store metadata only (no source code in memory) */
-  deploy(req: DeployRequest): void {
+    // Write all user source files (flat structure, no subdirectories)
+    for (const [filename, content] of Object.entries(req.sourceFiles)) {
+      if (filename.includes("/")) {
+        throw new Error(`Subdirectories are not supported: ${filename}`);
+      }
+      await Deno.writeTextFile(`${functionDir}/${filename}`, content);
+    }
+
+    // Generate wrapper
+    await Deno.writeTextFile(`${functionDir}/_worker_wrapper.ts`, generateWrapperCode());
+
+    // Store metadata
+    const entryUrl = `file://${functionDir}/_worker_wrapper.ts`;
     const key = `${req.projectId}:${req.name}`;
-    const existing = this.meta.get(key);
-
-    this.meta.set(key, {
+    this.functions.set(key, {
       id: req.functionId,
       projectId: req.projectId,
       name: req.name,
-      version: req.version,
-      entryPoint: req.entryPoint,
       timeout: req.timeout,
-      memoryLimit: req.memoryLimit,
-      // sourceCode NOT set — lazy loaded on first invoke
+      functionDir,
+      entryUrl,
     });
 
-    console.log(
-      `[registry] Deployed function metadata: ${req.projectId}:${req.name} v${req.version}`,
-    );
-
-    // Invalidate source cache on version update
-    if (existing && existing.version !== req.version) {
-      this.invalidateSourceCache(req.functionId, existing.version);
-    }
+    console.log(`[registry] Deployed function: ${key} → ${functionDir}`);
   }
 
-  /** Delete a function from registry */
-  delete(projectId: string, name: string): void {
+  /** Get function metadata */
+  get(projectId: string, name: string): FunctionMeta | undefined {
+    return this.functions.get(`${projectId}:${name}`);
+  }
+
+  /** Check if function is registered */
+  has(projectId: string, name: string): boolean {
+    return this.functions.has(`${projectId}:${name}`);
+  }
+
+  /** Delete function: remove metadata + disk directory */
+  async delete(projectId: string, name: string): Promise<void> {
     const key = `${projectId}:${name}`;
-    const meta = this.meta.get(key);
+    const meta = this.functions.get(key);
     if (meta) {
-      this.invalidateSourceCache(meta.id, meta.version);
+      try { await Deno.remove(meta.functionDir, { recursive: true }); } catch { /* ignore */ }
+      this.functions.delete(key);
+      console.log(`[registry] Removed function: ${key}`);
     }
-    this.meta.delete(key);
-    console.log(`[registry] Removed function: ${projectId}:${name}`);
-  }
-
-  /** Get source code — lazy loads from Java if not cached */
-  async getSourceCode(meta: FunctionMeta): Promise<string> {
-    // Already loaded in memory
-    if (meta.sourceCode) return meta.sourceCode;
-
-    // Check LRU cache
-    const cacheKey = `${meta.id}:v${meta.version}`;
-    let code = this.sourceCache.get(cacheKey);
-    if (code) {
-      meta.sourceCode = code;
-      return code;
-    }
-
-    // Lazy load from Java
-    const url =
-      `${JAVA_BASE}/internal/functions/${meta.id}/versions/${meta.version}/source`;
-    console.log(`[registry] Lazy loading source: ${cacheKey} from ${url}`);
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(
-        `Failed to load source for ${cacheKey}: HTTP ${res.status}`,
-      );
-    }
-    code = await res.text();
-    const byteSize = new TextEncoder().encode(code).length;
-
-    this.sourceCache.set(cacheKey, code, byteSize);
-    meta.sourceCode = code;
-    return code;
-  }
-
-  /** Invalidate cached source code for a specific version */
-  private invalidateSourceCache(functionId: string, version: number): void {
-    this.sourceCache.delete(`${functionId}:v${version}`);
-  }
-
-  /** Get all registered function keys */
-  keys(): string[] {
-    return [...this.meta.keys()];
   }
 
   /** Get count of registered functions */
   get size(): number {
-    return this.meta.size;
+    return this.functions.size;
   }
 }
 
-// Singleton
 export const registry = new Registry();

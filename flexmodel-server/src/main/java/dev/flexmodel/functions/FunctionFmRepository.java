@@ -85,16 +85,4 @@ public class FunctionFmRepository extends AbstractRepository implements Function
                 .count();
         }
     }
-
-    @Override
-    public List<Function> findByStatus(String projectId, String status) {
-        try (Session session = getProjectSession(projectId)) {
-            return session.dsl()
-                .select()
-                .from(Function.class)
-                .where(field(Function::getProjectId).eq(projectId)
-                    .and(field(Function::getStatus).eq(status)))
-                .execute();
-        }
-    }
 }

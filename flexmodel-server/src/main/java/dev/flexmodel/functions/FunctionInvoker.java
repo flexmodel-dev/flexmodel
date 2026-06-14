@@ -1,8 +1,7 @@
 package dev.flexmodel.functions;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.flexmodel.codegen.entity.Function;
-import dev.flexmodel.functions.dto.FunctionDeployRequest;
+import dev.flexmodel.functions.dto.SidecarDeployRequest;
 import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.functions.dto.FunctionInvokeResponse;
 import jakarta.annotation.PostConstruct;
@@ -52,27 +51,10 @@ public class FunctionInvoker {
     }
 
     /**
-     * Deploy function metadata to Deno sidecar (no source code).
+     * Deploy function source files to Deno sidecar.
      */
-    public boolean deploy(Function fn) {
-        return deploy(fn, fn.getCurrentVersion() != null ? fn.getCurrentVersion() : 1);
-    }
-
-    /**
-     * Deploy function metadata for a specific version.
-     */
-    public boolean deploy(Function fn, int version) {
+    public void deploy(SidecarDeployRequest req) {
         try {
-            FunctionDeployRequest req = FunctionDeployRequest.builder()
-                .projectId(fn.getProjectId())
-                .functionId(fn.getId())
-                .name(fn.getSlug())
-                .version(version)
-                .entryPoint(fn.getEntryPoint() != null ? fn.getEntryPoint() : "default")
-                .timeout(fn.getTimeout() != null ? fn.getTimeout() : 30)
-                .memoryLimit(fn.getMemoryLimit() != null ? fn.getMemoryLimit() : 128)
-                .build();
-
             String json = objectMapper.writeValueAsString(req);
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl() + "/functions/deploy"))
@@ -83,14 +65,13 @@ public class FunctionInvoker {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                log.info("Deployed function to sidecar: {}:{} v{}", fn.getProjectId(), fn.getSlug(), version);
-                return true;
+                log.info("Deployed function to sidecar: {}:{}", req.getProjectId(), req.getName());
             } else {
                 log.error("Deploy failed: HTTP {} body: {}", response.statusCode(), response.body());
-                return false;
+                throw new RuntimeException("Deploy failed: HTTP " + response.statusCode());
             }
-        } catch (Exception e) {
-            log.error("Failed to deploy function to sidecar: {}:{}", fn.getProjectId(), fn.getSlug(), e);
+        } catch (IOException | InterruptedException e) {
+            log.error("Failed to deploy function to sidecar: {}:{}", req.getProjectId(), req.getName(), e);
             throw new RuntimeException("Failed to deploy function to Deno sidecar: " + e.getMessage(), e);
         }
     }
@@ -117,7 +98,7 @@ public class FunctionInvoker {
     }
 
     /**
-     * Delete a function from the Deno sidecar registry.
+     * Delete a function from the Deno sidecar.
      */
     public boolean delete(String projectId, String slug) {
         try {

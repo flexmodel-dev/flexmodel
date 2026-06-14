@@ -2,7 +2,7 @@
 
 ## 一、背景与目标
 
-对标 Supabase Edge Functions，实现 Flexmodel 的云函数能力。用户可编写 TypeScript 函数，部署后在服务端执行。函数可访问 Flexmodel 数据 API，实现自定义业务逻辑、Webhook 等场景。
+对标 Supabase Functions，实现 Flexmodel 的云函数能力。用户可编写 TypeScript 函数，部署后在服务端执行。函数可访问 Flexmodel 数据 API，实现自定义业务逻辑、Webhook 等场景。
 
 **MVP 约定：**
 - 入口文件固定为 `index.ts`，入口函数固定为 `export default`

@@ -1,34 +1,24 @@
 package dev.flexmodel.functions.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import java.util.Map;
 
 /**
- * Deploy request sent from Java → Deno sidecar (metadata only, no sourceCode).
+ * Deploy (upsert) request for cloud functions.
  *
  * @author cjbi
  */
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class FunctionDeployRequest {
 
-    private String projectId;
-
-    @JsonProperty("functionId")
-    private String functionId;
-
+    @NotBlank(message = "函数名称不能为空")
     private String name;
 
-    private int version;
+    @NotNull(message = "源码不能为空")
+    private Map<String, String> sourceFiles;
 
-    private String entryPoint;
-
-    private int timeout;
-
-    private int memoryLimit;
+    private Integer timeout = 30;
 }

@@ -10,25 +10,21 @@ import type { DeployRequest, InvokeRequest } from "../types.ts";
 const router = new Hono();
 
 // ---- POST /functions/deploy ----
-// Register function metadata (no source code — lazy loaded on first invoke)
+// Write source files to disk + generate wrapper + register metadata
 router.post("/functions/deploy", async (c) => {
   try {
     const body: DeployRequest = await c.req.json();
 
-    // Validate required fields
-    if (!body.projectId || !body.name || !body.functionId) {
+    if (!body.projectId || !body.name || !body.functionId || !body.sourceFiles) {
       return c.json(
-        { success: false, error: "Missing required fields: projectId, name, functionId" },
+        { success: false, error: "Missing required fields: projectId, name, functionId, sourceFiles" },
         400,
       );
     }
 
-    registry.deploy(body);
+    await registry.deploy(body);
 
-    return c.json({
-      success: true,
-      name: body.name,
-    });
+    return c.json({ success: true, name: body.name });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[functions] Deploy error:", message);
@@ -37,8 +33,8 @@ router.post("/functions/deploy", async (c) => {
 });
 
 // ---- DELETE /functions/:projectId/:name ----
-// Remove function from registry
-router.delete("/functions/:projectId/:name", (c) => {
+// Remove function from registry + delete disk directory
+router.delete("/functions/:projectId/:name", async (c) => {
   const { projectId, name } = c.req.param();
 
   if (!registry.has(projectId, name)) {
@@ -48,22 +44,19 @@ router.delete("/functions/:projectId/:name", (c) => {
     );
   }
 
-  registry.delete(projectId, name);
+  await registry.delete(projectId, name);
 
   return c.json({ success: true });
 });
 
 // ---- POST /functions/:projectId/:name/invoke ----
-// Invoke a function by creating an isolated Worker
+// Invoke a function by creating an isolated Worker (file:// URL)
 router.post("/functions/:projectId/:name/invoke", async (c) => {
   const { projectId, name } = c.req.param();
 
   if (!registry.has(projectId, name)) {
     return c.json(
-      {
-        success: false,
-        error: `Function not found: ${projectId}:${name}`,
-      },
+      { success: false, error: `Function not found: ${projectId}:${name}` },
       404,
     );
   }
@@ -82,8 +75,6 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     return c.json(result);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-
-    // Determine if it's a timeout error
     const isTimeout = message.includes("timed out");
 
     return c.json(
@@ -91,15 +82,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
         status: isTimeout ? 504 : 500,
         headers: { "content-type": "application/json" },
         body: { error: isTimeout ? "Function execution timed out" : message },
-        _meta: {
-          executionTimeMs: 0,
-          logs: [
-            {
-              level: "error",
-              message,
-            },
-          ],
-        },
+        _meta: { executionTimeMs: 0, logs: [{ level: "error", message }] },
       },
       isTimeout ? 504 : 500,
     );

@@ -9,7 +9,6 @@ import lombok.Data;
 public class FunctionPageRequest {
 
     private String name;
-    private String status;
     private int page = 1;
     private int size = 20;
 }

@@ -1,8 +1,7 @@
 // ============================================================
 // Worker Entry — Runs inside each isolated Deno Worker
 //
-// - Receives invoke message from main process
-// - Dynamically imports the user's function source code
+// - Loaded via file:// URL (wrapper imports user's ./index.ts)
 // - Proxies SDK requests via postMessage back to main process
 // - Returns result (or error) via postMessage
 // ============================================================
@@ -35,7 +34,7 @@ const MAX_LOG_ENTRIES = 100;
 let logCount = 0;
 
 function sendLog(level: string, message: string, data?: unknown): void {
-  if (logCount >= MAX_LOG_ENTRIES) return; // truncate beyond limit
+  if (logCount >= MAX_LOG_ENTRIES) return;
   logCount++;
   self.postMessage({ type: "log", data: { level, message, data } });
 }
@@ -45,10 +44,8 @@ function sendLog(level: string, message: string, data?: unknown): void {
 function buildContext(callbackUrl: string) {
   return {
     flexmodel: {
-      // Generic RPC dispatcher (for future extensibility)
       call: (operation: string, params?: unknown) =>
         sendRpcRequest(operation, params),
-      // Convenience data operations
       data: {
         find: (model: string, params?: unknown) =>
           sendRpcRequest("data.find", { model, params }),
@@ -60,8 +57,6 @@ function buildContext(callbackUrl: string) {
           sendRpcRequest("data.update", { model, id, data }),
         delete: (model: string, id: string) =>
           sendRpcRequest("data.delete", { model, id }),
-        batch: (operations: Array<{ op: string; model: string; params?: unknown }>) =>
-          sendRpcRequest("data.batch", { operations }),
       },
     },
     log: {
@@ -82,11 +77,10 @@ function buildContext(callbackUrl: string) {
         status,
         headers: { "content-type": "text/plain" },
       }),
-    env: {},
   };
 }
 
-// ---- Unified Message Handler ----
+// ---- Message Handler ----
 
 self.addEventListener("message", async (e: MessageEvent) => {
   const { type } = e.data;
@@ -110,26 +104,24 @@ self.addEventListener("message", async (e: MessageEvent) => {
     return;
   }
 
-  // Handle invoke
+  // Handle invoke — load user module via file:// relative import
   if (type === "invoke") {
-    const { sourceCode, entryPoint, request, callbackUrl } = e.data;
+    const { request, callbackUrl } = e.data;
     try {
-      // Dynamically import the user's code as a module
-      const moduleUrl = `data:application/typescript;base64,${btoa(sourceCode)}`;
-      const mod = await import(moduleUrl);
+      // Dynamic import of user's index.ts (relative to this wrapper)
+      const mod = await import("./index.ts");
+      const handler = mod.default;
 
-      const handler = mod[entryPoint];
       if (typeof handler !== "function") {
         self.postMessage({
           type: "error",
-          data: { message: `Entry point "${entryPoint}" is not a function` },
+          data: { message: "export default is not a function in index.ts" },
         });
         return;
       }
 
       const ctx = buildContext(callbackUrl);
 
-      // Build a standard Request object
       const url = request.url || "http://localhost/function";
       const req = new Request(url, {
         method: request.method || "POST",
@@ -139,14 +131,12 @@ self.addEventListener("message", async (e: MessageEvent) => {
 
       const response = await handler(req, ctx);
 
-      // Extract response data
       let body: unknown = response;
       let status = 200;
       let headers: Record<string, string> = {};
 
       if (response instanceof Response) {
         status = response.status;
-        headers = {};
         response.headers.forEach((value, key) => {
           headers[key] = value;
         });

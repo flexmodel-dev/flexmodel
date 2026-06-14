@@ -21,6 +21,4 @@ public interface FunctionRepository {
     List<Function> find(String projectId, Predicate filter, Integer page, Integer size);
 
     long count(String projectId, Predicate filter);
-
-    List<Function> findByStatus(String projectId, String status);
 }

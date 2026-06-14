@@ -8,11 +8,9 @@ export interface FunctionMeta {
   id: string;
   projectId: string;
   name: string;
-  version: number;
-  entryPoint: string;
   timeout: number;
-  memoryLimit: number;
-  sourceCode?: string; // lazy loaded, not populated at deploy time
+  functionDir: string;  // disk directory path
+  entryUrl: string;     // file:// URL pointing to _worker_wrapper.ts
 }
 
 // ---- Deploy Request (from Java → Deno) ----
@@ -21,10 +19,8 @@ export interface DeployRequest {
   projectId: string;
   functionId: string;
   name: string;
-  version: number;
-  entryPoint: string;
+  sourceFiles: Record<string, string>;  // filename → content
   timeout: number;
-  memoryLimit: number;
 }
 
 // ---- Invoke Request (from Java → Deno) ----
@@ -65,18 +61,6 @@ export type WorkerOutMessage =
   | { type: "error"; data: { message: string } };
 
 export type WorkerInMessage =
-  | { type: "invoke"; sourceCode: string; entryPoint: string; request: InvokeRequest; callbackUrl: string }
+  | { type: "invoke"; request: InvokeRequest; callbackUrl: string }
   | { type: "sdk-response"; requestId: string; result: unknown }
   | { type: "sdk-error"; requestId: string; error: string };
-
-// ---- Batch Operation (for SDK batch calls) ----
-
-export interface BatchOp {
-  op: string;
-  model: string;
-  params?: unknown;
-}
-
-// ---- RPC Operation Names ----
-// "data.find", "data.findOne", "data.create", "data.update", "data.delete", "data.batch"
-// Future: "data.exists", "data.count", "data.upsert", "storage.upload", "functions.invoke"

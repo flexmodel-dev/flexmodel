@@ -6,9 +6,13 @@
 // ============================================================
 
 import { createApp } from "./server.ts";
+import { registry } from "./runner/registry.ts";
 
 const PORT = parseInt(Deno.env.get("FLEXMODEL_PORT") ?? "9999");
 const HOSTNAME = Deno.env.get("FLEXMODEL_HOST") ?? "0.0.0.0";
+
+// Restore previously deployed functions from disk
+await registry.restore();
 
 const app = createApp();
 

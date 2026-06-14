@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "exports": "./src/main.ts",
   "tasks": {
-    "dev": "deno run --allow-net=localhost --allow-env --allow-read=/tmp/flexmodel-functions --allow-write=/tmp/flexmodel-functions --unstable-worker-options --watch src/main.ts",
-    "start": "deno run --allow-net=localhost --allow-env --allow-read=/tmp/flexmodel-functions --allow-write=/tmp/flexmodel-functions --unstable-worker-options src/main.ts"
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-worker-options --watch src/main.ts",
+    "start": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-worker-options src/main.ts"
   },
   "imports": {
     "hono": "jsr:@hono/hono@^4.6.0"

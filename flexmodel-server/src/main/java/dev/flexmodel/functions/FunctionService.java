@@ -144,12 +144,23 @@ public class FunctionService {
     // Invocation
     // ============================================================
 
-    /** Invoke a function via the Deno sidecar */
+    /** Invoke a function via the Deno sidecar — deploy first to ensure it's available */
     public FunctionInvokeResponse invoke(String projectId, String name,
                                           FunctionInvokeRequest req) {
+        log.info(">>> INVOKE {}:{} — deploying to sidecar first...", projectId, name);
+
         Function fn = functionRepository.findByName(projectId, name);
         if (fn == null) {
             throw new FunctionException("Function not found: " + name);
+        }
+
+        // Always deploy before invoke — ensures the sidecar has the function
+        try {
+            log.info(">>> Deploying {}:{} (id={})", projectId, name, fn.getId());
+            deployToSidecar(fn);
+            log.info(">>> Deploy OK for {}:{}", projectId, name);
+        } catch (Exception e) {
+            log.warn(">>> Deploy FAILED for {}:{}, proceeding anyway: {}", projectId, name, e.getMessage());
         }
 
         FunctionInvokeResponse response = functionInvoker.invoke(projectId, name, req);

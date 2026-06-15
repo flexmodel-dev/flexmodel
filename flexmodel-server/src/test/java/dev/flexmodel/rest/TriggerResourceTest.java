@@ -4,6 +4,7 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.SQLiteTestResource;
@@ -29,6 +30,8 @@ public class TriggerResourceTest {
   private static final String EVENT_AFTER_TRIGGER_ID = "f351b8d9-a450-4f2c-8fff-cf862d690352";
   private static final String TEST_JOB_ID = "5c41f37a-87a9-47af-bdba-44d0c27eda89";
 
+  private String createdTriggerId;
+
   @BeforeEach
   void setUp() {
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
@@ -49,14 +52,28 @@ public class TriggerResourceTest {
       }
       """.formatted(TEST_JOB_ID);
 
-    given()
+    String triggerId = given()
       .header("Authorization", TestTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(triggerJson)
       .when()
       .post(BASE_PATH)
       .then()
-      .statusCode(200);
+      .statusCode(200)
+      .extract()
+      .path("id");
+    createdTriggerId = triggerId;
+  }
+
+  @AfterEach
+  void tearDown() {
+    if (createdTriggerId != null) {
+      given()
+        .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+        .when()
+        .delete(BASE_PATH + "/" + createdTriggerId);
+      createdTriggerId = null;
+    }
   }
 
   /**

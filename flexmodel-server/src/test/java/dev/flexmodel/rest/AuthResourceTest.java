@@ -63,7 +63,7 @@ class AuthResourceTest {
         """)
       .post(Resources.ROOT_PATH + "/auth/login")
       .then()
-      .statusCode(400); // 或者根据实际业务逻辑返回相应的错误码
+      .statusCode(401); // AuthException maps to 401 Unauthorized
   }
 
   /**
@@ -82,7 +82,7 @@ class AuthResourceTest {
         """)
       .post(Resources.ROOT_PATH + "/auth/login")
       .then()
-      .statusCode(400); // 或者根据实际业务逻辑返回相应的错误码
+      .statusCode(401); // AuthException maps to 401 Unauthorized
   }
 
   /**
@@ -185,7 +185,7 @@ class AuthResourceTest {
       .when()
       .get(Resources.ROOT_PATH + "/auth/whoami")
       .then()
-      .statusCode(400);
+      .statusCode(401); // AuthFilter throws AuthException → 401
   }
 
   /**

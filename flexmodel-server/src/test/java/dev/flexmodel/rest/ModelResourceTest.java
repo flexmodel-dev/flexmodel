@@ -652,7 +652,7 @@ class ModelResourceTest {
       .when()
       .contentType(ContentType.JSON)
       .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/indexes/{indexName}",
-        "testModifyIndexStudent",
+        "testDropIndexStudent",
         "IDX_gender"
       )
       .then()

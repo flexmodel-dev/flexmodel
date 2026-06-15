@@ -306,13 +306,20 @@ public class RuntimeProcessor {
         //build effective userTask instance
         dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
         FlowElement flowElement = FlowModelUtil.getFlowElement(flowElementMap, nodeInstancePO.getNodeKey());
-        nodeInstance.setKey(flowElement.getKey());
-        nodeInstance.setName(FlowModelUtil.getElementName(flowElement));
-        Map<String, Object> props = flowElement.getProperties();
-        if (props != null && !props.isEmpty()) {
-          nodeInstance.setProperties(props);
-        } else {
+        if (flowElement == null) {
+          LOGGER.warn("getHistoryUserTaskList: flowElement not found for nodeKey.||nodeKey={}", nodeInstancePO.getNodeKey());
+          nodeInstance.setKey(nodeInstancePO.getNodeKey());
+          nodeInstance.setName("");
           nodeInstance.setProperties(new HashMap<>());
+        } else {
+          nodeInstance.setKey(flowElement.getKey());
+          nodeInstance.setName(FlowModelUtil.getElementName(flowElement));
+          Map<String, Object> props = flowElement.getProperties();
+          if (props != null && !props.isEmpty()) {
+            nodeInstance.setProperties(props);
+          } else {
+            nodeInstance.setProperties(new HashMap<>());
+          }
         }
         userTaskList.add(nodeInstance);
       }
@@ -434,17 +441,28 @@ public class RuntimeProcessor {
     NodeInstanceResult nodeInstanceResult = new NodeInstanceResult();
     try {
       NodeInstance nodeInstancePO = nodeInstanceService.selectByNodeInstanceId(projectId, flowInstanceId, nodeInstanceId, effectiveForSubFlowInstance);
+      if (nodeInstancePO == null) {
+        LOGGER.warn("getNodeInstance failed: nodeInstancePO is null.||flowInstanceId={}||nodeInstanceId={}", flowInstanceId, nodeInstanceId);
+        throw new ProcessException(ErrorEnum.GET_NODE_INSTANCE_FAILED);
+      }
       String flowDeployId = nodeInstancePO.getFlowDeployId();
       Map<String, FlowElement> flowElementMap = getFlowElementMap(projectId, flowDeployId);
       dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
       FlowElement flowElement = FlowModelUtil.getFlowElement(flowElementMap, nodeInstancePO.getNodeKey());
-      nodeInstance.setKey(flowElement.getKey());
-      nodeInstance.setName(FlowModelUtil.getElementName(flowElement));
-      Map<String, Object> props = flowElement.getProperties();
-      if (props != null && !props.isEmpty()) {
-        nodeInstance.setProperties(props);
-      } else {
+      if (flowElement == null) {
+        LOGGER.warn("getNodeInstance: flowElement not found for nodeKey.||nodeKey={}", nodeInstancePO.getNodeKey());
+        nodeInstance.setKey(nodeInstancePO.getNodeKey());
+        nodeInstance.setName("");
         nodeInstance.setProperties(new HashMap<>());
+      } else {
+        nodeInstance.setKey(flowElement.getKey());
+        nodeInstance.setName(FlowModelUtil.getElementName(flowElement));
+        Map<String, Object> props = flowElement.getProperties();
+        if (props != null && !props.isEmpty()) {
+          nodeInstance.setProperties(props);
+        } else {
+          nodeInstance.setProperties(new HashMap<>());
+        }
       }
       nodeInstanceResult.setNodeInstance(nodeInstance);
       nodeInstanceResult.setErrCode(ErrorEnum.SUCCESS.getErrNo());
@@ -468,6 +486,10 @@ public class RuntimeProcessor {
   }
 
   public InstanceDataListResult packageInstanceDataResult(dev.flexmodel.codegen.entity.InstanceData instanceDataPO) {
+    if (instanceDataPO == null) {
+      LOGGER.warn("packageInstanceDataResult: instanceDataPO is null");
+      return new InstanceDataListResult(ErrorEnum.GET_INSTANCE_DATA_FAILED);
+    }
     Map<String, Object> instanceDataMap = InstanceDataUtil.getInstanceDataMap(instanceDataPO.getInstanceData());
     InstanceDataListResult instanceDataListResult = new InstanceDataListResult(ErrorEnum.SUCCESS);
     instanceDataListResult.setVariables(instanceDataMap);
@@ -577,9 +599,15 @@ public class RuntimeProcessor {
     dev.flexmodel.flow.dto.bo.NodeInstance activeNodeInstance = JsonUtils.convertValue(nodeInstanceBO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
     activeNodeInstance.setKey(nodeInstanceBO.getNodeKey());
     FlowElement flowElement = runtimeContext.getFlowElementMap().get(nodeInstanceBO.getNodeKey());
-    activeNodeInstance.setName(FlowModelUtil.getElementName(flowElement));
-    activeNodeInstance.setProperties(flowElement.getProperties());
-    activeNodeInstance.setFlowElementType(flowElement.getType());
+    if (flowElement == null) {
+      LOGGER.warn("buildActiveTaskInstance: flowElement not found for nodeKey.||nodeKey={}", nodeInstanceBO.getNodeKey());
+      activeNodeInstance.setName("");
+      activeNodeInstance.setProperties(new HashMap<>());
+    } else {
+      activeNodeInstance.setName(FlowModelUtil.getElementName(flowElement));
+      activeNodeInstance.setProperties(flowElement.getProperties());
+      activeNodeInstance.setFlowElementType(flowElement.getType());
+    }
     activeNodeInstance.setSubNodeResultList(runtimeContext.getCallActivityRuntimeResultList());
     return activeNodeInstance;
   }

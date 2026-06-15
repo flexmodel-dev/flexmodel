@@ -333,8 +333,8 @@ public class FmlParserTest {
                 + ", name=" + rec.get("flow_name")
                 + ", flow_model_len=" + fmVal.length());
         }
-        // project.fml 的 f_em_flow_definition 应有 6 条记录（4 JSON + 2 IDL）
-        assertEquals(6, flowDefSeed.records.size(), "Expected 6 flow definition records (4 JSON + 2 IDL)");
+        // project.fml 的 f_em_flow_definition 应有 4 条记录（全 JSON 格式）
+        assertEquals(4, flowDefSeed.records.size(), "Expected 4 flow definition records (all JSON format)");
 
         // 验证所有记录的 flow_model 字段被正确解析
         for (var record : flowDefSeed.records) {

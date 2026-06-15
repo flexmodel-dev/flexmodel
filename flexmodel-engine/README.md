@@ -1,6 +1,6 @@
 # Flexmodel Engine
 
-[![Java](https://img.shields.io/badge/Java-21+-orange.svg)](https://openjdk.java.net/)
+[![Java](https://img.shields.io/badge/Java-25+-orange.svg)](https://openjdk.java.net/)
 [![Maven](https://img.shields.io/badge/Maven-3.6+-blue.svg)](https://maven.apache.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/flexmodel-dev/flexmodel-engine)
@@ -41,7 +41,7 @@ Flexmodel 实现了 Supabase 核心功能的中国化适配与增强：
 ## 🚀 快速开始
 
 ### 环境要求
-- Java 21+
+- Java 25+
 - Maven 3.6+
 - 支持的数据库（MySQL、PostgreSQL、SQLite 等）
 

@@ -50,16 +50,16 @@
     },
     {
       "id": "feat-007",
-      "name": "AI - LangChain4j 智能对话",
-      "description": "集成 LangChain4j，提供 SSE 流式对话能力",
-      "dependencies": ["feat-001", "feat-002"],
+      "name": "MCP Server - AI 工具集成",
+      "description": "基于 Quarkus MCP Server 扩展实现 MCP 协议，通过 @Tool 注解暴露 P0 核心工具（Project/Modeling/Data），支持 AI 客户端直接管理项目、建模和数据",
+      "dependencies": ["feat-001"],
       "status": "done",
-      "evidence": "flexmodel-server/ai 特性包已实现"
+      "evidence": "flexmodel-server/mcp 特性包已实现，15 个 MCP Tools（ProjectTools/ModelingTools/DataTools）已通过编译验证"
     },
     {
       "id": "feat-008",
       "name": "前端 UI 完善",
-      "description": "基于 React + Ant Design v5 的前端界面持续优化和功能完善",
+      "description": "基于 React + Ant Design v6 的前端界面持续优化和功能完善",
       "dependencies": ["feat-002", "feat-003", "feat-004"],
       "status": "in-progress",
       "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中"

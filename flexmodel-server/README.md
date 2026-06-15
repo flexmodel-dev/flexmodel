@@ -4,16 +4,17 @@
 
 ## 🚀 核心特性
 
-- **一站式后端能力**: 集成了身份认证 (Auth)、对象存储 (Storage)、任务调度 (Job) 及服务编排 (Flow)。
+- **一站式后端能力**: 集成了身份认证 (Auth)、对象存储 (Storage)、任务调度 (Job)、服务编排 (Flow) 及 AI 工具集成 (MCP)。
 - **统一数据接口**: 抽象底层数据源差异，提供标准化的 REST 和 GraphQL 接口。
-- **AI 赋能**: 内置 LangChain4j，提供流式对话能力 (SSE)，支持构建智能应用。
+- **AI 赋能**: 基于 MCP 协议开放核心工具，让 AI 客户端直接管理项目与数据。
 - **动态逻辑**: 支持基于 JavaScript 的脚本执行，实现灵活的业务逻辑扩展。
 - **特性垂直分包**: 按业务特性垂直分包，每个特性包内聚 Resource、Service、Repository、DTO，易于演进和维护。
 
 ## 🛠️ 技术栈
 
 - **主框架**: Quarkus 3 (REST, Jackson, Hibernate Validator, Scheduler, Cache)
-- **AI 能力**: LangChain4j (OpenAI 兼容接口, StreamingChatModel)
+- **AI 能力**: MCP Server (Quarkus MCP 扩展，15 个 @Tool 注解工具)
+- **云函数**: Deno Sidecar (Hono.js, Worker 隔离执行)
 - **API 协议**: REST API, GraphQL, OpenAPI/Swagger UI
 - **持久化**: SQLite (默认演示) / 支持扩展多种关系型与 NoSQL 数据库
 - **其他**: Lombok, GraalVM JavaScript, Docker, Maven
@@ -29,18 +30,20 @@
 - **`data/`**: 数据访问 — 记录 CRUD、查询
 - **`scheduling/`**: 任务调度 — 触发器、作业执行
 - **`storage/`**: 对象存储 — 本地、S3
-- **`ai/`**: AI 聊天 — LLM 集成、对话管理
+- **`mcp/`**: MCP Server — AI 工具集成，15 个 MCP Tools
+- **`functions/`**: 云函数 — Deno Sidecar 隔离执行
+- **`projectauth/`**: 身份提供商 — OIDC、LDAP、Script
 - **`settings/`**: 系统设置
 - **`metrics/`**: 监控指标
 - **`project/`**: 项目管理
-- **`idp/`**: 身份提供商
+- **`realtime/`**: 实时推送 — WebSocket 数据变更广播
 - **`connect/`**: 数据源连接
 - **`common/`**: 共享基础设施 — 配置、工具类、全局异常、安全过滤器
 
 ## 🚀 快速开始
 
 ### 环境要求
-- Java 21+
+- Java 25+
 - Maven 3.9+
 
 ### 启动项目

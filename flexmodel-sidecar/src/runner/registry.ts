@@ -14,7 +14,7 @@ const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions
 // ---- Wrapper Code Generator ----
 
 function generateWrapperCode(): string {
-  return `
+  return `// @ts-nocheck
 // Auto-generated wrapper — do not modify manually
 // Worker message loop + SDK build + user module loading
 

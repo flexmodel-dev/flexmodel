@@ -26,26 +26,22 @@ services:
       test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
       timeout: 20s
       retries: 10
-  nginx:
-    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-nginx
-    image: nginx:1.25.3
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+  flexmodel-ui:
+    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-ui
+    image: cjbi/flexmodel-ui:latest
     restart: always
     ports:
       - ${NGINX_HTTP_PORT:-80}:80
-      - ${NGINX_HTTPS_PORT:-443}:443
     environment:
       - TZ=GMT+08
     depends_on:
-      flexmodel:
+      flexmodel-server:
         condition: service_started
     networks:
       - flexmodel
-  flexmodel:
-    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel
-    image: cjbi/flexmodel:latest
+  flexmodel-server:
+    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-server
+    image: cjbi/flexmodel-server:latest
     restart: always
     ports:
       - "8080"
@@ -71,14 +67,14 @@ services:
     image: cjbi/flexmodel-sidecar:latest
     restart: always
     environment:
-      - FLEXMODEL_JAVA_HOST=flexmodel
+      - FLEXMODEL_JAVA_HOST=flexmodel-server
       - FLEXMODEL_JAVA_PORT=8080
       - FLEXMODEL_PORT=9999
       - FLEXMODEL_HOST=0.0.0.0
     networks:
       - flexmodel
     depends_on:
-      - flexmodel
+      - flexmodel-server
 networks:
   flexmodel:
     name: ${CONTAINER_NAME_PREFIX}_flexmodel_default

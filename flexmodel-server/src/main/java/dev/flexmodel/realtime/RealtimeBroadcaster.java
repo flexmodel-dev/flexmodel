@@ -185,7 +185,7 @@ public class RealtimeBroadcaster {
 
     // 映射引擎事件类型到协议事件类型
     String eventType = mapEventType(event.getEventType());
-    String commitTimestamp = TIMESTAMP_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
+    String timestamp = TIMESTAMP_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
 
     Map<String, Object> newData = event.getNewData() != null ? event.getNewData() : Map.of();
     Map<String, Object> oldData = event.getOldData() != null ? event.getOldData() : Map.of();
@@ -206,13 +206,20 @@ public class RealtimeBroadcaster {
         try {
           Map<String, Object> payload = new LinkedHashMap<>();
           payload.put("type", "realtime");
-          payload.put("id", filter.id());
+          payload.put("sub_id", filter.id());
           payload.put("event", eventType);
-          payload.put("schema", schemaName);
           payload.put("model", event.getModelName());
-          payload.put("commit_timestamp", commitTimestamp);
-          payload.put("new", newData);
-          payload.put("old", oldData);
+          payload.put("record_id", event.getId());
+          payload.put("timestamp", timestamp);
+          payload.put("affected_rows", event.getAffectedRows());
+
+          // 按事件类型按需包含 data / old_data，避免发送空 Map
+          if (!newData.isEmpty()) {
+            payload.put("data", newData);
+          }
+          if (!oldData.isEmpty()) {
+            payload.put("old_data", oldData);
+          }
 
           String json = JsonUtils.toJsonString(payload);
           session.getBasicRemote().sendText(json);

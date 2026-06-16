@@ -276,7 +276,7 @@ model f_qrtz_lock {
 // ==============================
 
 seed f_project {
-  {id: "default", name: "系统默认", database_name: "system", description: "默认项目", owner_id: "admin", enabled: true},
+  {id: "default", name: "系统默认", database_name: "system", description: "默认项目", owner_id: "admin", enabled: false},
   {id: "dev_test", name: "开发测试", database_name: "dev_test", description: "开发测试项目", owner_id: "admin", enabled: true},
 }
 

@@ -25,6 +25,26 @@ model f_auth_provider_config {
   @comment("认证提供商配置")
 }
 
+model f_api_request_log {
+  id : String @id @default(uuid()),
+  url : String @length("2000") @comment("请求地址"),
+  http_method: String @length("255") @comment("请求方法"),
+  path: String @length("1000") @comment("请求路径"),
+  request_body : JSON @comment("请求参数"),
+  request_headers : JSON @comment("请求头"),
+  status_code : Int,
+  response_time : Int,
+  client_ip?: String @length("45") @comment("IP地址"),
+  created_at : DateTime @default(now()),
+  is_success: Boolean @comment("是否成功") @default("true"),
+  error_message? : JSON @comment("异常信息"),
+  @index(name: "IDX_API_REQUEST_LOG_CREATED_AT", fields: [created_at]),
+  @index(name: "IDX_API_REQUEST_LOG_IS_ERROR", fields: [is_success]),
+  @index(name: "IDX_API_REQUEST_LOG_PATH_CREATED_AT", fields: [path, created_at]),
+  @index(name: "IDX_API_REQUEST_LOG_STATUS_CREATED_AT", fields: [status_code, created_at]),
+  @comment("API请求日志")
+}
+
 model f_em_flow_definition {
   id: Long @id @default(autoIncrement()),
   flow_module_id: String @comment("流程模型id") @unique,

@@ -16,6 +16,8 @@ import dev.flexmodel.JsonUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
@@ -72,7 +74,7 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     apiLog.setRequestHeaders(requestContext.getHeaders());
     apiLog.setRequestBody(requestContext.getProperty("requestBody"));
     apiLog.setIsSuccess(true);
-    apiLog.setProjectId(Objects.toString(requestContext.getProperty("projectId"), null));
+    String projectId = Objects.toString(requestContext.getProperty("projectId"), null);
 //      apiData.setRemoteIp(null);
     int statusCode = responseContext.getStatus();
     apiLog.setStatusCode(statusCode);
@@ -86,6 +88,9 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
       apiLog.setErrorMessage(JsonUtils.toJsonString(responseContext.getEntity()));
     }
     apiLog.setResponseTime((int) execTime);
-    CDI.current().select(EventBus.class).get().send("request.logging", apiLog);
+    Map<String, Object> payload = new HashMap<>();
+    payload.put("projectId", projectId);
+    payload.put("log", apiLog);
+    CDI.current().select(EventBus.class).get().send("request.logging", payload);
   }
 }

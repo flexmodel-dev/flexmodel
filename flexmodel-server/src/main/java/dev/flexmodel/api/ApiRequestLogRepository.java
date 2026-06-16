@@ -16,9 +16,9 @@ public interface ApiRequestLogRepository {
 
   List<LogApiRank> ranking(String projectId, Predicate filter);
 
-  ApiRequestLog save(ApiRequestLog record);
+  ApiRequestLog save(String projectId, ApiRequestLog record);
 
-  void delete(Predicate filter);
+  void delete(String projectId, Predicate filter);
 
   long count(String projectId, Predicate filter);
 

@@ -122,9 +122,9 @@ public class ApiRequestLogService {
     return condition;
   }
 
-  public ApiRequestLog create(ApiRequestLog apiRequestLog) {
+  public ApiRequestLog create(String projectId, ApiRequestLog apiRequestLog) {
     apiRequestLog.setCreatedAt(LocalDateTime.now());
-    return apiLogRepository.save(apiRequestLog);
+    return apiLogRepository.save(projectId, apiRequestLog);
   }
 
   public List<ApiRequestLog> find(String projectId, Predicate filter, Integer current, Integer pageSize) {
@@ -143,9 +143,9 @@ public class ApiRequestLogService {
     return apiLogRepository.ranking(projectId, filter);
   }
 
-  public void purgeOldLogs(int maxDays) {
-    log.info("Purging old logs older than {} days", maxDays);
+  public void purgeOldLogs(String projectId, int maxDays) {
+    log.info("Purging old logs older than {} days for project {}", maxDays, projectId);
     LocalDateTime purgeDate = LocalDateTime.now().minusDays(maxDays);
-    apiLogRepository.delete(field(ApiRequestLog::getCreatedAt).lte(purgeDate));
+    apiLogRepository.delete(projectId, field(ApiRequestLog::getCreatedAt).lte(purgeDate));
   }
 }

@@ -2,9 +2,7 @@ package dev.flexmodel.realtime;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.event.ChangedEvent;
-import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.websocket.Session;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,8 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 实时事件广播器，管理 WebSocket 订阅关系并将引擎事件路由到匹配的订阅者。
  * <p>
- * 订阅维度为项目（channel = projectId）+ 可选模型过滤（model = modelName 或 "*"），
- * 服务端解析 projectId 到 schemaName 进行事件匹配。
+ * 订阅维度为 schemaName（由 WebSocket onOpen 时通过 projectId 解析）+ channel（表名集合或 "*"），
+ * schemaName 在连接建立时由 WebSocket 层解析并传入，本类不依赖 ProjectService。
  *
  * @author cjbi
  */
@@ -27,23 +25,25 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class RealtimeBroadcaster {
 
-  @Inject
-  ProjectService projectService;
-
   /**
-   * 订阅过滤器，包含订阅 ID 和模型匹配模式
+   * 订阅过滤器，包含订阅 ID 和模型匹配集合
    */
-  record SubscriptionFilter(String id, String modelPattern) {
+  record SubscriptionFilter(String id, Set<String> modelPatterns) {
     boolean matchesModel(String modelName) {
-      return "*".equals(modelPattern) || modelPattern.equals(modelName);
+      return modelPatterns.contains("*") || modelPatterns.contains(modelName);
     }
   }
 
   /**
    * 订阅元数据，用于取消订阅时反查
    */
-  record SubscriptionMeta(String schemaName, String modelPattern) {
+  record SubscriptionMeta(String schemaName, Set<String> modelPatterns) {
   }
+
+  /**
+   * session -> schemaName（onOpen 时绑定）
+   */
+  private final Map<Session, String> sessionSchemaMap = new ConcurrentHashMap<>();
 
   /**
    * schemaName -> (session -> set of SubscriptionFilters)
@@ -59,36 +59,38 @@ public class RealtimeBroadcaster {
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC);
 
   /**
-   * 注册新的 WebSocket session
+   * 注册新的 WebSocket session，绑定 schemaName
+   *
+   * @param session    WebSocket session
+   * @param schemaName 由 projectId 解析得到的 schemaName
    */
-  public void register(Session session) {
+  public void register(Session session, String schemaName) {
+    sessionSchemaMap.put(session, schemaName);
     sessionSubscriptions.put(session, new ConcurrentHashMap<>());
-    log.info("Realtime session registered: {}", session.getId());
+    log.info("Realtime session registered: session={}, schemaName={}", session.getId(), schemaName);
   }
 
   /**
    * 注销 WebSocket session，清理其所有订阅
    */
   public void unregister(Session session) {
+    String schemaName = sessionSchemaMap.remove(session);
     Map<String, SubscriptionMeta> subs = sessionSubscriptions.remove(session);
-    if (subs != null) {
-      for (SubscriptionMeta meta : subs.values()) {
-        Map<Session, Set<SubscriptionFilter>> schemaMap = schemaSessions.get(meta.schemaName());
-        if (schemaMap != null) {
-          Set<SubscriptionFilter> filters = schemaMap.get(session);
-          if (filters != null) {
-            filters.removeIf(f -> subs.containsValue(meta) || true); // 清理该 session 的所有 filter
-          }
-          schemaMap.remove(session);
-          if (schemaMap.isEmpty()) {
-            schemaSessions.remove(meta.schemaName());
-          }
+
+    // 清理该 session 在各 schemaName 下的订阅
+    if (schemaName != null) {
+      Map<Session, Set<SubscriptionFilter>> schemaMap = schemaSessions.get(schemaName);
+      if (schemaMap != null) {
+        schemaMap.remove(session);
+        if (schemaMap.isEmpty()) {
+          schemaSessions.remove(schemaName);
         }
       }
-      // 更精确的清理：逐个移除该 session 在各 schemaName 下的 filter
-      cleanupSessionFromAllSchemas(session);
     }
-    log.info("Realtime session unregistered: {}", session.getId());
+    // 兜底清理（防止跨 schema 残留）
+    cleanupSessionFromAllSchemas(session);
+
+    log.info("Realtime session unregistered: session={}, schemaName={}", session.getId(), schemaName);
   }
 
   private void cleanupSessionFromAllSchemas(Session session) {
@@ -102,41 +104,40 @@ public class RealtimeBroadcaster {
   }
 
   /**
-   * 订阅指定项目的变更事件，可选指定模型过滤
+   * 订阅变更事件，channel 为模型名集合（"*" 表示所有模型）
    *
    * @param session        WebSocket session
    * @param subscriptionId 客户端分配的订阅 ID
-   * @param projectId      项目 ID（channel）
-   * @param model          模型名过滤（"*" 表示所有模型）
-   * @return 解析后的 schemaName，如果项目不存在则返回 null
+   * @param models         模型名集合，包含 "*" 时匹配所有模型
+   * @return 是否订阅成功
    */
-  public String subscribe(Session session, String subscriptionId, String projectId, String model) {
-    try {
-      String schemaName = projectService.resolveDatabaseName(projectId);
-      String modelPattern = (model == null || model.isBlank()) ? "*" : model;
-
-      SubscriptionFilter filter = new SubscriptionFilter(subscriptionId, modelPattern);
-      SubscriptionMeta meta = new SubscriptionMeta(schemaName, modelPattern);
-
-      // 更新 schemaSessions
-      schemaSessions
-        .computeIfAbsent(schemaName, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(session, k -> ConcurrentHashMap.newKeySet())
-        .add(filter);
-
-      // 更新 sessionSubscriptions
-      Map<String, SubscriptionMeta> subs = sessionSubscriptions.get(session);
-      if (subs != null) {
-        subs.put(subscriptionId, meta);
-      }
-
-      log.info("Realtime subscribe: session={}, subId={}, projectId={}, schemaName={}, model={}",
-        session.getId(), subscriptionId, projectId, schemaName, modelPattern);
-      return schemaName;
-    } catch (Exception e) {
-      log.error("Realtime subscribe failed: projectId={}", projectId, e);
-      return null;
+  public boolean subscribe(Session session, String subscriptionId, Set<String> models) {
+    String schemaName = sessionSchemaMap.get(session);
+    if (schemaName == null) {
+      log.warn("Realtime subscribe failed: session={} has no bound schemaName", session.getId());
+      return false;
     }
+
+    Set<String> modelPatterns = (models == null || models.isEmpty()) ? Set.of("*") : models;
+
+    SubscriptionFilter filter = new SubscriptionFilter(subscriptionId, modelPatterns);
+    SubscriptionMeta meta = new SubscriptionMeta(schemaName, modelPatterns);
+
+    // 更新 schemaSessions
+    schemaSessions
+      .computeIfAbsent(schemaName, k -> new ConcurrentHashMap<>())
+      .computeIfAbsent(session, k -> ConcurrentHashMap.newKeySet())
+      .add(filter);
+
+    // 更新 sessionSubscriptions
+    Map<String, SubscriptionMeta> subs = sessionSubscriptions.get(session);
+    if (subs != null) {
+      subs.put(subscriptionId, meta);
+    }
+
+    log.info("Realtime subscribe: session={}, subId={}, schemaName={}, models={}",
+      session.getId(), subscriptionId, schemaName, modelPatterns);
+    return true;
   }
 
   /**
@@ -177,6 +178,8 @@ public class RealtimeBroadcaster {
     String schemaName = event.getSchemaName();
     Map<Session, Set<SubscriptionFilter>> matched = schemaSessions.get(schemaName);
     if (matched == null || matched.isEmpty()) {
+      log.debug("Realtime broadcast skipped: eventSchema={}, knownSchemas={}, schemaSessionsSize={}",
+        schemaName, schemaSessions.keySet(), schemaSessions.size());
       return;
     }
 

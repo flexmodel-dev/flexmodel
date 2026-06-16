@@ -1,51 +1,71 @@
 package dev.flexmodel.realtime;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnMessage;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
+import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 实时订阅 WebSocket 端点。
  * <p>
- * 独立于 /api/json-rpc-ws（控制台专用），提供纯项目维度的数据变更实时订阅。
+ * 项目维度的数据变更实时订阅，projectId 通过 URL 路径传入。
+ * 客户端通过 channel（表名）订阅，支持单表、多表（JSON 数组）或通配符 "*"。
  * <p>
- * 协议参考 Supabase Realtime，客户端通过 channel（projectId）订阅，
- * 服务端推送该项目下所有模型的增删改事件。
+ * 协议参考 Supabase Realtime，服务端推送项目下匹配模型的增删改事件。
  *
  * @author cjbi
  */
 @Slf4j
 @ApplicationScoped
-@ServerEndpoint("/api/realtime")
+@ServerEndpoint("/api/projects/{projectId}/realtime")
 public class RealtimeWebSocket {
 
   @Inject
   RealtimeBroadcaster broadcaster;
 
+  @Inject
+  ProjectService projectService;
+
   @OnOpen
-  public void onOpen(Session session) {
-    broadcaster.register(session);
-    log.info("Realtime WebSocket connected: {}", session.getId());
+  public void onOpen(Session session, @PathParam("projectId") String projectId) {
+    try {
+      String schemaName = projectService.resolveDatabaseName(projectId);
+      broadcaster.register(session, schemaName);
+      log.info("Realtime WebSocket connected: session={}, projectId={}, schemaName={}",
+        session.getId(), projectId, schemaName);
+    } catch (Exception e) {
+      log.error("Realtime WebSocket onOpen failed: projectId={}", projectId, e);
+      try {
+        session.close();
+      } catch (IOException ex) {
+        log.error("Failed to close session", ex);
+      }
+    }
   }
 
   @OnClose
-  public void onClose(Session session) {
+  public void onClose(Session session, @PathParam("projectId") String projectId) {
     broadcaster.unregister(session);
-    log.info("Realtime WebSocket closed: {}", session.getId());
+    log.info("Realtime WebSocket closed: session={}, projectId={}", session.getId(), projectId);
   }
 
   @OnMessage
   public void onMessage(String message, Session session) {
+    log.debug("Realtime onMessage received: session={}, payload={}", session.getId(), message);
     try {
       @SuppressWarnings("unchecked")
       Map<String, Object> msg = JsonUtils.parseToObject(message, Map.class);
@@ -74,19 +94,25 @@ public class RealtimeWebSocket {
 
   private void handleSubscribe(Map<String, Object> msg, Session session) throws IOException {
     String id = (String) msg.get("id");
-    String channel = (String) msg.get("channel");
+    Object channelObj = msg.get("channel");
 
-    if (id == null || channel == null) {
+    if (id == null || channelObj == null) {
       sendSystemMessage(session, "error", id, "Missing 'id' or 'channel' field");
       return;
     }
 
-    String model = msg.get("model") != null ? (String) msg.get("model") : "*";
-    String schemaName = broadcaster.subscribe(session, id, channel, model);
-    if (schemaName != null) {
-      sendSystemMessage(session, "subscribe_ok", id, null, "channel", channel);
+    // channel 支持 string / string[] / "*"
+    Set<String> models = parseChannel(channelObj);
+    if (models == null) {
+      sendSystemMessage(session, "error", id, "Invalid 'channel' format: expected string or string array");
+      return;
+    }
+
+    boolean ok = broadcaster.subscribe(session, id, models);
+    if (ok) {
+      sendSystemMessage(session, "subscribe_ok", id, null, "channel", channelObj);
     } else {
-      sendSystemMessage(session, "error", id, "Failed to subscribe to channel: " + channel);
+      sendSystemMessage(session, "error", id, "Failed to subscribe");
     }
   }
 
@@ -101,8 +127,38 @@ public class RealtimeWebSocket {
     sendSystemMessage(session, "unsubscribe_ok", id, null);
   }
 
+  /**
+   * 解析 channel 字段，支持：
+   * <ul>
+   *   <li>字符串 "*" — 匹配所有模型</li>
+   *   <li>字符串 "users" — 匹配单个模型</li>
+   *   <li>JSON 数组 ["users", "orders"] — 匹配多个模型</li>
+   * </ul>
+   *
+   * @return 模型名集合，解析失败返回 null
+   */
+  @SuppressWarnings("unchecked")
+  private Set<String> parseChannel(Object channelObj) {
+    if (channelObj instanceof String s) {
+      Set<String> set = new LinkedHashSet<>();
+      set.add(s);
+      return set;
+    }
+    if (channelObj instanceof List<?> list) {
+      Set<String> set = new LinkedHashSet<>();
+      for (Object item : list) {
+        if (!(item instanceof String s)) {
+          return null;
+        }
+        set.add(s);
+      }
+      return set;
+    }
+    return null;
+  }
+
   private void sendSystemMessage(Session session, String event, String id, String errorMessage,
-                                 String... extraKeyValues) throws IOException {
+                                 Object... extraKeyValues) throws IOException {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("type", "system");
     payload.put("event", event);
@@ -114,7 +170,7 @@ public class RealtimeWebSocket {
     }
     // 额外的键值对
     for (int i = 0; i + 1 < extraKeyValues.length; i += 2) {
-      payload.put(extraKeyValues[i], extraKeyValues[i + 1]);
+      payload.put((String) extraKeyValues[i], extraKeyValues[i + 1]);
     }
 
     String json = JsonUtils.toJsonString(payload);

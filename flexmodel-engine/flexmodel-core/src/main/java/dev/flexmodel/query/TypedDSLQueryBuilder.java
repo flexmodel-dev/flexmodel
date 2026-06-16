@@ -159,6 +159,14 @@ public class TypedDSLQueryBuilder<T> {
   }
 
   /**
+   * 启用 FOR UPDATE 行锁
+   */
+  public TypedDSLQueryBuilder<T> forUpdate() {
+    delegate.forUpdate();
+    return this;
+  }
+
+  /**
    * 执行查询并返回指定类型的结果（自动使用from中指定的类型）
    */
   public List<T> execute() {

@@ -50,6 +50,7 @@ public class SqlStatementBuilder extends BaseService {
     appendGroupByClause(query, projectionMap, sqlBuilder);
     appendOrderByClause(query, sqlBuilder);
     appendLimitClause(query, sqlBuilder);
+    appendForUpdateClause(query, sqlBuilder);
     return Pair.of(sqlBuilder.toString(), params);
   }
 
@@ -63,6 +64,12 @@ public class SqlStatementBuilder extends BaseService {
       );
       sqlBuilder.setLength(0);
       sqlBuilder.append(limitString);
+    }
+  }
+
+  private void appendForUpdateClause(Query query, StringBuilder sqlBuilder) {
+    if (query.isForUpdate()) {
+      sqlBuilder.append("\nfor update");
     }
   }
 

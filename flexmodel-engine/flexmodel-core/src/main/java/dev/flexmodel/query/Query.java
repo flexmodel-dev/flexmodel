@@ -24,6 +24,7 @@ public class Query implements Serializable {
   private OrderBy sort;
   private Page page;
   private boolean nestedEnabled;
+  private boolean forUpdate;
 
   public interface QueryCall extends Serializable {
   }
@@ -264,6 +265,10 @@ public class Query implements Serializable {
     this.nestedEnabled = nestedEnabled;
   }
 
+  public void setForUpdate(boolean forUpdate) {
+    this.forUpdate = forUpdate;
+  }
+
   // Getter方法
   public String getFilter() {
     return filter;
@@ -291,6 +296,10 @@ public class Query implements Serializable {
 
   public boolean isNestedEnabled() {
     return nestedEnabled;
+  }
+
+  public boolean isForUpdate() {
+    return forUpdate;
   }
 
   // 函数和字段定义
@@ -567,6 +576,14 @@ public class Query implements Serializable {
      */
     public Builder enableNested() {
       query.setNestedEnabled(true);
+      return this;
+    }
+
+    /**
+     * 启用 FOR UPDATE 行锁
+     */
+    public Builder forUpdate() {
+      query.setForUpdate(true);
       return this;
     }
 

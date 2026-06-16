@@ -239,6 +239,7 @@ public class FmJobRepository {
         .orderBy(QrtzTrigger::getNextFireTime)
         .orderByDesc(QrtzTrigger::getPriority)
         .page(1, maxCount)
+        .forUpdate()
         .execute();
     }
   }

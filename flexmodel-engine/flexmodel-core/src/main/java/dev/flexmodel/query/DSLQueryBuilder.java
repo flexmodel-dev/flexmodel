@@ -200,6 +200,14 @@ public class DSLQueryBuilder {
     return this;
   }
 
+  /**
+   * 启用 FOR UPDATE 行锁
+   */
+  public DSLQueryBuilder forUpdate() {
+    query.setForUpdate(true);
+    return this;
+  }
+
 
   /**
    * 执行查询并返回Map结果

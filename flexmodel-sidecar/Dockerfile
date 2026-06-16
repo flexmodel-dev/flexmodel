@@ -1,7 +1,7 @@
 # Flexmodel Sidecar — Deno Runtime
 # Communicates with flexmodel-server over the Docker network.
 # In docker-compose, set FLEXMODEL_JAVA_HOST=flexmodel (the service name).
-FROM denoland/deno:2.3.11
+FROM denoland/deno:2.8.3
 
 WORKDIR /app
 

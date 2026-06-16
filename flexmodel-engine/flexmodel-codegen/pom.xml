@@ -15,22 +15,6 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.groovy</groupId>
-      <artifactId>groovy-all</artifactId>
-      <version>5.0.3</version>
-      <type>pom</type>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.groovy</groupId>
-          <artifactId>groovy-test-junit5</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.groovy</groupId>
-          <artifactId>groovy-testng</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
     </dependency>
@@ -65,38 +49,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.codehaus.gmavenplus</groupId>
-        <artifactId>gmavenplus-plugin</artifactId>
-        <version>4.3.0</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>addSources</goal>
-              <goal>addTestSources</goal>
-              <goal>generateStubs</goal>
-              <goal>compile</goal>
-              <goal>generateTestStubs</goal>
-              <goal>compileTests</goal>
-              <goal>removeStubs</goal>
-              <goal>removeTestStubs</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <sources>
-            <source>
-              <directory>${project.basedir}/src/main/groovy</directory>
-              <includes>
-                <include>**/*.groovy</include>
-              </includes>
-            </source>
-          </sources>
-          <targetBytecode>21</targetBytecode>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>

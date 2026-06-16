@@ -1,6 +1,5 @@
 package dev.flexmodel.codegen;
 
-import groovy.lang.MissingPropertyException;
 import dev.flexmodel.ModelImportBundle;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
@@ -121,21 +120,14 @@ public class GenerationContext {
   }
 
   /**
-   * Enable dynamic property access from Groovy scripts.
-   * Example: after calling putVariable("foo", "bar"), Groovy can use context.foo
+   * Enable dynamic property access.
+   * Example: after calling putVariable("foo", "bar"), calling getVariable("foo") returns "bar".
    */
-  public Object propertyMissing(String name) {
+  public Object getVariableOrThrow(String name) {
     if (variables.containsKey(name)) {
       return variables.get(name);
     }
-    throw new MissingPropertyException(name, this.getClass());
-  }
-
-  /**
-   * Allow setting variables via dynamic property assignment in Groovy: context.foo = "bar"
-   */
-  public void propertyMissing(String name, Object value) {
-    variables.put(name, value);
+    throw new IllegalArgumentException("Variable not found: " + name);
   }
 
   public boolean containsEnumClass(String name) {

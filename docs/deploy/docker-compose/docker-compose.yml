@@ -65,6 +65,20 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+
+  flexmodel-sidecar:
+    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-sidecar
+    image: cjbi/flexmodel-sidecar:latest
+    restart: always
+    environment:
+      - FLEXMODEL_JAVA_HOST=flexmodel
+      - FLEXMODEL_JAVA_PORT=8080
+      - FLEXMODEL_PORT=9999
+      - FLEXMODEL_HOST=0.0.0.0
+    networks:
+      - flexmodel
+    depends_on:
+      - flexmodel
 networks:
   flexmodel:
     name: ${CONTAINER_NAME_PREFIX}_flexmodel_default

@@ -32,6 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### Qoder ###
+.qoder/
+
 ### Project ###
 
 *.db

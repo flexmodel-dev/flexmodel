@@ -90,6 +90,11 @@ public class SQLiteSqlDialect extends SqlDialect {
   }
 
   @Override
+  public boolean supportsForUpdate() {
+    return false;
+  }
+
+  @Override
   public String getAddColumnString() {
     return "add";
   }

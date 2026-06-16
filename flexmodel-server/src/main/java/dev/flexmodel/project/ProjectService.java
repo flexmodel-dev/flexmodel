@@ -181,6 +181,10 @@ public class ProjectService {
     project.setCreatedAt(existingProject.getCreatedAt());
     project.setCreatedBy(existingProject.getCreatedBy());
     project.setOwnerId(existingProject.getOwnerId());
+    // 保护 databaseName 不被覆写（PUT 请求可能不包含此字段）
+    if (project.getDatabaseName() == null) {
+      project.setDatabaseName(existingProject.getDatabaseName());
+    }
     return projectRepository.save(project);
   }
 

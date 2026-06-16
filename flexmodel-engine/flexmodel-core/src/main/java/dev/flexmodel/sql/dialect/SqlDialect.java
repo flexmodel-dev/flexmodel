@@ -393,6 +393,16 @@ public abstract class SqlDialect {
    * @param limitPlaceHolder  分页纪录条数占位符号
    * @return 包含占位符的分页sql
    */
+  /**
+   * SQL:2023 特性。某些数据库（如 H2、MySQL）支持 SELECT ... FOR UPDATE 行锁，
+   * 但是 SQLite、某些嵌入式数据库不支持此语法。
+   *
+   * @return 如果当前数据库支持 SELECT ... FOR UPDATE，则为 true
+   */
+  public boolean supportsForUpdate() {
+    return true;
+  }
+
   public String getLimitString(String sql, String offsetPlaceholder, String limitPlaceHolder) {
     return getLimitOffsetRowsString(sql, offsetPlaceholder, limitPlaceHolder);
   }

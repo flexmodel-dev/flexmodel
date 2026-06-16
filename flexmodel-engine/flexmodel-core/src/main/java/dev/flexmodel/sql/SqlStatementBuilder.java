@@ -68,7 +68,7 @@ public class SqlStatementBuilder extends BaseService {
   }
 
   private void appendForUpdateClause(Query query, StringBuilder sqlBuilder) {
-    if (query.isForUpdate()) {
+    if (query.isForUpdate() && sqlContext.getSqlDialect().supportsForUpdate()) {
       sqlBuilder.append("\nfor update");
     }
   }

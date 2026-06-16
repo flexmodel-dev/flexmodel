@@ -317,8 +317,8 @@ public class SqlDataService extends BaseService implements DataService {
   }
 
   @Override
-  public Map<String, Object> findById(String modelName, Object id, boolean nestedQuery) {
-    log.debug("Starting SQL findById for model: {}, id: {}, nestedQuery: {}", modelName, id, nestedQuery);
+  public Map<String, Object> findById(String modelName, Object id, List<String> expand) {
+    log.debug("Starting SQL findById for model: {}, id: {}, expand: {}", modelName, id, expand);
     long startTime = System.currentTimeMillis();
 
     try {
@@ -345,8 +345,10 @@ public class SqlDataService extends BaseService implements DataService {
         return null;
       }
 
-      if (nestedQuery) {
-        nestedQuery(List.of(dataMap), this::findMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), null, sessionContext.getNestedQueryMaxDepth());
+      if (expand != null && !expand.isEmpty()) {
+        Query childQuery = new Query();
+        childQuery.setExpand(expand);
+        nestedQuery(List.of(dataMap), this::findMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), childQuery, sessionContext.getNestedQueryMaxDepth());
       }
       long duration = System.currentTimeMillis() - startTime;
       log.debug("SQL findById completed for model: {} in {}ms", modelName, duration);
@@ -369,7 +371,7 @@ public class SqlDataService extends BaseService implements DataService {
       log.debug("Generated SELECT SQL: {}", pair.first());
 
       List mapList = sqlExecutor.queryForList(pair.first(), pair.second(), getSqlResultHandler((ModelDefinition) sessionContext.getModelDefinition(modelName), query, Map.class));
-      if (query.isNestedEnabled()) {
+      if (query.hasExpand()) {
         nestedQuery(mapList, this::findMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), query, sessionContext.getNestedQueryMaxDepth());
       }
       long duration = System.currentTimeMillis() - startTime;

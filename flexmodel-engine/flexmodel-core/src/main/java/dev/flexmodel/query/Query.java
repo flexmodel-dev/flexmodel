@@ -23,7 +23,7 @@ public class Query implements Serializable {
   private GroupBy groupBy;
   private OrderBy sort;
   private Page page;
-  private boolean nestedEnabled;
+  private List<String> expand;
   private boolean forUpdate;
 
   public interface QueryCall extends Serializable {
@@ -261,8 +261,8 @@ public class Query implements Serializable {
     this.page = page;
   }
 
-  public void setNestedEnabled(boolean nestedEnabled) {
-    this.nestedEnabled = nestedEnabled;
+  public void setExpand(List<String> expand) {
+    this.expand = expand;
   }
 
   public void setForUpdate(boolean forUpdate) {
@@ -294,8 +294,12 @@ public class Query implements Serializable {
     return page;
   }
 
-  public boolean isNestedEnabled() {
-    return nestedEnabled;
+  public List<String> getExpand() {
+    return expand;
+  }
+
+  public boolean hasExpand() {
+    return expand != null && !expand.isEmpty();
   }
 
   public boolean isForUpdate() {
@@ -572,10 +576,22 @@ public class Query implements Serializable {
     }
 
     /**
-     * 启用嵌套查询
+     * 指定要展开的关联字段列表
      */
-    public Builder enableNested() {
-      query.setNestedEnabled(true);
+    public Builder expand(String... fields) {
+      if (fields != null && fields.length > 0) {
+        query.setExpand(List.of(fields));
+      }
+      return this;
+    }
+
+    /**
+     * 指定要展开的关联字段列表
+     */
+    public Builder expand(List<String> fields) {
+      if (fields != null && !fields.isEmpty()) {
+        query.setExpand(fields);
+      }
       return this;
     }
 

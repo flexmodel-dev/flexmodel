@@ -151,10 +151,18 @@ public class TypedDSLQueryBuilder<T> {
   }
 
   /**
-   * 启用嵌套查询
+   * 指定要展开的关联字段列表
    */
-  public TypedDSLQueryBuilder<T> enableNested() {
-    delegate.enableNested();
+  public TypedDSLQueryBuilder<T> expand(String... fields) {
+    delegate.expand(fields);
+    return this;
+  }
+
+  /**
+   * 指定要展开的关联字段列表
+   */
+  public TypedDSLQueryBuilder<T> expand(java.util.List<String> fields) {
+    delegate.expand(fields);
     return this;
   }
 

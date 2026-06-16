@@ -15,6 +15,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import dev.flexmodel.common.dto.PageDTO;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -51,7 +52,7 @@ public class RecordResource {
       "{ \\"username\\": { \\"_eq\\": \\"john_doe\\" } }"
       """)},
     in = ParameterIn.QUERY)
-  @Parameter(name = "nestedQuery", description = "是否开启嵌套子查询，开启则查询关联数据，只查询5层，默认值false", examples = {@ExampleObject(value = "false")}, in = ParameterIn.QUERY)
+  @Parameter(name = "expand", description = "要展开的关联字段列表，逗号分隔，例如 classId,courseIds。支持嵌套展开，例如 classId.teacher。不传则不加载关联数据", examples = {@ExampleObject(value = "classId,courseIds")}, in = ParameterIn.QUERY)
   @Parameter(name = "sort", description = "排序", examples = {@ExampleObject(value = """
     "[{\\"field\\":\\"name\\",\\"sort\\":\\"ASC\\"}, {\\"field\\":\\"id\\",\\"sort\\":\\"DESC\\"}]"
     """)}, in = ParameterIn.QUERY)
@@ -63,10 +64,10 @@ public class RecordResource {
     @QueryParam("page") @DefaultValue("1") int page,
     @QueryParam("size") @DefaultValue("15") int size,
     @QueryParam("filter") String filter,
-    @QueryParam("nestedQuery") @DefaultValue("false") boolean nestedQuery,
+    @QueryParam("expand") List<String> expand,
     @QueryParam("sort") String sort
   ) {
-    return dataService.findPagingRecords(projectId, modelName, page, size, filter, sort, nestedQuery);
+    return dataService.findPagingRecords(projectId, modelName, page, size, filter, sort, expand);
   }
 
   @Parameter(name = "id", description = "ID", examples = {@ExampleObject(value = "1")}, in = ParameterIn.PATH)
@@ -77,9 +78,9 @@ public class RecordResource {
     @PathParam("projectId") String projectId,
     @PathParam("modelName") String modelName,
     @PathParam("id") String id,
-    @QueryParam("nestedQuery") @DefaultValue("false") boolean nestedQuery
+    @QueryParam("expand") List<String> expand
   ) {
-    return dataService.findOneRecord(projectId, modelName, id, nestedQuery);
+    return dataService.findOneRecord(projectId, modelName, id, expand);
   }
 
 

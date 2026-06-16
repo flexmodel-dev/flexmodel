@@ -28,16 +28,16 @@ public class DataService {
                                                Integer size,
                                                String filter,
                                                String sort,
-                                               boolean nestedQueryEnabled) {
-    return dataRepository.findRecords(projectId, datasourceName, modelName, page, size, filter, sort, nestedQueryEnabled);
+                                               List<String> expand) {
+    return dataRepository.findRecords(projectId, datasourceName, modelName, page, size, filter, sort, expand);
   }
 
   public long countRecords(String projectId, String datasourceName, String modelName, String filter) {
     return dataRepository.countRecords(projectId, datasourceName, modelName, filter);
   }
 
-  public Map<String, Object> findOneRecord(String projectId, String datasourceName, String modelName, Object id, boolean nestedQuery) {
-    return dataRepository.findOneRecord(projectId, datasourceName, modelName, id, nestedQuery);
+  public Map<String, Object> findOneRecord(String projectId, String datasourceName, String modelName, Object id, List<String> expand) {
+    return dataRepository.findOneRecord(projectId, datasourceName, modelName, id, expand);
   }
 
   public Map<String, Object> createRecord(String projectId, String datasourceName, String modelName, Map<String, Object> data) {
@@ -58,16 +58,16 @@ public class DataService {
                                                         int size,
                                                         String filter,
                                                         String sort,
-                                                        boolean nestedQuery) {
+                                                        List<String> expand) {
     String datasourceName = projectService.resolveDatabaseName(projectId);
-    List<Map<String, Object>> list = dataRepository.findRecords(projectId, datasourceName, modelName, page, size, filter, sort, nestedQuery);
+    List<Map<String, Object>> list = dataRepository.findRecords(projectId, datasourceName, modelName, page, size, filter, sort, expand);
     long total = dataRepository.countRecords(projectId, datasourceName, modelName, filter);
     return new PageDTO<>(list, total);
   }
 
-  public Map<String, Object> findOneRecord(String projectId, String modelName, String id, boolean nestedQuery) {
+  public Map<String, Object> findOneRecord(String projectId, String modelName, String id, List<String> expand) {
     String datasourceName = projectService.resolveDatabaseName(projectId);
-    return dataRepository.findOneRecord(projectId, datasourceName, modelName, id, nestedQuery);
+    return dataRepository.findOneRecord(projectId, datasourceName, modelName, id, expand);
   }
 
   public Map<String, Object> createRecord(String projectId, String modelName, Map<String, Object> data) {
@@ -87,7 +87,7 @@ public class DataService {
 
   public Map<String, Object> updateRecordIgnoreNull(String projectId, String modelName, String id, Map<String, Object> record) {
     String datasourceName = projectService.resolveDatabaseName(projectId);
-    Map<String, Object> oldData = dataRepository.findOneRecord(projectId, datasourceName, modelName, id, false);
+    Map<String, Object> oldData = dataRepository.findOneRecord(projectId, datasourceName, modelName, id, null);
     Map<String, Object> mergeData = new HashMap<>(oldData);
     mergeData.putAll(record);
     return dataRepository.updateRecord(projectId, datasourceName, modelName, id, mergeData);

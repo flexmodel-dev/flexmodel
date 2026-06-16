@@ -140,14 +140,14 @@ public class LazyLoadInterceptor {
     if (relationField.isMultiple()) {
       Class<?> elementType = resolveCollectionElementType(method);
       List<Map<String, Object>> list = session.data()
-        .find(relationField.getFrom(), Expressions.field(relationField.getForeignField()).eq(convertedIdentifier), false);
+        .find(relationField.getFrom(), Expressions.field(relationField.getForeignField()).eq(convertedIdentifier), null);
       List<?> objects = JsonUtils.convertValueList(list, elementType);
       List<?> proxyList = LazyObjProxy.createProxyList(objects, relationField.getFrom(), session);
       return RelationLoadResult.loaded(proxyList);
     }
 
     List<Map<String, Object>> result = session.data()
-      .find(relationField.getFrom(), Expressions.field(relationField.getForeignField()).eq(convertedIdentifier), false);
+      .find(relationField.getFrom(), Expressions.field(relationField.getForeignField()).eq(convertedIdentifier), null);
     if (result.isEmpty()) {
       return RelationLoadResult.notLoaded();
     }

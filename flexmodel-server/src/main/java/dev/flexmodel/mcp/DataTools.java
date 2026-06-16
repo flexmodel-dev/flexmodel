@@ -60,7 +60,7 @@ public class DataTools {
       String filterParam = (filter == null || filter.isBlank()) ? null : filter;
       String sortParam = (sort == null || sort.isBlank()) ? null : sort;
       PageDTO<Map<String, Object>> result = dataService.findPagingRecords(
-        projectId, modelName, page, size, filterParam, sortParam, false
+        projectId, modelName, page, size, filterParam, sortParam, null
       );
       return JsonUtils.toJsonString(result);
     } catch (Exception e) {
@@ -80,7 +80,7 @@ public class DataTools {
   ) {
     log.infof("get_record called, projectId=%s, modelName=%s, recordId=%s", projectId, modelName, recordId);
     try {
-      Map<String, Object> record = dataService.findOneRecord(projectId, modelName, recordId, false);
+      Map<String, Object> record = dataService.findOneRecord(projectId, modelName, recordId, null);
       if (record == null) {
         return "Error: Record not found: " + recordId;
       }

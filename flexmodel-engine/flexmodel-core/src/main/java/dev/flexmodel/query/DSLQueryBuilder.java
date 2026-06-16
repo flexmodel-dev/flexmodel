@@ -193,10 +193,22 @@ public class DSLQueryBuilder {
   }
 
   /**
-   * 启用嵌套查询
+   * 指定要展开的关联字段列表
    */
-  public DSLQueryBuilder enableNested() {
-    query.setNestedEnabled(true);
+  public DSLQueryBuilder expand(String... fields) {
+    if (fields != null && fields.length > 0) {
+      query.setExpand(java.util.List.of(fields));
+    }
+    return this;
+  }
+
+  /**
+   * 指定要展开的关联字段列表
+   */
+  public DSLQueryBuilder expand(java.util.List<String> fields) {
+    if (fields != null && !fields.isEmpty()) {
+      query.setExpand(fields);
+    }
     return this;
   }
 

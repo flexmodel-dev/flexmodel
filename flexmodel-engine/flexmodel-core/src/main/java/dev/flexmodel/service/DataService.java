@@ -30,7 +30,7 @@ public interface DataService {
    * @param id        ID
    * @return Record
    */
-  Map<String, Object> findById(String modelName, Object id, boolean nestedQuery);
+  Map<String, Object> findById(String modelName, Object id, List<String> expand);
 
   List<Map<String, Object>> find(String modelName, Query query);
 
@@ -116,10 +116,10 @@ public interface DataService {
     return rows;
   }
 
-  default List<Map<String, Object>> find(String modelName, Predicate predicate, boolean nestedQuery) {
+  default List<Map<String, Object>> find(String modelName, Predicate predicate, java.util.List<String> expand) {
     Query query = new Query();
     query.setFilter(predicate.toJsonString());
-    query.setNestedEnabled(nestedQuery);
+    query.setExpand(expand);
     return find(modelName, query);
   }
 
@@ -131,7 +131,7 @@ public interface DataService {
    * @return Record
    */
   default Map<String, Object> findById(String modelName, Object id) {
-    return findById(modelName, id, false);
+    return findById(modelName, id, null);
   }
 
   /**

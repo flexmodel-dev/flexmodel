@@ -233,8 +233,8 @@ public abstract class BaseService {
    * @return 关联字段映射，key为字段别名，value为关联字段定义
    */
   public Map<String, RelationField> findRelationFields(ModelDefinition model, Query query) {
-    log.debug("Finding relation fields for model: {}, hasProjection: {}",
-      model.getName(), hasProjectionFields(query));
+    log.debug("Finding relation fields for model: {}, hasProjection: {}, hasExpand: {}",
+      model.getName(), hasProjectionFields(query), query != null && query.hasExpand());
 
     Map<String, RelationField> relationFieldMap = new HashMap<>();
 
@@ -243,7 +243,10 @@ public abstract class BaseService {
       return relationFieldMap;
     }
 
-    if (hasProjectionFields(query)) {
+    // 优先按 expand 列表过滤关联字段
+    if (query != null && query.hasExpand()) {
+      findRelationFieldsFromExpand(entity, query.getExpand(), relationFieldMap);
+    } else if (hasProjectionFields(query)) {
       findRelationFieldsFromProjection(entity, query, relationFieldMap);
     } else {
       findAllRelationFields(entity, relationFieldMap);
@@ -251,6 +254,52 @@ public abstract class BaseService {
 
     log.debug("Found {} relation fields: {}", relationFieldMap.size(), relationFieldMap.keySet());
     return relationFieldMap;
+  }
+
+  /**
+   * 从 expand 列表中查找关联字段
+   *
+   * @param entity 实体定义
+   * @param expand expand 字段列表
+   * @param relationFieldMap 关联字段映射
+   */
+  private void findRelationFieldsFromExpand(EntityDefinition entity, List<String> expand, Map<String, RelationField> relationFieldMap) {
+    log.debug("Finding relation fields from expand list: {}", expand);
+
+    for (String expandPath : expand) {
+      // 取顶层字段名（classId.teacher -> classId）
+      String topField = expandPath.contains(".") ? expandPath.split("\\.")[0] : expandPath;
+      entity.getFields().stream()
+        .filter(f -> f.getName().equals(topField) && f instanceof RelationField)
+        .map(f -> (RelationField) f)
+        .findFirst()
+        .ifPresent(relationField -> {
+          relationFieldMap.put(topField, relationField);
+          log.debug("Found relation field from expand: {}", topField);
+        });
+    }
+  }
+
+  /**
+   * 提取指定关联字段的子级 expand 路径
+   * 例如 expand=["classId.teacher", "classId.students.name"] 且 relationFieldName="classId"
+   * 返回 ["teacher", "students.name"]
+   *
+   * @param expand 当前层级的 expand 列表
+   * @param relationFieldName 关联字段名
+   * @return 子级 expand 列表，无子级时返回 null
+   */
+  public static List<String> extractChildExpand(List<String> expand, String relationFieldName) {
+    if (expand == null || expand.isEmpty()) {
+      return null;
+    }
+    String prefix = relationFieldName + ".";
+    List<String> childExpand = expand.stream()
+      .filter(path -> path.startsWith(prefix))
+      .map(path -> path.substring(prefix.length()))
+      .filter(path -> !path.isEmpty())
+      .toList();
+    return childExpand.isEmpty() ? null : childExpand;
   }
 
   /**
@@ -441,7 +490,7 @@ public abstract class BaseService {
     parentDataList.forEach(parentDataItem -> {
       if (model instanceof EntityDefinition) {
         fillRelationDataToParent(parentDataItem, relationField, relationFieldAlias,
-          relationDataGroup, relationQueryFunction, remainingDepth, relationModel);
+          relationDataGroup, relationQueryFunction, remainingDepth, relationModel, query);
       }
     });
   }
@@ -463,7 +512,8 @@ public abstract class BaseService {
                                         Map<Object, List<Map<String, Object>>> relationDataGroup,
                                         BiFunction<String, Query, List<Map<String, Object>>> relationQueryFunction,
                                         AtomicInteger remainingDepth,
-                                        EntityDefinition relationModel) {
+                                        EntityDefinition relationModel,
+                                        Query query) {
     Object localKeyValue = parentDataItem.get(relationField.getLocalField());
 
     if (localKeyValue == null) {
@@ -476,9 +526,17 @@ public abstract class BaseService {
 
     log.debug("Found {} relation data records for local key: {}", relationDataList.size(), localKeyValue);
 
-    // 递归处理嵌套查询
+    // 递归处理嵌套查询，传递子级 expand 路径
     remainingDepth.decrementAndGet();
-    nestedQuery(relationDataList, relationQueryFunction, relationModel, null, remainingDepth);
+    List<String> childExpand = query != null
+      ? extractChildExpand(query.getExpand(), relationField.getName())
+      : null;
+    Query childQuery = null;
+    if (childExpand != null) {
+      childQuery = new Query();
+      childQuery.setExpand(childExpand);
+    }
+    nestedQuery(relationDataList, relationQueryFunction, relationModel, childQuery, remainingDepth);
 
     // 根据关联类型设置值
     Object relationValue = relationField.isMultiple() ?

@@ -135,7 +135,7 @@ public class MongoDataService extends BaseService implements DataService {
 
   @Override
   @SuppressWarnings({"rawtypes", "unchecked"})
-  public Map<String, Object> findById(String modelName, Object id, boolean nestedQuery) {
+  public Map<String, Object> findById(String modelName, Object id, List<String> expand) {
     String collectionName = getCollectionName(modelName);
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
     TypedField<?, ?> idField = entity.findIdField().orElseThrow();
@@ -143,9 +143,11 @@ public class MongoDataService extends BaseService implements DataService {
     Map dataMap = mongoDatabase.getCollection(collectionName, Map.class)
       .find(Filters.eq(idField.getName(), id))
       .first();
-    if (nestedQuery && dataMap != null) {
+    if (expand != null && !expand.isEmpty() && dataMap != null) {
+      Query childQuery = new Query();
+      childQuery.setExpand(expand);
       nestedQuery(List.of(dataMap), this::queryAsMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName),
-        null, sessionContext.getNestedQueryMaxDepth());
+        childQuery, sessionContext.getNestedQueryMaxDepth());
     }
     return dataMap;
   }
@@ -153,7 +155,7 @@ public class MongoDataService extends BaseService implements DataService {
   @Override
   public List<Map<String, Object>> find(String modelName, Query query) {
     List<Map<String, Object>> mapList = queryAsMapList(modelName, query);
-    if (query.isNestedEnabled()) {
+    if (query.hasExpand()) {
       nestedQuery(mapList, this::queryAsMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), query, sessionContext.getNestedQueryMaxDepth());
     }
     return mapList;

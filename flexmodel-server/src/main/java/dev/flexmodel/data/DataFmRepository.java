@@ -35,7 +35,7 @@ public class DataFmRepository implements DataRepository {
                                                Integer size,
                                                String filter,
                                                String sortString,
-                                               boolean nestedQueryEnabled) {
+                                               List<String> expand) {
 
 
     try (Session session = sessionFactory.createSession(datasourceName)) {
@@ -61,8 +61,8 @@ public class DataFmRepository implements DataRepository {
           log.error("Invalid sort string: {}", sortString, e);
         }
       }
-      if (nestedQueryEnabled) {
-        queryBuilder.enableNested();
+      if (expand != null && !expand.isEmpty()) {
+        queryBuilder.expand(expand);
       }
       return queryBuilder.execute();
     }
@@ -84,7 +84,7 @@ public class DataFmRepository implements DataRepository {
   }
 
   @Override
-  public Map<String, Object> findOneRecord(String projectId, String datasourceName, String modelName, Object id, boolean nestedQuery) {
+  public Map<String, Object> findOneRecord(String projectId, String datasourceName, String modelName, Object id, List<String> expand) {
     try (Session session = sessionFactory.createSession(datasourceName)) {
 
       DSLQueryBuilder queryBuilder = session.dsl()
@@ -93,9 +93,11 @@ public class DataFmRepository implements DataRepository {
       EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
       Optional<TypedField<?, ?>> idField = entity.findIdField();
 
-      return queryBuilder.where(Expressions.field(idField.orElseThrow().getName()).eq(id))
-        .enableNested()
-        .executeOne();
+      DSLQueryBuilder qb = queryBuilder.where(Expressions.field(idField.orElseThrow().getName()).eq(id));
+      if (expand != null && !expand.isEmpty()) {
+        qb.expand(expand);
+      }
+      return qb.executeOne();
     }
   }
 

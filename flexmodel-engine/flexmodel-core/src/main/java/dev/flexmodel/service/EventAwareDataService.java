@@ -279,7 +279,7 @@ public class EventAwareDataService implements DataService {
 
   // 委托其他方法给原始DataService
   @Override
-  public Map<String, Object> findById(String modelName, Object id, boolean nestedQuery) {
+  public Map<String, Object> findById(String modelName, Object id, List<String> expand) {
     log.debug("Starting findById operation for model: {}, id: {}", modelName, id);
 
     // 发布前置查询事件
@@ -287,7 +287,7 @@ public class EventAwareDataService implements DataService {
     eventPublisher.publishPreChangeEvent(preEvent);
 
     try {
-      Map<String, Object> result = delegate.findById(modelName, id, nestedQuery);
+      Map<String, Object> result = delegate.findById(modelName, id, expand);
       log.debug("FindById operation completed for model: {}, id: {}", modelName, id);
       return result;
     } catch (Exception e) {

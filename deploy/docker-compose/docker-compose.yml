@@ -54,7 +54,6 @@ services:
         -Dflexmodel.datasource.url=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
         -Dflexmodel.datasource.username=root
         -Dflexmodel.datasource.password=${MYSQL_ROOT_PASSWORD}
-        -Dquarkus.langchain4j.openai.api-key=${LLM_API_KEY}
 
     networks:
       - flexmodel

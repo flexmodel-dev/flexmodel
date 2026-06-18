@@ -141,8 +141,6 @@ public class ModelFmRepository implements ModelRepository {
 
   @Override
   public Integer count(String projectId) {
-    int modelCount = 0;
-    List<SchemaObject> list = findAll(projectId, projectId);
-    return modelCount;
+    return findAll(projectId, projectId).size();
   }
 }

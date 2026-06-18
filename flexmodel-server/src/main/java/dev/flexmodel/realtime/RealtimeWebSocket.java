@@ -84,15 +84,11 @@ public class RealtimeWebSocket {
       }
     } catch (Exception e) {
       log.error("Error processing realtime message from session={}", session.getId(), e);
-      try {
-        sendSystemMessage(session, "error", null, "Parse error: " + e.getMessage());
-      } catch (IOException ex) {
-        log.error("Failed to send error response", ex);
-      }
+      sendSystemMessage(session, "error", null, "Parse error: " + e.getMessage());
     }
   }
 
-  private void handleSubscribe(Map<String, Object> msg, Session session) throws IOException {
+  private void handleSubscribe(Map<String, Object> msg, Session session) {
     String id = (String) msg.get("id");
     Object channelObj = msg.get("channel");
 
@@ -116,7 +112,7 @@ public class RealtimeWebSocket {
     }
   }
 
-  private void handleUnsubscribe(Map<String, Object> msg, Session session) throws IOException {
+  private void handleUnsubscribe(Map<String, Object> msg, Session session) {
     String id = (String) msg.get("id");
     if (id == null) {
       sendSystemMessage(session, "error", null, "Missing 'id' field");
@@ -158,7 +154,7 @@ public class RealtimeWebSocket {
   }
 
   private void sendSystemMessage(Session session, String event, String id, String errorMessage,
-                                 Object... extraKeyValues) throws IOException {
+                                 Object... extraKeyValues) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("type", "system");
     payload.put("event", event);
@@ -174,6 +170,6 @@ public class RealtimeWebSocket {
     }
 
     String json = JsonUtils.toJsonString(payload);
-    session.getBasicRemote().sendText(json);
+    session.getAsyncRemote().sendText(json);
   }
 }

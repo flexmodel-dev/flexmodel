@@ -6,7 +6,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.websocket.Session;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -222,8 +221,8 @@ public class RealtimeBroadcaster {
           }
 
           String json = JsonUtils.toJsonString(payload);
-          session.getBasicRemote().sendText(json);
-        } catch (IOException e) {
+          session.getAsyncRemote().sendText(json);
+        } catch (Exception e) {
           log.warn("Failed to send realtime event to session={}, subId={}: {}",
             session.getId(), filter.id(), e.getMessage());
         }

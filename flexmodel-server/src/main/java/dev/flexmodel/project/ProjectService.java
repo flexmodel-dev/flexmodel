@@ -208,10 +208,15 @@ public class ProjectService {
       projectRepository.delete(bp.getId());
     }
 
-    // 1. 删除所有分支记录和取消注册 SchemaProvider
+    // 1. 删除所有分支记录和取消注册 SchemaProvider（幂等清理物理 Schema）
     List<Branch> branches = branchRepository.findByProjectId(projectId);
     for (Branch branch : branches) {
       sessionDatasource.unregisterSchema(branch.getDatabaseName());
+      try {
+        schemaManager.dropSchema(systemDs, branch.getDatabaseName());
+      } catch (Exception e) {
+        // 物理 Schema 删除失败不阻断流程（可能已在步骤 0 中删除）
+      }
       branchRepository.delete(projectId, branch.getName());
     }
 

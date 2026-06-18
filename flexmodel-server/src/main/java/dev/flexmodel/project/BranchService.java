@@ -114,14 +114,31 @@ public class BranchService {
     // 3. 计算目标数据库名
     String branchDbName = rootProjectId + "_" + branchName;
 
-    // 4. 构建目标数据源并通过 FML 导出导入复制模型结构
-    DataSource targetDs = sessionDatasourceImpl.buildJdbcDataSource(branchDbName);
-    SchemaProvider sourceProvider = sessionFactory.getSchemaProvider(sourceDbName);
-    SchemaProvider targetProvider = new JdbcSchemaProvider(branchDbName, targetDs);
-    SchemaCopier copier = SchemaCopierFactory.create(sessionFactory);
-    copier.copySchema(sourceProvider, branchDbName, targetProvider);
+    // 4. 创建目标物理 Schema
+    DataSource systemDs = ProjectService.getSystemDataSource(flexmodelConfig);
+    schemaManager.createSchema(systemDs, branchDbName);
 
-    // 5. 迁移源分支数据到新分支
+    // 5. 构建目标数据源并通过 FML 导出导入复制模型结构
+    SchemaProvider sourceProvider = sessionFactory.getSchemaProvider(sourceDbName);
+    if (sourceProvider == null) {
+      throw new IllegalArgumentException("源分支数据库 '" + sourceDbName + "' 未就绪，请确认源分支已正确创建");
+    }
+    try {
+      DataSource targetDs = sessionDatasourceImpl.buildJdbcDataSource(branchDbName);
+      SchemaProvider targetProvider = new JdbcSchemaProvider(branchDbName, targetDs);
+      SchemaCopier copier = SchemaCopierFactory.create(sessionFactory);
+      copier.copySchema(sourceProvider, branchDbName, targetProvider);
+    } catch (Exception e) {
+      // 复制失败时回滚物理 Schema，避免留下孤立数据库
+      try {
+        schemaManager.dropSchema(systemDs, branchDbName);
+      } catch (Exception dropEx) {
+        log.warn("回滚物理 Schema '{}' 失败: {}", branchDbName, dropEx.getMessage());
+      }
+      throw e;
+    }
+
+    // 6. 迁移源分支数据到新分支
     try (Session sourceSession = sessionFactory.createFailsafeSession(sourceDbName);
          Session targetSession = sessionFactory.createFailsafeSession(branchDbName)) {
       List<SchemaObject> models = sessionFactory.getModels(sourceDbName);
@@ -140,7 +157,7 @@ public class BranchService {
       }
     }
 
-    // 6. 保存分支记录
+    // 7. 保存分支记录
     Branch branch = new Branch();
     branch.setProjectId(rootProjectId);
     branch.setName(branchName);
@@ -150,7 +167,7 @@ public class BranchService {
     branch.setCreatedBy(SessionContextHolder.getUserId());
     Branch saved = branchRepository.save(branch);
 
-    // 7. 创建分支项目记录（Supabase 风格：每个分支是独立可寻址的项目）
+    // 8. 创建分支项目记录（Supabase 风格：每个分支是独立可寻址的项目）
     String branchProjectId = rootProjectId + "_" + branchName;
     Project branchProject = new Project();
     branchProject.setId(branchProjectId);
@@ -161,7 +178,7 @@ public class BranchService {
     branchProject.setEnabled(true);
     projectRepository.save(branchProject);
 
-    // 8. 刷新父项目的所有分支 GraphQL
+    // 9. 刷新父项目的所有分支 GraphQL
     graphQLEventConsumer.refreshProject(project);
 
     return saved;

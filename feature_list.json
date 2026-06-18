@@ -74,14 +74,6 @@
     },
     {
       "id": "feat-010",
-      "name": "MCP Server - AI 工具集成",
-      "description": "基于 Quarkus MCP Server 扩展实现 MCP 协议，通过 @Tool 注解暴露 P0 核心工具（Project/Modeling/Data），支持 AI 客户端直接管理项目、建模和数据",
-      "dependencies": ["feat-001"],
-      "status": "done",
-      "evidence": "flexmodel-server/mcp 特性包已实现，15 个 MCP Tools（ProjectTools/ModelingTools/DataTools）已通过编译验证"
-    },
-    {
-      "id": "feat-011",
       "name": "Functions - 云函数 (Flexmodel Functions)",
       "description": "对标 Supabase Functions 的云函数能力。Deno Sidecar (Hono.js) + Worker 隔离执行，file:// URL 加载 + 原生相对 import。Java 后端简化 CRUD (ACTIVE/FAILED)，项目级资源无分支维度。多文件源文件直接存储 JSON，模板系统支持快速创建。",
       "dependencies": ["feat-001", "feat-002"],

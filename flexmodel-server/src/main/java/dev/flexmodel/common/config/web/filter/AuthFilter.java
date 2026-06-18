@@ -1,6 +1,5 @@
 package dev.flexmodel.common.config.web.filter;
 
-
 import dev.flexmodel.codegen.entity.AuthApiKey;
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.codegen.entity.Project;
@@ -17,6 +16,8 @@ import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.container.ResourceInfo;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.ext.Provider;
@@ -28,13 +29,14 @@ import java.util.*;
 /**
  * 认证过滤器。
  * <p>
- * 认证链：PermitAll -> 系统 JWT -> API Key(fm_ak_ 前缀) -> 项目 Provider(OIDC/Script) -> 401
+ * 认证链：PermitAll -> 系统 JWT -> API Key(fm_ak_ 前缀) -> 项目 Provider(OIDC/Script) ->
+ * 401
  *
  * @author cjbi
  */
 @Slf4j
 @Provider
-public class AuthFilter implements ContainerRequestFilter {
+public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
   @Context
   ResourceInfo resourceInfo;
@@ -61,7 +63,7 @@ public class AuthFilter implements ContainerRequestFilter {
 
     // 2. 提取 Bearer token
     String accessToken = Objects.toString(requestContext.getHeaderString("Authorization"), "")
-      .replaceFirst("Bearer ", "").trim();
+        .replaceFirst("Bearer ", "").trim();
     if (accessToken.isEmpty()) {
       throw new AuthException("Token is missing");
     }
@@ -204,7 +206,8 @@ public class AuthFilter implements ContainerRequestFilter {
   /**
    * API Key 认证 -> 填充上下文。
    */
-  private void fillSessionContextForApiKey(ContainerRequestContext requestContext, AuthApiKey apiKey, String requestProjectId) {
+  private void fillSessionContextForApiKey(ContainerRequestContext requestContext, AuthApiKey apiKey,
+      String requestProjectId) {
     String projectId = requestProjectId;
     if (projectId != null) {
       Project project = projectService.findProject(projectId);
@@ -221,7 +224,8 @@ public class AuthFilter implements ContainerRequestFilter {
   /**
    * 外部 Provider 认证 -> 填充上下文。
    */
-  private void fillSessionContextForProvider(ContainerRequestContext requestContext, String projectId, AuthResult result) {
+  private void fillSessionContextForProvider(ContainerRequestContext requestContext, String projectId,
+      AuthResult result) {
     Project project = projectService.findProject(projectId);
     if (project == null) {
       throw new AuthException("Project not found");
@@ -230,6 +234,12 @@ public class AuthFilter implements ContainerRequestFilter {
     SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
     SessionContextHolder.setCaller(result.getCaller());
     requestContext.setProperty("projectId", projectId);
+  }
+
+  @Override
+  public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext)
+      throws IOException {
+    SessionContextHolder.clear();
   }
 
 }

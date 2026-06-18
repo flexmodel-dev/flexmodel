@@ -4,6 +4,7 @@ import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.functions.dto.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
@@ -51,7 +52,7 @@ public class FunctionResource {
     @Path("/{name}/deploy")
     public FunctionResponse deploy(@PathParam("projectId") String projectId,
                                     @PathParam("name") String name,
-                                    FunctionDeployRequest request) {
+                                    @Valid FunctionDeployRequest request) {
         return functionService.deploy(projectId, name, request);
     }
 

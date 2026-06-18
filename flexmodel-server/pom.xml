@@ -293,15 +293,5 @@
         <quarkus.native.enabled>true</quarkus.native.enabled>
       </properties>
     </profile>
-    <profile>
-      <id>with-ui</id>
-      <dependencies>
-        <dependency>
-          <groupId>dev.flexmodel</groupId>
-          <artifactId>flexmodel-ui</artifactId>
-          <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-      </dependencies>
-    </profile>
   </profiles>
 </project>

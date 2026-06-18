@@ -19,6 +19,7 @@ import dev.flexmodel.projectauth.AuthProviderConfigService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.Project;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.regex.Pattern;
 /**
  * @author cjbi
  */
+@Slf4j
 @ApplicationScoped
 public class ProjectService {
 
@@ -78,13 +80,18 @@ public class ProjectService {
     return projectRepository.findTopLevelProjects().stream()
       .map(project -> {
           ProjectResponse response = toProjectResponse(project);
-          if (Objects.equals(request.getIncldue(), "stats")) {
-            ProjectResponse.ProjectStats projectStats = new ProjectResponse.ProjectStats(
-              -1,
-              flowDeploymentService.count(project.getId()),
-              bucketRepository.count("PROJECT", project.getId())
-            );
-            response.setStats(projectStats);
+          try {
+            if (Objects.equals(request.getIncldue(), "stats")) {
+              ProjectResponse.ProjectStats projectStats = new ProjectResponse.ProjectStats(
+                -1,
+                flowDeploymentService.count(project.getId()),
+                bucketRepository.count("PROJECT", project.getId())
+              );
+              response.setStats(projectStats);
+            }
+
+          } catch (Exception e) {
+            log.error("查询项目统计信息失败, projectId={}", project.getId(), e);
           }
           return response;
         }

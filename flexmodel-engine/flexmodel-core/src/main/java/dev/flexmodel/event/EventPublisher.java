@@ -34,4 +34,13 @@ public interface EventPublisher {
      * @param listener 监听器
      */
     void removeListener(EventListener listener);
+
+    /**
+     * 是否存在任何监听器
+     *
+     * @return 是否有监听器
+     */
+    default boolean hasListeners() {
+        return false;
+    }
 }

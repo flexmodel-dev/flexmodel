@@ -77,8 +77,8 @@ public class EventAwareDataService implements DataService {
   public int updateById(String modelName, Map<String, Object> record, Object id) {
     log.debug("Starting update operation for model: {}, id: {}", modelName, id);
 
-    // 获取更新前的数据
-    Map<String, Object> oldData = delegate.findById(modelName, id);
+    // 获取更新前的数据（仅在有监听器时才获取）
+    Map<String, Object> oldData = eventPublisher.hasListeners() ? delegate.findById(modelName, id) : null;
 
     // 发布前置事件
     PreUpdateEvent preEvent = new PreUpdateEvent(modelName, schemaName, oldData, record, id, null, sessionId, source);
@@ -116,8 +116,8 @@ public class EventAwareDataService implements DataService {
   public int deleteById(String modelName, Object id) {
     log.debug("Starting delete operation for model: {}, id: {}", modelName, id);
 
-    // 获取删除前的数据
-    Map<String, Object> oldData = delegate.findById(modelName, id);
+    // 获取删除前的数据（仅在有监听器时才获取）
+    Map<String, Object> oldData = eventPublisher.hasListeners() ? delegate.findById(modelName, id) : null;
 
     // 发布前置事件
     PreDeleteEvent preEvent = new PreDeleteEvent(modelName, schemaName, oldData, id, null, sessionId, source);

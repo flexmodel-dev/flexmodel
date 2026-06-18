@@ -81,4 +81,9 @@ public class SimpleEventPublisher implements EventPublisher {
             log.debug("Removed event listener: {}", listener.getClass().getSimpleName());
         }
     }
+
+    @Override
+    public boolean hasListeners() {
+        return !listeners.isEmpty();
+    }
 }

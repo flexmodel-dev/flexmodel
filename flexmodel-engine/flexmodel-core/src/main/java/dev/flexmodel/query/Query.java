@@ -312,17 +312,13 @@ public class Query implements Serializable {
 
   public record QueryField(String name) implements Field, QueryCall {
     public String getAliasName() {
-      if (name.contains(".")) {
-        return name.split("\\.")[0];
-      }
-      return null;
+      int dotIndex = name.indexOf('.');
+      return dotIndex >= 0 ? name.substring(0, dotIndex) : null;
     }
 
     public String getFieldName() {
-      if (name.contains(".")) {
-        return name.split("\\.")[1];
-      }
-      return name;
+      int dotIndex = name.indexOf('.');
+      return dotIndex >= 0 ? name.substring(dotIndex + 1) : name;
     }
 
     @Override

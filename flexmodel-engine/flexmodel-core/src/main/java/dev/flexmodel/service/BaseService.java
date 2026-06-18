@@ -435,7 +435,7 @@ public abstract class BaseService {
 
     Map<String, RelationField> relationFieldMap = findRelationFields(model, query);
 
-    relationFieldMap.entrySet().parallelStream().forEach(entry -> {
+    relationFieldMap.entrySet().stream().forEach(entry -> {
       String relationFieldAlias = entry.getKey();
       RelationField relationField = entry.getValue();
 
@@ -761,11 +761,7 @@ public abstract class BaseService {
         relationRecord.put(relationField.getForeignField(), parentId);
 
         log.debug("Inserting relation record: {} -> {}", relationField.getFrom(), relationRecord);
-        try {
-          getDataService().insert(relationField.getFrom(), relationRecord);
-        } catch (Exception e) {
-          log.error("Failed to insert relation record: {} -> {}, error: {}", relationField.getFrom(), relationRecord, e.getMessage(), e);
-        }
+        getDataService().insert(relationField.getFrom(), relationRecord);
       });
     } else {
       // 处理一对一关联
@@ -773,11 +769,7 @@ public abstract class BaseService {
       relationRecord.put(relationField.getForeignField(), parentId);
 
       log.debug("Inserting relation record: {} -> {}", relationField.getFrom(), relationRecord);
-      try {
-        getDataService().insert(relationField.getFrom(), relationRecord);
-      } catch (Exception e) {
-        log.error("Failed to insert relation record: {} -> {}, error: {}", relationField.getFrom(), relationRecord, e.getMessage(), e);
-      }
+      getDataService().insert(relationField.getFrom(), relationRecord);
     }
   }
 }

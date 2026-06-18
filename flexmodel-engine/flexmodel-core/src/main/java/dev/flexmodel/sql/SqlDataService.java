@@ -48,13 +48,13 @@ public class SqlDataService extends BaseService implements DataService {
     long startTime = System.currentTimeMillis();
 
     Map<String, Object> processedData = generateFieldValues(modelName, data, false);
+    int rows;
     try {
       String sql = getInsertSqlString(modelName, processedData);
       log.debug("Generated INSERT SQL: {}", sql);
 
       EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
       Optional<TypedField<?, ?>> idFieldOptional = entity.findIdField();
-      int rows;
       if (idFieldOptional.isPresent()) {
         TypedField<?, ?> idField = idFieldOptional.get();
         if (processedData.get(idField.getName()) != null) {
@@ -71,7 +71,7 @@ public class SqlDataService extends BaseService implements DataService {
                 processedData.put(idField.getName(), keys.getFirst()));
           }
         }
-        // 返回ID值
+        // 将生成的ID回填到原始 data map
         data.put(idField.getName(), processedData.get(idField.getName()));
       } else {
         rows = sqlExecutor.update(sql, processedData);
@@ -85,17 +85,11 @@ public class SqlDataService extends BaseService implements DataService {
       log.error("SQL insert failed for model: {} after {}ms", modelName, duration, e);
       throw e;
     } finally {
-      // 获取生成的ID（如果有的话）
+      // 处理关联关系（无论成功与否都需要处理，因为可能有部分数据已插入）
       EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
-      Optional<TypedField<?, ?>> idFieldOptional = entity.findIdField();
-      Object id = null;
-      if (idFieldOptional.isPresent()) {
-        id = processedData.get(idFieldOptional.get().getName());
-        // 将生成的ID放回到原始的data map中
-        data.put(idFieldOptional.get().getName(), id);
-      }
-
-      // 处理关联关系
+      Object id = entity.findIdField()
+        .map(idField -> processedData.get(idField.getName()))
+        .orElse(null);
       insertRelatedRecords(modelName, data, id);
     }
   }
@@ -577,23 +571,12 @@ public class SqlDataService extends BaseService implements DataService {
       for (Map.Entry<String, Query.QueryCall> entry : fields.entrySet()) {
         String key = entry.getKey();
         Query.QueryCall value = entry.getValue();
-        sqlResultHandler.addSqlTypeHandler(key, new UnknownSqlTypeHandler(), null);
         if (value instanceof Query.QueryField queryField) {
-          if (queryField.getAliasName() != null) {
-            ModelDefinition queryModel = (ModelDefinition) sessionContext.getModelDefinition(queryField.getAliasName());
-            Field field = queryModel != null
-              ? queryModel.getField(queryField.getFieldName())
-              : model.getField(queryField.getFieldName());
-            if (field instanceof TypedField<?, ?> typedField) {
-              sqlResultHandler.addSqlTypeHandler(key, sessionContext.getTypeHandler(typedField.getType()), null);
-            } else {
-              sqlResultHandler.addSqlTypeHandler(key, new UnknownSqlTypeHandler(), null);
-            }
-          } else {
-            sqlResultHandler.addSqlTypeHandler(key, new UnknownSqlTypeHandler(), null);
-          }
-          Field field = queryField.getAliasName() != null
-            ? ((ModelDefinition) sessionContext.getModelDefinition(queryField.getAliasName())).getField(queryField.getFieldName())
+          ModelDefinition queryModel = queryField.getAliasName() != null
+            ? (ModelDefinition) sessionContext.getModelDefinition(queryField.getAliasName())
+            : null;
+          Field field = queryModel != null
+            ? queryModel.getField(queryField.getFieldName())
             : model.getField(queryField.getFieldName());
           if (field instanceof TypedField<?, ?> typedField) {
             sqlResultHandler.addSqlTypeHandler(key, sessionContext.getTypeHandler(typedField.getType()), field);

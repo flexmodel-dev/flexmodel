@@ -39,12 +39,15 @@ public class InMemoryModelRegistry implements ModelRegistry {
 
   @Override
   public void unregisterAll(String schemaName) {
-    map.clear();
+    map.remove(schemaName);
   }
 
   @Override
   public void unregisterAll(String schemaName, String modelName) {
-    map.get(schemaName).remove(modelName);
+    Map<String, SchemaObject> schemaMap = map.get(schemaName);
+    if (schemaMap != null) {
+      schemaMap.remove(modelName);
+    }
   }
 
   @Override

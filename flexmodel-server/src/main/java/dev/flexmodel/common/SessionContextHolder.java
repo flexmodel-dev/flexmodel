@@ -52,4 +52,9 @@ public class SessionContextHolder {
     private String caller;
   }
 
+
+  public static void clear() {
+    CONTEXT_HOLDER.remove();
+  }
+
 }

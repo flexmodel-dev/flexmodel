@@ -7,8 +7,8 @@ import dev.flexmodel.SchemaProvider;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author cjbi
@@ -18,7 +18,7 @@ public class SqlConnectionHolder {
   Logger log = LoggerFactory.getLogger(SqlConnectionHolder.class);
 
   private final Map<String, SchemaProvider> schemaProviderMap;
-  private final Map<String, Connection> connections = new HashMap<>();
+  private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
   public SqlConnectionHolder(Map<String, SchemaProvider> schemaProviderMap) {
     this.schemaProviderMap = schemaProviderMap;

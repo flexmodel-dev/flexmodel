@@ -3,9 +3,7 @@ package dev.flexmodel.model;
 import dev.flexmodel.model.field.RelationField;
 import dev.flexmodel.model.field.TypedField;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.UnaryOperator;
 
 /**
@@ -115,10 +113,14 @@ public class EntityDefinition extends AbstractModelDefinition<EntityDefinition> 
 
   @Override
   public boolean equals(Object obj) {
-    if (this.getName() != null && obj instanceof EntityDefinition) {
-      return this.getName().equals(((EntityDefinition) obj).getName());
-    }
-    return false;
+    if (this == obj) return true;
+    if (!(obj instanceof EntityDefinition other)) return false;
+    return Objects.equals(this.getName(), other.getName());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(getName());
   }
 
   @Override

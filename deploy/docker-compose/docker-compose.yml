@@ -7,8 +7,6 @@ services:
       - ./mysql/init:/docker-entrypoint-initdb.d
       - ./mysql/my.cnf:/etc/my.cnf
     restart: always
-    ports:
-      - "3306"
     environment:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
@@ -30,8 +28,23 @@ services:
     container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-ui
     image: cjbi/flexmodel-ui:latest
     restart: always
+    environment:
+      - TZ=GMT+08
+    depends_on:
+      flexmodel-server:
+        condition: service_started
+    networks:
+      - flexmodel
+  nginx:
+    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-nginx
+    image: nginx:1.25.3
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+    restart: always
     ports:
       - ${NGINX_HTTP_PORT:-80}:80
+      - ${NGINX_HTTPS_PORT:-443}:443
     environment:
       - TZ=GMT+08
     depends_on:
@@ -43,8 +56,9 @@ services:
     container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-server
     image: cjbi/flexmodel-server:latest
     restart: always
-    ports:
-      - "8080"
+    volumes:
+      - ./storage:/deployments/storage
+      - ./logs/flexmodel-server:/deployments/logs
     environment:
       - |
         JAVA_OPTS=
@@ -54,6 +68,8 @@ services:
         -Dflexmodel.datasource.url=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
         -Dflexmodel.datasource.username=root
         -Dflexmodel.datasource.password=${MYSQL_ROOT_PASSWORD}
+        -Dflexmodel.project-url-template=jdbc:mysql://mysql:3306/{{databaseName}}
+
 
     networks:
       - flexmodel

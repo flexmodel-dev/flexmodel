@@ -172,19 +172,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [ push-server-image, push-ui-image, push-sidecar-image ]
-    steps:
-      - name: Deploy Docker Image
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.SSH_USER }}
-          port: ${{ secrets.SSH_PORT }}
-          key: ${{ secrets.SSH_KEY }}
-          command_timeout: 10m
-          script: |
-            cd /opt/flexmodel-quickstarts/docker-compose
-            docker-compose pull flexmodel-server flexmodel-ui flexmodel-sidecar
-            docker-compose up -d
+#  deploy:
+#    runs-on: ubuntu-latest
+#    needs: [ push-server-image, push-ui-image, push-sidecar-image ]
+#    steps:
+#      - name: Deploy Docker Image
+#        uses: appleboy/ssh-action@master
+#        with:
+#          host: ${{ secrets.HOST }}
+#          username: ${{ secrets.SSH_USER }}
+#          port: ${{ secrets.SSH_PORT }}
+#          key: ${{ secrets.SSH_KEY }}
+#          command_timeout: 10m
+#          script: |
+#            cd /opt/flexmodel-quickstarts/docker-compose
+#            docker-compose pull flexmodel-server flexmodel-ui flexmodel-sidecar
+#            docker-compose up -d

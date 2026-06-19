@@ -1,7 +1,7 @@
 package dev.flexmodel.common.config;
 
 import com.zaxxer.hikari.HikariDataSource;
-import dev.flexmodel.connect.SessionDatasource;
+import dev.flexmodel.common.SchemaRegistry;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -30,16 +30,16 @@ public class SessionConfig {
   public static final String SYSTEM_DS_KEY = "system";
 
   public void installDatasource(@Observes StartupEvent startupEvent,
-                                ProjectService projectService, SessionDatasource sessionDatasource,
+                                ProjectService projectService, SchemaRegistry schemaRegistry,
                                 BranchRepository branchRepository) {
     long beginTime = System.currentTimeMillis();
     List<Project> projects = projectService.findProjects();
     for (Project project : projects) {
-      sessionDatasource.add(project);
+      schemaRegistry.add(project);
       // 注册非 main 分支的数据库 SchemaProvider
       List<Branch> branches = branchRepository.findByProjectId(project.getId());
       for (Branch branch : branches) {
-        sessionDatasource.registerSchema(branch.getDatabaseName());
+        schemaRegistry.registerSchema(branch.getDatabaseName());
       }
     }
     log.info("========== Engine init successful in {} ms!", System.currentTimeMillis() - beginTime);

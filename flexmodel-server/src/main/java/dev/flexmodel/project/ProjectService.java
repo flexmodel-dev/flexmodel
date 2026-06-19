@@ -7,7 +7,7 @@ import dev.flexmodel.common.SessionContextHolder;
 import dev.flexmodel.common.FlexmodelConfig;
 import dev.flexmodel.common.config.SessionConfig;
 import dev.flexmodel.common.utils.StringUtils;
-import dev.flexmodel.connect.SessionDatasource;
+import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.flow.service.FlowDeploymentService;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.project.dto.ProjectListRequest;
@@ -52,7 +52,7 @@ public class ProjectService {
   @Inject
   BucketRepository bucketRepository;
   @Inject
-  SessionDatasource sessionDatasource;
+  SchemaRegistry schemaRegistry;
   @Inject
   SchemaInitializer schemaInitializer;
   @Inject
@@ -154,7 +154,7 @@ public class ProjectService {
     schemaManager.createSchema(systemDs, mainDatabaseName);
 
     // 2. 注册 SchemaProvider 到 SessionFactory（必须在初始化表结构之前）
-    sessionDatasource.registerSchema(mainDatabaseName);
+    schemaRegistry.registerSchema(mainDatabaseName);
 
     // 3. 用 project.fml 初始化表结构
     schemaInitializer.init(mainDatabaseName);
@@ -205,7 +205,7 @@ public class ProjectService {
     // 0. 删除所有分支项目（取消注册 SchemaProvider、删除物理数据库、删除 f_project 记录）
     List<Project> branchProjects = projectRepository.findBranchProjects(projectId);
     for (Project bp : branchProjects) {
-      sessionDatasource.unregisterSchema(bp.getDatabaseName());
+      schemaRegistry.unregisterSchema(bp.getDatabaseName());
       try {
         schemaManager.dropSchema(systemDs, bp.getDatabaseName());
       } catch (Exception e) {
@@ -218,7 +218,7 @@ public class ProjectService {
     // 1. 删除所有分支记录和取消注册 SchemaProvider（幂等清理物理 Schema）
     List<Branch> branches = branchRepository.findByProjectId(projectId);
     for (Branch branch : branches) {
-      sessionDatasource.unregisterSchema(branch.getDatabaseName());
+      schemaRegistry.unregisterSchema(branch.getDatabaseName());
       try {
         schemaManager.dropSchema(systemDs, branch.getDatabaseName());
       } catch (Exception e) {
@@ -229,7 +229,7 @@ public class ProjectService {
 
     // 2. 取消注册 main 分支 SchemaProvider
     String mainDatabaseName = resolveDatabaseName(projectId);
-    sessionDatasource.unregisterSchema(mainDatabaseName);
+    schemaRegistry.unregisterSchema(mainDatabaseName);
 
     // 3. 删除物理 Schema
     try {

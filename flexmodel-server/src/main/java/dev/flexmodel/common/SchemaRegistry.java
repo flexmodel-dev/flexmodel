@@ -3,12 +3,10 @@ package dev.flexmodel.common;
 import com.zaxxer.hikari.HikariDataSource;
 import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.connect.NativeQueryResult;
-import dev.flexmodel.connect.SessionDatasource;
 import dev.flexmodel.common.config.SessionConfig;
+import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.sql.JdbcSchemaProvider;
 import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,11 +22,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * Schema 注册中心，管理项目 Schema 与 SessionFactory 之间的生命周期绑定。
+ * <p>
+ * 核心职责：
+ * <ul>
+ *   <li>注册/注销 SchemaProvider 到 SessionFactory</li>
+ *   <li>项目创建/删除时的 Schema 初始化与清理</li>
+ *   <li>物理表名查询与原生 SQL 执行</li>
+ * </ul>
+ *
  * @author cjbi
  */
 @ApplicationScoped
 @Slf4j
-public class SessionDatasourceImpl implements SessionDatasource {
+public class SchemaRegistry {
 
   @Inject
   SessionFactory sessionFactory;
@@ -43,7 +50,6 @@ public class SessionDatasourceImpl implements SessionDatasource {
     return StringUtils.simpleRenderTemplate(template, SystemVariablesHolder.getSystemVariables());
   }
 
-  @Override
   public List<String> getPhysicsModelNames(Project project) {
     List<String> list = new ArrayList<>();
     String databaseName = projectService.resolveDatabaseName(project.getId());
@@ -63,12 +69,15 @@ public class SessionDatasourceImpl implements SessionDatasource {
     }
   }
 
-  @Override
   public void add(Project project) {
     registerSchema(projectService.resolveDatabaseName(project.getId()));
   }
 
-  @Override
+  /**
+   * 注册指定 Schema 的 SchemaProvider 到 SessionFactory。
+   *
+   * @param schemaName Schema 名称
+   */
   public void registerSchema(String schemaName) {
     try {
       String actualSchemaName = "system".equals(schemaName) ? "flexmodel" : schemaName;
@@ -97,7 +106,11 @@ public class SessionDatasourceImpl implements SessionDatasource {
     }
   }
 
-  @Override
+  /**
+   * 取消注册指定 Schema 的 SchemaProvider。
+   *
+   * @param schemaName Schema 名称
+   */
   public void unregisterSchema(String schemaName) {
     // 取消注册前关闭对应的 HikariDataSource
     try {
@@ -137,12 +150,10 @@ public class SessionDatasourceImpl implements SessionDatasource {
     return ds;
   }
 
-  @Override
   public void delete(Project project) {
     sessionFactory.unregisterSchemaProvider(projectService.resolveDatabaseName(project.getId()));
   }
 
-  @Override
   @SuppressWarnings("all")
   public NativeQueryResult executeNativeQuery(Project project, String statement, Map<String, Object> parameters) {
     try (Session session = sessionFactory.createSession(projectService.resolveDatabaseName(project.getId()))) {
@@ -151,7 +162,6 @@ public class SessionDatasourceImpl implements SessionDatasource {
       long endTime = System.currentTimeMillis() - beginTime;
       return new NativeQueryResult(endTime, result);
     }
-
   }
 
 }

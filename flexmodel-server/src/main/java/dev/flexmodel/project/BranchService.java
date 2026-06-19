@@ -7,8 +7,7 @@ import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.FlexmodelConfig;
 import dev.flexmodel.common.SessionContextHolder;
-import dev.flexmodel.common.SessionDatasourceImpl;
-import dev.flexmodel.connect.SessionDatasource;
+import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
 import dev.flexmodel.model.NativeQueryDefinition;
@@ -57,10 +56,7 @@ public class BranchService {
   ProjectRepository projectRepository;
 
   @Inject
-  SessionDatasource sessionDatasource;
-
-  @Inject
-  SessionDatasourceImpl sessionDatasourceImpl;
+  SchemaRegistry schemaRegistry;
 
   @Inject
   FlexmodelConfig flexmodelConfig;
@@ -124,7 +120,7 @@ public class BranchService {
       throw new IllegalArgumentException("源分支数据库 '" + sourceDbName + "' 未就绪，请确认源分支已正确创建");
     }
     try {
-      DataSource targetDs = sessionDatasourceImpl.buildJdbcDataSource(branchDbName);
+      DataSource targetDs = schemaRegistry.buildJdbcDataSource(branchDbName);
       SchemaProvider targetProvider = new JdbcSchemaProvider(branchDbName, targetDs);
       SchemaCopier copier = SchemaCopierFactory.create(sessionFactory);
       copier.copySchema(sourceProvider, branchDbName, targetProvider);
@@ -199,7 +195,7 @@ public class BranchService {
     }
 
     // 1. 取消注册 SchemaProvider
-    sessionDatasource.unregisterSchema(branch.getDatabaseName());
+    schemaRegistry.unregisterSchema(branch.getDatabaseName());
 
     // 2. 删除物理数据库
     try {

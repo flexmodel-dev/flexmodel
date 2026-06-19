@@ -70,7 +70,9 @@ services:
         -Dflexmodel.datasource.username=root
         -Dflexmodel.datasource.password=${MYSQL_ROOT_PASSWORD}
         -Dflexmodel.project-url-template=jdbc:mysql://mysql:3306/{{databaseName}}
-
+        -Dflexmodel.datasource.dev_test.db-kind=sqlite
+        -Dflexmodel.datasource.dev_test.url=jdbc:sqlite:file:database/sqlite_dev_test.db
+        -Dquarkus.rest-client.sidecar.url=http://flexmodel-sidecar:9999
 
     networks:
       - flexmodel

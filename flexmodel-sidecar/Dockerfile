@@ -24,5 +24,5 @@ ENV FLEXMODEL_HOST=0.0.0.0
 
 # --allow-net without restriction; network isolation handled at container level.
 # --allow-env needed for Deno.env access.
-# --allow-read=./ --allow-write=./ limit FS access to the app directory.
-CMD ["run", "--allow-net", "--allow-env", "--allow-read=./", "--allow-write=./", "--unstable-worker-options", "src/main.ts"]
+# --allow-read and --allow-write cover ./  (app dir) + /tmp (function registry storage).
+CMD ["run", "--allow-net", "--allow-env", "--allow-read=./", "--allow-read=/tmp", "--allow-write=./", "--allow-write=/tmp", "--unstable-worker-options", "src/main.ts"]

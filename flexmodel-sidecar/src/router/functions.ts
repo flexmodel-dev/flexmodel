@@ -3,6 +3,7 @@
 // ============================================================
 
 import { Hono } from "hono";
+import type { StatusCode } from "hono/utils/http-status";
 import { registry } from "../runner/registry.ts";
 import { invokeFunction } from "../runner/worker.ts";
 import type { DeployRequest, InvokeRequest } from "../types.ts";
@@ -73,7 +74,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     // _meta is passed via response header for debug/observability
     const res = c.newResponse(
       typeof result.body === "string" ? result.body : JSON.stringify(result.body ?? null),
-      result.status,
+      result.status as StatusCode,
       {
         ...result.headers,
         "content-type": result.headers["content-type"] ?? "application/json",

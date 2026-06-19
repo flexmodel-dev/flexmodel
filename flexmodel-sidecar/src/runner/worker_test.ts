@@ -50,9 +50,7 @@ Deno.test("invokeFunction runs a simple function returning plain object", async 
     );
 
     const result = await invokeFunction("wk-p1", "jsonFn", {
-      method: "POST",
-      headers: {},
-      body: {},
+      input: {},
     });
 
     assertEquals(result.status, 200);
@@ -85,8 +83,7 @@ Deno.test("invokeFunction runs a function returning a Response object", async ()
     );
 
     const result = await invokeFunction("wk-p2", "responseFn", {
-      method: "GET",
-      headers: {},
+      input: {},
     });
 
     assertEquals(result.status, 201);
@@ -119,7 +116,7 @@ Deno.test("invokeFunction enforces timeout", async () => {
 
     await assertRejects(
       () =>
-        invokeFunction("wk-p3", "slow", { method: "POST", headers: {} }),
+        invokeFunction("wk-p3", "slow", { input: {} }),
       Error,
       "timed out",
     );
@@ -148,7 +145,7 @@ Deno.test("invokeFunction propagates runtime errors", async () => {
 
     await assertRejects(
       () =>
-        invokeFunction("wk-p4", "boom", { method: "POST", headers: {} }),
+        invokeFunction("wk-p4", "boom", { input: {} }),
       Error,
       "intentional boom",
     );
@@ -177,7 +174,7 @@ Deno.test("invokeFunction fails when function directory is missing", async () =>
 
     await assertRejects(
       () =>
-        invokeFunction("wk-p5", "ghost", { method: "POST", headers: {} }),
+        invokeFunction("wk-p5", "ghost", { input: {} }),
       Error,
       "Function directory not found",
     );
@@ -220,8 +217,7 @@ Deno.test("invokeFunction proxies SDK requests to Java backend", async () => {
     );
 
     const result = await invokeFunction("wk-p6", "sdkUser", {
-      method: "POST",
-      headers: {},
+      input: {},
     });
     assertEquals(result.status, 200);
     const body = result.body as Record<string, unknown>;

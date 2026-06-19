@@ -138,9 +138,8 @@ Deno.test("POST /functions/:projectId/:name/invoke executes function via Worker"
           name: "echo",
           sourceFiles: {
             "index.ts": `
-              export default async (req: Request) => {
-                const body = await req.json().catch(() => ({}));
-                return new Response(JSON.stringify({echo: body}), {status: 200, headers:{"content-type":"application/json"}});
+              export default async (input: any, ctx: any) => {
+                return ctx.json({ echo: input });
               };
             `,
           },
@@ -153,14 +152,13 @@ Deno.test("POST /functions/:projectId/:name/invoke executes function via Worker"
       new Request("http://localhost/functions/inv-proj/echo/invoke", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: "hi" }),
+        body: JSON.stringify({ input: { message: "hi" } }),
       }),
     );
 
     assertEquals(res.status, 200);
     const body = await res.json();
-    assertEquals(body.status, 200);
-    assertEquals((body as Record<string, unknown>).body !== undefined, true);
+    assertEquals((body as Record<string, unknown>).echo !== undefined, true);
 
     await registry.delete("inv-proj", "echo");
   } finally {

@@ -55,12 +55,4 @@ public class FunctionResource {
                                     @Valid FunctionDeployRequest request) {
         return functionService.deploy(projectId, name, request);
     }
-
-    @POST
-    @Path("/{name}/invoke")
-    public FunctionInvokeResponse invoke(@PathParam("projectId") String projectId,
-                                          @PathParam("name") String name,
-                                          FunctionInvokeRequest request) {
-        return functionService.invoke(projectId, name, request);
-    }
 }

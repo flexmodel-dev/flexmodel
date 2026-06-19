@@ -2,7 +2,6 @@ package dev.flexmodel.functions;
 
 import dev.flexmodel.functions.dto.SidecarDeployRequest;
 import dev.flexmodel.functions.dto.FunctionInvokeRequest;
-import dev.flexmodel.functions.dto.FunctionInvokeResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
@@ -47,7 +46,7 @@ public class FunctionInvoker {
     /**
      * Invoke a function via the Deno sidecar.
      */
-    public FunctionInvokeResponse invoke(String projectId, String name, FunctionInvokeRequest req) {
+    public Response invoke(String projectId, String name, FunctionInvokeRequest req) {
         try {
             return sidecarClient.invoke(projectId, name, req);
         } catch (Exception e) {

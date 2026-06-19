@@ -64,27 +64,33 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
     const request: InvokeRequest = {
-      method: body.method ?? "GET",
-      headers: body.headers ?? {},
-      body: body.body,
-      query: body.query,
+      input: body.input,
     };
 
     const result = await invokeFunction(projectId, name, request);
 
-    return c.json(result);
+    // Return function result directly as HTTP response
+    // _meta is passed via response header for debug/observability
+    const res = c.newResponse(
+      typeof result.body === "string" ? result.body : JSON.stringify(result.body ?? null),
+      result.status,
+      {
+        ...result.headers,
+        "content-type": result.headers["content-type"] ?? "application/json",
+        "x-function-meta": JSON.stringify(result._meta),
+      },
+    );
+    return res;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     const isTimeout = message.includes("timed out");
+    const status = isTimeout ? 504 : 500;
+    const errorMeta = { executionTimeMs: 0, logs: [{ level: "error", message }] };
 
     return c.json(
-      {
-        status: isTimeout ? 504 : 500,
-        headers: { "content-type": "application/json" },
-        body: { error: isTimeout ? "Function execution timed out" : message },
-        _meta: { executionTimeMs: 0, logs: [{ level: "error", message }] },
-      },
-      isTimeout ? 504 : 500,
+      { error: isTimeout ? "Function execution timed out" : message },
+      status,
+      { "x-function-meta": JSON.stringify(errorMeta) },
     );
   }
 });

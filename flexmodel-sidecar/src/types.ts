@@ -26,10 +26,7 @@ export interface DeployRequest {
 // ---- Invoke Request (from Java → Deno) ----
 
 export interface InvokeRequest {
-  method: string;
-  headers: Record<string, string>;
-  body?: unknown;
-  query?: Record<string, string>;
+  input?: unknown;
 }
 
 // ---- Invoke Result (from Deno → Java) ----

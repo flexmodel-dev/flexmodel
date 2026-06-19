@@ -18,7 +18,6 @@ import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.flow.service.FlowDeploymentService;
 import dev.flexmodel.functions.FunctionService;
 import dev.flexmodel.functions.dto.FunctionInvokeRequest;
-import dev.flexmodel.functions.dto.FunctionInvokeResponse;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.common.SessionContextHolder;
@@ -214,16 +213,16 @@ public class TriggerService {
       if ("FUNCTION".equals(trigger.getJobType())) {
         // 执行云函数
         FunctionInvokeRequest invokeReq = new FunctionInvokeRequest();
-        invokeReq.setMethod("POST");
-        invokeReq.setBody(Map.of("triggerId", trigger.getId(), "triggerTime", startTime));
+        invokeReq.setInput(Map.of("triggerId", trigger.getId(), "triggerTime", startTime));
 
         JobExecutionLog jobExecutionLog = jobExecutionLogService.recordJobStart(trigger.getId(), trigger.getJobId(), trigger.getJobGroup(),
           trigger.getJobType(), trigger.getName(), trigger.getName(), trigger.getName(), startTime,
           startTime, invokeReq, projectId2);
 
         try {
-          FunctionInvokeResponse response = functionService.invoke(projectId2, trigger.getJobId(), invokeReq);
-          jobExecutionLogService.recordJobSuccess(jobExecutionLog.getId(), response,
+          jakarta.ws.rs.core.Response response = functionService.invoke(projectId2, trigger.getJobId(), invokeReq);
+          Object result = response.readEntity(Object.class);
+          jobExecutionLogService.recordJobSuccess(jobExecutionLog.getId(), result,
             System.currentTimeMillis() - startTime);
         } catch (Exception e) {
           log.error("云函数执行失败: {}", trigger.getJobId(), e);

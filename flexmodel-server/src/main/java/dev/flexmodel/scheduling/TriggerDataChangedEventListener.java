@@ -134,8 +134,7 @@ public class TriggerDataChangedEventListener implements EventListener {
     String projectId = SessionContextHolder.getProjectId();
     if ("FUNCTION".equals(trigger.getJobType())) {
       FunctionInvokeRequest invokeReq = new FunctionInvokeRequest();
-      invokeReq.setMethod("POST");
-      invokeReq.setBody(Map.of(
+      invokeReq.setInput(Map.of(
         "triggerId", trigger.getId(),
         "eventData", eventData,
         "triggerTime", System.currentTimeMillis()

@@ -1,3 +1,133 @@
+# PolyForm Noncommercial License 1.0.0
+
+<https://polyformproject.org/licenses/noncommercial/1.0.0>
+
+## PolyForm Noncommercial License 1.0.0
+
+**Copyright © 2024-present Flexmodel Authors. All rights reserved.**
+
+> 本源码仅供学习研究使用，禁止用于任何商业用途。
+> 如需合作定制开发或商业授权，请联系作者。
+
+---
+
+### Acceptance
+
+In order to get any license under these terms, you must agree
+to them as both strict obligations and conditions to all
+your licenses.
+
+### Copyright License
+
+The licensor grants you a copyright license for the
+software to do everything you might do with the software
+that would otherwise infringe the licensor's copyright, but only
+**as long as you meet all the conditions below**.
+
+### Noncommercial Use Only
+
+You may use the software for **noncommercial purposes only**.
+"Noncommercial purposes" means purposes that are not
+primarily intended for or directed towards commercial
+advantage or monetary compensation. This includes, but is
+not limited to:
+
+- Personal learning, research, and study
+- Non-profit educational activities
+- Internal evaluation and prototyping without commercial deployment
+
+Commercial purposes include, but are not limited to:
+
+- Operating the software as a service for paying customers
+- Embedding the software in a product sold to customers
+- Using the software to process commercial transactions
+- Any use by a for-profit organization in furtherance of its business
+
+For the avoidance of doubt, any use that results in direct
+or indirect revenue, monetary compensation, or commercial
+advantage is considered commercial and requires a separate
+commercial license from the author.
+
+### Notices
+
+You must ensure that anyone who gets a copy of any part of
+the software from you also gets a copy of these terms or the
+URL for them above, as well as copies of any plain-text lines
+beginning with `Required Notice:` that the licensor provided
+with the software. For example:
+
+> Required Notice: Copyright © 2024-present Flexmodel Authors
+
+### Patent License
+
+The licensor grants you a patent license for the software that
+covers patent claims the licensor can license, or becomes able
+to license, that you would infringe by using the software, but
+**only as long as you meet all the conditions above**.
+
+### No Other Rights
+
+These terms do not allow you to sublicense or transfer any of
+your licenses to anyone else, or prevent the licensor from
+granting licenses to anyone else. These terms do not imply
+any other licenses not mentioned in these terms.
+
+### Patent Defense
+
+If you make any written claim that the software infringes or
+contributes to infringement of any patent, your patent license
+for the software granted under these terms ends immediately. If
+your company makes such a claim, your patent license ends
+immediately for work on behalf of your company.
+
+### Violation
+
+The licenses granted under these terms end immediately if you
+violate any of the conditions above.
+
+### No Other Liability
+
+**As far as the law allows, the software comes as is, without
+any warranty or condition, and the licensor will not be liable
+to you for any damages arising out of these terms or the use
+or nature of the software, under any kind of legal claim.**
+
+If no kind of legal claim is available, the licensor will not
+be liable to you for any damages related to the software or
+these terms, under any legal theory.
+
+### Language
+
+The English version of these terms is the authoritative version.
+Translations into other languages are provided for convenience
+only and do not alter the meaning of the terms.
+
+---
+
+## 中文说明
+
+本许可证基于 [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) 制定。
+
+**授权范围：**
+- ✅ 个人学习、研究与技术评估
+- ✅ 非营利性教育活动
+- ✅ 内部原型验证（不涉及商业部署）
+
+**禁止行为：**
+- ❌ 将本软件用于商业目的（包括但不限于商业服务运营、产品销售、商业交易处理）
+- ❌ 将本软件嵌入或集成到商业产品中
+- ❌ 营利性组织将本软件用于业务运营
+- ❌ 未经授权的再许可或转让
+
+**商业合作：**
+如需商业授权或定制开发合作，请通过以下方式联系作者：
+- 请通过项目仓库的 Issue 或联系方式进行沟通
+
+---
+
+PolyForm Project licenses are provided under the Creative Commons
+Attribution-NoDerivatives 4.0 International Public License.
+See https://polyformproject.org for more information.
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/

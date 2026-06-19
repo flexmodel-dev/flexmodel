@@ -37,8 +37,7 @@ public class ScheduledFunctionExecutionJob implements Job {
       log.info("开始执行定时云函数任务: triggerId={}, functionName={}", triggerId, functionName);
 
       FunctionInvokeRequest invokeReq = new FunctionInvokeRequest();
-      invokeReq.setMethod("POST");
-      invokeReq.setBody(Map.of("triggerId", triggerId, "triggerTime", System.currentTimeMillis()));
+      invokeReq.setInput(Map.of("triggerId", triggerId, "triggerTime", System.currentTimeMillis()));
 
       functionService.invoke(projectId, functionName, invokeReq);
 

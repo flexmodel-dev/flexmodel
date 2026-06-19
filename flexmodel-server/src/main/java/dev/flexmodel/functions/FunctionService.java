@@ -9,6 +9,7 @@ import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -120,8 +121,8 @@ public class FunctionService {
     // ============================================================
 
     /** Invoke a function via the Deno sidecar — deploy first to ensure it's available */
-    public FunctionInvokeResponse invoke(String projectId, String name,
-                                          FunctionInvokeRequest req) {
+    public Response invoke(String projectId, String name,
+                           FunctionInvokeRequest req) {
         Function fn = functionRepository.findByName(projectId, name);
         if (fn == null) {
             throw new FunctionException("Function not found: " + name);
@@ -130,17 +131,8 @@ public class FunctionService {
         // Always deploy before invoke to keep sidecar in sync
         deployToSidecar(projectId, fn);
 
-        FunctionInvokeResponse response = functionInvoker.invoke(projectId, name, req);
-
-        if (response.getMeta() != null) {
-            log.info("Function {} executed in {}ms", name, response.getMeta().getExecutionTimeMs());
-            if (response.getMeta().getLogs() != null) {
-                for (FunctionInvokeResponse.LogEntry entry : response.getMeta().getLogs()) {
-                    log.info("[fn:{}][{}] {}", name, entry.getLevel(), entry.getMessage());
-                }
-            }
-        }
-
+        Response response = functionInvoker.invoke(projectId, name, req);
+        log.info("Function {} invoked, status={}", name, response.getStatus());
         return response;
     }
 

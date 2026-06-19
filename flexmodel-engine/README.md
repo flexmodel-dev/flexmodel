@@ -2,7 +2,7 @@
 
 [![Java](https://img.shields.io/badge/Java-25+-orange.svg)](https://openjdk.java.net/)
 [![Maven](https://img.shields.io/badge/Maven-3.6+-blue.svg)](https://maven.apache.org/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Non--Commercial-orange.svg)](../LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/flexmodel-dev/flexmodel-engine)
 
 > **Flexmodel** 是面向下一代应用程序的统一数据访问层解决方案。它以 `flexmodel-engine` 为核心，提供了一站式的数据建模、服务编排、任务调度、对象存储和身份认证能力，旨在为开发者提供开源、灵活且高度可定制的后端基础架构。
@@ -163,7 +163,7 @@ mvn test -pl integration-tests
 
 ## 📄 许可证
 
-本项目采用 [Apache License 2.0](LICENSE) 许可证。
+本项目源码仅供学习研究使用，**禁止用于商业用途**。如需合作定制开发，请联系作者。详见 [LICENSE](../LICENSE)。
 
 ---
 

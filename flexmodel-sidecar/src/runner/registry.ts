@@ -54,14 +54,9 @@ self.addEventListener("message", async (e) => {
       }
 
       const ctx = buildContext(callbackUrl);
-      const url = request.url || "http://localhost/function";
-      const req = new Request(url, {
-        method: request.method || "POST",
-        headers: request.headers,
-        body: request.body ? JSON.stringify(request.body) : undefined,
-      });
+      const input = request.input ?? null;
 
-      const response = await handler(req, ctx);
+      const response = await handler(input, ctx);
       let body = response;
       let status = 200;
       let headers = {};

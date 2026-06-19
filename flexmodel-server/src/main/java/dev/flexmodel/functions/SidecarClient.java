@@ -1,7 +1,6 @@
 package dev.flexmodel.functions;
 
 import dev.flexmodel.functions.dto.FunctionInvokeRequest;
-import dev.flexmodel.functions.dto.FunctionInvokeResponse;
 import dev.flexmodel.functions.dto.SidecarDeployRequest;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -32,9 +31,9 @@ public interface SidecarClient {
 
     @POST
     @Path("/{projectId}/{name}/invoke")
-    FunctionInvokeResponse invoke(@PathParam("projectId") String projectId,
-                                  @PathParam("name") String name,
-                                  FunctionInvokeRequest request);
+    Response invoke(@PathParam("projectId") String projectId,
+                    @PathParam("name") String name,
+                    FunctionInvokeRequest request);
 
     @DELETE
     @Path("/{projectId}/{name}")

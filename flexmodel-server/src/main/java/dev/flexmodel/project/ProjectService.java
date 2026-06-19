@@ -5,7 +5,7 @@ import dev.flexmodel.api.consumer.GraphQLEventConsumer;
 import dev.flexmodel.common.SchemaInitializer;
 import dev.flexmodel.common.SessionContextHolder;
 import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.common.config.SessionConfig;
+import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.flow.service.FlowDeploymentService;
@@ -253,7 +253,7 @@ public class ProjectService {
    * 构建系统数据源，用于执行 Schema 管理 DDL。
    */
   static DataSource getSystemDataSource(FlexmodelConfig flexmodelConfig) {
-    FlexmodelConfig.DatasourceConfig config = flexmodelConfig.datasources().get(SessionConfig.SYSTEM_DS_KEY);
+    FlexmodelConfig.DatasourceConfig config = flexmodelConfig.datasources().get(EngineConfig.SYSTEM_DS_KEY);
     HikariDataSource ds = new HikariDataSource();
     ds.setMaxLifetime(30000);
     ds.setJdbcUrl(config.url());

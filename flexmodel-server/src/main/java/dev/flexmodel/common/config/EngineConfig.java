@@ -18,6 +18,7 @@ import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.common.FlexmodelConfig;
 import dev.flexmodel.sql.JdbcSchemaProvider;
 
+import java.io.File;
 import java.util.List;
 
 /**
@@ -25,7 +26,7 @@ import java.util.List;
  */
 @ApplicationScoped
 @Slf4j
-public class SessionConfig {
+public class EngineConfig {
 
   public static final String SYSTEM_DS_KEY = "system";
 
@@ -74,6 +75,7 @@ public class SessionConfig {
    * 创建优化配置的 HikariDataSource，包含连接泄漏检测和合理的超时设置。
    */
   static HikariDataSource createDataSource(FlexmodelConfig.DatasourceConfig config) {
+    ensureSqliteParentDir(config.url());
     HikariDataSource ds = new HikariDataSource();
     ds.setJdbcUrl(config.url());
     ds.setUsername(config.username().orElse(null));
@@ -91,6 +93,25 @@ public class SessionConfig {
     // 连接验证超时：3 秒
     ds.setValidationTimeout(3000);
     return ds;
+  }
+
+  /**
+   * 如果是 SQLite 文件数据库，确保父目录存在。
+   */
+  public static void ensureSqliteParentDir(String jdbcUrl) {
+    if (jdbcUrl != null && jdbcUrl.startsWith("jdbc:sqlite:file:")) {
+      String filePath = jdbcUrl.substring("jdbc:sqlite:file:".length());
+      int queryIdx = filePath.indexOf('?');
+      if (queryIdx > 0) {
+        filePath = filePath.substring(0, queryIdx);
+      }
+      if (!":memory:".equals(filePath)) {
+        File parentDir = new File(filePath).getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+          parentDir.mkdirs();
+        }
+      }
+    }
   }
 
 }

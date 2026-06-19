@@ -58,6 +58,7 @@ services:
     restart: always
     volumes:
       - ./storage:/deployments/storage
+      - ./database:/deployments/database
       - ./logs/flexmodel-server:/deployments/logs
     environment:
       - |

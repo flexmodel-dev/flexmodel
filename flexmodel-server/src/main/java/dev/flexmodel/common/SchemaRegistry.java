@@ -3,7 +3,7 @@ package dev.flexmodel.common;
 import com.zaxxer.hikari.HikariDataSource;
 import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.common.config.SessionConfig;
+import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
@@ -53,7 +53,7 @@ public class SchemaRegistry {
   public List<String> getPhysicsModelNames(Project project) {
     List<String> list = new ArrayList<>();
     String databaseName = projectService.resolveDatabaseName(project.getId());
-    FlexmodelConfig.DatasourceConfig datasource = flexmodelConfig.datasources().get(SessionConfig.SYSTEM_DS_KEY);
+    FlexmodelConfig.DatasourceConfig datasource = flexmodelConfig.datasources().get(EngineConfig.SYSTEM_DS_KEY);
     String jdbcUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", databaseName);
     String username = datasource.username().orElse(null);
     String password = datasource.password().orElse(null);
@@ -137,6 +137,7 @@ public class SchemaRegistry {
    * 创建优化配置的 HikariDataSource，统一连接池参数。
    */
   private HikariDataSource buildOptimizedDataSource(String jdbcUrl, String username, String password) {
+    dev.flexmodel.common.config.EngineConfig.ensureSqliteParentDir(jdbcUrl);
     HikariDataSource ds = new HikariDataSource();
     ds.setJdbcUrl(jdbcUrl);
     if (username != null) ds.setUsername(username);

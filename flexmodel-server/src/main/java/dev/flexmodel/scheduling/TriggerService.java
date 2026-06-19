@@ -211,7 +211,7 @@ public class TriggerService {
       long startTime = System.currentTimeMillis();
 
       if ("FUNCTION".equals(trigger.getJobType())) {
-        // 执行边缘函数
+        // 执行云函数
         FunctionInvokeRequest invokeReq = new FunctionInvokeRequest();
         invokeReq.setInput(Map.of("triggerId", trigger.getId(), "triggerTime", startTime));
 
@@ -225,7 +225,7 @@ public class TriggerService {
           jobExecutionLogService.recordJobSuccess(jobExecutionLog.getId(), result,
             System.currentTimeMillis() - startTime);
         } catch (Exception e) {
-          log.error("边缘函数执行失败: {}", trigger.getJobId(), e);
+          log.error("云函数执行失败: {}", trigger.getJobId(), e);
           jobExecutionLogService.recordJobFailure(jobExecutionLog.getId(), e.getMessage(),
             e.getClass().getSimpleName(), System.currentTimeMillis() - startTime);
         }

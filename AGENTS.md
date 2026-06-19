@@ -10,7 +10,7 @@ Flexmodel — 面向下一代应用的统一数据访问层，基于 Java 25 + Q
 | `flexmodel-server/` | 后端服务（Quarkus 3，REST/GraphQL/SSE/MCP，特性垂直分包） |
 | `flexmodel-ui/` | 前端 UI（React + TypeScript + Ant Design v6 + Vite） |
 | `flexmodel-website/` | 文档站（Docusaurus） |
-| `flexmodel-sidecar/` | 边缘函数运行时（Deno + Hono.js，Worker 隔离执行） |
+| `flexmodel-sidecar/` | 云函数运行时（Deno + Hono.js，Worker 隔离执行） |
 
 ## Startup Workflow
 

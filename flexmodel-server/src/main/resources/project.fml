@@ -256,7 +256,7 @@ model f_function {
   updated_by? : String @comment("更新人"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
-  @comment("边缘函数(项目级资源)")
+  @comment("云函数(项目级资源)")
 }
 
 enum TriggerType {

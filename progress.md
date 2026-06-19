@@ -4,7 +4,7 @@
 
 **Last Updated:** 2026-06-09 23:30
 **Session ID:** cloud-functions-implementation
-**Active Feature:** feat-011 - Functions - 边缘函数 (Flexmodel Functions)
+**Active Feature:** feat-011 - Functions - 云函数 (Flexmodel Functions)
 
 ## Status
 
@@ -47,7 +47,7 @@
 - [x] `FunctionResource.java` — REST endpoints (CRUD, trigger management, public invoke entry)
 - [x] `FunctionInternalResource.java` — Internal API for sidecar lazy source loading
 
-#### Phase 3: Frontend UI — Edge Functions Management Page (flexmodel-ui)
+#### Phase 3: Frontend UI — Cloud Functions Management Page (flexmodel-ui)
 - [x] `src/services/function.ts` — API service layer (TypeScript interfaces + all CRUD/invoke/trigger endpoints)
 - [x] `src/pages/Functions/index.tsx` — Main list page (table with status tags, search/filter, pagination, create/edit/delete actions)
 - [x] `src/pages/Functions/components/FunctionForm.tsx` — Create/Edit modal (tabs: Basic Settings + Source Code + HTTP Trigger config)

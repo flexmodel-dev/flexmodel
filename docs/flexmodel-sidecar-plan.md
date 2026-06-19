@@ -1,8 +1,8 @@
-# Flexmodel Functions — 边缘函数 MVP 设计方案
+# Flexmodel Functions — 云函数 MVP 设计方案
 
 ## 一、背景与目标
 
-对标 Supabase Functions，实现 Flexmodel 的边缘函数能力。用户可编写 TypeScript 函数，部署后在服务端执行。函数可访问 Flexmodel 数据 API，实现自定义业务逻辑、Webhook 等场景。
+对标 Supabase Functions，实现 Flexmodel 的云函数能力。用户可编写 TypeScript 函数，部署后在服务端执行。函数可访问 Flexmodel 数据 API，实现自定义业务逻辑、Webhook 等场景。
 
 **MVP 约定：**
 - 入口文件固定为 `index.ts`，入口函数固定为 `export default`
@@ -126,7 +126,7 @@ model f_function {
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_FUNCTION_PROJECT_SLUG", unique: true, fields: [project_id, slug]),
-  @comment("边缘函数(项目级资源)")
+  @comment("云函数(项目级资源)")
 }
 ```
 
@@ -171,7 +171,7 @@ model f_function_template {
   icon? : String @comment("图标名称"),
   sort_order : Int @default("0") @comment("排序权重"),
   @index(name: "IDX_FUNCTION_TEMPLATE_SLUG", unique: true, fields: [slug]),
-  @comment("边缘函数模板(平台级)")
+  @comment("云函数模板(平台级)")
 }
 ```
 

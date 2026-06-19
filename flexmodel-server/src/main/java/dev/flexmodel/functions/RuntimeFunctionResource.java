@@ -12,7 +12,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 /**
- * Runtime API for cloud function invocation.
+ * Runtime API for Edge Function invocation.
  * <p>
  * The function's return value becomes the HTTP response body directly.
  * Execution metadata (execution time, logs) is available via the {@code X-Function-Meta} response header.

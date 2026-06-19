@@ -14,7 +14,7 @@
 
 - **主框架**: Quarkus 3 (REST, Jackson, Hibernate Validator, Scheduler, Cache)
 - **AI 能力**: MCP Server (Quarkus MCP 扩展，15 个 @Tool 注解工具)
-- **云函数**: Deno Sidecar (Hono.js, Worker 隔离执行)
+- **边缘函数**: Deno Sidecar (Hono.js, Worker 隔离执行)
 - **API 协议**: REST API, GraphQL, OpenAPI/Swagger UI
 - **持久化**: SQLite (默认演示) / 支持扩展多种关系型与 NoSQL 数据库
 - **其他**: Lombok, GraalVM JavaScript, Docker, Maven
@@ -31,7 +31,7 @@
 - **`scheduling/`**: 任务调度 — 触发器、作业执行
 - **`storage/`**: 对象存储 — 本地、S3
 - **`mcp/`**: MCP Server — AI 工具集成，15 个 MCP Tools
-- **`functions/`**: 云函数 — Deno Sidecar 隔离执行
+- **`functions/`**: 边缘函数 — Deno Sidecar 隔离执行
 - **`projectauth/`**: 身份提供商 — OIDC、LDAP、Script
 - **`settings/`**: 系统设置
 - **`metrics/`**: 监控指标

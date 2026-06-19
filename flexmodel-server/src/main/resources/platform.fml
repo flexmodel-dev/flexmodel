@@ -330,7 +330,7 @@ model f_function_template {
   icon? : String @comment("图标名称"),
   sort_order : Int @default("0") @comment("排序权重"),
   @index(name: "IDX_FUNCTION_TEMPLATE_SLUG", unique: true, fields: [slug]),
-  @comment("云函数模板(平台级)")
+  @comment("边缘函数模板(平台级)")
 }
 
 seed f_function_template {

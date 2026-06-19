@@ -25,6 +25,8 @@ public class AuthProviderConfigService {
   }
 
   public AuthProviderConfig create(String projectId, AuthProviderConfig config) {
+    disableOtherProviders(projectId, null);
+    config.setEnabled(true);
     return authProviderConfigRepository.save(config);
   }
 
@@ -35,6 +37,9 @@ public class AuthProviderConfigService {
     }
     config.setName(name);
     config.setCreatedAt(existing.getCreatedAt());
+    if (config.getEnabled()) {
+      disableOtherProviders(projectId, name);
+    }
     return authProviderConfigRepository.save(config);
   }
 
@@ -54,5 +59,18 @@ public class AuthProviderConfigService {
       return null;
     }
     return JsonUtils.convertValue(config.getConfig(), AuthProvider.class);
+  }
+
+  /**
+   * 禁用项目中除 excludeName 以外的所有已启用 Provider，确保同一时间只有一个认证方式生效。
+   */
+  private void disableOtherProviders(String projectId, String excludeName) {
+    List<AuthProviderConfig> existing = authProviderConfigRepository.findByProjectId(projectId);
+    for (AuthProviderConfig p : existing) {
+      if (p.getEnabled() && (excludeName == null || !p.getName().equals(excludeName))) {
+        p.setEnabled(false);
+        authProviderConfigRepository.save(p);
+      }
+    }
   }
 }

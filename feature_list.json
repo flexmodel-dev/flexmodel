@@ -74,8 +74,8 @@
     },
     {
       "id": "feat-010",
-      "name": "Functions - 云函数 (Flexmodel Functions)",
-      "description": "对标 Supabase Functions 的云函数能力。Deno Sidecar (Hono.js) + Worker 隔离执行，file:// URL 加载 + 原生相对 import。Java 后端简化 CRUD (ACTIVE/FAILED)，项目级资源无分支维度。多文件源文件直接存储 JSON，模板系统支持快速创建。",
+      "name": "Functions - 边缘函数 (Flexmodel Functions)",
+      "description": "对标 Supabase Functions 的边缘函数能力。Deno Sidecar (Hono.js) + Worker 隔离执行，file:// URL 加载 + 原生相对 import。Java 后端简化 CRUD (ACTIVE/FAILED)，项目级资源无分支维度。多文件源文件直接存储 JSON，模板系统支持快速创建。",
       "dependencies": ["feat-001", "feat-002"],
       "status": "in-progress",
       "evidence": "重构完成: 数据模型简化 (去除 f_function_version 表/branch字段/TriggerType.HTTP)，Java 后端简化 (14 files — 删除4个版本/内部资源文件，重写Service/Resource/Invoker/DTO)，Deno Sidecar 重写 (file:// 部署模式替代 lazy load)，前端重写 (Supabase-style 多文件编辑器+模板选择+简化API)。Java 424 files + TypeScript 0 errors 编译通过。待: 端到端集成测试 + Deno 运行时验证。"

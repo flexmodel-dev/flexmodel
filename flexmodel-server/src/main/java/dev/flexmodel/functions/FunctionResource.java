@@ -9,7 +9,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
 /**
- * REST API for cloud function management.
+ * REST API for Edge Function management.
  *
  * @author cjbi
  */

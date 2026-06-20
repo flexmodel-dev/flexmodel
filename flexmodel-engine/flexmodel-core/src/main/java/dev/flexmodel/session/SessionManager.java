@@ -3,8 +3,8 @@ package dev.flexmodel.session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 通用Session管理器
@@ -147,7 +147,7 @@ public class SessionManager {
   private Map<String, Session> getSessionMap() {
     Map<String, Session> sessionMap = sessionMapHolder.get();
     if (sessionMap == null) {
-      sessionMap = new ConcurrentHashMap<>();
+      sessionMap = new HashMap<>();
       sessionMapHolder.set(sessionMap);
     }
     return sessionMap;

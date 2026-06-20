@@ -40,7 +40,7 @@ public class LazyLoadInterceptor {
   }
 
   public static void clear() {
-    loadCache.get().clear();
+    loadCache.remove();
   }
 
   /**

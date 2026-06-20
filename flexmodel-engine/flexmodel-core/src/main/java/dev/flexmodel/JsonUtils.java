@@ -3,6 +3,8 @@ package dev.flexmodel;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -23,6 +25,8 @@ import static com.fasterxml.jackson.databind.SerializationFeature.FAIL_ON_EMPTY_
  * @author cjbi
  */
 public class JsonUtils {
+
+  private static final Logger log = LoggerFactory.getLogger(JsonUtils.class);
 
   private static final JsonMapper JSON;
 
@@ -64,9 +68,8 @@ public class JsonUtils {
     try {
       return JSON.writeValueAsString(obj);
     } catch (JsonProcessingException e) {
-      e.printStackTrace();
+      throw new IllegalArgumentException("Failed to serialize object to JSON", e);
     }
-    return null;
   }
 
   public static <T> T parseToObject(String jsonString, Class<T> cls) {
@@ -120,9 +123,8 @@ public class JsonUtils {
     try {
       return JSON.updateValue(target, source);
     } catch (JsonMappingException e) {
-      e.printStackTrace();
+      throw new IllegalArgumentException("Failed to update value from source", e);
     }
-    return target;
   }
 
   @SuppressWarnings("all")

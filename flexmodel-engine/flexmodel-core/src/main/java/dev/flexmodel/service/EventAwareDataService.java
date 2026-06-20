@@ -4,7 +4,6 @@ import dev.flexmodel.event.impl.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.flexmodel.event.EventPublisher;
-import dev.flexmodel.event.impl.*;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.model.field.TypedField;
@@ -57,7 +56,7 @@ public class EventAwareDataService implements DataService {
       affectedRows = delegate.insert(modelName, finalRecord);
       success = affectedRows > 0;
       log.debug("Insert operation completed for model: {}, affected rows: {}", modelName, affectedRows);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       exception = e;
       log.error("Insert operation failed for model: {}", modelName, e);
       throw e;
@@ -96,7 +95,7 @@ public class EventAwareDataService implements DataService {
       affectedRows = delegate.updateById(modelName, finalRecord, id);
       success = affectedRows > 0;
       log.debug("Update operation completed for model: {}, affected rows: {}", modelName, affectedRows);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       exception = e;
       log.error("Update operation failed for model: {}", modelName, e);
       throw e;
@@ -132,7 +131,7 @@ public class EventAwareDataService implements DataService {
       affectedRows = delegate.deleteById(modelName, id);
       success = affectedRows > 0;
       log.debug("Delete operation completed for model: {}, affected rows: {}", modelName, affectedRows);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       exception = e;
       log.error("Delete operation failed for model: {}", modelName, e);
       throw e;
@@ -174,7 +173,7 @@ public class EventAwareDataService implements DataService {
       affectedRows = delegate.update(modelName, finalRecord, finalFilter);
       success = affectedRows > 0;
       log.debug("Update operation completed for model: {}, affected rows: {}", modelName, affectedRows);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       exception = e;
       log.error("Update operation failed for model: {}", modelName, e);
       throw e;
@@ -215,7 +214,7 @@ public class EventAwareDataService implements DataService {
       affectedRows = delegate.delete(modelName, finalFilter);
       success = affectedRows > 0;
       log.debug("Delete operation completed for model: {}, affected rows: {}", modelName, affectedRows);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       exception = e;
       log.error("Delete operation failed for model: {}", modelName, e);
       throw e;
@@ -245,7 +244,7 @@ public class EventAwareDataService implements DataService {
       affectedRows = delegate.deleteAll(modelName);
       success = affectedRows > 0;
       log.debug("Delete all operation completed for model: {}, affected rows: {}", modelName, affectedRows);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       exception = e;
       log.error("Delete all operation failed for model: {}", modelName, e);
       throw e;

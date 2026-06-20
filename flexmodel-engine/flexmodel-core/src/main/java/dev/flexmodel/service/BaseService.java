@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.ModelDefinition;
-import dev.flexmodel.model.field.*;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.AbstractSessionContext;
 import dev.flexmodel.sql.SqlExecutionException;
@@ -43,8 +42,7 @@ public abstract class BaseService {
    * @return 数据服务实例，子类需要重写此方法
    */
   public DataService getDataService() {
-    log.debug("getDataService() called, returning null - should be overridden by subclass");
-    return null;
+    throw new UnsupportedOperationException("getDataService() must be overridden by subclass");
   }
 
   /**
@@ -486,6 +484,9 @@ public abstract class BaseService {
 
     log.debug("Grouped relation data by foreign key, groups count: {}", relationDataGroup.size());
 
+    // 递减深度（每个关联字段层级只递减一次，避免在循环内按数据条数递减）
+    remainingDepth.decrementAndGet();
+
     // 填充关联数据到父级数据中
     parentDataList.forEach(parentDataItem -> {
       if (model instanceof EntityDefinition) {
@@ -527,7 +528,7 @@ public abstract class BaseService {
     log.debug("Found {} relation data records for local key: {}", relationDataList.size(), localKeyValue);
 
     // 递归处理嵌套查询，传递子级 expand 路径
-    remainingDepth.decrementAndGet();
+    // 使用深度快照避免多条父数据间互相消耗深度
     List<String> childExpand = query != null
       ? extractChildExpand(query.getExpand(), relationField.getName())
       : null;
@@ -536,7 +537,7 @@ public abstract class BaseService {
       childQuery = new Query();
       childQuery.setExpand(childExpand);
     }
-    nestedQuery(relationDataList, relationQueryFunction, relationModel, childQuery, remainingDepth);
+    nestedQuery(relationDataList, relationQueryFunction, relationModel, childQuery, new AtomicInteger(remainingDepth.get()));
 
     // 根据关联类型设置值
     Object relationValue = relationField.isMultiple() ?

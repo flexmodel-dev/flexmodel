@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class SqlConnectionHolder {
 
-  Logger log = LoggerFactory.getLogger(SqlConnectionHolder.class);
+  private static final Logger log = LoggerFactory.getLogger(SqlConnectionHolder.class);
 
   private final Map<String, SchemaProvider> schemaProviderMap;
   private final Map<String, Connection> connections = new ConcurrentHashMap<>();
@@ -28,12 +28,7 @@ public class SqlConnectionHolder {
     return connections.compute(identifier, (k, v) -> {
       try {
         if (v != null && !v.isClosed()) {
-          try {
-            return v;
-          } catch (Exception e) {
-            DataSource dataSource = ((JdbcSchemaProvider) schemaProviderMap.get(identifier)).dataSource();
-            return dataSource.getConnection();
-          }
+          return v;
         }
         DataSource dataSource = ((JdbcSchemaProvider) schemaProviderMap.get(identifier)).dataSource();
         return dataSource.getConnection();

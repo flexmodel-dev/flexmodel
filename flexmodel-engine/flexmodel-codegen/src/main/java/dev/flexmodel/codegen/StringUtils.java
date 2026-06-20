@@ -81,11 +81,11 @@ public class StringUtils {
     //用来判断大写的标志
     boolean nextUpperCase = false;
     for (int i = 0; i < s.length(); i++) {
-      if ("_".equals(String.valueOf(s.charAt(i)))) {
+      if (s.charAt(i) == '_') {
         nextUpperCase = true;
       } else {
         if (nextUpperCase) {
-          sb.append(String.valueOf(s.charAt(i)).toUpperCase());
+          sb.append(Character.toUpperCase(s.charAt(i)));
           nextUpperCase = false;
         }else {
           sb.append(s.charAt(i));

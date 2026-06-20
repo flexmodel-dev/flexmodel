@@ -321,11 +321,20 @@ public class NamedParameterSqlExecutor implements SqlExecutor {
     long startTime = System.currentTimeMillis();
     T t = supplier.get();
     if (!isEmpty(t)) {
-      log.debug(" ==> SQL Result         :");
-      log.debug(" ==> {}", formatValueLog(t));
+      log.debug(" ==> SQL Result         : {}", summarizeResult(t));
     }
     log.debug(" ==> SQL Execution time : {} ms", System.currentTimeMillis() - startTime);
     return t;
+  }
+
+  private static final int MAX_LOG_LENGTH = 2000;
+
+  private String summarizeResult(Object result) {
+    String formatted = formatValueLog(result);
+    if (formatted.length() > MAX_LOG_LENGTH) {
+      return formatted.substring(0, MAX_LOG_LENGTH) + "... (truncated, total length=" + formatted.length() + ")";
+    }
+    return formatted;
   }
 
   private String formatValueLog(Object params) {

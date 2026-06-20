@@ -171,6 +171,10 @@ public class NamedParamStatement implements AutoCloseable {
       if (statement[position] == START_SKIP[i].charAt(0)) {
         boolean match = true;
         for (int j = 1; j < START_SKIP[i].length(); j++) {
+          if (position + j >= statement.length) {
+            match = false;
+            break;
+          }
           if (statement[position + j] != START_SKIP[i].charAt(j)) {
             match = false;
             break;

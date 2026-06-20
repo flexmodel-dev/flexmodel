@@ -38,8 +38,8 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
         Map.entry(ScalarType.INT.getType(), "IntComparisonExp"),
         Map.entry(ScalarType.LONG.getType(), "IntComparisonExp"),
         Map.entry(ScalarType.BOOLEAN.getType(), "BooleanComparisonExp"),
-        Map.entry(ScalarType.DATETIME.getType(), "DateComparisonExp"),
-        Map.entry(ScalarType.DATE.getType(), "DateTimeComparisonExp"),
+        Map.entry(ScalarType.DATETIME.getType(), "DateTimeComparisonExp"),
+        Map.entry(ScalarType.DATE.getType(), "DateComparisonExp"),
         Map.entry(ScalarType.TIME.getType(), "DateTimeComparisonExp"),
         Map.entry(ScalarType.JSON.getType(), "JSONComparisonExp")
     );

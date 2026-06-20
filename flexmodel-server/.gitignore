@@ -33,5 +33,5 @@ build/
 .vscode/
 
 ### SQLite ###
-database/*.db
+database/
 storage/

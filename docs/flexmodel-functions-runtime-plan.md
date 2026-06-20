@@ -257,7 +257,7 @@ Content-Type: application/json
   "timeout": 30
 }
 
-// Sidecar 处理:
+// functions-runtime 处理:
 // 1. 将 sourceFiles 写入磁盘 {FUNCTIONS_DIR}/{projectId}/{functionId}/
 // 2. 自动生成 _worker_wrapper.ts
 // 3. Registry 缓存元数据 + entryUrl (key: projectId:name)
@@ -293,7 +293,7 @@ Response 200:
 ```
 DELETE /functions/:projectId/:name
 
-// Sidecar 处理:
+// functions-runtime 处理:
 // 1. 清除 Registry 缓存
 // 2. 删除磁盘目录 {FUNCTIONS_DIR}/{projectId}/{functionId}/
 
@@ -836,7 +836,7 @@ Java @Observes StartupEvent
 ## 十、实施步骤
 
 ### Phase 1: Deno 函数执行引擎
-1. 初始化 `flexmodel-sidecar/` 项目 (`deno.json`, `main.ts`, `config.ts`)
+1. 初始化 `flexmodel-functions-runtime/` 项目 (`deno.json`, `main.ts`, `config.ts`)
 2. 实现 Hono.js HTTP 服务器 + 路由
 3. 实现 Function Registry (内存缓存 entryUrl)
 4. 实现文件写入 + wrapper 生成 (`wrapper.ts`)
@@ -868,7 +868,7 @@ Java @Observes StartupEvent
 
 ```bash
 # 1. 启动 Deno 服务
-cd flexmodel-sidecar
+cd flexmodel-functions-runtime
 deno run --allow-net=localhost --allow-env --allow-read --allow-write src/main.ts
 
 # 2. 验证健康检查

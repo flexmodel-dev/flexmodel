@@ -10,9 +10,8 @@ public interface AuthProviderConfigRepository {
 
   AuthProviderConfig find(String projectId, String name);
 
-  AuthProviderConfig save(AuthProviderConfig config);
+  AuthProviderConfig save(String projectId, AuthProviderConfig config);
 
   void delete(String projectId, String name);
 
-  void deleteByProjectId(String projectId);
 }

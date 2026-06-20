@@ -410,7 +410,7 @@ public class JdbcModelRegistry implements ModelRegistry {
     try (Connection connection = dataSource.getConnection()) {
       NamedParameterSqlExecutor sqlExecutor = new NamedParameterSqlExecutor(connection);
       String sqlDeleteString = "delete from " + sqlDialect.quoteIdentifier(STORED_TABLES) +
-                               " \nwhere " + sqlDialect.quoteIdentifier("schema_name") + "=:schemaName and ";
+                               " \nwhere " + sqlDialect.quoteIdentifier("schema_name") + "=:schemaName";
       sqlExecutor.update(sqlDeleteString, Map.of("schemaName", schemaName));
     } catch (Exception e) {
       throw new RuntimeException(e);

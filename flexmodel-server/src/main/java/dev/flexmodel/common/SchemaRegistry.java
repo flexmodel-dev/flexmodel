@@ -125,6 +125,23 @@ public class SchemaRegistry {
     log.info("Unregistered SchemaProvider '{}'", schemaName);
   }
 
+  /**
+   * 清理指定 Schema 在 f_model_registry 表中的模型注册记录。
+   * <p>
+   * 该方法操作的是系统数据源中的 f_model_registry 表，与项目自身的物理 Schema 相互独立，
+   * 因此可以在 unregisterSchema / dropSchema 之前或之后安全调用。
+   *
+   * @param schemaName Schema 名称（即项目的 databaseName）
+   */
+  public void unregisterModels(String schemaName) {
+    try {
+      sessionFactory.getModelRegistry().unregisterAll(schemaName);
+      log.info("Unregistered model registry records for schema '{}'", schemaName);
+    } catch (Exception e) {
+      log.warn("Failed to unregister model registry records for schema '{}'", schemaName, e);
+    }
+  }
+
   public DataSource buildJdbcDataSource(String databaseName) {
     FlexmodelConfig.DatasourceConfig datasource = flexmodelConfig.datasources().get("system");
     String jdbcUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", databaseName);

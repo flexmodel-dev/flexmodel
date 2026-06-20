@@ -27,7 +27,7 @@ public class AuthProviderConfigService {
   public AuthProviderConfig create(String projectId, AuthProviderConfig config) {
     disableOtherProviders(projectId, null);
     config.setEnabled(true);
-    return authProviderConfigRepository.save(config);
+    return authProviderConfigRepository.save(projectId, config);
   }
 
   public AuthProviderConfig update(String projectId, String name, AuthProviderConfig config) {
@@ -40,15 +40,11 @@ public class AuthProviderConfigService {
     if (config.getEnabled()) {
       disableOtherProviders(projectId, name);
     }
-    return authProviderConfigRepository.save(config);
+    return authProviderConfigRepository.save(projectId, config);
   }
 
   public void delete(String projectId, String name) {
     authProviderConfigRepository.delete(projectId, name);
-  }
-
-  public void deleteByProjectId(String projectId) {
-    authProviderConfigRepository.deleteByProjectId(projectId);
   }
 
   /**
@@ -69,7 +65,7 @@ public class AuthProviderConfigService {
     for (AuthProviderConfig p : existing) {
       if (p.getEnabled() && (excludeName == null || !p.getName().equals(excludeName))) {
         p.setEnabled(false);
-        authProviderConfigRepository.save(p);
+        authProviderConfigRepository.save(projectId, p);
       }
     }
   }

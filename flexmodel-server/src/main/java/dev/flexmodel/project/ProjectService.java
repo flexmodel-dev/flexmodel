@@ -206,6 +206,7 @@ public class ProjectService {
     List<Project> branchProjects = projectRepository.findBranchProjects(projectId);
     for (Project bp : branchProjects) {
       schemaRegistry.unregisterSchema(bp.getDatabaseName());
+      schemaRegistry.unregisterModels(bp.getDatabaseName());
       try {
         schemaManager.dropSchema(systemDs, bp.getDatabaseName());
       } catch (Exception e) {
@@ -219,6 +220,7 @@ public class ProjectService {
     List<Branch> branches = branchRepository.findByProjectId(projectId);
     for (Branch branch : branches) {
       schemaRegistry.unregisterSchema(branch.getDatabaseName());
+      schemaRegistry.unregisterModels(branch.getDatabaseName());
       try {
         schemaManager.dropSchema(systemDs, branch.getDatabaseName());
       } catch (Exception e) {
@@ -230,6 +232,7 @@ public class ProjectService {
     // 2. 取消注册 main 分支 SchemaProvider
     String mainDatabaseName = resolveDatabaseName(projectId);
     schemaRegistry.unregisterSchema(mainDatabaseName);
+    schemaRegistry.unregisterModels(mainDatabaseName);
 
     // 3. 删除物理 Schema
     try {
@@ -242,10 +245,7 @@ public class ProjectService {
     // 4. 移除 GraphQL
     graphQLEventConsumer.removeProject(projectId);
 
-    // 5. 删除关联的 Provider 配置
-    authProviderConfigService.deleteByProjectId(projectId);
-
-    // 6. 删除 f_project 记录
+    // 5. 删除 f_project 记录
     projectRepository.delete(projectId);
   }
 

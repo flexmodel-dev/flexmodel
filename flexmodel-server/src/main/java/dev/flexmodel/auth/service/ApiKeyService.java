@@ -36,10 +36,8 @@ public class ApiKeyService {
     entity.setKeyHash(generated.hash());
     entity.setKeyPrefix(generated.prefix());
     entity.setKeyType(keyType);
-    entity.setScopes(request.scopes());
     entity.setProjectIds(request.projectIds());
     entity.setReadOnly(request.readOnly());
-    entity.setEnabled(true);
 
     apiKeyRepository.save(entity);
 
@@ -77,9 +75,6 @@ public class ApiKeyService {
     String hash = ApiKeyGenerator.sha256(plainKey);
     AuthApiKey apiKey = apiKeyRepository.findByKeyHash(hash);
     if (apiKey == null) {
-      return null;
-    }
-    if (!apiKey.getEnabled()) {
       return null;
     }
     if (apiKey.getExpiresAt() != null && apiKey.getExpiresAt().isBefore(LocalDateTime.now())) {

@@ -42,7 +42,7 @@ public class McpAuthHandler {
     router.route("/mcp*").order(-1).handler(rc -> {
       String apikey = rc.request().getParam("api_key");
       if (apikey == null || apikey.isBlank()) {
-        reject401(rc.response(), "Missing apikey parameter");
+        reject401(rc.response(), "Missing api_key parameter");
         return;
       }
       AuthApiKey apiKey = apiKeyService.validate(apikey);

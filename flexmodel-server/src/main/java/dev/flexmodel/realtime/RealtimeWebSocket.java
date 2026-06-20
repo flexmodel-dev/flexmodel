@@ -31,7 +31,7 @@ import java.util.Set;
  */
 @Slf4j
 @ApplicationScoped
-@ServerEndpoint("/api/projects/{projectId}/realtime")
+@ServerEndpoint("/projects/{projectId}/realtime")
 public class RealtimeWebSocket {
 
   @Inject

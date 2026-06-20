@@ -299,16 +299,16 @@ public class FmlParserTest {
 
     @Test
     void testParseProjectFml() throws Exception {
-        // 解析实际的 project.fml 文件，验证包含复杂 JSON 的 seed 数据
-        java.io.InputStream is = getClass().getClassLoader().getResourceAsStream("project.fml");
+        // 解析实际的 dev_test.fml 文件，验证包含复杂 JSON 的 seed 数据
+        java.io.InputStream is = getClass().getClassLoader().getResourceAsStream("dev_test.fml");
         if (is == null) {
             // 尝试从 flexmodel-server 加载
-            java.nio.file.Path path = java.nio.file.Paths.get("../../flexmodel-server/src/main/resources/project.fml");
+            java.nio.file.Path path = java.nio.file.Paths.get("../../flexmodel-server/src/main/resources/dev_test.fml");
             if (java.nio.file.Files.exists(path)) {
                 is = java.nio.file.Files.newInputStream(path);
             }
         }
-        assertNotNull(is, "project.fml not found");
+        assertNotNull(is, "dev_test.fml not found");
 
         ModelParser parser = new ModelParser(new java.io.InputStreamReader(is, "UTF-8"));
         List<ModelParser.ASTNode> ast = parser.CompilationUnit();
@@ -333,7 +333,7 @@ public class FmlParserTest {
                 + ", name=" + rec.get("flow_name")
                 + ", flow_model_len=" + fmVal.length());
         }
-        // project.fml 的 f_em_flow_definition 应有 4 条记录（全 JSON 格式）
+        // dev_test.fml 的 f_em_flow_definition 应有 4 条记录（全 JSON 格式）
         assertEquals(4, flowDefSeed.records.size(), "Expected 4 flow definition records (all JSON format)");
 
         // 验证所有记录的 flow_model 字段被正确解析

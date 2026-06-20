@@ -58,7 +58,6 @@ public class EventAwareDataService implements DataService {
       log.debug("Insert operation completed for model: {}, affected rows: {}", modelName, affectedRows);
     } catch (Exception e) {
       exception = e;
-      log.error("Insert operation failed for model: {}", modelName, e);
       throw e;
     } finally {
       // 发布后置事件
@@ -97,7 +96,6 @@ public class EventAwareDataService implements DataService {
       log.debug("Update operation completed for model: {}, affected rows: {}", modelName, affectedRows);
     } catch (Exception e) {
       exception = e;
-      log.error("Update operation failed for model: {}", modelName, e);
       throw e;
     } finally {
       // 发布后置事件
@@ -133,7 +131,6 @@ public class EventAwareDataService implements DataService {
       log.debug("Delete operation completed for model: {}, affected rows: {}", modelName, affectedRows);
     } catch (Exception e) {
       exception = e;
-      log.error("Delete operation failed for model: {}", modelName, e);
       throw e;
     } finally {
       // 发布后置事件
@@ -175,7 +172,6 @@ public class EventAwareDataService implements DataService {
       log.debug("Update operation completed for model: {}, affected rows: {}", modelName, affectedRows);
     } catch (Exception e) {
       exception = e;
-      log.error("Update operation failed for model: {}", modelName, e);
       throw e;
     } finally {
       // 发布后置事件
@@ -216,7 +212,6 @@ public class EventAwareDataService implements DataService {
       log.debug("Delete operation completed for model: {}, affected rows: {}", modelName, affectedRows);
     } catch (Exception e) {
       exception = e;
-      log.error("Delete operation failed for model: {}", modelName, e);
       throw e;
     } finally {
       // 发布后置事件
@@ -246,7 +241,6 @@ public class EventAwareDataService implements DataService {
       log.debug("Delete all operation completed for model: {}, affected rows: {}", modelName, affectedRows);
     } catch (Exception e) {
       exception = e;
-      log.error("Delete all operation failed for model: {}", modelName, e);
       throw e;
     } finally {
       // 发布后置事件（删除所有没有前置事件）
@@ -285,14 +279,9 @@ public class EventAwareDataService implements DataService {
     PreQueryEvent preEvent = new PreQueryEvent(modelName, schemaName, null, sessionId, source);
     eventPublisher.publishPreChangeEvent(preEvent);
 
-    try {
-      Map<String, Object> result = delegate.findById(modelName, id, expand);
-      log.debug("FindById operation completed for model: {}, id: {}", modelName, id);
-      return result;
-    } catch (Exception e) {
-      log.error("FindById operation failed for model: {}, id: {}", modelName, id, e);
-      throw e;
-    }
+    Map<String, Object> result = delegate.findById(modelName, id, expand);
+    log.debug("FindById operation completed for model: {}, id: {}", modelName, id);
+    return result;
   }
 
   @Override
@@ -306,14 +295,9 @@ public class EventAwareDataService implements DataService {
     // 使用事件中可能被修改的查询
     Query finalQuery = preEvent.getQuery() != null ? preEvent.getQuery() : query;
 
-    try {
-      List<Map<String, Object>> result = delegate.find(modelName, finalQuery);
-      log.debug("Find operation completed for model: {}, result count: {}", modelName, result.size());
-      return result;
-    } catch (Exception e) {
-      log.error("Find operation failed for model: {}", modelName, e);
-      throw e;
-    }
+    List<Map<String, Object>> result = delegate.find(modelName, finalQuery);
+    log.debug("Find operation completed for model: {}, result count: {}", modelName, result.size());
+    return result;
   }
 
   @Override
@@ -337,13 +321,8 @@ public class EventAwareDataService implements DataService {
     // 使用事件中可能被修改的查询
     Query finalQuery = preEvent.getQuery() != null ? preEvent.getQuery() : query;
 
-    try {
-      long result = delegate.count(modelName, finalQuery);
-      log.debug("Count operation completed for model: {}, count: {}", modelName, result);
-      return result;
-    } catch (Exception e) {
-      log.error("Count operation failed for model: {}", modelName, e);
-      throw e;
-    }
+    long result = delegate.count(modelName, finalQuery);
+    log.debug("Count operation completed for model: {}, count: {}", modelName, result);
+    return result;
   }
 }

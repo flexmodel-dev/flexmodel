@@ -80,10 +80,6 @@ public class SqlDataService extends BaseService implements DataService {
       long duration = System.currentTimeMillis() - startTime;
       log.debug("SQL insert completed for model: {} in {}ms, affected rows: {}", modelName, duration, rows);
       return rows;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL insert failed for model: {} after {}ms", modelName, duration, e);
-      throw e;
     } finally {
       // 处理关联关系（无论成功与否都需要处理，因为可能有部分数据已插入）
       EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
@@ -106,85 +102,79 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL batch insert for model: {}, record count: {}", modelName, records.size());
     long startTime = System.currentTimeMillis();
 
-    try {
-      // Step 1: Process each record (type conversion, default values, etc.)
-      List<Map<String, Object>> processedList = new ArrayList<>();
-      for (Map<String, Object> data : records) {
-        processedList.add(generateFieldValues(modelName, data, false));
-      }
-
-      EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
-      Optional<TypedField<?, ?>> idFieldOpt = entity.findIdField();
-
-      // Step 2: Check if any record needs auto-generated ID
-      boolean needsAutoGenId = false;
-      if (idFieldOpt.isPresent()) {
-        String idName = idFieldOpt.get().getName();
-        for (Map<String, Object> pd : processedList) {
-          if (pd.get(idName) == null) {
-            needsAutoGenId = true;
-            break;
-          }
-        }
-      }
-
-      int totalRows;
-
-      if (needsAutoGenId) {
-        // Auto-generated IDs: fallback to individual inserts for reliable ID retrieval
-        log.debug("Batch insert with auto-generated IDs, falling back to individual inserts for model: {}", modelName);
-        totalRows = 0;
-        for (int i = 0; i < records.size(); i++) {
-          totalRows += insert(modelName, records.get(i));
-        }
-      } else {
-        // Step 3: Collect unified column set (union of all record keys)
-        LinkedHashSet<String> allColumns = new LinkedHashSet<>();
-        for (Map<String, Object> pd : processedList) {
-          allColumns.addAll(pd.keySet());
-        }
-
-        // Step 4: Generate INSERT SQL using unified columns
-        String sql = buildBatchInsertSql(modelName, allColumns);
-        log.debug("Generated batch INSERT SQL: {}", sql);
-
-        // Step 5: Fill missing columns with null for each record
-        for (Map<String, Object> pd : processedList) {
-          for (String col : allColumns) {
-            pd.putIfAbsent(col, null);
-          }
-        }
-
-        // Step 6: Execute batch insert
-        int[] results = sqlExecutor.batchUpdate(sql, processedList);
-        totalRows = 0;
-        for (int r : results) {
-          if (r >= 0) totalRows += r;
-          else if (r == java.sql.Statement.SUCCESS_NO_INFO) totalRows++;
-        }
-
-        // Step 7: ID backfill and related record insertion
-        for (int i = 0; i < records.size(); i++) {
-          Map<String, Object> data = records.get(i);
-          Map<String, Object> pd = processedList.get(i);
-          Object id = null;
-          if (idFieldOpt.isPresent()) {
-            id = pd.get(idFieldOpt.get().getName());
-            data.put(idFieldOpt.get().getName(), id);
-          }
-          insertRelatedRecords(modelName, data, id);
-        }
-
-        long duration = System.currentTimeMillis() - startTime;
-        log.debug("SQL batch insert completed for model: {} in {}ms, affected rows: {}", modelName, duration, totalRows);
-      }
-
-      return totalRows;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL batch insert failed for model: {} after {}ms", modelName, duration, e);
-      throw e;
+    // Step 1: Process each record (type conversion, default values, etc.)
+    List<Map<String, Object>> processedList = new ArrayList<>();
+    for (Map<String, Object> data : records) {
+      processedList.add(generateFieldValues(modelName, data, false));
     }
+
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+    Optional<TypedField<?, ?>> idFieldOpt = entity.findIdField();
+
+    // Step 2: Check if any record needs auto-generated ID
+    boolean needsAutoGenId = false;
+    if (idFieldOpt.isPresent()) {
+      String idName = idFieldOpt.get().getName();
+      for (Map<String, Object> pd : processedList) {
+        if (pd.get(idName) == null) {
+          needsAutoGenId = true;
+          break;
+        }
+      }
+    }
+
+    int totalRows;
+
+    if (needsAutoGenId) {
+      // Auto-generated IDs: fallback to individual inserts for reliable ID retrieval
+      log.debug("Batch insert with auto-generated IDs, falling back to individual inserts for model: {}", modelName);
+      totalRows = 0;
+      for (int i = 0; i < records.size(); i++) {
+        totalRows += insert(modelName, records.get(i));
+      }
+    } else {
+      // Step 3: Collect unified column set (union of all record keys)
+      LinkedHashSet<String> allColumns = new LinkedHashSet<>();
+      for (Map<String, Object> pd : processedList) {
+        allColumns.addAll(pd.keySet());
+      }
+
+      // Step 4: Generate INSERT SQL using unified columns
+      String sql = buildBatchInsertSql(modelName, allColumns);
+      log.debug("Generated batch INSERT SQL: {}", sql);
+
+      // Step 5: Fill missing columns with null for each record
+      for (Map<String, Object> pd : processedList) {
+        for (String col : allColumns) {
+          pd.putIfAbsent(col, null);
+        }
+      }
+
+      // Step 6: Execute batch insert
+      int[] results = sqlExecutor.batchUpdate(sql, processedList);
+      totalRows = 0;
+      for (int r : results) {
+        if (r >= 0) totalRows += r;
+        else if (r == java.sql.Statement.SUCCESS_NO_INFO) totalRows++;
+      }
+
+      // Step 7: ID backfill and related record insertion
+      for (int i = 0; i < records.size(); i++) {
+        Map<String, Object> data = records.get(i);
+        Map<String, Object> pd = processedList.get(i);
+        Object id = null;
+        if (idFieldOpt.isPresent()) {
+          id = pd.get(idFieldOpt.get().getName());
+          data.put(idFieldOpt.get().getName(), id);
+        }
+        insertRelatedRecords(modelName, data, id);
+      }
+
+      long duration = System.currentTimeMillis() - startTime;
+      log.debug("SQL batch insert completed for model: {} in {}ms, affected rows: {}", modelName, duration, totalRows);
+    }
+
+    return totalRows;
   }
 
   private String buildBatchInsertSql(String modelName, LinkedHashSet<String> columns) {
@@ -230,43 +220,37 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL updateById for model: {}, id: {}", modelName, id);
     long startTime = System.currentTimeMillis();
 
-    try {
-      Map<String, Object> processedData = generateFieldValues(modelName, data, true);
-      String physicalTableName = toPhysicalTablenameQuoteString(modelName);
-      EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
-      TypedField<?, ?> idField = entity.findIdField().orElseThrow();
+    Map<String, Object> processedData = generateFieldValues(modelName, data, true);
+    String physicalTableName = toPhysicalTablenameQuoteString(modelName);
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+    TypedField<?, ?> idField = entity.findIdField().orElseThrow();
 
-      StringBuilder sql = new StringBuilder("update ")
-        .append(physicalTableName)
-        .append(" set ");
-      StringJoiner assignment = new StringJoiner(", ");
+    StringBuilder sql = new StringBuilder("update ")
+      .append(physicalTableName)
+      .append(" set ");
+    StringJoiner assignment = new StringJoiner(", ");
 
-      processedData.keySet().stream()
-        .filter(col -> !col.equals(idField.getName()) && (data.containsKey(col) || processedData.get(col) != null))
-        .forEach(col -> assignment.add(sqlDialect.quoteIdentifier(col) + "=:" + col));
+    processedData.keySet().stream()
+      .filter(col -> !col.equals(idField.getName()) && (data.containsKey(col) || processedData.get(col) != null))
+      .forEach(col -> assignment.add(sqlDialect.quoteIdentifier(col) + "=:" + col));
 
-      sql.append(assignment);
+    sql.append(assignment);
 
-      sql.append(" where (")
-        .append(sqlDialect.quoteIdentifier(idField.getName()))
-        .append("=:")
-        .append(idField.getName())
-        .append(")");
+    sql.append(" where (")
+      .append(sqlDialect.quoteIdentifier(idField.getName()))
+      .append("=:")
+      .append(idField.getName())
+      .append(")");
 
-      Map<String, Object> params = new HashMap<>(processedData);
-      params.put(idField.getName(), id);
+    Map<String, Object> params = new HashMap<>(processedData);
+    params.put(idField.getName(), id);
 
-      log.debug("Generated UPDATE SQL: {}", sql);
-      int result = sqlExecutor.update(sql.toString(), params);
+    log.debug("Generated UPDATE SQL: {}", sql);
+    int result = sqlExecutor.update(sql.toString(), params);
 
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL updateById completed for model: {} in {}ms, affected rows: {}", modelName, duration, result);
-      return result;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL updateById failed for model: {}, id: {} after {}ms", modelName, id, duration, e);
-      throw e;
-    }
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL updateById completed for model: {} in {}ms, affected rows: {}", modelName, duration, result);
+    return result;
   }
 
   @Override
@@ -274,40 +258,34 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL update for model: {}, filter: {}", modelName, filter);
     long startTime = System.currentTimeMillis();
 
-    try {
-      Map<String, Object> processedData = generateFieldValues(modelName, record, true);
+    Map<String, Object> processedData = generateFieldValues(modelName, record, true);
 
-      String physicalTableName = toPhysicalTablenameQuoteString(modelName);
-      EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
-      TypedField<?, ?> idField = entity.findIdField().orElseThrow();
-      SqlClauseResult sqlResult = getSqlCauseResult(filter);
+    String physicalTableName = toPhysicalTablenameQuoteString(modelName);
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+    TypedField<?, ?> idField = entity.findIdField().orElseThrow();
+    SqlClauseResult sqlResult = getSqlCauseResult(filter);
 
-      StringBuilder sql = new StringBuilder("update ")
-        .append(physicalTableName)
-        .append(" set ");
-      StringJoiner assignment = new StringJoiner(", ");
-      processedData.keySet().stream()
-        .filter(col -> !col.equals(idField.getName()) && (record.containsKey(col) || processedData.get(col) != null))
-        .forEach(col -> assignment.add(sqlDialect.quoteIdentifier(col) + "=:" + col));
-      sql.append(assignment);
+    StringBuilder sql = new StringBuilder("update ")
+      .append(physicalTableName)
+      .append(" set ");
+    StringJoiner assignment = new StringJoiner(", ");
+    processedData.keySet().stream()
+      .filter(col -> !col.equals(idField.getName()) && (record.containsKey(col) || processedData.get(col) != null))
+      .forEach(col -> assignment.add(sqlDialect.quoteIdentifier(col) + "=:" + col));
+    sql.append(assignment);
 
-      sql.append(" where ")
-        .append(" (").append(sqlResult.sqlClause()).append(")");
+    sql.append(" where ")
+      .append(" (").append(sqlResult.sqlClause()).append(")");
 
-      Map<String, Object> params = new HashMap<>(processedData);
-      params.putAll(sqlResult.args());
+    Map<String, Object> params = new HashMap<>(processedData);
+    params.putAll(sqlResult.args());
 
-      log.debug("Generated UPDATE SQL: {}", sql);
-      int result = sqlExecutor.update(sql.toString(), params);
+    log.debug("Generated UPDATE SQL: {}", sql);
+    int result = sqlExecutor.update(sql.toString(), params);
 
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL update completed for model: {} in {}ms, affected rows: {}", modelName, duration, result);
-      return result;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL update failed for model: {}, filter: {} after {}ms", modelName, filter, duration, e);
-      throw e;
-    }
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL update completed for model: {} in {}ms, affected rows: {}", modelName, duration, result);
+    return result;
   }
 
   @Override
@@ -315,43 +293,37 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL findById for model: {}, id: {}, expand: {}", modelName, id, expand);
     long startTime = System.currentTimeMillis();
 
-    try {
-      String physicalTableName = toPhysicalTablenameQuoteString(modelName);
-      EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
-      TypedField<?, ?> idField = entity.findIdField().orElseThrow();
-      String columnsString = entity.getFields().stream()
-        .filter(f -> !(f instanceof RelationField))
-        .map(field -> sqlDialect.quoteIdentifier(field.getName()))
-        .collect(Collectors.joining(", "));
+    String physicalTableName = toPhysicalTablenameQuoteString(modelName);
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+    TypedField<?, ?> idField = entity.findIdField().orElseThrow();
+    String columnsString = entity.getFields().stream()
+      .filter(f -> !(f instanceof RelationField))
+      .map(field -> sqlDialect.quoteIdentifier(field.getName()))
+      .collect(Collectors.joining(", "));
 
-      String sql = " select " +
-                   columnsString +
-                   " from " +
-                   physicalTableName +
-                   " " +
-                   " where (" + sqlDialect.quoteIdentifier(idField.getName()) + "= :id)";
+    String sql = " select " +
+                 columnsString +
+                 " from " +
+                 physicalTableName +
+                 " " +
+                 " where (" + sqlDialect.quoteIdentifier(idField.getName()) + "= :id)";
 
-      log.debug("Generated SELECT SQL: {}", sql);
-      Map<String, Object> dataMap = sqlExecutor.queryForObject(sql, Map.of("id", id), getSqlResultHandler(entity, null, Map.class));
+    log.debug("Generated SELECT SQL: {}", sql);
+    Map<String, Object> dataMap = sqlExecutor.queryForObject(sql, Map.of("id", id), getSqlResultHandler(entity, null, Map.class));
 
-      if (dataMap == null) {
-        log.debug("No record found for model: {}, id: {}", modelName, id);
-        return null;
-      }
-
-      if (expand != null && !expand.isEmpty()) {
-        Query childQuery = new Query();
-        childQuery.setExpand(expand);
-        nestedQuery(List.of(dataMap), this::findMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), childQuery, sessionContext.getNestedQueryMaxDepth());
-      }
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL findById completed for model: {} in {}ms", modelName, duration);
-      return dataMap;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL findById failed for model: {}, id: {} after {}ms", modelName, id, duration, e);
-      throw e;
+    if (dataMap == null) {
+      log.debug("No record found for model: {}, id: {}", modelName, id);
+      return null;
     }
+
+    if (expand != null && !expand.isEmpty()) {
+      Query childQuery = new Query();
+      childQuery.setExpand(expand);
+      nestedQuery(List.of(dataMap), this::findMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), childQuery, sessionContext.getNestedQueryMaxDepth());
+    }
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL findById completed for model: {} in {}ms", modelName, duration);
+    return dataMap;
   }
 
   @Override
@@ -360,22 +332,16 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL find for model: {}", modelName);
     long startTime = System.currentTimeMillis();
 
-    try {
-      Pair<String, Map<String, Object>> pair = builder.toQuerySqlWithPrepared(modelName, query);
-      log.debug("Generated SELECT SQL: {}", pair.first());
+    Pair<String, Map<String, Object>> pair = builder.toQuerySqlWithPrepared(modelName, query);
+    log.debug("Generated SELECT SQL: {}", pair.first());
 
-      List mapList = sqlExecutor.queryForList(pair.first(), pair.second(), getSqlResultHandler((ModelDefinition) sessionContext.getModelDefinition(modelName), query, Map.class));
-      if (query.hasExpand()) {
-        nestedQuery(mapList, this::findMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), query, sessionContext.getNestedQueryMaxDepth());
-      }
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL find completed for model: {} in {}ms, results: {}", modelName, duration, mapList.size());
-      return mapList;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL find failed for model: {} after {}ms", modelName, duration, e);
-      throw e;
+    List mapList = sqlExecutor.queryForList(pair.first(), pair.second(), getSqlResultHandler((ModelDefinition) sessionContext.getModelDefinition(modelName), query, Map.class));
+    if (query.hasExpand()) {
+      nestedQuery(mapList, this::findMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), query, sessionContext.getNestedQueryMaxDepth());
     }
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL find completed for model: {} in {}ms, results: {}", modelName, duration, mapList.size());
+    return mapList;
   }
 
 
@@ -384,18 +350,12 @@ public class SqlDataService extends BaseService implements DataService {
   public List<Map<String, Object>> findByNativeQuery(String modelName, Map<String, Object> params) {
     log.debug("Starting SQL native query model: {}", modelName);
     long startTime = System.currentTimeMillis();
-    try {
-      NativeQueryDefinition model = (NativeQueryDefinition) sessionContext.getModelDefinition(modelName);
-      String statement = model.getStatement();
-      List<Map<String, Object>> list = (List<Map<String, Object>>) executeNativeStatement(statement, params);
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL native query model completed for {} in {}ms, results: {}", modelName, duration, list.size());
-      return list;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL native query model failed for {} after {}ms", modelName, duration, e);
-      throw e;
-    }
+    NativeQueryDefinition model = (NativeQueryDefinition) sessionContext.getModelDefinition(modelName);
+    String statement = model.getStatement();
+    List<Map<String, Object>> list = (List<Map<String, Object>>) executeNativeStatement(statement, params);
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL native query model completed for {} in {}ms, results: {}", modelName, duration, list.size());
+    return list;
   }
 
   @Override
@@ -403,43 +363,37 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL native execute: {}", statement);
     long startTime = System.currentTimeMillis();
 
-    try {
-      String processedStatement = StringHelper.replacePlaceholder(statement);
+    String processedStatement = StringHelper.replacePlaceholder(statement);
 
-      // 判断 SQL 语句类型
-      String trimmedStatement = processedStatement.trim().toUpperCase();
-      boolean isQuery = trimmedStatement.startsWith("SELECT");
-      boolean isUpdate = trimmedStatement.startsWith("UPDATE")
-                         || trimmedStatement.startsWith("INSERT")
-                         || trimmedStatement.startsWith("DELETE")
-                         || trimmedStatement.startsWith("CREATE")
-                         || trimmedStatement.startsWith("ALTER");
-      Object result;
-      if (isQuery) {
-        // 执行查询操作
-        List<Map<String, Object>> queryResult = sqlExecutor.queryForList(processedStatement, params);
-        result = queryResult;
-        log.debug("SQL native query completed in {}ms, results: {}",
-          System.currentTimeMillis() - startTime, queryResult.size());
-      } else if (isUpdate) {
-        // 执行更新操作
-        int affectedRows = sqlExecutor.update(processedStatement, params);
-        result = affectedRows;
-        log.debug("SQL native update completed in {}ms, affected rows: {}",
-          System.currentTimeMillis() - startTime, affectedRows);
-      } else {
-        // 不支持的 SQL 语句类型
-        throw new IllegalArgumentException("Unsupported SQL statement: " + statement);
-      }
-
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL native execute completed in {}ms", duration);
-      return result;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL native execute failed after {}ms", duration, e);
-      throw e;
+    // 判断 SQL 语句类型
+    String trimmedStatement = processedStatement.trim().toUpperCase();
+    boolean isQuery = trimmedStatement.startsWith("SELECT");
+    boolean isUpdate = trimmedStatement.startsWith("UPDATE")
+                       || trimmedStatement.startsWith("INSERT")
+                       || trimmedStatement.startsWith("DELETE")
+                       || trimmedStatement.startsWith("CREATE")
+                       || trimmedStatement.startsWith("ALTER");
+    Object result;
+    if (isQuery) {
+      // 执行查询操作
+      List<Map<String, Object>> queryResult = sqlExecutor.queryForList(processedStatement, params);
+      result = queryResult;
+      log.debug("SQL native query completed in {}ms, results: {}",
+        System.currentTimeMillis() - startTime, queryResult.size());
+    } else if (isUpdate) {
+      // 执行更新操作
+      int affectedRows = sqlExecutor.update(processedStatement, params);
+      result = affectedRows;
+      log.debug("SQL native update completed in {}ms, affected rows: {}",
+        System.currentTimeMillis() - startTime, affectedRows);
+    } else {
+      // 不支持的 SQL 语句类型
+      throw new IllegalArgumentException("Unsupported SQL statement: " + statement);
     }
+
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL native execute completed in {}ms", duration);
+    return result;
   }
 
   @SuppressWarnings("all")
@@ -447,18 +401,12 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL findMapList for model: {}", modelName);
     long startTime = System.currentTimeMillis();
 
-    try {
-      Pair<String, Map<String, Object>> pair = builder.toQuerySqlWithPrepared(modelName, query);
-      List list = sqlExecutor.queryForList(pair.first(), pair.second(), getSqlResultHandler((ModelDefinition) sessionContext.getModelDefinition(modelName), query, Map.class));
+    Pair<String, Map<String, Object>> pair = builder.toQuerySqlWithPrepared(modelName, query);
+    List list = sqlExecutor.queryForList(pair.first(), pair.second(), getSqlResultHandler((ModelDefinition) sessionContext.getModelDefinition(modelName), query, Map.class));
 
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL findMapList completed for model: {} in {}ms, results: {}", modelName, duration, list.size());
-      return list;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL findMapList failed for model: {} after {}ms", modelName, duration, e);
-      throw e;
-    }
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL findMapList completed for model: {} in {}ms, results: {}", modelName, duration, list.size());
+    return list;
   }
 
   @Override
@@ -466,21 +414,15 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL count for model: {}", modelName);
     long startTime = System.currentTimeMillis();
 
-    try {
-      Pair<String, Map<String, Object>> pair = builder.toQuerySqlWithPrepared(modelName, query);
-      String sql = "select count(*) from(" + pair.first() + ") tmp_count";
-      log.debug("Generated COUNT SQL: {}", sql);
+    Pair<String, Map<String, Object>> pair = builder.toQuerySqlWithPrepared(modelName, query);
+    String sql = "select count(*) from(" + pair.first() + ") tmp_count";
+    log.debug("Generated COUNT SQL: {}", sql);
 
-      long result = sqlExecutor.queryForScalar(sql, pair.second(), Long.class);
+    long result = sqlExecutor.queryForScalar(sql, pair.second(), Long.class);
 
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL count completed for model: {} in {}ms, count: {}", modelName, duration, result);
-      return result;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL count failed for model: {} after {}ms", modelName, duration, e);
-      throw e;
-    }
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL count completed for model: {} in {}ms, count: {}", modelName, duration, result);
+    return result;
   }
 
   @Override
@@ -488,25 +430,19 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL deleteById for model: {}, id: {}", modelName, id);
     long startTime = System.currentTimeMillis();
 
-    try {
-      String physicalTableName = toPhysicalTablenameQuoteString(modelName);
-      EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
-      TypedField<?, ?> idField = entity.findIdField().orElseThrow();
-      String sql = "delete from " +
-                   physicalTableName +
-                   " where (" + sqlDialect.quoteIdentifier(idField.getName()) + "=:" + idField.getName() + ")";
+    String physicalTableName = toPhysicalTablenameQuoteString(modelName);
+    EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
+    TypedField<?, ?> idField = entity.findIdField().orElseThrow();
+    String sql = "delete from " +
+                 physicalTableName +
+                 " where (" + sqlDialect.quoteIdentifier(idField.getName()) + "=:" + idField.getName() + ")";
 
-      log.debug("Generated DELETE SQL: {}", sql);
-      int result = sqlExecutor.update(sql, Map.of(idField.getName(), id));
+    log.debug("Generated DELETE SQL: {}", sql);
+    int result = sqlExecutor.update(sql, Map.of(idField.getName(), id));
 
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL deleteById completed for model: {} in {}ms, affected rows: {}", modelName, duration, result);
-      return result;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL deleteById failed for model: {}, id: {} after {}ms", modelName, id, duration, e);
-      throw e;
-    }
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL deleteById completed for model: {} in {}ms, affected rows: {}", modelName, duration, result);
+    return result;
   }
 
   @Override
@@ -514,25 +450,19 @@ public class SqlDataService extends BaseService implements DataService {
     log.debug("Starting SQL delete for model: {}, filter: {}", modelName, filter);
     long startTime = System.currentTimeMillis();
 
-    try {
-      SqlClauseResult sqlResult = getSqlCauseResult(filter);
-      String physicalTableName = toPhysicalTablenameQuoteString(modelName);
-      String sql = "delete from " +
-                   physicalTableName +
-                   " where (" +
-                   sqlResult.sqlClause() + ")";
+    SqlClauseResult sqlResult = getSqlCauseResult(filter);
+    String physicalTableName = toPhysicalTablenameQuoteString(modelName);
+    String sql = "delete from " +
+                 physicalTableName +
+                 " where (" +
+                 sqlResult.sqlClause() + ")";
 
-      log.debug("Generated DELETE SQL: {}", sql);
-      int result = sqlExecutor.update(sql, sqlResult.args());
+    log.debug("Generated DELETE SQL: {}", sql);
+    int result = sqlExecutor.update(sql, sqlResult.args());
 
-      long duration = System.currentTimeMillis() - startTime;
-      log.debug("SQL delete completed for model: {} in {}ms, affected rows: {}", modelName, duration, result);
-      return result;
-    } catch (Exception e) {
-      long duration = System.currentTimeMillis() - startTime;
-      log.error("SQL delete failed for model: {}, filter: {} after {}ms", modelName, filter, duration, e);
-      throw e;
-    }
+    long duration = System.currentTimeMillis() - startTime;
+    log.debug("SQL delete completed for model: {} in {}ms, affected rows: {}", modelName, duration, result);
+    return result;
   }
 
   private SqlClauseResult getSqlCauseResult(String condition) {

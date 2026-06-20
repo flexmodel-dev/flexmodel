@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Function lifecycle management: CRUD, deploy to Deno sidecar, invoke.
+ * Function lifecycle management: CRUD, deploy to Deno functions runtime, invoke.
  *
  * @author cjbi
  */
@@ -65,9 +65,9 @@ public class FunctionService {
         functionRepository.save(projectId, fn);
         log.info("Function {}: {}:{}", isNew ? "created" : "updated", projectId, name);
 
-        // Deploy to Deno sidecar
+        // Deploy to Deno functions runtime
         try {
-            deployToSidecar(projectId, fn);
+            deployToRuntime(projectId, fn);
         } catch (Exception e) {
             log.error("Deploy failed for function: {}:{}", projectId, name, e);
         }
@@ -120,7 +120,7 @@ public class FunctionService {
     // Invocation
     // ============================================================
 
-    /** Invoke a function via the Deno sidecar — deploy first to ensure it's available */
+    /** Invoke a function via the Deno functions runtime — deploy first to ensure it's available */
     public Response invoke(String projectId, String name,
                            FunctionInvokeRequest req) {
         Function fn = functionRepository.findByName(projectId, name);
@@ -128,8 +128,8 @@ public class FunctionService {
             throw new FunctionException("Function not found: " + name);
         }
 
-        // Always deploy before invoke to keep sidecar in sync
-        deployToSidecar(projectId, fn);
+        // Always deploy before invoke to keep runtime in sync
+        deployToRuntime(projectId, fn);
 
         Response response = functionInvoker.invoke(projectId, name, req);
         log.info("Function {} invoked, status={}", name, response.getStatus());
@@ -140,7 +140,7 @@ public class FunctionService {
     // Private Helpers
     // ============================================================
 
-    private void deployToSidecar(String projectId, Function fn) {
+    private void deployToRuntime(String projectId, Function fn) {
         if (fn.getId() == null || fn.getId().isBlank()) {
             throw new FunctionException("Function ID is required for deployment: " + fn.getName());
         }
@@ -152,7 +152,7 @@ public class FunctionService {
             throw new FunctionException("Function source files are required for deployment: " + fn.getName());
         }
 
-        SidecarDeployRequest deployReq = SidecarDeployRequest.builder()
+        FunctionRuntimeDeployRequest deployReq = FunctionRuntimeDeployRequest.builder()
             .projectId(projectId)
             .functionId(fn.getId())
             .name(fn.getName())

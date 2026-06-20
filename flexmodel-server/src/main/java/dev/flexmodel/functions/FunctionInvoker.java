@@ -1,6 +1,6 @@
 package dev.flexmodel.functions;
 
-import dev.flexmodel.functions.dto.SidecarDeployRequest;
+import dev.flexmodel.functions.dto.FunctionRuntimeDeployRequest;
 import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -9,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 /**
- * HTTP client that communicates with the flexmodel-sidecar (Deno process).
+ * HTTP client that communicates with the flexmodel-functions-runtime (Deno process).
  *
  * @author cjbi
  */
@@ -19,17 +19,17 @@ public class FunctionInvoker {
 
     @Inject
     @RestClient
-    SidecarClient sidecarClient;
+    FunctionRuntimeClient runtimeClient;
 
     /**
-     * Deploy function source files to Deno sidecar.
+     * Deploy function source files to Deno functions runtime.
      */
-    public void deploy(SidecarDeployRequest req) {
+    public void deploy(FunctionRuntimeDeployRequest req) {
         try {
-            log.debug("Deploying function to sidecar: {}:{}", req.getProjectId(), req.getName());
-            Response response = sidecarClient.deploy(req);
+            log.debug("Deploying function to runtime: {}:{}", req.getProjectId(), req.getName());
+            Response response = runtimeClient.deploy(req);
             if (response.getStatus() >= 200 && response.getStatus() < 300) {
-                log.info("Deployed function to sidecar: {}:{}", req.getProjectId(), req.getName());
+                log.info("Deployed function to runtime: {}:{}", req.getProjectId(), req.getName());
             } else {
                 String body = response.readEntity(String.class);
                 log.error("Deploy failed: HTTP {} body: {}", response.getStatus(), body);
@@ -38,17 +38,17 @@ public class FunctionInvoker {
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to deploy function to sidecar: {}:{}", req.getProjectId(), req.getName(), e);
-            throw new RuntimeException("Failed to deploy function to Deno sidecar: " + e.getMessage(), e);
+            log.error("Failed to deploy function to runtime: {}:{}", req.getProjectId(), req.getName(), e);
+            throw new RuntimeException("Failed to deploy function to Deno runtime: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Invoke a function via the Deno sidecar.
+     * Invoke a function via the Deno functions runtime.
      */
     public Response invoke(String projectId, String name, FunctionInvokeRequest req) {
         try {
-            return sidecarClient.invoke(projectId, name, req);
+            return runtimeClient.invoke(projectId, name, req);
         } catch (Exception e) {
             log.error("Failed to invoke function: {}:{}", projectId, name, e);
             throw new RuntimeException("Failed to invoke function: " + e.getMessage(), e);
@@ -56,15 +56,15 @@ public class FunctionInvoker {
     }
 
     /**
-     * Delete a function from the Deno sidecar.
+     * Delete a function from the Deno functions runtime.
      */
     public boolean delete(String projectId, String name) {
         try {
-            Response response = sidecarClient.delete(projectId, name);
-            log.info("Deleted function from sidecar: {}:{} status={}", projectId, name, response.getStatus());
+            Response response = runtimeClient.delete(projectId, name);
+            log.info("Deleted function from runtime: {}:{} status={}", projectId, name, response.getStatus());
             return response.getStatus() >= 200 && response.getStatus() < 300;
         } catch (Exception e) {
-            log.warn("Failed to delete function from sidecar: {}:{}", projectId, name, e);
+            log.warn("Failed to delete function from runtime: {}:{}", projectId, name, e);
             return false;
         }
     }

@@ -72,7 +72,7 @@ services:
         -Dflexmodel.project-url-template=jdbc:mysql://mysql:3306/{{databaseName}}
         -Dflexmodel.datasource.dev_test.db-kind=sqlite
         -Dflexmodel.datasource.dev_test.url=jdbc:sqlite:file:database/sqlite_dev_test.db
-        -Dquarkus.rest-client.sidecar.url=http://flexmodel-sidecar:9999
+        -Dquarkus.rest-client.function-runtime.url=http://flexmodel-functions-runtime:9999
 
     networks:
       - flexmodel
@@ -80,9 +80,9 @@ services:
       mysql:
         condition: service_healthy
 
-  flexmodel-sidecar:
-    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-sidecar
-    image: cjbi/flexmodel-sidecar:latest
+  flexmodel-functions-runtime:
+    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-functions-runtime
+    image: cjbi/flexmodel-functions-runtime:latest
     restart: always
     environment:
       - FLEXMODEL_JAVA_HOST=flexmodel-server

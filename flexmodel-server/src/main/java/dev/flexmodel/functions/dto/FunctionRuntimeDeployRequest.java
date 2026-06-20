@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.Map;
 
 /**
- * Internal deploy request sent from Java → Deno sidecar.
+ * Internal deploy request sent from Java → Deno functions runtime.
  *
  * @author cjbi
  */
@@ -16,7 +16,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SidecarDeployRequest {
+public class FunctionRuntimeDeployRequest {
 
     private String projectId;
 

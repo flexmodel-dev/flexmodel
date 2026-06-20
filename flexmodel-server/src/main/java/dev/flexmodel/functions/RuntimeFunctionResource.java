@@ -33,15 +33,15 @@ public class RuntimeFunctionResource {
     public Response invoke(@PathParam("projectId") String projectId,
                            @PathParam("name") String name,
                            FunctionInvokeRequest request) {
-        Response sidecarResponse = functionService.invoke(projectId, name, request);
+        Response runtimeResponse = functionService.invoke(projectId, name, request);
 
         // Pass through function result directly as HTTP response
         Response.ResponseBuilder builder = Response
-                .status(sidecarResponse.getStatus())
-                .entity(sidecarResponse.readEntity(Object.class));
+                .status(runtimeResponse.getStatus())
+                .entity(runtimeResponse.readEntity(Object.class));
 
         // Forward x-function-meta header for observability
-        String meta = sidecarResponse.getHeaderString("x-function-meta");
+        String meta = runtimeResponse.getHeaderString("x-function-meta");
         if (meta != null) {
             builder.header("X-Function-Meta", meta);
         }

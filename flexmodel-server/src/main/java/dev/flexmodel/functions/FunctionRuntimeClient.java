@@ -1,7 +1,7 @@
 package dev.flexmodel.functions;
 
 import dev.flexmodel.functions.dto.FunctionInvokeRequest;
-import dev.flexmodel.functions.dto.SidecarDeployRequest;
+import dev.flexmodel.functions.dto.FunctionRuntimeDeployRequest;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.POST;
@@ -14,20 +14,20 @@ import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 /**
- * Reactive REST client interface for the flexmodel-sidecar (Deno process).
+ * Reactive REST client interface for the flexmodel-functions-runtime (Deno process).
  *
  * @author cjbi
  */
-@RegisterRestClient(configKey = "sidecar")
-@RegisterProvider(SidecarResponseExceptionMapper.class)
+@RegisterRestClient(configKey = "function-runtime")
+@RegisterProvider(FunctionRuntimeResponseExceptionMapper.class)
 @Path("/functions")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public interface SidecarClient {
+public interface FunctionRuntimeClient {
 
     @POST
     @Path("/deploy")
-    Response deploy(SidecarDeployRequest request);
+    Response deploy(FunctionRuntimeDeployRequest request);
 
     @POST
     @Path("/{projectId}/{name}/invoke")

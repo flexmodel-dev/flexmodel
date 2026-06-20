@@ -1,5 +1,5 @@
 // ============================================================
-// Flexmodel Sidecar — Shared Test Utilities
+// Flexmodel Functions Runtime — Shared Test Utilities
 //
 // Helpers for mocking env vars, global fetch, and temp dirs.
 // All mocks are restored in finally blocks to avoid cross-test leaks.

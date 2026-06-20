@@ -1,5 +1,5 @@
 // ============================================================
-// Flexmodel Sidecar — Main Entry Point
+// Flexmodel Functions Runtime — Main Entry Point
 //
 // Starts the Hono.js HTTP server on the configured port.
 // Listens for deploy/delete/invoke requests from flexmodel-server.
@@ -13,7 +13,7 @@ const HOSTNAME = Deno.env.get("FLEXMODEL_HOST") ?? "0.0.0.0";
 if (import.meta.main) {
   const app = createApp();
 
-  console.log(`[flexmodel-sidecar] Starting on http://${HOSTNAME}:${PORT}`);
+  console.log(`[flexmodel-functions-runtime] Starting on http://${HOSTNAME}:${PORT}`);
 
   Deno.serve(
     {
@@ -21,7 +21,7 @@ if (import.meta.main) {
       hostname: HOSTNAME,
       onListen: ({ hostname, port }) => {
         console.log(
-          `[flexmodel-sidecar] Listening on http://${hostname}:${port}`,
+          `[flexmodel-functions-runtime] Listening on http://${hostname}:${port}`,
         );
       },
     },

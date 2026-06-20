@@ -1,4 +1,4 @@
-# Flexmodel Functions — 云函数 MVP 设计方案
+# Flexmodel Functions Runtime — 云函数 MVP 设计方案
 
 ## 一、背景与目标
 
@@ -28,7 +28,7 @@
 └─────────────────────────────────┼────────────────────────────┘
                                   │
 ┌─────────────────────────────────┼──────────────────────────────┐
-│              flexmodel-sidecar (Deno + Hono.js)               │
+│              flexmodel-functions-runtime (Deno + Hono.js)               │
 │  ┌──────────────────────────────▼────────────────────────┐     │
 │  │                  Hono.js HTTP Server                    │     │
 │  │  POST /functions/deploy            (部署函数)          │     │
@@ -74,7 +74,7 @@
 ## 三、模块结构
 
 ```
-flexmodel-sidecar/                  # 新模块（Deno 项目）
+flexmodel-functions-runtime/                  # 新模块（Deno 项目）
 ├── deno.json                       # Deno 配置
 ├── src/
 │   ├── main.ts                     # Hono.js 入口, 启动 HTTP Server

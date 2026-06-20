@@ -10,7 +10,7 @@
 
 ### What's Done
 
-#### Phase 1: Deno Sidecar (flexmodel-sidecar/)
+#### Phase 1: Deno Functions Runtime (flexmodel-functions-runtime/)
 - [x] `deno.json` — Deno project configuration with Hono.js dependency
 - [x] `src/types.ts` — Full TypeScript type definitions (FunctionMeta, InvokeRequest/Result, Worker messages, etc.)
 - [x] `src/sdk/flexmodel.ts` — RPC Dispatcher (proxies Worker SDK requests to Java REST API)
@@ -42,10 +42,10 @@
 - [x] `FunctionFmRepository.java` — Repository implementation (AbstractRepository pattern)
 - [x] `FunctionVersionRepository.java` — Version repository interface
 - [x] `FunctionVersionFmRepository.java` — Version repository implementation
-- [x] `FunctionInvoker.java` — HTTP client to Deno sidecar (deploy, invoke, delete, healthCheck)
+- [x] `FunctionInvoker.java` — HTTP client to Deno functions runtime (deploy, invoke, delete, healthCheck)
 - [x] `FunctionService.java` — Core service (CRUD, state machine, version management, invocation, auth validation, startup recovery)
 - [x] `FunctionResource.java` — REST endpoints (CRUD, trigger management, public invoke entry)
-- [x] `FunctionInternalResource.java` — Internal API for sidecar lazy source loading
+- [x] `FunctionInternalResource.java` — Internal API for runtime lazy source loading
 
 #### Phase 3: Frontend UI — Cloud Functions Management Page (flexmodel-ui)
 - [x] `src/services/function.ts` — API service layer (TypeScript interfaces + all CRUD/invoke/trigger endpoints)
@@ -59,36 +59,36 @@
 
 ### What's Next
 
-1. **Phase 4: Integration Testing** — Install Deno, start sidecar, run end-to-end tests
+1. **Phase 4: Integration Testing** — Install Deno, start functions runtime, run end-to-end tests
 2. **Source Code Viewing** — Add frontend endpoint to retrieve source code for editing (currently requires re-pasting on update)
 3. **V2 Enhancements** — Worker Pool, Cron triggers, metrics, secrets management
 
 ## Blockers / Risks
 
-- Deno not installed in current environment — sidecar cannot be runtime-verified yet
+- Deno not installed in current environment — functions runtime cannot be runtime-verified yet
 - IDE lock on `flexmodel-server-dev.jar` prevents `mvn clean` (not caused by our changes)
 
 ## Decisions Made
 
 - **HTTP Client**: Used Java 25 built-in `java.net.http.HttpClient` instead of Vert.x WebClient to avoid additional dependency
-- **Configuration**: Sidecar host/port configurable via `flexmodel.sidecar.host` and `flexmodel.sidecar.port` properties
-- **Source Code Loading**: Lazy load pattern — source code not sent at deploy time, loaded by sidecar on first invoke via internal API
+- **Configuration**: Functions runtime host/port configurable via `flexmodel.functions-runtime.host` and `flexmodel.functions-runtime.port` properties
+- **Source Code Loading**: Lazy load pattern — source code not sent at deploy time, loaded by runtime on first invoke via internal API
 - **Auth Validation**: Implemented PUBLIC/JWT/API_KEY/INTERNAL auth modes per trigger config
 - **Startup Recovery**: Only deploys metadata on startup (O(1) time), source code lazy-loaded
 
 ## Files Created This Session
 
-### Deno Sidecar (9 files)
-- `flexmodel-sidecar/deno.json`
-- `flexmodel-sidecar/src/main.ts`
-- `flexmodel-sidecar/src/server.ts`
-- `flexmodel-sidecar/src/types.ts`
-- `flexmodel-sidecar/src/router/functions.ts`
-- `flexmodel-sidecar/src/router/health.ts`
-- `flexmodel-sidecar/src/runner/registry.ts`
-- `flexmodel-sidecar/src/runner/worker.ts`
-- `flexmodel-sidecar/src/runner/worker-entry.ts`
-- `flexmodel-sidecar/src/sdk/flexmodel.ts`
+### Deno Functions Runtime (9 files)
+- `flexmodel-functions-runtime/deno.json`
+- `flexmodel-functions-runtime/src/main.ts`
+- `flexmodel-functions-runtime/src/server.ts`
+- `flexmodel-functions-runtime/src/types.ts`
+- `flexmodel-functions-runtime/src/router/functions.ts`
+- `flexmodel-functions-runtime/src/router/health.ts`
+- `flexmodel-functions-runtime/src/runner/registry.ts`
+- `flexmodel-functions-runtime/src/runner/worker.ts`
+- `flexmodel-functions-runtime/src/runner/worker-entry.ts`
+- `flexmodel-functions-runtime/src/sdk/flexmodel.ts`
 
 ### Java Backend (17 files)
 - `flexmodel-server/src/main/java/dev/flexmodel/functions/FunctionException.java`
@@ -124,4 +124,4 @@
 - [x] Frontend TypeScript: `tsc --noEmit` → 0 errors
 - [x] Frontend build: `npm run build` (Vite) → built in 42.98s
 - [ ] Deno type-check: `deno check src/main.ts` (Deno not installed in environment)
-- [ ] End-to-end test: create → deploy → invoke → update → delete (requires running sidecar)
+- [ ] End-to-end test: create → deploy → invoke → update → delete (requires running functions runtime)

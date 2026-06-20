@@ -139,12 +139,6 @@ public class ProjectResource {
     if (project.getDescription() != null) {
       existingProject.setDescription(project.getDescription());
     }
-    if (project.getEnabled() != null) {
-      existingProject.setEnabled(project.getEnabled());
-    }
-    if (project.getOwnerId() != null) {
-      existingProject.setOwnerId(project.getOwnerId());
-    }
     return projectService.updateProject(existingProject);
   }
 

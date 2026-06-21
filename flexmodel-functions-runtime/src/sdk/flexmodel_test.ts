@@ -13,7 +13,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-Deno.test("handleRpcRequest data.find delegates to POST /api/data/:model", async () => {
+Deno.test("handleRpcRequest data.find delegates to GET /api/projects/:pid/models/:model/records", async () => {
   const calls: { url: string; method: string }[] = [];
   mockFetch((input, init) => {
     const req = new Request(input, init);
@@ -25,10 +25,10 @@ Deno.test("handleRpcRequest data.find delegates to POST /api/data/:model", async
     const result = await handleRpcRequest("data.find", {
       model: "User",
       params: { page: 1, size: 10 },
-    });
+    }, "test-project");
     assertEquals(calls.length, 1);
-    assertEquals(calls[0].method, "POST");
-    assertEquals(calls[0].url.includes("/api/data/User"), true);
+    assertEquals(calls[0].method, "GET");
+    assertEquals(calls[0].url.includes("/api/projects/test-project/models/User/records"), true);
     const r = result as Record<string, unknown>;
     assertEquals(Array.isArray(r.items), true);
   } finally {
@@ -36,7 +36,7 @@ Deno.test("handleRpcRequest data.find delegates to POST /api/data/:model", async
   }
 });
 
-Deno.test("handleRpcRequest data.findOne delegates to GET /api/data/:model/:id", async () => {
+Deno.test("handleRpcRequest data.findOne delegates to GET /api/projects/:pid/models/:model/records/:id", async () => {
   mockFetch((input) => {
     return Promise.resolve(jsonResponse({ id: "123", name: "Alice" }));
   });
@@ -45,14 +45,14 @@ Deno.test("handleRpcRequest data.findOne delegates to GET /api/data/:model/:id",
     const result = (await handleRpcRequest("data.findOne", {
       model: "User",
       id: "123",
-    })) as Record<string, unknown>;
+    }, "test-project")) as Record<string, unknown>;
     assertEquals(result.id, "123");
   } finally {
     restoreFetch();
   }
 });
 
-Deno.test("handleRpcRequest data.create delegates to POST /api/data/:model with body", async () => {
+Deno.test("handleRpcRequest data.create delegates to POST /api/projects/:pid/models/:model/records with body", async () => {
   let capturedBody = "";
   mockFetch((input, init) => {
     capturedBody = init?.body as string;
@@ -63,14 +63,14 @@ Deno.test("handleRpcRequest data.create delegates to POST /api/data/:model with 
     await handleRpcRequest("data.create", {
       model: "User",
       data: { name: "Bob" },
-    });
+    }, "test-project");
     assertEquals(JSON.parse(capturedBody).name, "Bob");
   } finally {
     restoreFetch();
   }
 });
 
-Deno.test("handleRpcRequest data.update delegates to PUT /api/data/:model/:id", async () => {
+Deno.test("handleRpcRequest data.update delegates to PUT /api/projects/:pid/models/:model/records/:id", async () => {
   let capturedMethod = "";
   mockFetch((input, init) => {
     capturedMethod = init?.method ?? "GET";
@@ -82,7 +82,7 @@ Deno.test("handleRpcRequest data.update delegates to PUT /api/data/:model/:id", 
       model: "User",
       id: "123",
       data: { name: "Updated" },
-    });
+    }, "test-project");
     assertEquals(capturedMethod, "PUT");
   } finally {
     restoreFetch();
@@ -100,7 +100,7 @@ Deno.test("handleRpcRequest data.delete delegates to DELETE and returns success"
     const result = await handleRpcRequest("data.delete", {
       model: "User",
       id: "123",
-    });
+    }, "test-project");
     assertEquals(capturedMethod, "DELETE");
     const r = result as Record<string, unknown>;
     assertEquals(r.success, true);
@@ -122,7 +122,7 @@ Deno.test("handleRpcRequest data.batch executes multiple ops sequentially", asyn
         { op: "find", model: "User", params: {} },
         { op: "findOne", model: "User", params: { id: "1" } },
       ],
-    })) as unknown[];
+    }, "test-project")) as unknown[];
     assertEquals(result.length, 2);
     assertEquals(calls.length, 2);
   } finally {

@@ -1,2 +1,4 @@
 /docker-compose/mysql/data/
+/docker-compose/database/
+/docker-compose/storage/
 .idea

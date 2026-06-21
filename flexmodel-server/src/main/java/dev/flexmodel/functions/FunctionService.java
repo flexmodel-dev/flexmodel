@@ -2,6 +2,7 @@ package dev.flexmodel.functions;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.flexmodel.auth.service.InternalTokenService;
 import dev.flexmodel.codegen.entity.Function;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.functions.dto.*;
@@ -30,6 +31,9 @@ public class FunctionService {
 
     @Inject
     FunctionInvoker functionInvoker;
+
+    @Inject
+    InternalTokenService internalTokenService;
 
     @Inject
     ObjectMapper objectMapper;
@@ -127,6 +131,9 @@ public class FunctionService {
         if (fn == null) {
             throw new FunctionException("Function not found: " + name);
         }
+
+        // 为本次 invoke 签发 Runtime 回调专用 JWT（5 分钟有效期）
+        req.setAuthToken(internalTokenService.signToken(projectId));
 
         // Always deploy before invoke to keep runtime in sync
         deployToRuntime(projectId, fn);

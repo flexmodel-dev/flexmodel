@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import type { StatusCode } from "hono/utils/http-status";
 import { registry } from "../runner/registry.ts";
 import { invokeFunction } from "../runner/worker.ts";
+import { setInternalToken } from "../sdk/flexmodel.ts";
 import type { DeployRequest, InvokeRequest } from "../types.ts";
 
 const router = new Hono();
@@ -64,6 +65,12 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
 
   try {
     const body = await c.req.json().catch(() => ({}));
+
+    // 从 invoke body 提取 authToken 并全局存储，供 SDK 回调使用
+    if (body.authToken) {
+      setInternalToken(body.authToken);
+    }
+
     const request: InvokeRequest = {
       input: body.input,
     };

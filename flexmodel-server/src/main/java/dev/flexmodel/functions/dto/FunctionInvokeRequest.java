@@ -11,4 +11,7 @@ import lombok.Data;
 public class FunctionInvokeRequest {
 
     private Object input;
+
+    /** 仅服务端设置，客户端传入的值会被覆盖 */
+    private String authToken;
 }

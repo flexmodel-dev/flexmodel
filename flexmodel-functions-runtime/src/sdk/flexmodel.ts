@@ -11,11 +11,24 @@ const JAVA_HOST = Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost";
 const JAVA_PORT = parseInt(Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080");
 const JAVA_BASE = `http://${JAVA_HOST}:${JAVA_PORT}`;
 
+// ---- Internal Token（从 invoke body 提取，全局共享） ----
+
+let _internalToken = "";
+
+export function setInternalToken(token: string): void {
+  _internalToken = token;
+}
+
+function getInternalToken(): string {
+  return _internalToken;
+}
+
 // ---- RPC Handler: Dispatch an operation to the Java API ----
 
 export async function handleRpcRequest(
   operation: string,
   params: unknown,
+  projectId?: string,
 ): Promise<unknown> {
   const [service, action] = operation.split(".");
   if (!service || !action) {
@@ -24,7 +37,7 @@ export async function handleRpcRequest(
 
   switch (service) {
     case "data":
-      return handleDataRpc(action, params);
+      return handleDataRpc(action, params, projectId);
     // Future: case "functions", case "storage", case "auth"
     default:
       throw new Error(`Unknown RPC service: ${service}`);
@@ -36,7 +49,17 @@ export async function handleRpcRequest(
 async function handleDataRpc(
   action: string,
   params: unknown,
+  projectId?: string,
 ): Promise<unknown> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  const token = getInternalToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const base = (model: string) =>
+    `${JAVA_BASE}/api/projects/${projectId}/models/${model}/records`;
+
   switch (action) {
     case "find": {
       const { model, params: queryParams } = params as {
@@ -46,28 +69,26 @@ async function handleDataRpc(
       const searchParams = new URLSearchParams();
       if (queryParams?.page) searchParams.set("page", String(queryParams.page));
       if (queryParams?.size) searchParams.set("size", String(queryParams.size));
+      if (queryParams?.filter) searchParams.set("filter", JSON.stringify(queryParams.filter));
+      if (queryParams?.sort) searchParams.set("sort", JSON.stringify(queryParams.sort));
       const res = await fetch(
-        `${JAVA_BASE}/api/data/${model}?${searchParams.toString()}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(queryParams ?? {}),
-        },
+        `${base(model)}?${searchParams.toString()}`,
+        { headers },
       );
       return res.json();
     }
 
     case "findOne": {
       const { model, id } = params as { model: string; id: string };
-      const res = await fetch(`${JAVA_BASE}/api/data/${model}/${id}`);
+      const res = await fetch(`${base(model)}/${id}`, { headers });
       return res.json();
     }
 
     case "create": {
       const { model, data } = params as { model: string; data: unknown };
-      const res = await fetch(`${JAVA_BASE}/api/data/${model}`, {
+      const res = await fetch(base(model), {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers,
         body: JSON.stringify(data),
       });
       return res.json();
@@ -79,9 +100,9 @@ async function handleDataRpc(
         id: string;
         data: unknown;
       };
-      const res = await fetch(`${JAVA_BASE}/api/data/${model}/${id}`, {
+      const res = await fetch(`${base(model)}/${id}`, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers,
         body: JSON.stringify(data),
       });
       return res.json();
@@ -89,8 +110,9 @@ async function handleDataRpc(
 
     case "delete": {
       const { model, id } = params as { model: string; id: string };
-      const res = await fetch(`${JAVA_BASE}/api/data/${model}/${id}`, {
+      const res = await fetch(`${base(model)}/${id}`, {
         method: "DELETE",
+        headers,
       });
       return res.ok ? { success: true } : res.json();
     }
@@ -103,7 +125,7 @@ async function handleDataRpc(
           const result = await handleDataRpc(op.op, {
             model: op.model,
             ...op.params,
-          });
+          } as unknown, projectId);
           results.push(result);
         } catch (err: unknown) {
           results.push({

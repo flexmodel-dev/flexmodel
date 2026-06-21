@@ -14,6 +14,9 @@ import { handleRpcRequest } from "../sdk/flexmodel.ts";
 const JAVA_HOST = Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost";
 const JAVA_PORT = parseInt(Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080");
 
+// Worker → projectId 映射，供 SDK 回调时构造 RecordResource URL
+const workerProjects = new WeakMap<Worker, string>();
+
 /**
  * Invoke a function by name within a project.
  * - Creates an isolated Worker loading the wrapper via file:// URL
@@ -65,6 +68,9 @@ async function executeInWorker(
         },
       },
     });
+
+    // 记录 Worker 对应的 projectId
+    workerProjects.set(worker, meta.projectId);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Failed to create Worker: ${message}`);
@@ -85,7 +91,8 @@ async function executeInWorker(
       const { type, data } = e.data;
 
       if (type === "sdk-request") {
-        handleRpcRequest(data.operation, data.params)
+        const projectId = workerProjects.get(worker);
+        handleRpcRequest(data.operation, data.params, projectId)
           .then((result) => {
             worker.postMessage({ type: "sdk-response", requestId: data.requestId, result });
           })

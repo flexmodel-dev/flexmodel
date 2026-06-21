@@ -1,6 +1,7 @@
 package dev.flexmodel.common.config.web.jwt;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
@@ -8,6 +9,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 import java.time.Duration;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * @author cjbi
@@ -60,16 +62,32 @@ public class JwtUtil {
    * @return
    */
   public static String sign(String account, Duration expiresIn) {
-    // 帐号加JWT私钥加密
-    String secret = account + SECRET_KEY;
-    // 此处过期时间，单位：毫秒
-    Date date = new Date(System.currentTimeMillis() + expiresIn.getSeconds() * 1000L);
-    Algorithm algorithm = Algorithm.HMAC256(secret);
+    return sign(account, null, expiresIn);
+  }
 
-    return JWT.create()
+  /**
+   * 签发 JWT，携带自定义 payload claims。
+   *
+   * @param account        帐号，编码在 "upn" claim 中
+   * @param payloadClaims  自定义 claims（如 projectId）
+   * @param expiresIn      有效期
+   */
+  public static String sign(String account, Map<String, String> payloadClaims, Duration expiresIn) {
+    String secret = account + SECRET_KEY;
+    Algorithm algorithm = Algorithm.HMAC256(secret);
+    Date date = new Date(System.currentTimeMillis() + expiresIn.toMillis());
+
+    JWTCreator.Builder builder = JWT.create()
       .withClaim(ACCOUNT, account)
-      .withExpiresAt(date)
-      .sign(algorithm);
+      .withExpiresAt(date);
+
+    if (payloadClaims != null) {
+      for (var entry : payloadClaims.entrySet()) {
+        builder.withClaim(entry.getKey(), entry.getValue());
+      }
+    }
+
+    return builder.sign(algorithm);
   }
 
   public static String getAccount(String token) {

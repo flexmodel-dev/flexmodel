@@ -6,7 +6,6 @@ import dev.flexmodel.ExpressionCalculatorException;
 import dev.flexmodel.model.ModelDefinition;
 import dev.flexmodel.model.field.Field;
 import dev.flexmodel.model.field.RelationField;
-import dev.flexmodel.naming.PhysicalNamingStrategy;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.service.BaseService;
@@ -52,7 +51,7 @@ class MongoStatementBuilder extends BaseService {
   }
 
   private void addJoins(List<Document> pipeline, ModelDefinition model,
-                        PhysicalNamingStrategy physicalNamingStrategy, Query query) {
+                        Query query) {
     if (query.getJoins() != null) {
       for (Query.Join join : query.getJoins().getJoins()) {
         String joinCollectionName = join.getFrom();
@@ -197,12 +196,11 @@ class MongoStatementBuilder extends BaseService {
   protected List<Document> createPipeline(String modelName, Query query) {
     validateQuery(modelName, query);
     ModelDefinition model = (ModelDefinition) mongoContext.getModelDefinition(modelName);
-    PhysicalNamingStrategy physicalNamingStrategy = mongoContext.getPhysicalNamingStrategy();
     List<Document> pipeline = new ArrayList<>();
     addMatchStage(pipeline, query);
     addSortStage(pipeline, query);
     addPaginationStages(pipeline, query);
-    addJoins(pipeline, model, physicalNamingStrategy, query);
+    addJoins(pipeline, model, query);
     addProjectionStage(pipeline, model, query);
     return pipeline;
   }

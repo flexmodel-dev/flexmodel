@@ -5,8 +5,6 @@ import org.slf4j.LoggerFactory;
 import dev.flexmodel.ModelRegistry;
 import dev.flexmodel.model.ModelDefinition;
 import dev.flexmodel.model.SchemaObject;
-import dev.flexmodel.naming.DefaultPhysicalNamingStrategy;
-import dev.flexmodel.naming.PhysicalNamingStrategy;
 import dev.flexmodel.type.TypeHandler;
 
 import java.util.HashMap;
@@ -21,7 +19,6 @@ public abstract class AbstractSessionContext {
 
   protected final String schemaName;
   protected final ModelRegistry mappedModels;
-  protected PhysicalNamingStrategy physicalNamingStrategy = new DefaultPhysicalNamingStrategy();
   protected boolean failsafe = false;
   protected int nestedQueryMaxDepth = 5;
   protected final SessionFactory factory;
@@ -32,14 +29,6 @@ public abstract class AbstractSessionContext {
     this.schemaName = schemaName;
     this.mappedModels = mappedModels;
     this.factory = factory;
-  }
-
-  public PhysicalNamingStrategy getPhysicalNamingStrategy() {
-    return physicalNamingStrategy;
-  }
-
-  public void setPhysicalNamingStrategy(PhysicalNamingStrategy physicalNamingStrategy) {
-    this.physicalNamingStrategy = physicalNamingStrategy;
   }
 
   public String getSchemaName() {

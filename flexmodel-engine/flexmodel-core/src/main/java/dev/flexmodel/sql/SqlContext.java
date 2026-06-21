@@ -2,7 +2,6 @@ package dev.flexmodel.sql;
 
 import dev.flexmodel.ModelRegistry;
 import dev.flexmodel.model.field.ScalarType;
-import dev.flexmodel.naming.PhysicalNamingStrategy;
 import dev.flexmodel.session.AbstractSessionContext;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.sql.dialect.SqlDialect;
@@ -62,11 +61,6 @@ public class SqlContext extends AbstractSessionContext {
     }
     this.typeHandlerMap.put(ScalarType.JSON.getType(), new JsonSqlTypeHandler());
     this.typeHandlerMap.put(ScalarType.ENUM.getType(), new EnumSqlTypeHandler());
-  }
-
-  @Override
-  public void setPhysicalNamingStrategy(PhysicalNamingStrategy physicalNamingStrategy) {
-    this.physicalNamingStrategy = physicalNamingStrategy;
   }
 
   @Override

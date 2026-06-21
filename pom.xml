@@ -61,12 +61,4 @@
             </plugins>
         </pluginManagement>
     </build>
-    <profiles>
-        <profile>
-            <id>with-ui</id>
-            <modules>
-                <module>flexmodel-ui</module>
-            </modules>
-        </profile>
-    </profiles>
 </project>

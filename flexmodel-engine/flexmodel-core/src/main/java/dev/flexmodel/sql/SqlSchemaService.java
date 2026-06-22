@@ -84,11 +84,25 @@ public class SqlSchemaService extends BaseService implements SchemaService {
 
   private void createTable(SqlTable sqlTable) {
     String[] sqlCreateString = sessionContext.getSqlDialect().getTableExporter().getSqlCreateString(sqlTable);
+    boolean tableCreated = true;
     for (String sql : sqlCreateString) {
-      sessionContext.getJdbcOperations().update(sql);
+      try {
+        sessionContext.getJdbcOperations().update(sql);
+      } catch (SqlExecutionException e) {
+        if (sessionContext.isFailsafe()) {
+          log.warn("Failed to create table (failsafe mode, skipping): {}", e.getMessage());
+          tableCreated = false;
+        } else {
+          throw e;
+        }
+      }
     }
-    createUniqueKeys(sqlTable);
-    createIndexes(sqlTable);
+    // Only attempt to create unique keys and indexes if the table was created
+    // or if we're not in failsafe mode (where they likely already exist)
+    if (tableCreated) {
+      createUniqueKeys(sqlTable);
+      createIndexes(sqlTable);
+    }
   }
 
   private void dropTable(SqlTable sqlTable) {
@@ -145,7 +159,16 @@ public class SqlSchemaService extends BaseService implements SchemaService {
   private void createColumn(SqlColumn sqlColumn) {
     String[] sqlCreateString = sessionContext.getSqlDialect().getColumnExporter().getSqlCreateString(sqlColumn);
     for (String sql : sqlCreateString) {
-      sessionContext.getJdbcOperations().update(sql);
+      try {
+        sessionContext.getJdbcOperations().update(sql);
+      } catch (SqlExecutionException e) {
+        if (sessionContext.isFailsafe()) {
+          log.warn("Failed to create column (failsafe mode, skipping): {}", e.getMessage());
+          return;
+        } else {
+          throw e;
+        }
+      }
     }
     SqlTable sqlTable = new SqlTable();
     sqlTable.setName(sqlColumn.getTableName());
@@ -214,7 +237,16 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     String sequenceName = toPhysicalSequenceString(sequenceKey);
     String[] sqlCreateString = sessionContext.getSqlDialect().getSequenceExporter().getSqlCreateString(new SqlSequence(sequenceName, initialValue, incrementSize));
     for (String sql : sqlCreateString) {
-      sessionContext.getJdbcOperations().update(sql);
+      try {
+        sessionContext.getJdbcOperations().update(sql);
+      } catch (SqlExecutionException e) {
+        if (sessionContext.isFailsafe()) {
+          log.warn("Failed to create sequence (failsafe mode, skipping): {}", e.getMessage());
+          return;
+        } else {
+          throw e;
+        }
+      }
     }
   }
 
@@ -238,7 +270,15 @@ public class SqlSchemaService extends BaseService implements SchemaService {
       SqlIndex index = itr.next();
       String[] sqlCreateString = sessionContext.getSqlDialect().getIndexExporter().getSqlCreateString(index);
       for (String sql : sqlCreateString) {
-        sessionContext.getJdbcOperations().update(sql);
+        try {
+          sessionContext.getJdbcOperations().update(sql);
+        } catch (SqlExecutionException e) {
+          if (sessionContext.isFailsafe()) {
+            log.warn("Failed to create index (failsafe mode, skipping): {}", e.getMessage());
+          } else {
+            throw e;
+          }
+        }
       }
     }
   }
@@ -249,7 +289,15 @@ public class SqlSchemaService extends BaseService implements SchemaService {
       SqlUniqueKey uniqueKey = ukItr.next();
       String[] sqlCreateString = sessionContext.getSqlDialect().getUniqueKeyExporter().getSqlCreateString(uniqueKey);
       for (String sql : sqlCreateString) {
-        sessionContext.getJdbcOperations().update(sql);
+        try {
+          sessionContext.getJdbcOperations().update(sql);
+        } catch (SqlExecutionException e) {
+          if (sessionContext.isFailsafe()) {
+            log.warn("Failed to create unique key (failsafe mode, skipping): {}", e.getMessage());
+          } else {
+            throw e;
+          }
+        }
       }
     }
   }

@@ -86,7 +86,11 @@ public class SessionFactory {
             session.schema().createEnum(e);
           }
         });
-        config.getData().forEach(d -> session.data().insertAll(d.getModelName(), d.getValues()));
+        config.getData().forEach(d -> {
+          for (Map<String, Object> record : d.getValues()) {
+            session.dsl().mergeInto(d.getModelName()).values(record).execute();
+          }
+        });
       }
     });
   }

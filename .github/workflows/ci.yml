@@ -44,12 +44,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache Maven local repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+            ${{ runner.os }}-maven-
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'temurin'
-          cache: 'maven'
       - name: Configure Maven settings
         env:
           GITHUB_USERNAME: cjbi
@@ -58,7 +65,7 @@ jobs:
           mkdir -p ~/.m2
           cp .github/settings.xml ~/.m2/settings.xml
       - name: Run engine tests
-        run: mvn -B -U test -pl flexmodel-engine
+        run: mvn -B test -pl flexmodel-engine
 
   server-test:
     name: Server tests (Java)
@@ -68,12 +75,19 @@ jobs:
         with:
           submodules: 'recursive'
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven local repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+            ${{ runner.os }}-maven-
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'temurin'
-          cache: 'maven'
       - name: Configure Maven settings
         env:
           GITHUB_USERNAME: cjbi
@@ -84,7 +98,7 @@ jobs:
       - name: Run server tests
         # continue-on-error: some tests have known failures (see AGENTS.md)
         continue-on-error: true
-        run: mvn -B -U test -pl flexmodel-server -am
+        run: mvn -B test -pl flexmodel-server -am
 
   # ============================================================
   # Build & Push Jobs (require corresponding tests to pass)
@@ -99,12 +113,19 @@ jobs:
         with:
           submodules: 'recursive'
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven local repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+            ${{ runner.os }}-maven-
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'temurin'
-          cache: 'maven'
       - name: Configure Maven settings
         env:
           GITHUB_USERNAME: cjbi
@@ -114,7 +135,7 @@ jobs:
           cp .github/settings.xml ~/.m2/settings.xml
       - name: Build and push server image
         run: |
-          mvn -B -U -Dmaven.test.skip=true clean package -pl flexmodel-server -am \
+          mvn -B -Dmaven.test.skip=true clean package -pl flexmodel-server -am \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.container-image.image=cjbi/flexmodel-server:latest \

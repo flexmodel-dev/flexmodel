@@ -133,8 +133,6 @@ public class SessionFactory {
     loadScript(schemaName, scriptName, this.getClass().getClassLoader());
   }
 
-
-
   public List<String> getSchemaNames() {
     return List.copyOf(schemaProviders.keySet());
   }

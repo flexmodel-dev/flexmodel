@@ -34,9 +34,7 @@ public interface ModelRepository {
 
   List<SchemaObject> syncModels(String projectId, String datasourceName, Set<String> modelName);
 
-  void importModels(String projectId, String datasourceName, String script, String type);
-
-  List<SchemaObject> executeFml(String projectId, String datasourceName, String fml) throws ParseException;
+  Boolean executeFml(String projectId, String datasourceName, String fml) throws ParseException;
 
   Integer count(String projectId);
 

@@ -20,9 +20,7 @@ import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.mongodb.MongoContext;
 import dev.flexmodel.mongodb.MongoSchemaProvider;
 import dev.flexmodel.mongodb.MongoSession;
-import dev.flexmodel.parser.ASTNodeConverter;
-import dev.flexmodel.parser.impl.ModelParser;
-import dev.flexmodel.parser.impl.ParseException;
+
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.EventAwareDataService;
 import dev.flexmodel.ModelImportBundle;
@@ -81,46 +79,35 @@ public class SessionFactory {
       MemoryScriptManager.SchemaScriptConfig config = memoryScriptManager.getScriptConfig(schemaName);
       config.getSchema().forEach(model -> cache.put(schemaName + ":" + model.getName(), model));
       try (Session session = createFailsafeSession(schemaName)) {
-        processModels(config.getSchema(), session);
-        processImportData(config.getData(), session);
+        config.getSchema().forEach(obj -> {
+          if (obj instanceof EntityDefinition e) {
+            session.schema().createEntity(e);
+          } else if (obj instanceof EnumDefinition e) {
+            session.schema().createEnum(e);
+          }
+        });
+        config.getData().forEach(d -> session.data().insertAll(d.getModelName(), d.getValues()));
       }
     });
   }
 
-  public void loadFMLString(String schemaName, String fmlString) {
-    try {
-      if (fmlString == null || fmlString.trim().isEmpty()) {
-        log.info("Empty or null FML string provided for schema: {}", schemaName);
-        return;
-      }
-
-      ASTNodeConverter.FMLParseResult result = ASTNodeConverter.parseFML(fmlString);
-
-      try (Session session = createFailsafeSession(schemaName)) {
-        processModels(result.getModels(), session);
-        processImportData(result.getSeeds(), session);
-      }
-
-      log.info("Successfully loaded {} models and {} seeds from FML for schema: {}",
-        result.getModels().size(), result.getSeeds().size(), schemaName);
-    } catch (ParseException e) {
-      log.error("Failed to parse FML string for schema {}: {}", schemaName, e.getMessage(), e);
-      throw new RuntimeException("FML parsing failed: " + e.getMessage(), e);
-    } catch (Exception e) {
-      log.error("Failed to load FML string for schema {}: {}", schemaName, e.getMessage(), e);
-      throw new RuntimeException("Failed to load FML: " + e.getMessage(), e);
-    }
-  }
-
-  public void loadJSONString(String schemaName, String jsonString) {
+  private void loadJSONString(String schemaName, String jsonString) {
     ModelImportBundle bundle = JsonUtils.parseToObject(jsonString, ModelImportBundle.class);
     try (Session session = createFailsafeSession(schemaName)) {
-      processModels(bundle.getObjects(), session);
-      processImportData(bundle.getData(), session);
+      for (SchemaObject obj : bundle.getObjects()) {
+        if (obj instanceof EntityDefinition e) {
+          session.schema().createEntity(e);
+        } else if (obj instanceof EnumDefinition e) {
+          session.schema().createEnum(e);
+        }
+      }
+      for (ModelImportBundle.ImportData d : bundle.getData()) {
+        session.data().insertAll(d.getModelName(), d.getValues());
+      }
     }
   }
 
-  public void loadScript(String schemaName, String scriptName, ClassLoader classLoader) {
+  private void loadScript(String schemaName, String scriptName, ClassLoader classLoader) {
     try (InputStream is = classLoader.getResourceAsStream(scriptName)) {
       if (is == null) {
         log.warn("Script file not found: {}", scriptName);
@@ -128,7 +115,9 @@ public class SessionFactory {
       }
       String scriptString = new String(is.readAllBytes());
       if (scriptName.endsWith(".fml")) {
-        loadFMLString(schemaName, scriptString);
+        try (Session session = createFailsafeSession(schemaName)) {
+          session.applyFML(scriptString);
+        }
       } else if (scriptName.endsWith(".json")) {
         loadJSONString(schemaName, scriptString);
       } else {
@@ -144,71 +133,7 @@ public class SessionFactory {
     loadScript(schemaName, scriptName, this.getClass().getClassLoader());
   }
 
-  private void processModels(List<SchemaObject> models, Session session) {
-    Map<String, SchemaObject> wrapperMap = session.schema().listModels().stream().collect(Collectors.toMap(SchemaObject::getName, m -> m));
-    for (SchemaObject model : models) {
-      SchemaObject older = wrapperMap.get(model.getName());
-      if (older != null && Objects.equals(older.getFml(), model.getFml())) {
-        continue;
-      }
-      if (model instanceof EntityDefinition newer) {
-        try {
-          updateEntity(session, newer, (EntityDefinition) older);
-        } catch (Exception e) {
-          log.warn("Error processing model: {}", e.getMessage(), e);
-        }
-      } else if (model instanceof EnumDefinition newer) {
-        try {
-          updateEnum(session, newer);
-        } catch (Exception e) {
-          log.warn("Error processing model: {}", e.getMessage(), e);
-        }
-      }
-    }
-  }
 
-  private void updateEnum(Session session, EnumDefinition newer) {
-    try {
-      session.schema().dropModel(newer.getName());
-      session.schema().createEnum(newer);
-    } catch (Exception e) {
-      log.warn("Error processing model: {}", e.getMessage(), e);
-    }
-  }
-
-  private void updateEntity(Session session, EntityDefinition newer, EntityDefinition older) throws Exception {
-    try {
-      session.schema().createEntity(newer.clone());
-    } catch (Exception e) {
-      if (older != null) {
-        updateEntityFields(session, newer, older);
-      }
-    }
-  }
-
-  private void updateEntityFields(Session session, EntityDefinition newer, EntityDefinition older) {
-    newer.getFields().forEach(field -> {
-      try {
-        if (older.getField(field.getName()) == null) {
-          session.schema().createField(field);
-        } else if (!field.equals(older.getField(field.getName()))) {
-          session.schema().modifyField(field);
-        }
-      } catch (Exception e) {
-        log.warn("Error updating field: {}", e.getMessage(), e);
-      }
-    });
-  }
-
-  private void processImportData(List<ModelImportBundle.ImportData> data, Session session) {
-    data.forEach(item -> {
-      try {
-        session.data().insertAll(item.getModelName(), item.getValues());
-      } catch (Exception e) {
-        log.warn("Error importing data: {}", e.getMessage());
-      }
-    });
-  }
 
   public List<String> getSchemaNames() {
     return List.copyOf(schemaProviders.keySet());

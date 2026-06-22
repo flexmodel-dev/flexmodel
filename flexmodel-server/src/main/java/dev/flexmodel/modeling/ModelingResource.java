@@ -192,7 +192,7 @@ public class ModelingResource {
 
   @POST
   @Path("/fml/execute")
-  public List<SchemaObject> executeFml(@PathParam("projectId") String projectId, FmlRequest request) {
+  public Boolean executeFml(@PathParam("projectId") String projectId, FmlRequest request) {
     try {
       return modelingService.executeFml(projectId, request.fml());
     } catch (Exception e) {

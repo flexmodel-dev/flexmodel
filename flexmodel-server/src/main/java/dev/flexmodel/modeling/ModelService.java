@@ -70,11 +70,7 @@ public class ModelService {
     return modelRepository.syncModels(projectId, datasourceName, models);
   }
 
-  public void importModels(String projectId, String datasourceName, String script, String type) {
-    modelRepository.importModels(projectId, datasourceName, script, type);
-  }
-
-  public List<SchemaObject> executeFml(String projectId, String datasourceName, String fml) throws ParseException {
+  public Boolean executeFml(String projectId, String datasourceName, String fml) throws ParseException {
     return modelRepository.executeFml(projectId, datasourceName, fml);
   }
 }

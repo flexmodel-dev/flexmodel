@@ -108,35 +108,10 @@ public class ModelFmRepository implements ModelRepository {
   }
 
   @Override
-  public void importModels(String projectId, String datasourceName, String script, String type) {
-    if (type.equals("JSON")) {
-      sessionFactory.loadJSONString(datasourceName, script);
-    } else if (type.equals("FML")) {
-      sessionFactory.loadFMLString(datasourceName, script);
-    } else {
-      throw new RuntimeException("Unsupported type: " + type + ", supported types: JSON, FML");
-    }
-  }
-
-  @Override
-  public List<SchemaObject> executeFml(String projectId, String datasourceName, String fmlString) throws ParseException {
-    ModelParser parser = new ModelParser(new StringReader(fmlString));
-    List<ModelParser.ASTNode> ast = parser.CompilationUnit();
-    List<SchemaObject> schema = new ArrayList<>();
-    for (ModelParser.ASTNode obj : ast) {
-      schema.add(ASTNodeConverter.toSchemaObject(obj));
-    }
+  public Boolean executeFml(String projectId, String datasourceName, String fmlString) throws ParseException {
     try (Session session = this.sessionFactory.createSession(datasourceName)) {
-      for (SchemaObject object : schema) {
-        if (object instanceof EntityDefinition entity) {
-          session.schema().createEntity(entity);
-        }
-        if (object instanceof EnumDefinition anEnumDefinition) {
-          session.schema().createEnum(anEnumDefinition);
-        }
-      }
+      return session.applyFML(fmlString);
     }
-    return schema;
   }
 
   @Override

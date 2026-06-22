@@ -62,10 +62,6 @@ public class ModelingService {
     return modelService.syncModels(projectId, projectService.resolveDatabaseName(projectId), models);
   }
 
-  public void importModels(String projectId, String script, String type) {
-    modelService.importModels(projectId, projectService.resolveDatabaseName(projectId), script, type);
-  }
-
   public SchemaObject modifyModel(String projectId, String modelName, SchemaObject model) {
     String databaseName = projectService.resolveDatabaseName(projectId);
     if (model instanceof EntityDefinition) {
@@ -86,7 +82,7 @@ public class ModelingService {
     return modelService.findModel(projectId, projectService.resolveDatabaseName(projectId), modelName).orElseThrow(() -> new RuntimeException("Model not found"));
   }
 
-  public List<SchemaObject> executeFml(String projectId, String fml) throws ParseException {
+  public Boolean executeFml(String projectId, String fml) throws ParseException {
     return modelService.executeFml(projectId, projectService.resolveDatabaseName(projectId), fml);
   }
 }

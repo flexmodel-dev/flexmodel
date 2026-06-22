@@ -4,6 +4,7 @@ import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 
 import java.io.IOException;
@@ -38,7 +39,9 @@ public class TestDataInitializer {
                     return;
                 }
                 String fmlContent = new String(fmlStream.readAllBytes(), StandardCharsets.UTF_8);
-                sessionFactory.loadFMLString("dev_test", fmlContent);
+                try (Session session = sessionFactory.createSession("dev_test")) {
+                  session.applyFML(fmlContent);
+                }
                 log.info("Loaded dev_test schema and data from FML");
             }
 

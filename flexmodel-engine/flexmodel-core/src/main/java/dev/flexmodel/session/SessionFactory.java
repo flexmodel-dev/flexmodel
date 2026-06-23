@@ -88,7 +88,11 @@ public class SessionFactory {
         });
         config.getData().forEach(d -> {
           for (Map<String, Object> record : d.getValues()) {
-            session.dsl().mergeInto(d.getModelName()).values(record).execute();
+            try {
+              session.dsl().mergeInto(d.getModelName()).values(record).execute();
+            } catch (Exception e) {
+              log.error("Failed to insert record: {}", e.getMessage(), e);
+            }
           }
         });
       }

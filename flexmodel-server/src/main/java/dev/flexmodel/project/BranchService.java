@@ -142,7 +142,7 @@ public class BranchService {
         if (!(model instanceof EntityDefinition entity)) continue;
         String modelName = entity.getName();
         try {
-          List<Map<String, Object>> records = sourceSession.data().find(modelName, new Query());
+          List<Map<String, Object>> records = sourceSession.data().findAll(modelName, new Query());
           if (!records.isEmpty()) {
             targetSession.data().insertAll(modelName, records);
             log.info("分支创建: 模型 {} 迁移 {} 条数据", modelName, records.size());
@@ -283,7 +283,7 @@ public class BranchService {
         // 新创建的模型，直接批量插入所有源数据
         if (targetModelMap.get(modelName) == null) {
           try {
-            List<Map<String, Object>> sourceRecords = sourceSession.data().find(modelName, new Query());
+            List<Map<String, Object>> sourceRecords = sourceSession.data().findAll(modelName, new Query());
             if (!sourceRecords.isEmpty()) {
               dataTargetSession.data().insertAll(modelName, sourceRecords);
               log.info("新模型 {} 插入 {} 条数据", modelName, sourceRecords.size());
@@ -304,8 +304,8 @@ public class BranchService {
           String idFieldName = idField.getName();
 
           // 全量加载双方数据
-          List<Map<String, Object>> sourceRecords = sourceSession.data().find(modelName, new Query());
-          List<Map<String, Object>> targetRecords = dataTargetSession.data().find(modelName, new Query());
+          List<Map<String, Object>> sourceRecords = sourceSession.data().findAll(modelName, new Query());
+          List<Map<String, Object>> targetRecords = dataTargetSession.data().findAll(modelName, new Query());
 
           // 目标按主键建索引
           Map<Object, Map<String, Object>> targetMap = new HashMap<>();

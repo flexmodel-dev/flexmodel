@@ -176,7 +176,7 @@ public class SchemaRegistry {
   public NativeQueryResult executeNativeQuery(Project project, String statement, Map<String, Object> parameters) {
     try (Session session = sessionFactory.createSession(projectService.resolveDatabaseName(project.getId()))) {
       long beginTime = System.currentTimeMillis();
-      Object result = session.data().executeNativeStatement(statement, parameters);
+      Object result = session.data().executeNative(statement, parameters);
       long endTime = System.currentTimeMillis() - beginTime;
       return new NativeQueryResult(endTime, result);
     }

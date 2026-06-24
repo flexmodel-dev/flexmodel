@@ -5,6 +5,7 @@ import dev.flexmodel.query.Query;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.UnaryOperator;
 
 /**
@@ -28,13 +29,13 @@ public interface DataService {
    *
    * @param modelName Model name
    * @param id        ID
-   * @return Record
+   * @return Record, or empty if not found
    */
-  Map<String, Object> findById(String modelName, Object id, List<String> expand);
+  Optional<Map<String, Object>> findById(String modelName, Object id, List<String> expand);
 
-  List<Map<String, Object>> find(String modelName, Query query);
+  List<Map<String, Object>> findAll(String modelName, Query query);
 
-  List<Map<String, Object>> findByNativeQuery(String modelName, Map<String, Object> params);
+  List<Map<String, Object>> executeNativeQuery(String modelName, Map<String, Object> params);
 
   /**
    * 执行原生 SQL 语句（自动判断查询或更新操作）
@@ -43,7 +44,7 @@ public interface DataService {
    * @param params    参数对象
    * @return 查询操作返回 List<Map<String, Object>>，更新操作返回 Integer（影响行数）
    */
-  Object executeNativeStatement(String statement, Map<String, Object> params);
+  Object executeNative(String statement, Map<String, Object> params);
 
   /**
    * Count records based on conditions
@@ -116,11 +117,11 @@ public interface DataService {
     return rows;
   }
 
-  default List<Map<String, Object>> find(String modelName, Predicate predicate, java.util.List<String> expand) {
+  default List<Map<String, Object>> findAll(String modelName, Predicate predicate, java.util.List<String> expand) {
     Query query = new Query();
     query.setFilter(predicate.toJsonString());
     query.setExpand(expand);
-    return find(modelName, query);
+    return findAll(modelName, query);
   }
 
   /**
@@ -128,9 +129,9 @@ public interface DataService {
    *
    * @param modelName Model name
    * @param id        ID
-   * @return Record
+   * @return Record, or empty if not found
    */
-  default Map<String, Object> findById(String modelName, Object id) {
+  default Optional<Map<String, Object>> findById(String modelName, Object id) {
     return findById(modelName, id, null);
   }
 
@@ -142,15 +143,15 @@ public interface DataService {
    * @return List of records
    */
   @SuppressWarnings("all")
-  default List<Map<String, Object>> find(String modelName, UnaryOperator<Query.Builder> queryUnaryOperator) {
-    List list = find(modelName, queryUnaryOperator.apply(Query.Builder.create()).build());
+  default List<Map<String, Object>> findAll(String modelName, UnaryOperator<Query.Builder> queryUnaryOperator) {
+    List list = findAll(modelName, queryUnaryOperator.apply(Query.Builder.create()).build());
     return list;
   }
 
-  default List<Map<String, Object>> find(String modelName, Predicate predicate) {
+  default List<Map<String, Object>> findAll(String modelName, Predicate predicate) {
     Query query = new Query();
     query.setFilter(predicate.toJsonString());
-    return find(modelName, query);
+    return findAll(modelName, query);
   }
 
   default long count(String modelName, UnaryOperator<Query> queryUnaryOperator) {
@@ -173,7 +174,7 @@ public interface DataService {
    * @return True if exists, false otherwise
    */
   default boolean existsById(String modelName, Object id) {
-    return findById(modelName, id) != null;
+    return findById(modelName, id).isPresent();
   }
 
   /**

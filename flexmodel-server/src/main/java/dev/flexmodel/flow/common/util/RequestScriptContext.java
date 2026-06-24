@@ -169,13 +169,13 @@ public class RequestScriptContext {
 
     public Map<String, Object> findById(String modelName, String id) {
       try (Session session = sessionFactory.createSession(datasourceName)) {
-        return session.data().findById(modelName, id);
+        return session.data().findById(modelName, id).orElse(null);
       }
     }
 
     public List<Map<String, Object>> find(String modelName) {
       try (Session session = sessionFactory.createSession(datasourceName)) {
-        return session.data().find(modelName, p -> p);
+        return session.data().findAll(modelName, p -> p);
       }
     }
 
@@ -185,7 +185,7 @@ public class RequestScriptContext {
         if (queryMap.containsKey("filter")) {
           query.setFilter(JsonUtils.toJsonString(queryMap.get("filter")));
         }
-        return session.data().find(modelName, query);
+        return session.data().findAll(modelName, query);
       }
     }
 

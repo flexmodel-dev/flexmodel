@@ -226,7 +226,7 @@ public class DSLQueryBuilder {
    */
   @SuppressWarnings("all")
   public List<Map<String, Object>> execute() {
-    List list = session.data().find(modelName, query);
+    List list = session.data().findAll(modelName, query);
     return list;
   }
 

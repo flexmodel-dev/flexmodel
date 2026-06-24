@@ -4,7 +4,6 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
-import dev.flexmodel.AbstractSessionTests;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.junit.jupiter.api.Assertions;
@@ -46,7 +45,7 @@ public class MongoDBIntegrationTests extends AbstractSessionTests {
     createClassesEntity(classesEntityName);
     createClassesData(classesEntityName);
     @SuppressWarnings("all")
-    List<Map> list = (List<Map>) session.data().executeNativeStatement(
+    List<Map> list = (List<Map>) session.data().executeNative(
       """
         {
             "find": "TestNativeQueryClasses",
@@ -66,7 +65,7 @@ public class MongoDBIntegrationTests extends AbstractSessionTests {
     createClassesEntity(classesEntityName);
     createClassesData(classesEntityName);
     @SuppressWarnings("all")
-    List<Map> list = (List<Map>) session.data().executeNativeStatement(
+    List<Map> list = (List<Map>) session.data().executeNative(
       """
         {
             "find": "TestNativeQueryModelClasses",

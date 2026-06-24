@@ -18,6 +18,7 @@ import dev.flexmodel.sql.type.SqlTypeHandler;
 import dev.flexmodel.sql.type.UnknownSqlTypeHandler;
 
 import java.util.*;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -289,7 +290,7 @@ public class SqlDataService extends BaseService implements DataService {
   }
 
   @Override
-  public Map<String, Object> findById(String modelName, Object id, List<String> expand) {
+  public Optional<Map<String, Object>> findById(String modelName, Object id, List<String> expand) {
     log.debug("Starting SQL findById for model: {}, id: {}, expand: {}", modelName, id, expand);
     long startTime = System.currentTimeMillis();
 
@@ -313,7 +314,7 @@ public class SqlDataService extends BaseService implements DataService {
 
     if (dataMap == null) {
       log.debug("No record found for model: {}, id: {}", modelName, id);
-      return null;
+      return Optional.empty();
     }
 
     if (expand != null && !expand.isEmpty()) {
@@ -323,12 +324,12 @@ public class SqlDataService extends BaseService implements DataService {
     }
     long duration = System.currentTimeMillis() - startTime;
     log.debug("SQL findById completed for model: {} in {}ms", modelName, duration);
-    return dataMap;
+    return Optional.of(dataMap);
   }
 
   @Override
   @SuppressWarnings("all")
-  public List<Map<String, Object>> find(String modelName, Query query) {
+  public List<Map<String, Object>> findAll(String modelName, Query query) {
     log.debug("Starting SQL find for model: {}", modelName);
     long startTime = System.currentTimeMillis();
 
@@ -347,19 +348,19 @@ public class SqlDataService extends BaseService implements DataService {
 
   @Override
   @SuppressWarnings("unchecked")
-  public List<Map<String, Object>> findByNativeQuery(String modelName, Map<String, Object> params) {
+  public List<Map<String, Object>> executeNativeQuery(String modelName, Map<String, Object> params) {
     log.debug("Starting SQL native query model: {}", modelName);
     long startTime = System.currentTimeMillis();
     NativeQueryDefinition model = (NativeQueryDefinition) sessionContext.getModelDefinition(modelName);
     String statement = model.getStatement();
-    List<Map<String, Object>> list = (List<Map<String, Object>>) executeNativeStatement(statement, params);
+    List<Map<String, Object>> list = (List<Map<String, Object>>) executeNative(statement, params);
     long duration = System.currentTimeMillis() - startTime;
     log.debug("SQL native query model completed for {} in {}ms, results: {}", modelName, duration, list.size());
     return list;
   }
 
   @Override
-  public Object executeNativeStatement(String statement, Map<String, Object> params) {
+  public Object executeNative(String statement, Map<String, Object> params) {
     log.debug("Starting SQL native execute: {}", statement);
     long startTime = System.currentTimeMillis();
 

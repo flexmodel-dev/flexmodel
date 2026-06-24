@@ -135,7 +135,7 @@ public class MongoDataService extends BaseService implements DataService {
 
   @Override
   @SuppressWarnings({"rawtypes", "unchecked"})
-  public Map<String, Object> findById(String modelName, Object id, List<String> expand) {
+  public Optional<Map<String, Object>> findById(String modelName, Object id, List<String> expand) {
     String collectionName = getCollectionName(modelName);
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
     TypedField<?, ?> idField = entity.findIdField().orElseThrow();
@@ -149,11 +149,11 @@ public class MongoDataService extends BaseService implements DataService {
       nestedQuery(List.of(dataMap), this::queryAsMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName),
         childQuery, sessionContext.getNestedQueryMaxDepth());
     }
-    return dataMap;
+    return Optional.ofNullable(dataMap);
   }
 
   @Override
-  public List<Map<String, Object>> find(String modelName, Query query) {
+  public List<Map<String, Object>> findAll(String modelName, Query query) {
     List<Map<String, Object>> mapList = queryAsMapList(modelName, query);
     if (query.hasExpand()) {
       nestedQuery(mapList, this::queryAsMapList, (ModelDefinition) sessionContext.getModelDefinition(modelName), query, sessionContext.getNestedQueryMaxDepth());
@@ -163,13 +163,13 @@ public class MongoDataService extends BaseService implements DataService {
 
   @Override
   @SuppressWarnings("unchecked")
-  public List<Map<String, Object>> findByNativeQuery(String modelName, Map<String, Object> params) {
+  public List<Map<String, Object>> executeNativeQuery(String modelName, Map<String, Object> params) {
     NativeQueryDefinition model = (NativeQueryDefinition) sessionContext.getModelDefinition(modelName);
-    return (List<Map<String, Object>>) executeNativeStatement(model.getStatement(), params);
+    return (List<Map<String, Object>>) executeNative(model.getStatement(), params);
   }
 
   @Override
-  public Object executeNativeStatement(String statement, Map<String, Object> params) {
+  public Object executeNative(String statement, Map<String, Object> params) {
     String json = StringHelper.simpleRenderTemplate(statement, params);
     Document command = Document.parse(json);
     Document result = mongoDatabase.runCommand(command);

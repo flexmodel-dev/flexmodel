@@ -1,7 +1,6 @@
 package dev.flexmodel;
 
 import com.zaxxer.hikari.HikariDataSource;
-import dev.flexmodel.AbstractSessionTests;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,7 @@ public class SQLiteIntegrationTests extends AbstractSessionTests {
     createClassesEntity(classesEntityName);
     createClassesData(classesEntityName);
     @SuppressWarnings("all")
-    List<Map> list = (List<Map>) session.data().executeNativeStatement(
+    List<Map> list = (List<Map>) session.data().executeNative(
       "select * from " + classesEntityName + " where id=${id} and className=${className} limit 10",
       Map.of("id", 3,
         "className", "二年级1班"));
@@ -45,7 +44,7 @@ public class SQLiteIntegrationTests extends AbstractSessionTests {
     NativeQueryDefinition model = new NativeQueryDefinition(name);
     model.setStatement("select * from " + classesEntityName + " where id=${id} and className=${className} limit 10");
     session.schema().createNativeQuery(model);
-    List<Map<String, Object>> list = session.data().findByNativeQuery(name, Map.of("id", 3, "className", "二年级1班"));
+    List<Map<String, Object>> list = session.data().executeNativeQuery(name, Map.of("id", 3, "className", "二年级1班"));
     Assertions.assertFalse(list.isEmpty());
 //    Assertions.assertNotNull(session.getAllModels());
   }

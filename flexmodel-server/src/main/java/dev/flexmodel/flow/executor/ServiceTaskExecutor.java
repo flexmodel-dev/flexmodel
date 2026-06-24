@@ -542,7 +542,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
     // 执行原生SQL查询
     long beginTime = System.currentTimeMillis();
     try (Session session = sessionFactory.createSession(datasourceName)) {
-      return session.data().executeNativeStatement(processedScript, contextData);
+      return session.data().executeNative(processedScript, contextData);
     } finally {
       long endTime = System.currentTimeMillis() - beginTime;
       // 释放Session

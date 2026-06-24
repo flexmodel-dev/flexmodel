@@ -12,6 +12,7 @@ import dev.flexmodel.session.SessionFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 事件感知的数据服务包装器
@@ -76,7 +77,7 @@ public class EventAwareDataService implements DataService {
     log.debug("Starting update operation for model: {}, id: {}", modelName, id);
 
     // 获取更新前的数据（仅在有监听器时才获取）
-    Map<String, Object> oldData = eventPublisher.hasListeners() ? delegate.findById(modelName, id) : null;
+    Map<String, Object> oldData = eventPublisher.hasListeners() ? delegate.findById(modelName, id).orElse(null) : null;
 
     // 发布前置事件
     PreUpdateEvent preEvent = new PreUpdateEvent(modelName, schemaName, oldData, record, id, null, sessionId, source);
@@ -114,7 +115,7 @@ public class EventAwareDataService implements DataService {
     log.debug("Starting delete operation for model: {}, id: {}", modelName, id);
 
     // 获取删除前的数据（仅在有监听器时才获取）
-    Map<String, Object> oldData = eventPublisher.hasListeners() ? delegate.findById(modelName, id) : null;
+    Map<String, Object> oldData = eventPublisher.hasListeners() ? delegate.findById(modelName, id).orElse(null) : null;
 
     // 发布前置事件
     PreDeleteEvent preEvent = new PreDeleteEvent(modelName, schemaName, oldData, id, null, sessionId, source);
@@ -272,20 +273,20 @@ public class EventAwareDataService implements DataService {
 
   // 委托其他方法给原始DataService
   @Override
-  public Map<String, Object> findById(String modelName, Object id, List<String> expand) {
+  public Optional<Map<String, Object>> findById(String modelName, Object id, List<String> expand) {
     log.debug("Starting findById operation for model: {}, id: {}", modelName, id);
 
     // 发布前置查询事件
     PreQueryEvent preEvent = new PreQueryEvent(modelName, schemaName, null, sessionId, source);
     eventPublisher.publishPreChangeEvent(preEvent);
 
-    Map<String, Object> result = delegate.findById(modelName, id, expand);
+    Optional<Map<String, Object>> result = delegate.findById(modelName, id, expand);
     log.debug("FindById operation completed for model: {}, id: {}", modelName, id);
     return result;
   }
 
   @Override
-  public List<Map<String, Object>> find(String modelName, Query query) {
+  public List<Map<String, Object>> findAll(String modelName, Query query) {
     log.debug("Starting find operation for model: {}", modelName);
 
     // 发布前置查询事件
@@ -295,19 +296,19 @@ public class EventAwareDataService implements DataService {
     // 使用事件中可能被修改的查询
     Query finalQuery = preEvent.getQuery() != null ? preEvent.getQuery() : query;
 
-    List<Map<String, Object>> result = delegate.find(modelName, finalQuery);
+    List<Map<String, Object>> result = delegate.findAll(modelName, finalQuery);
     log.debug("Find operation completed for model: {}, result count: {}", modelName, result.size());
     return result;
   }
 
   @Override
-  public List<Map<String, Object>> findByNativeQuery(String modelName, Map<String, Object> params) {
-    return delegate.findByNativeQuery(modelName, params);
+  public List<Map<String, Object>> executeNativeQuery(String modelName, Map<String, Object> params) {
+    return delegate.executeNativeQuery(modelName, params);
   }
 
   @Override
-  public Object executeNativeStatement(String statement, Map<String, Object> params) {
-    return delegate.executeNativeStatement(statement, params);
+  public Object executeNative(String statement, Map<String, Object> params) {
+    return delegate.executeNative(statement, params);
   }
 
   @Override

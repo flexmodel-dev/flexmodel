@@ -100,6 +100,25 @@ jobs:
         continue-on-error: true
         run: mvn -B test -pl flexmodel-server -am
 
+  sdk-test:
+    name: TypeScript SDK tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flexmodel-sdks/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: flexmodel-sdks/typescript/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+
   # ============================================================
   # Build & Push Jobs (require corresponding tests to pass)
   # ============================================================
@@ -167,6 +186,31 @@ jobs:
   # ============================================================
   # Deploy (requires both images to be pushed)
   # ============================================================
+
+  publish-sdk:
+    name: Publish TypeScript SDK to npm
+    needs: [ sdk-test ]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flexmodel-sdks/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: flexmodel-sdks/typescript/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   push-ui-image:
     name: Push UI docker image

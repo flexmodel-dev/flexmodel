@@ -73,6 +73,14 @@ export class FlexmodelClient<
     return this as unknown as FlexmodelClient<T>
   }
 
+  /**
+   * 设置当前请求的认证令牌（优先级高于构造函数中的 apiKey）。
+   * 传入 undefined 清除，恢复使用默认 apiKey。
+   */
+  setAuthToken(token?: string): void {
+    this.http.setAuthToken(token)
+  }
+
   /** 浏览器环境下默认同源，Node/Deno 需显式提供 baseURL */
   private getDefaultBaseURL(): string {
     if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
@@ -81,3 +89,29 @@ export class FlexmodelClient<
     return ''
   }
 }
+
+// ============================================================
+// 预初始化单例 — 从环境变量读取 baseURL
+// ============================================================
+
+function getEnvBaseURL(): string {
+  const g = globalThis as Record<string, any>
+  // Deno
+  if (typeof g.Deno !== 'undefined' && g.Deno?.env) {
+    const host = g.Deno.env.get('FLEXMODEL_JAVA_HOST') ?? 'localhost'
+    const port = g.Deno.env.get('FLEXMODEL_JAVA_PORT') ?? '8080'
+    return `http://${host}:${port}`
+  }
+  // Node.js
+  if (typeof g.process !== 'undefined' && g.process?.env) {
+    const host = g.process.env['FLEXMODEL_JAVA_HOST'] ?? 'localhost'
+    const port = g.process.env['FLEXMODEL_JAVA_PORT'] ?? '8080'
+    return `http://${host}:${port}`
+  }
+  // 浏览器 — 同源
+  return ''
+}
+
+export const flexmodelClient = new FlexmodelClient({
+  baseURL: getEnvBaseURL(),
+})

@@ -1,6 +1,6 @@
 {
   "name": "@flexmodel/sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Flexmodel TypeScript SDK — Fluent query builder for data CRUD with API Key auth",
   "type": "module",
   "main": "./dist/index.cjs",

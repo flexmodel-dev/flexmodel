@@ -13,11 +13,20 @@ import type { RequestOptions } from './types.js'
 export class HttpTransport {
   private readonly baseURL: string
   private readonly apiKey?: string
+  private activeToken?: string
 
   constructor(baseURL: string, apiKey?: string) {
     // 去除尾部斜杠，统一路径拼接
     this.baseURL = baseURL.replace(/\/+$/, '')
     this.apiKey = apiKey
+  }
+
+  /**
+   * 设置当前请求使用的认证令牌（优先级高于构造函数中的 apiKey）。
+   * 传入 undefined 可清除，恢复使用默认 apiKey。
+   */
+  setAuthToken(token?: string): void {
+    this.activeToken = token
   }
 
   /**
@@ -36,7 +45,9 @@ export class HttpTransport {
       ...options?.headers,
     }
 
-    if (this.apiKey) {
+    if (this.activeToken) {
+      headers['Authorization'] = `Bearer ${this.activeToken}`
+    } else if (this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`
     }
 

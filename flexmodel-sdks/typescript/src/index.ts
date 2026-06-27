@@ -2,7 +2,7 @@
 // Flexmodel SDK — Public API Entry Point
 // ============================================================
 
-export { FlexmodelClient } from './client.js'
+export { FlexmodelClient, flexmodelClient } from './client.js'
 export { DataNamespace } from './data-namespace.js'
 export { ModelHandle } from './model-handle.js'
 export { FluentQueryBuilder } from './query-builder.js'

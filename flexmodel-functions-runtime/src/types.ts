@@ -27,6 +27,7 @@ export interface DeployRequest {
 
 export interface InvokeRequest {
   input?: unknown;
+  authToken?: string;
 }
 
 // ---- Invoke Result (from Deno → Java) ----
@@ -49,23 +50,12 @@ export interface LogEntry {
   data?: unknown;
 }
 
-// ---- Batch Operation (for SDK data.batch) ----
-
-export interface BatchOp {
-  op: string;
-  model: string;
-  params?: Record<string, unknown>;
-}
-
 // ---- Worker Messages ----
 
 export type WorkerOutMessage =
-  | { type: "sdk-request"; data: { requestId: string; operation: string; params: unknown } }
   | { type: "log"; data: { level: string; message: string; data?: unknown } }
   | { type: "result"; data: { status: number; headers: Record<string, string>; body: unknown } }
   | { type: "error"; data: { message: string } };
 
 export type WorkerInMessage =
-  | { type: "invoke"; request: InvokeRequest; callbackUrl: string }
-  | { type: "sdk-response"; requestId: string; result: unknown }
-  | { type: "sdk-error"; requestId: string; error: string };
+  | { type: "invoke"; request: InvokeRequest; authToken?: string; projectId: string };

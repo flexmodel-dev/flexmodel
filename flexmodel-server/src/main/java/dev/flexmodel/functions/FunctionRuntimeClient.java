@@ -10,7 +10,6 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 /**
@@ -19,7 +18,6 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
  * @author cjbi
  */
 @RegisterRestClient(configKey = "function-runtime")
-@RegisterProvider(FunctionRuntimeResponseExceptionMapper.class)
 @Path("/functions")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

@@ -16,36 +16,20 @@ const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions
 function generateWrapperCode(): string {
   return `// @ts-nocheck
 // Auto-generated wrapper — do not modify manually
-// Worker message loop + SDK build + user module loading
+// Worker message loop + SDK token/projectId injection + user module loading
 
-let requestIdCounter = 0;
-const pendingRequests = new Map();
-
-function sendRpcRequest(operation, params) {
-  return new Promise((resolve, reject) => {
-    const requestId = "req_" + (++requestIdCounter);
-    pendingRequests.set(requestId, { resolve, reject });
-    self.postMessage({ type: "sdk-request", data: { requestId, operation, params } });
-  });
-}
+import { flexmodelClient } from "@flexmodel/sdk";
 
 self.addEventListener("message", async (e) => {
   const { type } = e.data;
 
-  if (type === "sdk-response") {
-    const pending = pendingRequests.get(e.data.requestId);
-    if (pending) { pendingRequests.delete(e.data.requestId); pending.resolve(e.data.result); }
-    return;
-  }
-  if (type === "sdk-error") {
-    const pending = pendingRequests.get(e.data.requestId);
-    if (pending) { pendingRequests.delete(e.data.requestId); pending.reject(new Error(e.data.error)); }
-    return;
-  }
-
   if (type === "invoke") {
-    const { request, callbackUrl } = e.data;
+    const { request, authToken, projectId } = e.data;
     try {
+      // Inject auth token + projectId into the SDK singleton before user code runs
+      if (authToken) flexmodelClient.setAuthToken(authToken);
+      if (projectId) flexmodelClient.setProjectId(projectId);
+
       const mod = await import("./index.ts");
       const handler = mod.default;
       if (typeof handler !== "function") {
@@ -53,7 +37,7 @@ self.addEventListener("message", async (e) => {
         return;
       }
 
-      const ctx = buildContext(callbackUrl);
+      const ctx = buildContext();
       const input = request.input ?? null;
 
       const response = await handler(input, ctx);
@@ -78,17 +62,8 @@ self.addEventListener("message", async (e) => {
   }
 });
 
-function buildContext(callbackUrl) {
+function buildContext() {
   return {
-    flexmodel: {
-      data: {
-        find:    (model, params)       => sendRpcRequest("data.find",    { model, params }),
-        findOne: (model, id)           => sendRpcRequest("data.findOne", { model, id }),
-        create:  (model, data)         => sendRpcRequest("data.create",  { model, data }),
-        update:  (model, id, data)     => sendRpcRequest("data.update",  { model, id, data }),
-        delete:  (model, id)           => sendRpcRequest("data.delete",  { model, id }),
-      },
-    },
     log: {
       info:  (message, data) => self.postMessage({ type: "log", data: { level: "info",  message, data } }),
       warn:  (message, data) => self.postMessage({ type: "log", data: { level: "warn",  message, data } }),
@@ -101,6 +76,16 @@ function buildContext(callbackUrl) {
   };
 }
 `.trim();
+}
+
+// ---- Function-scoped deno.json (import map for @flexmodel/sdk) ----
+
+function generateFunctionDenoJson(): string {
+  return JSON.stringify({
+    imports: {
+      "@flexmodel/sdk": "npm:@flexmodel/sdk@0.0.3",
+    },
+  }, null, 2);
 }
 
 // ---- Registry ----
@@ -132,6 +117,11 @@ class Registry {
 
     // Generate wrapper
     await Deno.writeTextFile(`${functionDir}/_worker_wrapper.ts`, generateWrapperCode());
+
+    // Write function-scoped deno.json (import map for @flexmodel/sdk)
+    // Worker loads via file:// URL from this dir, so it cannot inherit the
+    // project-level import map — it needs its own.
+    await Deno.writeTextFile(`${functionDir}/deno.json`, generateFunctionDenoJson());
 
     // Store metadata
     const entryUrl = `file:///${functionDir.replace(/\\/g, "/")}/_worker_wrapper.ts`;

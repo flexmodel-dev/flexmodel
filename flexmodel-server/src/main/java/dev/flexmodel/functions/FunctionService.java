@@ -124,7 +124,11 @@ public class FunctionService {
     // Invocation
     // ============================================================
 
-    /** Invoke a function via the Deno functions runtime — deploy first to ensure it's available */
+    /** Invoke a function via the Deno functions runtime.
+     *
+     * <p>不再每次 invoke 都预先 deploy。仅当 runtime 返回 404（函数未注册，如 runtime 重启后）
+     * 才按需 deploy 并重试一次。避免频繁写文件触发 Deno --watch 重启。
+     */
     public Response invoke(String projectId, String name,
                            FunctionInvokeRequest req) {
         Function fn = functionRepository.findByName(projectId, name);
@@ -135,10 +139,16 @@ public class FunctionService {
         // 为本次 invoke 签发 Runtime 回调专用 JWT（5 分钟有效期）
         req.setAuthToken(internalTokenService.signToken(projectId));
 
-        // Always deploy before invoke to keep runtime in sync
-        deployToRuntime(projectId, fn);
-
         Response response = functionInvoker.invoke(projectId, name, req);
+
+        // runtime 重启等情况会导致函数未注册（404），此时按需部署后重试一次
+        if (response.getStatus() == 404) {
+            log.info("Function not registered in runtime, deploying: {}:{}", projectId, name);
+            response.close();
+            deployToRuntime(projectId, fn);
+            response = functionInvoker.invoke(projectId, name, req);
+        }
+
         log.info("Function {} invoked, status={}", name, response.getStatus());
         return response;
     }

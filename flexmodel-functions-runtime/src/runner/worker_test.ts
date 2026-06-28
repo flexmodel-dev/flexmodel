@@ -12,9 +12,7 @@ import { registry } from "./registry.ts";
 import {
   cleanupTempDirs,
   makeTempDir,
-  mockFetch,
   restoreEnv,
-  restoreFetch,
   setEnv,
 } from "../test_helpers.ts";
 
@@ -188,29 +186,40 @@ Deno.test("invokeFunction fails when function directory is missing", async () =>
   }
 });
 
-Deno.test("invokeFunction proxies SDK requests to Java backend", async () => {
+Deno.test("invokeFunction runs user code that calls SDK directly", async () => {
   const tempDir = makeTempDir();
   setEnv("FUNCTIONS_DIR", tempDir);
 
-  mockFetch((input, init) => {
-    const req = new Request(input, init);
-    if (req.url.includes("/api/data/User")) {
-      return Promise.resolve(
-        new Response(JSON.stringify({ items: [{ id: "u1" }] }), {
-          headers: { "content-type": "application/json" },
-        }),
+  // SDK inside the Worker calls fetch directly (not via postMessage),
+  // so a globalThis.fetch mock in the main process won't be visible.
+  // Spin up a real local mock server that the Worker can hit.
+  const mockServer = Deno.serve({ port: 0 }, (req) => {
+    const url = new URL(req.url);
+    // SDK calls /api/projects/:pid/models/:model/records
+    if (url.pathname.includes("/api/projects/wk-p6/models/User/records")) {
+      return new Response(
+        JSON.stringify({ list: [{ id: "u1" }], total: 1 }),
+        { headers: { "content-type": "application/json" } },
       );
     }
-    return Promise.resolve(new Response("{}", { status: 404 }));
+    return new Response("{}", { status: 404 });
   });
+  const mockPort = mockServer.addr.port;
+
+  // Point SDK's baseURL at the mock server
+  setEnv("FLEXMODEL_JAVA_HOST", "localhost");
+  setEnv("FLEXMODEL_JAVA_PORT", String(mockPort));
 
   try {
     await deployTestFunction(
       "wk-p6",
       "sdkUser",
       `
+        import { flexmodelClient } from "@flexmodel/sdk";
+
         export default async (req: Request, ctx: any) => {
-          const users = await ctx.flexmodel.data.find("User", { page: 1, size: 10 });
+          // runtime has already called setAuthToken + setProjectId on the singleton
+          const users = await flexmodelClient.data.from("User").findMany({ page: 1, size: 10 });
           return { users };
         };
       `,
@@ -218,6 +227,7 @@ Deno.test("invokeFunction proxies SDK requests to Java backend", async () => {
 
     const result = await invokeFunction("wk-p6", "sdkUser", {
       input: {},
+      authToken: "test-token",
     });
     assertEquals(result.status, 200);
     const body = result.body as Record<string, unknown>;
@@ -225,7 +235,7 @@ Deno.test("invokeFunction proxies SDK requests to Java backend", async () => {
 
     await registry.delete("wk-p6", "sdkUser");
   } finally {
-    restoreFetch();
+    await mockServer.shutdown();
     await cleanupTempDirs();
     restoreEnv();
   }

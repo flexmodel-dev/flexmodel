@@ -3,19 +3,12 @@
 //
 // Creates an isolated Deno Worker for each function invocation.
 // Enforces timeout via worker.terminate().
-// Proxies SDK RPC requests from Worker → Java API.
 // Worker loads function code via file:// URL (native relative import support).
+// SDK runs directly inside Worker — no RPC proxying needed.
 // ============================================================
 
 import type { FunctionMeta, InvokeRequest, InvokeResult } from "../types.ts";
 import { registry } from "./registry.ts";
-import { handleRpcRequest } from "../sdk/flexmodel.ts";
-
-const JAVA_HOST = Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost";
-const JAVA_PORT = parseInt(Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080");
-
-// Worker → projectId 映射，供 SDK 回调时构造 RecordResource URL
-const workerProjects = new WeakMap<Worker, string>();
 
 /**
  * Invoke a function by name within a project.
@@ -59,18 +52,15 @@ async function executeInWorker(
       type: "module",
       deno: {
         permissions: {
-          net: ["localhost"],          // only allow callback to Java API
+          net: ["localhost"],          // SDK fetches Java API on localhost
           read: [meta.functionDir],    // only allow reading function's own directory
           write: false,
-          env: false,
+          env: ["FLEXMODEL_JAVA_HOST", "FLEXMODEL_JAVA_PORT"],  // SDK reads these for baseURL
           run: false,
           ffi: false,
         },
       },
     });
-
-    // 记录 Worker 对应的 projectId
-    workerProjects.set(worker, meta.projectId);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Failed to create Worker: ${message}`);
@@ -89,18 +79,6 @@ async function executeInWorker(
     // 3. Handle messages from Worker
     worker.onmessage = (e: MessageEvent) => {
       const { type, data } = e.data;
-
-      if (type === "sdk-request") {
-        const projectId = workerProjects.get(worker);
-        handleRpcRequest(data.operation, data.params, projectId)
-          .then((result) => {
-            worker.postMessage({ type: "sdk-response", requestId: data.requestId, result });
-          })
-          .catch((err) => {
-            worker.postMessage({ type: "sdk-error", requestId: data.requestId, error: err instanceof Error ? err.message : String(err) });
-          });
-        return;
-      }
 
       if (type === "log") {
         collectedLogs.push({ level: data.level, message: data.message, data: data.data });
@@ -135,12 +113,13 @@ async function executeInWorker(
       reject(new Error(`Worker error: ${e.message}`));
     };
 
-    // 4. Trigger execution — no more sourceCode in the message,
-    //    Worker loads user code via import("./index.ts") from the wrapper
+    // 4. Trigger execution — pass authToken + projectId so the wrapper can
+    //    inject them into the SDK singleton before running user code.
     worker.postMessage({
       type: "invoke",
       request: req,
-      callbackUrl: `http://${JAVA_HOST}:${JAVA_PORT}`,
+      authToken: req.authToken,
+      projectId: meta.projectId,
     });
   });
 }

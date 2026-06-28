@@ -4,6 +4,7 @@ import dev.flexmodel.functions.dto.FunctionRuntimeDeployRequest;
 import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -49,6 +50,9 @@ public class FunctionInvoker {
     public Response invoke(String projectId, String name, FunctionInvokeRequest req) {
         try {
             return runtimeClient.invoke(projectId, name, req);
+        } catch (WebApplicationException e) {
+            // 4xx/5xx 响应直接返回 Response，由调用方根据状态码决定处理方式（如 404 触发按需部署）
+            return e.getResponse();
         } catch (Exception e) {
             log.error("Failed to invoke function: {}:{}", projectId, name, e);
             throw new RuntimeException("Failed to invoke function: " + e.getMessage(), e);

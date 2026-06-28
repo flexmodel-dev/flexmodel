@@ -38,6 +38,15 @@ self.addEventListener("message", async (e) => {
       if (typeof a === "string") return a;
       try { return JSON.stringify(a); } catch { return String(a); }
     }).join(" ");
+    // 本地时间格式化为 yyyy-MM-dd HH:mm:ss.SSS，匹配后端 DateTimeTypeHandler 解析格式
+    // （后端 LocalDateTime.parse 不接受 ISO 8601 的 Z 后缀）
+    const __nowLocal = () => {
+      const d = new Date();
+      const p = (n, l = 2) => String(n).padStart(l, "0");
+      return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+        " " + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds()) +
+        "." + p(d.getMilliseconds(), 3);
+    };
     const __writeLog = (level, args) => {
       __originalConsole[level](...args);
       if (!invokeId) return;
@@ -47,7 +56,7 @@ self.addEventListener("message", async (e) => {
         function_name: functionName ?? "",
         level: level,
         message: __serialize(args),
-        created_at: new Date().toISOString(),
+        created_at: __nowLocal(),
       });
     };
     // flush 日志：一次性批量写入，避免每条日志发起一次 HTTP 请求

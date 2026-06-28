@@ -73,6 +73,42 @@ public class EventAwareDataService implements DataService {
   }
 
   @Override
+  public int insertAll(String modelName, List<Map<String, Object>> records) {
+    log.debug("Starting batch insert operation for model: {}, record count: {}",
+      modelName, records == null ? 0 : records.size());
+
+    if (records == null || records.isEmpty()) {
+      return 0;
+    }
+
+    int affectedRows = 0;
+    Throwable exception = null;
+    boolean success = false;
+
+    try {
+      // 委托给底层实现，使用批量 SQL 提升性能
+      // SqlDataService.insertAll 会将自动生成的 ID 回填到每条 record 的 map 中
+      affectedRows = delegate.insertAll(modelName, records);
+      success = affectedRows > 0;
+      log.debug("Batch insert operation completed for model: {}, affected rows: {}", modelName, affectedRows);
+    } catch (Exception e) {
+      exception = e;
+      throw e;
+    } finally {
+      // 批量插入完成后，为每条记录发布 InsertedEvent
+      for (Map<String, Object> record : records) {
+        InsertedEvent changedEvent = new InsertedEvent(
+          modelName, schemaName, record, record, extractId(modelName, record),
+          affectedRows, success, exception, sessionId, source
+        );
+        eventPublisher.publishChangedEvent(changedEvent);
+      }
+    }
+
+    return affectedRows;
+  }
+
+  @Override
   public int updateById(String modelName, Map<String, Object> record, Object id) {
     log.debug("Starting update operation for model: {}, id: {}", modelName, id);
 

@@ -17,7 +17,7 @@ function generateWrapperCode(): string {
   return `// @ts-nocheck
 // Auto-generated wrapper — do not modify manually
 // Worker message loop + SDK token/projectId injection + user module loading
-// console.log/warn/error 被重写，通过 SDK 写入 f_function_log 表
+// console.log/warn/error 被重写，缓冲后通过 SDK 批量写入 f_function_log 表
 
 import { flexmodelClient } from "@flexmodel/sdk";
 
@@ -27,8 +27,8 @@ self.addEventListener("message", async (e) => {
   if (type === "invoke") {
     const { request, authToken, projectId, invokeId, functionName } = e.data;
 
-    // ---- console 拦截：每条日志通过 SDK 异步写入 f_function_log ----
-    const __logPromises = [];
+    // ---- console 拦截：日志缓冲，统一通过 SDK 批量接口写入 f_function_log ----
+    const __logBuffer = [];
     const __originalConsole = {
       log: console.log.bind(console),
       warn: console.warn.bind(console),
@@ -41,14 +41,22 @@ self.addEventListener("message", async (e) => {
     const __writeLog = (level, args) => {
       __originalConsole[level](...args);
       if (!invokeId) return;
-      const msg = __serialize(args);
-      const p = flexmodelClient.data.from("f_function_log").create({
+      // 记录日志实际产生时间，避免批量入库时 created_at 全部相同
+      __logBuffer.push({
         invoke_id: invokeId,
         function_name: functionName ?? "",
         level: level,
-        message: msg,
-      }).catch(() => { /* 日志写入失败不影响函数执行 */ });
-      __logPromises.push(p);
+        message: __serialize(args),
+        created_at: new Date().toISOString(),
+      });
+    };
+    // flush 日志：一次性批量写入，避免每条日志发起一次 HTTP 请求
+    const __flushLogs = async () => {
+      if (__logBuffer.length === 0) return;
+      const batch = __logBuffer.splice(0, __logBuffer.length);
+      try {
+        await flexmodelClient.data.from("f_function_log").create(batch);
+      } catch { /* 日志写入失败不影响函数执行 */ }
     };
     console.log = (...args) => __writeLog("log", args);
     console.warn = (...args) => __writeLog("warn", args);
@@ -62,7 +70,7 @@ self.addEventListener("message", async (e) => {
       const mod = await import("./index.ts");
       const handler = mod.default;
       if (typeof handler !== "function") {
-        await Promise.allSettled(__logPromises);
+        await __flushLogs();
         self.postMessage({ type: "error", data: { message: "export default is not a function in index.ts" } });
         return;
       }
@@ -85,10 +93,10 @@ self.addEventListener("message", async (e) => {
       }
 
       // flush 日志：确保所有 console 输出落库后再返回结果
-      await Promise.allSettled(__logPromises);
+      await __flushLogs();
       self.postMessage({ type: "result", data: { status, headers, body } });
     } catch (err) {
-      await Promise.allSettled(__logPromises);
+      await __flushLogs();
       self.postMessage({ type: "error", data: { message: err instanceof Error ? err.message : String(err) } });
     }
   }
@@ -101,7 +109,7 @@ self.addEventListener("message", async (e) => {
 function generateFunctionDenoJson(): string {
   return JSON.stringify({
     imports: {
-      "@flexmodel/sdk": "npm:@flexmodel/sdk@0.0.3",
+      "@flexmodel/sdk": "npm:@flexmodel/sdk@0.0.4",
     },
   }, null, 2);
 }

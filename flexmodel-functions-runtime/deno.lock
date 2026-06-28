@@ -11,7 +11,7 @@
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@^1.1.5": "1.1.5",
     "jsr:@std/testing@1": "1.0.19",
-    "npm:@flexmodel/sdk@0.0.3": "0.0.3"
+    "npm:@flexmodel/sdk@0.0.4": "0.0.4"
   },
   "jsr": {
     "@hono/hono@4.12.24": {
@@ -57,9 +57,9 @@
     }
   },
   "npm": {
-    "@flexmodel/sdk@0.0.3": {
-      "integrity": "sha512-4IovmjOUmNT5Ta4FiJBemiI9NzI1WTy1oEtaT/1MWUDIZx2GgG/noVuqa6+uJpvx9oqq7Xbx84n49NbUOBFK/A==",
-      "tarball": "https://registry.npmmirror.com/@flexmodel/sdk/-/sdk-0.0.3.tgz"
+    "@flexmodel/sdk@0.0.4": {
+      "integrity": "sha512-bS3hzjBxJsC/UsYHlzCG2voV1+4XAHBcCH4zsc/85hZ2auC5K7r5LkVpmATF/q/F6LYHF+Fw1eW/pSM+A1iIrQ==",
+      "tarball": "https://registry.npmmirror.com/@flexmodel/sdk/-/sdk-0.0.4.tgz"
     }
   },
   "workspace": {
@@ -67,7 +67,7 @@
       "jsr:@hono/hono@^4.6.0",
       "jsr:@std/assert@1",
       "jsr:@std/testing@1",
-      "npm:@flexmodel/sdk@0.0.3"
+      "npm:@flexmodel/sdk@0.0.4"
     ]
   }
 }

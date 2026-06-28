@@ -11,6 +11,7 @@ import type {
   PageDTO, FilterNode, SortItem,
   FindManyOptions, FindOneOptions, CountOptions, CreateOptions,
   UpdateOptions, MergeOptions, SortInput, FieldSelection,
+  CreateManyOptions, UpdateManyOptions, DeleteManyOptions,
 } from './types.js'
 import { serializeFilters, serializeSorts } from './filter-serializer.js'
 import { FluentQueryBuilder } from './query-builder.js'
@@ -141,6 +142,8 @@ export class ModelHandle<TModel = Record<string, unknown>> {
   /**
    * 创建记录（单条或批量）。
    *
+   * 单条创建发送到基础路径，批量创建发送到 /batch 端点。
+   *
    * @example
    * const created = await handle.create({ name: 'Alice', age: 16 })
    * const batch = await handle.create([{ name: 'Alice' }, { name: 'Bob' }])
@@ -150,7 +153,46 @@ export class ModelHandle<TModel = Record<string, unknown>> {
   async create(data: Partial<TModel> | Partial<TModel>[], options?: CreateOptions): Promise<TModel | TModel[]> {
     const pid = this.resolveProjectId()
     const base = this.basePath(pid)
-    return this.http.request<TModel | TModel[]>('POST', base, { body: data })
+    if (Array.isArray(data)) {
+      return this.http.request<TModel[]>('POST', `${base}/batch`, { body: data })
+    }
+    return this.http.request<TModel>('POST', base, { body: data })
+  }
+
+  /**
+   * 批量创建记录 — 发送到 /batch 端点，返回创建的记录列表。
+   *
+   * @example
+   * const created = await handle.createMany([{ name: 'Alice' }, { name: 'Bob' }])
+   */
+  async createMany(data: Partial<TModel>[], options?: CreateManyOptions): Promise<TModel[]> {
+    const pid = this.resolveProjectId()
+    const base = this.basePath(pid)
+    return this.http.request<TModel[]>('POST', `${base}/batch`, { body: data })
+  }
+
+  /**
+   * 批量更新记录 — 每条记录必须包含 id 字段，发送到 /batch 端点。
+   *
+   * @example
+   * const updated = await handle.updateMany({ data: [{ id: 1, name: 'Alicia' }, { id: 2, name: 'Bob' }] })
+   */
+  async updateMany(options: UpdateManyOptions<TModel>): Promise<TModel[]> {
+    const pid = this.resolveProjectId()
+    const base = this.basePath(pid)
+    return this.http.request<TModel[]>('PUT', `${base}/batch`, { body: options.data })
+  }
+
+  /**
+   * 批量删除记录 — 传入 ID 列表，发送到 /batch 端点，返回删除数量。
+   *
+   * @example
+   * const deleted = await handle.deleteMany({ ids: [1, 2, 3] })
+   */
+  async deleteMany(options: DeleteManyOptions): Promise<number> {
+    const pid = this.resolveProjectId()
+    const base = this.basePath(pid)
+    return this.http.request<number>('DELETE', `${base}/batch`, { body: options.ids })
   }
 
   /**

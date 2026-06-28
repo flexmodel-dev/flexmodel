@@ -142,4 +142,36 @@ public class DataFmRepository implements DataRepository {
     }
   }
 
+  @Override
+  public List<Map<String, Object>> createRecords(String projectId, String datasourceName, String modelName, List<Map<String, Object>> data) {
+    try (Session session = sessionFactory.createSession(datasourceName)) {
+      session.data().insertAll(modelName, data);
+      return data;
+    }
+  }
+
+  @Override
+  public List<Map<String, Object>> updateRecords(String projectId, String datasourceName, String modelName, List<Map<String, Object>> data) {
+    try (Session session = sessionFactory.createSession(datasourceName)) {
+      EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
+      String idFieldName = entity.findIdField().orElseThrow().getName();
+      for (Map<String, Object> record : data) {
+        Object id = record.get(idFieldName);
+        if (id == null) {
+          throw new IllegalArgumentException("批量更新记录缺少 id 字段: " + modelName);
+        }
+        session.data().updateById(modelName, record, id);
+      }
+      return data;
+    }
+  }
+
+  @Override
+  public long deleteRecords(String projectId, String datasourceName, String modelName, List<Object> ids) {
+    try (Session session = sessionFactory.createSession(datasourceName)) {
+      session.dsl().deleteFrom(modelName).where(Expressions.field("id").in(ids));
+      return ids.size();
+    }
+  }
+
 }

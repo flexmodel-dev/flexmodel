@@ -208,7 +208,7 @@ describe('ModelHandle: create', () => {
     expect(result).toEqual({ id: 1, name: 'Alice', age: 16 })
   })
 
-  it('batch create sends array', async () => {
+  it('batch create sends array to /batch endpoint', async () => {
     const fetchMock = mockFetch([{ id: 1 }, { id: 2 }])
     const handle = createHandle()
 
@@ -219,8 +219,10 @@ describe('ModelHandle: create', () => {
     const result = await handle.create(data)
 
     const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://localhost:8080/api/projects/test-project/models/Student/records/batch')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual(data)
+    expect(result).toEqual([{ id: 1 }, { id: 2 }])
   })
 })
 
@@ -292,6 +294,66 @@ describe('ModelHandle: count', () => {
     expect(url.searchParams.get('size')).toBe('0')
     expect(url.searchParams.has('filter')).toBe(true)
     expect(total).toBe(5)
+  })
+})
+
+// ---- createMany ----
+
+describe('ModelHandle: createMany', () => {
+  it('sends POST to /batch with array', async () => {
+    const fetchMock = mockFetch([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }])
+    const handle = createHandle()
+
+    const data = [
+      { name: 'Alice', age: 16 },
+      { name: 'Bob', age: 17 },
+    ]
+    const result = await handle.createMany(data)
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://localhost:8080/api/projects/test-project/models/Student/records/batch')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual(data)
+    expect(result).toEqual([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }])
+  })
+})
+
+// ---- updateMany ----
+
+describe('ModelHandle: updateMany', () => {
+  it('sends PUT to /batch with array', async () => {
+    const fetchMock = mockFetch([{ id: 1, name: 'Alicia' }, { id: 2, name: 'BobUpdated' }])
+    const handle = createHandle()
+
+    const data = [
+      { id: 1, name: 'Alicia' },
+      { id: 2, name: 'BobUpdated' },
+    ]
+    const result = await handle.updateMany({ data })
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://localhost:8080/api/projects/test-project/models/Student/records/batch')
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body)).toEqual(data)
+    expect(result).toEqual([{ id: 1, name: 'Alicia' }, { id: 2, name: 'BobUpdated' }])
+  })
+})
+
+// ---- deleteMany ----
+
+describe('ModelHandle: deleteMany', () => {
+  it('sends DELETE to /batch with ids', async () => {
+    const fetchMock = mockFetch(3)
+    const handle = createHandle()
+
+    const ids = [1, 2, 3]
+    const result = await handle.deleteMany({ ids })
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://localhost:8080/api/projects/test-project/models/Student/records/batch')
+    expect(init.method).toBe('DELETE')
+    expect(JSON.parse(init.body)).toEqual(ids)
+    expect(result).toBe(3)
   })
 })
 

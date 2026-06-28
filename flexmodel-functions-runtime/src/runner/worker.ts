@@ -45,6 +45,13 @@ async function executeInWorker(
     );
   }
 
+  // Dynamically construct net permission from env vars.
+  // In Docker: FLEXMODEL_JAVA_HOST=flexmodel-server → allow "flexmodel-server:8080"
+  // In dev:    FLEXMODEL_JAVA_HOST=localhost        → already covered by "localhost"
+  const javaHost = Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost";
+  const javaPort = Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080";
+  const allowedNet: string[] = ["localhost", `${javaHost}:${javaPort}`];
+
   let worker: Worker;
   try {
     // 1. Create Worker with minimal permissions, loading via file:// URL
@@ -52,7 +59,7 @@ async function executeInWorker(
       type: "module",
       deno: {
         permissions: {
-          net: ["localhost"],          // SDK fetches Java API on localhost
+          net: allowedNet,           // SDK fetches Java API on allowed hosts
           read: [meta.functionDir],    // only allow reading function's own directory
           write: false,
           env: ["FLEXMODEL_JAVA_HOST", "FLEXMODEL_JAVA_PORT"],  // SDK reads these for baseURL

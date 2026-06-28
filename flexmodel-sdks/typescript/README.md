@@ -36,14 +36,29 @@ const student = await client.data.from('Student').findOne('001', { expand: ['cla
 // 创建
 const created = await client.data.from('Student').create({ name: 'Alice', age: 16, classId: 1 })
 
+// 批量创建
+const batch = await client.data.from('Student').createMany([
+  { name: 'Alice', age: 16 },
+  { name: 'Bob', age: 17 },
+])
+
 // 更新（全量替换）
 await client.data.from('Student').update(1, { data: { name: 'Alicia' } })
+
+// 批量更新（每条记录必须包含 id 字段）
+await client.data.from('Student').updateMany({ data: [
+  { id: 1, name: 'Alicia' },
+  { id: 2, name: 'Bob Updated' },
+] })
 
 // 更新（部分合并）
 await client.data.from('Student').merge(1, { data: { name: 'Alicia' } })
 
 // 删除
 await client.data.from('Student').delete(1)
+
+// 批量删除
+await client.data.from('Student').deleteMany({ ids: [1, 2, 3] })
 
 // 计数
 const count = await client.data.from('Student').count({ where: { age: { _gt: 18 } } })
@@ -123,10 +138,13 @@ await client.data.from('Student').project('other-project').findMany({})
 | `.findMany(opts?)` | `GET` | 分页查询，返回 `PageDTO<T>` |
 | `.findOne(id, opts?)` | `GET` | 按 ID 获取单条记录 |
 | `.create(data)` | `POST` | 创建单条记录 |
-| `.create(data[])` | `POST` | 批量创建记录 |
+| `.create(data[])` | `POST` | 批量创建记录（调用 /batch 端点） |
+| `.createMany(data[])` | `POST` | 批量创建记录，返回 `T[]` |
 | `.update(id, { data })` | `PUT` | 全量更新 |
+| `.updateMany({ data })` | `PUT` | 批量更新，每条记录必须含 id |
 | `.merge(id, { data })` | `PATCH` | 部分更新 |
 | `.delete(id)` | `DELETE` | 删除记录 |
+| `.deleteMany({ ids })` | `DELETE` | 批量删除，返回删除数量 |
 | `.count(opts?)` | `GET` | 计数，返回 `number` |
 | `.query()` | — | 返回链式构建器（高级路径） |
 
@@ -169,12 +187,39 @@ await client.data.from('Student').findOne('001', { expand: ['classId'] })
 // 单条
 const created = await client.data.from('Student').create({ name: 'Alice', age: 16 })
 
-// 批量
+// 批量（传入数组自动调用 /batch 端点）
 const batch = await client.data.from('Student').create([
   { name: 'Alice', age: 16 },
   { name: 'Bob', age: 17 },
 ])
+
+// 显式批量创建
+const batch2 = await client.data.from('Student').createMany([
+  { name: 'Alice', age: 16 },
+  { name: 'Bob', age: 17 },
+])
 ```
+
+### 批量更新
+
+每条记录必须包含 `id` 字段：
+
+```typescript
+const updated = await client.data.from('Student').updateMany({
+  data: [
+    { id: 1, name: 'Alicia' },
+    { id: 2, name: 'Bob Updated' },
+  ],
+})
+```
+
+### 批量删除
+
+```typescript
+const deletedCount = await client.data.from('Student').deleteMany({ ids: [1, 2, 3] })
+```
+
+> 批量操作上限为 **200 条**记录，超出将返回 HTTP 400 错误。
 
 ### 计数
 

@@ -102,3 +102,20 @@ export interface MergeOptions<TModel = Record<string, unknown>> {
   /** 部分更新数据 */
   data: Partial<TModel>
 }
+
+/** 批量创建选项（保留扩展位） */
+export interface CreateManyOptions {
+  // reserved for future: transaction, returning, etc.
+}
+
+/** 批量更新选项 */
+export interface UpdateManyOptions<TModel = Record<string, unknown>> {
+  /** 记录列表，每条记录必须包含 id 字段 */
+  data: Partial<TModel>[]
+}
+
+/** 批量删除选项 */
+export interface DeleteManyOptions {
+  /** 要删除的 ID 列表 */
+  ids: (string | number)[]
+}

@@ -26,4 +26,10 @@ public interface DataRepository {
   Map<String, Object> updateRecord(String projectId, String datasourceName, String modelName, Object id, Map<String, Object> data);
 
   void deleteRecord(String projectId, String datasourceName, String modelName, Object id);
+
+  List<Map<String, Object>> createRecords(String projectId, String datasourceName, String modelName, List<Map<String, Object>> data);
+
+  List<Map<String, Object>> updateRecords(String projectId, String datasourceName, String modelName, List<Map<String, Object>> data);
+
+  long deleteRecords(String projectId, String datasourceName, String modelName, List<Object> ids);
 }

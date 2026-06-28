@@ -24,6 +24,9 @@ export type {
   CreateOptions,
   UpdateOptions,
   MergeOptions,
+  CreateManyOptions,
+  UpdateManyOptions,
+  DeleteManyOptions,
 } from './types.js'
 export type { FilterFn } from './filter-builder.js'
 export type { Schema, RelationToOne, RelationToMany } from './type-helpers.js'

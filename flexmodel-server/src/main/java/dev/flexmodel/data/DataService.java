@@ -93,4 +93,19 @@ public class DataService {
     return dataRepository.updateRecord(projectId, datasourceName, modelName, id, mergeData);
   }
 
+  public List<Map<String, Object>> createRecords(String projectId, String modelName, List<Map<String, Object>> data) {
+    String datasourceName = projectService.resolveDatabaseName(projectId);
+    return dataRepository.createRecords(projectId, datasourceName, modelName, data);
+  }
+
+  public List<Map<String, Object>> updateRecords(String projectId, String modelName, List<Map<String, Object>> data) {
+    String datasourceName = projectService.resolveDatabaseName(projectId);
+    return dataRepository.updateRecords(projectId, datasourceName, modelName, data);
+  }
+
+  public long deleteRecords(String projectId, String modelName, List<Object> ids) {
+    String datasourceName = projectService.resolveDatabaseName(projectId);
+    return dataRepository.deleteRecords(projectId, datasourceName, modelName, ids);
+  }
+
 }

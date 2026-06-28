@@ -68,7 +68,6 @@ async function executeInWorker(
 
   return new Promise((resolve, reject) => {
     const startTime = performance.now();
-    const collectedLogs: Array<{ level: "info" | "warn" | "error"; message: string; data?: unknown }> = [];
 
     // 2. Timeout enforcement
     const timer = setTimeout(() => {
@@ -80,12 +79,6 @@ async function executeInWorker(
     worker.onmessage = (e: MessageEvent) => {
       const { type, data } = e.data;
 
-      if (type === "log") {
-        collectedLogs.push({ level: data.level, message: data.message, data: data.data });
-        console.log(`[fn:${meta.name}][${data.level}] ${data.message}`, data.data ?? "");
-        return;
-      }
-
       if (type === "result") {
         clearTimeout(timer);
         const executionTimeMs = Math.round(performance.now() - startTime);
@@ -94,7 +87,7 @@ async function executeInWorker(
           status: data.status,
           headers: data.headers,
           body: data.body,
-          _meta: { executionTimeMs, logs: collectedLogs },
+          _meta: { executionTimeMs },
         });
         return;
       }

@@ -88,7 +88,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     const message = err instanceof Error ? err.message : String(err);
     const isTimeout = message.includes("timed out");
     const status = isTimeout ? 504 : 500;
-    const errorMeta = { executionTimeMs: 0, logs: [{ level: "error", message }] };
+    const errorMeta = { executionTimeMs: 0 };
 
     return c.json(
       { error: isTimeout ? "Function execution timed out" : message },

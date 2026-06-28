@@ -37,10 +37,9 @@ self.addEventListener("message", async (e) => {
         return;
       }
 
-      const ctx = buildContext();
       const input = request.input ?? null;
 
-      const response = await handler(input, ctx);
+      const response = await handler(input);
       let body = response;
       let status = 200;
       let headers = {};
@@ -61,20 +60,6 @@ self.addEventListener("message", async (e) => {
     }
   }
 });
-
-function buildContext() {
-  return {
-    log: {
-      info:  (message, data) => self.postMessage({ type: "log", data: { level: "info",  message, data } }),
-      warn:  (message, data) => self.postMessage({ type: "log", data: { level: "warn",  message, data } }),
-      error: (message, data) => self.postMessage({ type: "log", data: { level: "error", message, data } }),
-    },
-    json: (data, status = 200) =>
-      new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } }),
-    text: (data, status = 200) =>
-      new Response(data, { status, headers: { "content-type": "text/plain" } }),
-  };
-}
 `.trim();
 }
 

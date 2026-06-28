@@ -217,7 +217,7 @@ Deno.test("invokeFunction runs user code that calls SDK directly", async () => {
       `
         import { flexmodelClient } from "@flexmodel/sdk";
 
-        export default async (req: Request, ctx: any) => {
+        export default async (req: Request) => {
           // runtime has already called setAuthToken + setProjectId on the singleton
           const users = await flexmodelClient.data.from("User").findMany({ page: 1, size: 10 });
           return { users };

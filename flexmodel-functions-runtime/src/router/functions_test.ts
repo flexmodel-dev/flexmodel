@@ -138,8 +138,8 @@ Deno.test("POST /functions/:projectId/:name/invoke executes function via Worker"
           name: "echo",
           sourceFiles: {
             "index.ts": `
-              export default async (input: any, ctx: any) => {
-                return ctx.json({ echo: input });
+              export default async (input: any) => {
+                return { echo: input };
               };
             `,
           },

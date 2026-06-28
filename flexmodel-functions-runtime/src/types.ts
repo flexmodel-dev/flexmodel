@@ -38,22 +38,12 @@ export interface InvokeResult {
   body: unknown;
   _meta: {
     executionTimeMs: number;
-    logs: LogEntry[];
   };
-}
-
-// ---- Log Entry ----
-
-export interface LogEntry {
-  level: "info" | "warn" | "error";
-  message: string;
-  data?: unknown;
 }
 
 // ---- Worker Messages ----
 
 export type WorkerOutMessage =
-  | { type: "log"; data: { level: string; message: string; data?: unknown } }
   | { type: "result"; data: { status: number; headers: Record<string, string>; body: unknown } }
   | { type: "error"; data: { message: string } };
 

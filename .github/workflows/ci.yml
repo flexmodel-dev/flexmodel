@@ -44,19 +44,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Cache Maven local repository
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-            ${{ runner.os }}-maven-
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'temurin'
+          cache: 'maven'
+          cache-dependency-path: '**/pom.xml'
       - name: Configure Maven settings
         env:
           GITHUB_USERNAME: cjbi
@@ -75,19 +69,13 @@ jobs:
         with:
           submodules: 'recursive'
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cache Maven local repository
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-            ${{ runner.os }}-maven-
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'temurin'
+          cache: 'maven'
+          cache-dependency-path: '**/pom.xml'
       - name: Configure Maven settings
         env:
           GITHUB_USERNAME: cjbi
@@ -132,19 +120,13 @@ jobs:
         with:
           submodules: 'recursive'
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cache Maven local repository
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-            ${{ runner.os }}-maven-
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'temurin'
+          cache: 'maven'
+          cache-dependency-path: '**/pom.xml'
       - name: Configure Maven settings
         env:
           GITHUB_USERNAME: cjbi

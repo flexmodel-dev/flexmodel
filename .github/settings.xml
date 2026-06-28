@@ -16,8 +16,13 @@
         <repository>
           <id>github</id>
           <url>https://maven.pkg.github.com/flexmodel-dev/flexmodel-maven-packages</url>
+          <releases>
+            <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
+          </releases>
           <snapshots>
             <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
           </snapshots>
         </repository>
       </repositories>
@@ -25,8 +30,13 @@
         <pluginRepository>
           <id>github</id>
           <url>https://maven.pkg.github.com/flexmodel-dev/flexmodel-maven-packages</url>
+          <releases>
+            <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
+          </releases>
           <snapshots>
             <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
           </snapshots>
         </pluginRepository>
       </pluginRepositories>

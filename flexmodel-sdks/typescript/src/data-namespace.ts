@@ -24,7 +24,7 @@ type SchemaMap = Record<string, Record<string, unknown>>
  */
 export class DataNamespace<TSchema extends SchemaMap = SchemaMap> {
   private readonly http: HttpTransport
-  private readonly defaultProjectId?: string
+  private defaultProjectId?: string
   private readonly models = new Map<string, ModelHandle<Record<string, unknown>>>()
   private readonly proxy: DataNamespace<TSchema> & { [K in keyof TSchema]: ModelHandle<TSchema[K]> }
 
@@ -32,6 +32,15 @@ export class DataNamespace<TSchema extends SchemaMap = SchemaMap> {
     this.http = http
     this.defaultProjectId = defaultProjectId
     this.proxy = this.createProxy()
+  }
+
+  /**
+   * 运行时更新默认 projectId，并清空已缓存的 ModelHandle。
+   * 后续 from() 调用会以新 projectId 重建句柄。
+   */
+  updateDefaultProjectId(projectId?: string): void {
+    this.defaultProjectId = projectId
+    this.models.clear()
   }
 
   /**

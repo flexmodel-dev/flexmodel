@@ -39,7 +39,8 @@ export class FlexmodelClient<
   TSchema extends SchemaMap = SchemaMap,
 > {
   private readonly http: HttpTransport
-  private readonly defaultProjectId?: string
+  private defaultProjectId?: string
+  private readonly namespace: DataNamespace<TSchema>
 
   /**
    * 数据操作命名空间。
@@ -52,8 +53,8 @@ export class FlexmodelClient<
     this.http = new HttpTransport(baseURL, options.apiKey)
     this.defaultProjectId = options.projectId
 
-    const namespace = new DataNamespace<TSchema>(this.http, this.defaultProjectId)
-    this.data = namespace.asProxy()
+    this.namespace = new DataNamespace<TSchema>(this.http, this.defaultProjectId)
+    this.data = this.namespace.asProxy()
   }
 
   /**
@@ -79,6 +80,19 @@ export class FlexmodelClient<
    */
   setAuthToken(token?: string): void {
     this.http.setAuthToken(token)
+  }
+
+  /**
+   * 设置默认 projectId（运行时可变）。
+   * 更新客户端及 DataNamespace 的默认 projectId，并清空已缓存的 ModelHandle，
+   * 使后续 from() 调用以新 projectId 重建句柄。
+   *
+   * @example
+   * flexmodelClient.setProjectId('my-project')
+   */
+  setProjectId(projectId?: string): void {
+    this.defaultProjectId = projectId
+    this.namespace.updateDefaultProjectId(projectId)
   }
 
   /** 浏览器环境下默认同源，Node/Deno 需显式提供 baseURL */

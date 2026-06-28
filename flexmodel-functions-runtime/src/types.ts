@@ -28,6 +28,7 @@ export interface DeployRequest {
 export interface InvokeRequest {
   input?: unknown;
   authToken?: string;
+  invokeId?: string;
 }
 
 // ---- Invoke Result (from Deno → Java) ----
@@ -38,6 +39,7 @@ export interface InvokeResult {
   body: unknown;
   _meta: {
     executionTimeMs: number;
+    invokeId?: string;
   };
 }
 
@@ -48,4 +50,4 @@ export type WorkerOutMessage =
   | { type: "error"; data: { message: string } };
 
 export type WorkerInMessage =
-  | { type: "invoke"; request: InvokeRequest; authToken?: string; projectId: string };
+  | { type: "invoke"; request: InvokeRequest; authToken?: string; projectId: string; invokeId?: string; functionName?: string };

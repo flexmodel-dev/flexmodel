@@ -259,6 +259,16 @@ model f_function {
   @comment("云函数(项目级资源)")
 }
 
+model f_function_log {
+  id : String @id @default(uuid()),
+  invoke_id : String @comment("调用ID，关联同一次函数调用"),
+  function_name : String @comment("函数名称"),
+  level : String @comment("日志级别(log/warn/error)"),
+  message : String @comment("日志消息"),
+  created_at? : DateTime @default(now()) @comment("记录时间"),
+  @comment("云函数执行日志")
+}
+
 enum TriggerType {
   EVENT,
   SCHEDULED

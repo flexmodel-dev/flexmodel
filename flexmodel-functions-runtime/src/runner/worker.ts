@@ -87,7 +87,7 @@ async function executeInWorker(
           status: data.status,
           headers: data.headers,
           body: data.body,
-          _meta: { executionTimeMs },
+          _meta: { executionTimeMs, invokeId: req.invokeId },
         });
         return;
       }
@@ -113,6 +113,8 @@ async function executeInWorker(
       request: req,
       authToken: req.authToken,
       projectId: meta.projectId,
+      invokeId: req.invokeId,
+      functionName: meta.name,
     });
   });
 }

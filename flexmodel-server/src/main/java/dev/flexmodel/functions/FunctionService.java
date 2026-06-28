@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Function lifecycle management: CRUD, deploy to Deno functions runtime, invoke.
@@ -138,6 +139,8 @@ public class FunctionService {
 
         // 为本次 invoke 签发 Runtime 回调专用 JWT（5 分钟有效期）
         req.setAuthToken(internalTokenService.signToken(projectId));
+        // 生成本次调用的唯一ID，用于关联 f_function_log 日志记录
+        req.setInvokeId(UUID.randomUUID().toString());
 
         Response response = functionInvoker.invoke(projectId, name, req);
 

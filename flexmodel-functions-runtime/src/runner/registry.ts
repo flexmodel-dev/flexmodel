@@ -17,6 +17,7 @@ function generateWrapperCode(): string {
   return `// @ts-nocheck
 // Auto-generated wrapper — do not modify manually
 // Worker message loop + SDK token/projectId injection + user module loading
+// console.log/warn/error 被重写，通过 SDK 写入 f_function_log 表
 
 import { flexmodelClient } from "@flexmodel/sdk";
 
@@ -24,7 +25,35 @@ self.addEventListener("message", async (e) => {
   const { type } = e.data;
 
   if (type === "invoke") {
-    const { request, authToken, projectId } = e.data;
+    const { request, authToken, projectId, invokeId, functionName } = e.data;
+
+    // ---- console 拦截：每条日志通过 SDK 异步写入 f_function_log ----
+    const __logPromises = [];
+    const __originalConsole = {
+      log: console.log.bind(console),
+      warn: console.warn.bind(console),
+      error: console.error.bind(console),
+    };
+    const __serialize = (args) => args.map((a) => {
+      if (typeof a === "string") return a;
+      try { return JSON.stringify(a); } catch { return String(a); }
+    }).join(" ");
+    const __writeLog = (level, args) => {
+      __originalConsole[level](...args);
+      if (!invokeId) return;
+      const msg = __serialize(args);
+      const p = flexmodelClient.data.from("f_function_log").create({
+        invoke_id: invokeId,
+        function_name: functionName ?? "",
+        level: level,
+        message: msg,
+      }).catch(() => { /* 日志写入失败不影响函数执行 */ });
+      __logPromises.push(p);
+    };
+    console.log = (...args) => __writeLog("log", args);
+    console.warn = (...args) => __writeLog("warn", args);
+    console.error = (...args) => __writeLog("error", args);
+
     try {
       // Inject auth token + projectId into the SDK singleton before user code runs
       if (authToken) flexmodelClient.setAuthToken(authToken);
@@ -33,6 +62,7 @@ self.addEventListener("message", async (e) => {
       const mod = await import("./index.ts");
       const handler = mod.default;
       if (typeof handler !== "function") {
+        await Promise.allSettled(__logPromises);
         self.postMessage({ type: "error", data: { message: "export default is not a function in index.ts" } });
         return;
       }
@@ -54,8 +84,11 @@ self.addEventListener("message", async (e) => {
         }
       }
 
+      // flush 日志：确保所有 console 输出落库后再返回结果
+      await Promise.allSettled(__logPromises);
       self.postMessage({ type: "result", data: { status, headers, body } });
     } catch (err) {
+      await Promise.allSettled(__logPromises);
       self.postMessage({ type: "error", data: { message: err instanceof Error ? err.message : String(err) } });
     }
   }

@@ -62,14 +62,15 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     );
   }
 
+  const body = await c.req.json().catch(() => ({}));
+
+  const request: InvokeRequest = {
+    input: body.input,
+    authToken: body.authToken,
+    invokeId: body.invokeId,
+  };
+
   try {
-    const body = await c.req.json().catch(() => ({}));
-
-    const request: InvokeRequest = {
-      input: body.input,
-      authToken: body.authToken,
-    };
-
     const result = await invokeFunction(projectId, name, request);
 
     // Return function result directly as HTTP response
@@ -88,7 +89,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     const message = err instanceof Error ? err.message : String(err);
     const isTimeout = message.includes("timed out");
     const status = isTimeout ? 504 : 500;
-    const errorMeta = { executionTimeMs: 0 };
+    const errorMeta = { executionTimeMs: 0, invokeId: request.invokeId };
 
     return c.json(
       { error: isTimeout ? "Function execution timed out" : message },

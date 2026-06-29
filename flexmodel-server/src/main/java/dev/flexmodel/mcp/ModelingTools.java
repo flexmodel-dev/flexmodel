@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * MCP 工具：数据建模
- * 提供模型列表、详情、创建实体/枚举、删除模型和同步 Schema 能力
+ * 提供模型列表、详情、创建实体/枚举、删除模型、执行FML
  */
 public class ModelingTools {
 
@@ -74,6 +74,9 @@ public class ModelingTools {
     {"name":"studentName","type":"String","modelName":"Student","length":255},\
     {"name":"age","type":"Int","modelName":"Student"},\
     {"name":"gender","type":"EnumRef","from":"UserGender","multiple":false,"modelName":"Student"}]}\
+    Important: If you need to reference another entity with a Relation field, ensure the target entity already exists \
+    before creating this model. To add relations after both entities exist, or to create multiple related models at once, \
+    prefer the execute_fml tool, which supports FML syntax for defining models and relations in a single call.\
     """)
   public String create_entity_model(
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
@@ -132,6 +135,75 @@ public class ModelingTools {
     } catch (Exception e) {
       log.errorf(e, "delete_model failed, projectId=%s, modelName=%s", projectId, modelName);
       return "Error: delete_model failed - " + e.getMessage();
+    }
+  }
+
+  @Tool(description = """
+    Execute a Flexmodel Modeling Language (FML) string against a project. \
+    Use this for creating or updating models, adding fields, establishing relations, and seed data — all in one call. \
+    FML syntax overview: \
+    - Define entity: model ModelName { fieldName: FieldType @annotations, ... } \
+    - Define enum: enum EnumName { VALUE1, VALUE2, ... } \
+    - Optional/nullable fields use '?' suffix: fieldName?: FieldType \
+    - Relation field: fieldName?: TargetModel @relation(localField: "localCol", foreignField: "foreignCol", cascadeDelete: "true") \
+    - Array relation (one-to-many): fieldName?: TargetModel[] @relation(localField: "localCol", foreignField: "foreignCol") \
+    - Common annotations: @id, @default(autoIncrement()), @default(uuid()), @length(255), @unique, @comment("desc") \
+    - Model-level index: @index(name: "idx_name", unique: true, fields: [field1, field2]) \
+    Example: \
+    // 班级模型
+     model Classes {
+       id: String @id @default(uuid()),
+       classCode: String @unique @length(255),
+       className?: String @default("A班级"),
+       students: Student[] @relation(localField: "id", foreignField: "classId", cascadeDelete: true),
+     }
+     // 学生模型
+     model Student {
+       id: String @id @default(uuid()),
+       studentName?: String @length(255),
+       gender?: UserGender,
+       interest?: User_interest[],
+       age?: Int,
+       classId?: Long,
+       studentClass: Classes @relation(localField: "classId", foreignField: "id"),
+       studentDetail: StudentDetail @relation(localField: "id", foreignField: "studentId", cascadeDelete: true),
+       createdAt?: DateTime @default(now()),
+       updatedAt?: DateTime @default(now()),
+       @index(name: "IDX_studentName", unique: false, fields: [classId, studentName: (sort: "desc")]),
+       @index(unique: false, fields: [studentName]),
+       @index(unique: false, fields: [classId]),
+     }
+     // 学生详情模型
+     model StudentDetail {
+       id: String @id @default(autoIncrement()),
+       studentId?: Long,
+       description?: String @length(255),
+     }
+     // 用户性别枚举
+     enum UserGender {
+       UNKNOWN,
+       MALE,
+       FEMALE
+     }
+     // 用户爱好枚举
+     enum user_interest {
+       chang,
+       tiao,
+       rap,
+       daLanQiu
+     }
+    """)
+  public String execute_fml(
+    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @ToolArg(description = "The FML string to execute. Can define multiple models, enums, and relations in one call.") String fml
+  ) {
+    log.infof("execute_fml called, projectId=%s, fml=%s", projectId, fml);
+    try {
+      modelingService.executeFml(projectId, fml);
+      return "FML executed successfully.";
+    } catch (Exception e) {
+      log.errorf(e, "execute_fml failed, projectId=%s", projectId);
+      return "Error: execute_fml failed - " + e.getMessage();
     }
   }
 

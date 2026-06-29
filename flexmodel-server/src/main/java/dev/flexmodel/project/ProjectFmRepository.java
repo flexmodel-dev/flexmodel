@@ -23,8 +23,8 @@ public class ProjectFmRepository implements ProjectRepository {
   @Override
   public List<Project> findProjects() {
     try (Session session = sessionFactory.createSession()) {
-      return session.dsl().selectFrom(Project.class).where(Expressions.field(Project::getEnabled).eq(true)).execute().stream()
-        .toList();
+      return session.dsl().selectFrom(Project.class)
+        .where(Expressions.field(Project::getEnabled).eq(true)).orderByDesc(Project::getCreatedAt).execute();
     }
   }
 

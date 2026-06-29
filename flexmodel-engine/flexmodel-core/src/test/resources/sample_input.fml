@@ -32,8 +32,8 @@ seed Classes {
   { classCode: "CLS003", className: "三班" },
 }
 
-// 学生种子数据（带注解）
-seed Student @strategy("skip_exists") @match("studentName") {
+// 学生种子数据
+seed Student {
   { studentName: "张三", gender: "MALE", age: 18, score: 95.5, active: true },
   { studentName: "李四", gender: "FEMALE", age: 17, score: 88.0, active: true },
   { studentName: "王五", gender: "MALE", age: 19, score: null, active: false },

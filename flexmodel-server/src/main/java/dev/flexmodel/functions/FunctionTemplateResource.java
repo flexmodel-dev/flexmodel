@@ -1,8 +1,6 @@
 package dev.flexmodel.functions;
 
 import dev.flexmodel.codegen.entity.FunctionTemplate;
-import dev.flexmodel.common.AbstractRepository;
-import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -19,18 +17,16 @@ import java.util.List;
 @Path("/function-templates")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class FunctionTemplateResource extends AbstractRepository {
+public class FunctionTemplateResource {
+
+    @Inject
+    FunctionTemplateRepository functionTemplateRepository;
 
     /**
      * List all function templates ordered by sort_order.
      */
     @GET
     public List<FunctionTemplate> list() {
-        try (Session session = sessionFactory.createSession()) {
-            return session.dsl()
-                .selectFrom(FunctionTemplate.class)
-                .orderBy(FunctionTemplate::getSortOrder)
-                .execute();
-        }
+        return functionTemplateRepository.list();
     }
 }

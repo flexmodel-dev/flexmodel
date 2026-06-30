@@ -1,6 +1,8 @@
 package dev.flexmodel.modeling;
 
+import dev.flexmodel.api.dto.GraphQLRefreshEvent;
 import dev.flexmodel.project.ProjectService;
+import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.model.*;
@@ -22,40 +24,56 @@ public class ModelingService {
   @Inject
   ProjectService projectService;
 
+  @Inject
+  EventBus eventBus;
+
   public List<SchemaObject> findModels(String projectId) {
     return modelService.findAll(projectId, projectService.resolveDatabaseName(projectId));
   }
 
   public SchemaObject createModel(String projectId, SchemaObject model) {
-    return modelService.createModel(projectId, projectService.resolveDatabaseName(projectId), model);
+    SchemaObject created = modelService.createModel(projectId, projectService.resolveDatabaseName(projectId), model);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
+    return created;
   }
 
   public void dropModel(String projectId, String modelName) {
     modelService.dropModel(projectId, projectService.resolveDatabaseName(projectId), modelName);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
   public TypedField<?, ?> createField(String projectId, TypedField<?, ?> field) {
-    return modelService.createField(projectId, projectService.resolveDatabaseName(projectId), field);
+    TypedField<?, ?> created = modelService.createField(projectId, projectService.resolveDatabaseName(projectId), field);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
+    return created;
   }
 
   public TypedField<?, ?> modifyField(String projectId, TypedField<?, ?> field) {
-    return modelService.modifyField(projectId, projectService.resolveDatabaseName(projectId), field);
+    TypedField<?, ?> modified = modelService.modifyField(projectId, projectService.resolveDatabaseName(projectId), field);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
+    return modified;
   }
 
   public void dropField(String projectId, String modelName, String fieldName) {
     modelService.dropField(projectId, projectService.resolveDatabaseName(projectId), modelName, fieldName);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
   public IndexDefinition createIndex(String projectId, IndexDefinition index) {
-    return modelService.createIndex(projectId, projectService.resolveDatabaseName(projectId), index);
+    IndexDefinition created = modelService.createIndex(projectId, projectService.resolveDatabaseName(projectId), index);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
+    return created;
   }
 
   public IndexDefinition modifyIndex(String projectId, IndexDefinition index) {
-    return modelService.modifyIndex(projectId, projectService.resolveDatabaseName(projectId), index);
+    IndexDefinition modified = modelService.modifyIndex(projectId, projectService.resolveDatabaseName(projectId), index);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
+    return modified;
   }
 
   public void dropIndex(String projectId, String modelName, String indexName) {
     modelService.dropIndex(projectId, projectService.resolveDatabaseName(projectId), modelName, indexName);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
   public List<SchemaObject> syncModels(String projectId, Set<String> models) {
@@ -75,6 +93,7 @@ public class ModelingService {
     }
     modelService.dropModel(projectId, databaseName, modelName);
     modelService.createModel(projectId, databaseName, model);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
     return model;
   }
 
@@ -83,6 +102,8 @@ public class ModelingService {
   }
 
   public Boolean executeFml(String projectId, String fml) throws ParseException {
-    return modelService.executeFml(projectId, projectService.resolveDatabaseName(projectId), fml);
+    Boolean result = modelService.executeFml(projectId, projectService.resolveDatabaseName(projectId), fml);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
+    return result;
   }
 }

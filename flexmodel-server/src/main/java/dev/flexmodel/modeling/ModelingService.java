@@ -28,7 +28,10 @@ public class ModelingService {
   EventBus eventBus;
 
   public List<SchemaObject> findModels(String projectId) {
-    return modelService.findAll(projectId, projectService.resolveDatabaseName(projectId));
+    return modelService.findAll(projectId, projectService.resolveDatabaseName(projectId))
+      .stream()
+      .filter(m -> !m.isSystem())
+      .toList();
   }
 
   public SchemaObject createModel(String projectId, SchemaObject model) {

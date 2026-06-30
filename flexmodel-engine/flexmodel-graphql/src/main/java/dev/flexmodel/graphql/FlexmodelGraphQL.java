@@ -50,6 +50,9 @@ public class FlexmodelGraphQL {
     log.debug("Generate graphQL schema: {}", schemaName);
     List<SchemaObject> models = sf.getModels(schemaName);
     for (SchemaObject model : models) {
+      if (model.isSystem()) {
+        continue;
+      }
       if (model instanceof EntityDefinition entity) {
         log.debug("Generate graphQL model: {}", model.getName());
         String pascalName = StringUtils.capitalize(StringUtils.snakeToCamel(model.getName()));

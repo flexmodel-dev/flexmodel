@@ -11,6 +11,7 @@ model f_project {
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_PROJECT_PARENT", fields: [parent_project_id]),
+  @system,
   @comment("项目")
 }
 model f_branch {
@@ -23,6 +24,7 @@ model f_branch {
   created_by? : String @comment("创建人"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
   @index(name: "IDX_BRANCH_PROJECT_NAME", unique: true, fields: [project_id, name]),
+  @system,
   @comment("项目分支")
 }
 
@@ -42,6 +44,7 @@ model f_auth_api_key {
   updated_at? : DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_AUTH_AK_HASH", unique: true, fields: [key_hash]),
   @index(name: "IDX_AUTH_AK_PROJECT", fields: [project_id]),
+  @system,
   @comment("API Key")
 }
 
@@ -57,6 +60,7 @@ model f_user {
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name : "IDX_USERNAME", unique: "true", fields: [name]),
   @index(name : "IDX_EMAIL", unique: "true", fields: [email]),
+  @system,
   @comment("用户")
 }
 model f_role {
@@ -69,14 +73,16 @@ model f_role {
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name:"IDX_ROLE_NAME", unique: "true", fields: [name]),
+  @system,
   @comment("角色")
 }
 model f_resource {
   id: Long @id @default(autoIncrement()),
   name : String @length("255"),
   permission: String @length("255") @comment("权限标识"),
-  type: String @length("100") @comment("类型, system: 系统级, platform: 项目级"),
+  type: String @length("100") @comment("类型, platform: 平台级, project: 项目级"),
   parent_id?: Long,
+  @system,
   @comment("资源")
 }
 model f_resource_template {
@@ -84,6 +90,7 @@ model f_resource_template {
   name: String @length("255"),
   permission: String @length("255") @comment("权限标识"),
   parent_id?: Long,
+  @system,
   @comment("资源模版")
 }
 model f_config {
@@ -94,6 +101,7 @@ model f_config {
   updated_at : DateTime @default(now()),
   @comment("配置"),
   @index(name:"IDX_CONFIG_KEY", unique: "true", fields: [key]),
+  @system,
   @comment("系统配置")
 }
 
@@ -118,6 +126,7 @@ model f_qrtz_job_detail {
   @index(name:"UQ_QRTZ_JOB_DETAILS_PK", unique: "true", fields: [sched_name, job_name, job_group]),
   @index(name:"IDX_QRTZ_J_REQ_RECOVERY", unique: "false", fields: [sched_name, requests_recovery]),
   @index(name:"IDX_QRTZ_J_GRP", unique: "false", fields: [sched_name, job_group]),
+  @system,
   @comment("Quartz 任务明细")
 }
 
@@ -152,6 +161,7 @@ model f_qrtz_trigger {
   @index(name:"IDX_QRTZ_T_NFT_MISFIRE", unique: "false", fields: [sched_name, misfire_instr, next_fire_time]),
   @index(name:"IDX_QRTZ_T_NFT_ST_MISFIRE", unique: "false", fields: [sched_name, misfire_instr, next_fire_time, trigger_state]),
   @index(name:"IDX_QRTZ_T_NFT_ST_MISFIRE_GRP", unique: "false", fields: [sched_name, misfire_instr, next_fire_time, trigger_group, trigger_state]),
+  @system,
   @comment("Quartz 触发器")
 }
 
@@ -164,6 +174,7 @@ model f_qrtz_simple_trigger {
   repeat_interval : Long @comment("重复间隔(毫秒)"),
   times_triggered : Long @comment("已触发次数"),
   @index(name:"UQ_QRTZ_SIMPLE_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
+  @system,
   @comment("Quartz Simple 类型触发器明细")
 }
 
@@ -175,6 +186,7 @@ model f_qrtz_cron_trigger {
   cron_expression : String @length("120") @comment("CRON 表达式"),
   time_zone_id? : String @length("80") @comment("时区标识"),
   @index(name:"UQ_QRTZ_CRON_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
+  @system,
   @comment("Quartz Cron 类型触发器明细")
 }
 
@@ -195,6 +207,7 @@ model f_qrtz_simprop_trigger {
   bool_prop_1? : Boolean @comment("布尔属性1(原 VARCHAR(1))"),
   bool_prop_2? : Boolean @comment("布尔属性2(原 VARCHAR(1))"),
   @index(name:"UQ_QRTZ_SIMPROP_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
+  @system,
   @comment("Quartz Simprop 类型触发器明细")
 }
 
@@ -206,6 +219,7 @@ model f_qrtz_blob_trigger {
   blob_data? : JSON @comment("触发器二进制数据(原 BLOB)"),
   @index(name:"UQ_QRTZ_BLOB_TRIGGERS_PK", unique: "true", fields: [sched_name, trigger_name, trigger_group]),
   @index(name:"IDX_QRTZ_BLOB_TRIG", unique: "false", fields: [sched_name, trigger_name, trigger_group]),
+  @system,
   @comment("Quartz Blob 类型触发器明细")
 }
 
@@ -215,6 +229,7 @@ model f_qrtz_calendar {
   calendar_name : String @length("190") @comment("日历名称"),
   calendar : String @comment("日历数据(原 BLOB)"),
   @index(name:"UQ_QRTZ_CALENDARS_PK", unique: "true", fields: [sched_name, calendar_name]),
+  @system,
   @comment("Quartz 日历")
 }
 
@@ -223,6 +238,7 @@ model f_qrtz_paused_trigger_grp {
   sched_name : String @length("120") @comment("调度器名称"),
   trigger_group : String @length("190") @comment("触发器分组"),
   @index(name:"UQ_QRTZ_PAUSED_TRIGGER_GRPS_PK", unique: "true", fields: [sched_name, trigger_group]),
+  @system,
   @comment("Quartz 已暂停触发器分组")
 }
 
@@ -248,6 +264,7 @@ model f_qrtz_fired_trigger {
   @index(name:"IDX_QRTZ_FT_JG", unique: "false", fields: [sched_name, job_group]),
   @index(name:"IDX_QRTZ_FT_T_G", unique: "false", fields: [sched_name, trigger_name, trigger_group]),
   @index(name:"IDX_QRTZ_FT_TG", unique: "false", fields: [sched_name, trigger_group]),
+  @system,
   @comment("Quartz 已触发触发器记录")
 }
 
@@ -258,6 +275,7 @@ model f_qrtz_scheduler_state {
   last_checkin_time : Long @comment("最后检查时间(毫秒)"),
   checkin_interval : Long @comment("检查间隔(毫秒)"),
   @index(name:"UQ_QRTZ_SCHEDULER_STATE_PK", unique: "true", fields: [sched_name, instance_name]),
+  @system,
   @comment("Quartz 调度器状态")
 }
 
@@ -266,6 +284,7 @@ model f_qrtz_lock {
   sched_name : String @length("120") @comment("调度器名称"),
   lock_name : String @length("40") @comment("锁名称"),
   @index(name:"UQ_QRTZ_LOCKS_PK", unique: "true", fields: [sched_name, lock_name]),
+  @system,
   @comment("Quartz 锁")
 }
 
@@ -328,6 +347,7 @@ model f_function_template {
   icon? : String @comment("图标名称"),
   sort_order : Int @default("0") @comment("排序权重"),
   @index(name: "IDX_FUNCTION_TEMPLATE_SLUG", unique: true, fields: [slug]),
+  @system,
   @comment("云函数模板(平台级)")
 }
 

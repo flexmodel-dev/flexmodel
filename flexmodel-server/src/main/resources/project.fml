@@ -12,6 +12,7 @@ model f_bucket {
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_OWNER", fields: [owner_type, owner_id]),
   @index(name: "UQ_BUCKET_NAME", unique: true, fields: [owner_type, owner_id, name]),
+  @system,
   @comment("存储 Bucket")
 }
 
@@ -22,6 +23,7 @@ model f_auth_provider_config {
   config : JSON @comment("提供商配置"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @system,
   @comment("认证提供商配置")
 }
 
@@ -42,6 +44,7 @@ model f_api_request_log {
   @index(name: "IDX_API_REQUEST_LOG_IS_ERROR", fields: [is_success]),
   @index(name: "IDX_API_REQUEST_LOG_PATH_CREATED_AT", fields: [path, created_at]),
   @index(name: "IDX_API_REQUEST_LOG_STATUS_CREATED_AT", fields: [status_code, created_at]),
+  @system,
   @comment("API请求日志")
 }
 
@@ -64,6 +67,7 @@ model f_em_flow_definition {
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_flow_define_module", fields: [flow_module_id]),
+  @system,
   @comment("流程定义")
 }
 
@@ -87,6 +91,7 @@ model f_em_flow_deployment {
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_flow_deploy", fields: [flow_deploy_id]),
   @index(name: "IDX_flow_module", fields: [flow_module_id]),
+  @system,
   @comment("流程部署")
 }
 
@@ -106,6 +111,7 @@ model f_ei_flow_instance {
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_flow_instance", fields: [flow_instance_id]),
+  @system,
   @comment("流程执行实例")
 }
 
@@ -125,6 +131,7 @@ model f_ei_flow_instance_mapping {
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_ei_flow_node", fields: [flow_instance_id]),
+  @system,
   @comment("父子流程实例映射")
 }
 
@@ -149,6 +156,7 @@ model f_ei_node_instance {
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_node_instance_id", fields: [node_instance_id]),
   @index(name: "IDX_fiid_sniid_nk", fields: [flow_instance_id, source_node_instance_id, node_key]),
+  @system,
   @comment("节点执行实例")
 }
 
@@ -167,6 +175,7 @@ model f_ei_node_instance_log {
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @system,
   @comment("节点执行记录")
 }
 
@@ -189,6 +198,7 @@ model f_ei_instance_data {
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_instance_data_id", fields: [instance_data_id]),
   @index(name: "IDX_flow_instance", fields: [flow_instance_id]),
+  @system,
   @comment("实例数据")
 }
 
@@ -207,6 +217,7 @@ model f_trigger {
   updated_at? : DateTime @default(now()),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
+  @system,
   @comment("触发器配置")
 }
 
@@ -244,6 +255,7 @@ model f_job_execution_log {
   @index(name:"IDX_JOB_EXEC_START_TIME", unique: false, fields: [start_time]),
   @index(name:"IDX_JOB_EXEC_SUCCESS", unique: false, fields: [is_success]),
   @index(name:"IDX_JOB_EXEC_COMPOSITE", unique: false, fields: [trigger_id, start_time]),
+  @system,
   @comment("作业执行日志")
 }
 
@@ -256,6 +268,7 @@ model f_function {
   updated_by? : String @comment("更新人"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @system,
   @comment("云函数(项目级资源)")
 }
 
@@ -266,26 +279,31 @@ model f_function_log {
   level : String @comment("日志级别(log/warn/error)"),
   message : String @comment("日志消息"),
   created_at? : DateTime @default(now()) @comment("记录时间"),
+  @system,
   @comment("云函数执行日志")
 }
 
 enum TriggerType {
   EVENT,
-  SCHEDULED
+  SCHEDULED,
+  @system
 }
 
 enum ApiType {
   FOLDER,
-  API
+  API,
+  @system
 }
 
 enum DatasourceType {
   SYSTEM,
-  USER
+  USER,
+  @system
 }
 
 enum BucketVisibility {
   PRIVATE,
   AUTHENTICATED,
-  PUBLIC
+  PUBLIC,
+  @system
 }

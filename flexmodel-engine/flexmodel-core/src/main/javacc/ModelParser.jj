@@ -166,12 +166,14 @@ public class ModelParser {
         }
     }
 
-    // Enumeration 对象，保存枚举名称和枚举值列表
+    // Enumeration 对象，保存枚举名称、枚举值列表和枚举级注解
     public static class Enumeration implements ASTNode {
         public String name;
         public List<String> elements = new ArrayList();
+        public List<Annotation> annotations = new ArrayList<>();
         public Enumeration(String name) { this.name = name; }
         public void addElement(String value) { elements.add(value); }
+        public void addAnnotation(Annotation ann) { annotations.add(ann); }
 
         @Override
         public String toString() {
@@ -179,6 +181,9 @@ public class ModelParser {
             sb.append("enum ").append(name).append(" {\n");
             for (String e : elements) {
                 sb.append("  ").append(e).append(",\n");
+            }
+            for (Annotation ann : annotations) {
+                sb.append("  ").append(ann.toString()).append(",\n");
             }
             sb.append("}");
             return sb.toString();
@@ -554,10 +559,26 @@ Enumeration EnumDeclaration() : { String enumName; Enumeration enu; }
     { return enu; }
 }
 
-/* 解析枚举体，要求至少有一个枚举值，并允许最后一个元素后跟可选逗号 */
+/* 解析枚举体，要求至少有一个枚举值，之后可跟枚举级注解 */
 void EnumBody(Enumeration enu) : {}
 {
-    EnumValue(enu) ( <COMMA> EnumValue(enu) )* ( <COMMA> )?
+    EnumValue(enu)
+    (
+        <COMMA>
+        ( LOOKAHEAD(<AT>) EnumAnnotation(enu) | EnumValue(enu) )
+    )*
+    ( <COMMA> )?
+}
+
+/* 解析枚举级注解 */
+void EnumAnnotation(Enumeration enu) : { String annName; Annotation ann; }
+{
+    <AT> annName = Identifier()
+    {
+       ann = new Annotation(annName);
+       enu.addAnnotation(ann);
+    }
+    ( <LPAREN> AnnotationArguments(ann) <RPAREN> )?
 }
 
 /* 解析单个枚举值 */

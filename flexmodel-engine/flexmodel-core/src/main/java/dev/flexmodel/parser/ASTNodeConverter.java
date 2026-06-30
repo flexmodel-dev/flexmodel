@@ -47,6 +47,9 @@ public class ASTNodeConverter {
       if (mAnno.name.equals("comment")) {
         entity.setComment((String) mAnno.parameters.get("value"));
       }
+      if (mAnno.name.equals("system")) {
+        entity.setSystem(true);
+      }
       // 处理索引语法
       if (mAnno.name.equals("index")) {
         IndexDefinition index = new IndexDefinition(entity.getName());
@@ -164,6 +167,15 @@ public class ASTNodeConverter {
   public static EnumDefinition toSchemaEnum(ModelParser.Enumeration idlEnum) {
     EnumDefinition anEnum = new EnumDefinition(idlEnum.name);
     anEnum.setElements(idlEnum.elements);
+    // 处理枚举级别的注解
+    for (ModelParser.Annotation mAnno : idlEnum.annotations) {
+      if (mAnno.name.equals("comment")) {
+        anEnum.setComment((String) mAnno.parameters.get("value"));
+      }
+      if (mAnno.name.equals("system")) {
+        anEnum.setSystem(true);
+      }
+    }
     return anEnum;
   }
 
@@ -211,6 +223,11 @@ public class ASTNodeConverter {
       }
       indexAnno.parameters.put("fields", fields);
       model.annotations.add(indexAnno);
+    }
+
+    // 处理 system 标识
+    if (entity.isSystem()) {
+      model.annotations.add(new ModelParser.Annotation("system"));
     }
 
     return model;
@@ -284,6 +301,15 @@ public class ASTNodeConverter {
   public static ModelParser.Enumeration fromSchemaEnum(EnumDefinition schemaEnum) {
     ModelParser.Enumeration enumeration = new ModelParser.Enumeration(schemaEnum.getName());
     enumeration.elements = new ArrayList<>(schemaEnum.getElements());
+    // 处理枚举级注解
+    if (schemaEnum.getComment() != null) {
+      ModelParser.Annotation commentAnno = new ModelParser.Annotation("comment");
+      commentAnno.parameters.put("value", schemaEnum.getComment());
+      enumeration.annotations.add(commentAnno);
+    }
+    if (schemaEnum.isSystem()) {
+      enumeration.annotations.add(new ModelParser.Annotation("system"));
+    }
     return enumeration;
   }
 

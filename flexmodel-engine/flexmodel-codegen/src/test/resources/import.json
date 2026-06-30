@@ -124,16 +124,6 @@
         },
         {
           "type": "String",
-          "name": "tenant_id",
-          "modelName": "flow_definition",
-          "comment": null,
-          "unique": false,
-          "nullable": true,
-          "defaultValue": null,
-          "length": 255
-        },
-        {
-          "type": "String",
           "name": "flow_key",
           "modelName": "flow_definition",
           "comment": null,

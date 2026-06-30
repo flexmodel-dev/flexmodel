@@ -43,14 +43,10 @@ public class AuditDataEventListener implements EventListener {
     }
     SessionFactory sf = event.getSource();
     EntityDefinition entity = (EntityDefinition) sf.getModelRegistry().getRegistered(event.getSchemaName(), event.getModelName());
-    TypedField<?, ?> projectIdField = entity.getField("tenant_id");
     TypedField<?, ?> createdByField = entity.getField("created_by");
     TypedField<?, ?> updatedByField = entity.getField("updated_by");
     TypedField<?, ?> createdAtField = entity.getField("created_at");
     TypedField<?, ?> updatedAtField = entity.getField("updated_at");
-    if (projectIdField != null && newData.get("tenant_id") == null && projectId != null) {
-      newData.put("tenant_id", projectId);
-    }
     if (event instanceof PreInsertEvent) {
       if (createdByField != null && newData.get("created_by") == null && userId != null) {
         newData.put("created_by", userId);
@@ -70,28 +66,7 @@ public class AuditDataEventListener implements EventListener {
   }
 
   private void invokeQuery(PreChangeEvent event) {
-    Query query = event.getQuery();
-    if (query == null) {
-      return;
-    }
-    String projectId = SessionContextHolder.getProjectId();
-    if (projectId == null) {
-      return;
-    }
-    SessionFactory sf = event.getSource();
-    EntityDefinition entity = (EntityDefinition) sf.getModelRegistry().getRegistered(event.getSchemaName(), event.getModelName());
-    TypedField<?, ?> projectIdField = entity.getField("tenant_id");
-    if (projectIdField == null) {
-      return;
-    }
-    List<Map<String, Object>> andList = new ArrayList<>();
-    andList.add(Map.of("tenant_id", Map.of("_eq", projectId)));
-    if (query.getFilter() != null) {
-      @SuppressWarnings("all")
-      Map<String, Object> filterMap = JsonUtils.parseToObject(query.getFilter(), Map.class);
-      andList.add(filterMap);
-    }
-    query.setFilter(JsonUtils.toJsonString(Map.of("_and", andList)));
+    // 拦截查询
   }
 
 }

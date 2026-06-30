@@ -4,3 +4,6 @@
 [submodule "flexmodel-website"]
 	path = flexmodel-website
 	url = git@github.com:flexmodel-dev/flexmodel-website.git
+[submodule "flexmodel-sdks"]
+	path = flexmodel-sdks
+	url = git@github.com:flexmodel-dev/flexmodel-sdks.git

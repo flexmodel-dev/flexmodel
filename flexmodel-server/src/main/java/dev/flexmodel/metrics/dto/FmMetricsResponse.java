@@ -19,7 +19,7 @@ public class FmMetricsResponse {
   /**
    * 模型数量
    */
-  private int modelCount;
+  private long modelCount;
   /**
    * 分支数量
    */

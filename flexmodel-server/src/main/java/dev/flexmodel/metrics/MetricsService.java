@@ -1,6 +1,7 @@
 package dev.flexmodel.metrics;
 
 import dev.flexmodel.metrics.dto.FmMetricsResponse;
+import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -38,10 +39,13 @@ public class MetricsService {
   JobExecutionLogService jobExecutionLogService;
   @Inject
   BranchService branchService;
+  @Inject
+  ProjectService projectService;
 
   public FmMetricsResponse getFmMetrics(String projectId) {
     try {
-      Integer modelCount = modelService.count(projectId);
+      long modelCount = modelService.findAll(projectId, projectService.resolveDatabaseName(projectId)).stream()
+        .filter(model -> !model.isSystem()).count();
       int branchCount = branchService.listBranches(projectId).size();
       long reqLogCount = apiLogService.count(projectId, TRUE);
       long flowDefCount = flowDefService.count(projectId, Expressions.field(FlowDefinition::getIsDeleted).eq(false));

@@ -192,6 +192,9 @@ public class ProjectService {
     if (project.getDatabaseName() == null) {
       project.setDatabaseName(existingProject.getDatabaseName());
     }
+    if(project.getMetadata()==null) {
+      project.setMetadata(existingProject.getMetadata());
+    }
     return projectRepository.save(project);
   }
 

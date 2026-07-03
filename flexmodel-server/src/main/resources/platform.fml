@@ -6,6 +6,7 @@ model f_project {
   parent_project_id?: String @comment("父项目ID, 分支项目指向其父项目"),
   database_name?: String @comment("项目数据库名称"),
   owner_id?: String @comment("所有者 ID"),
+  metadata?: JSON @comment("元数据"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),

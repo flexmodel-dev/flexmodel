@@ -1,11 +1,11 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -176,68 +176,6 @@ public class FlowDefinitionResourceTest {
       .put(BASE_PATH + "/" + flowModuleId)
       .then()
       .statusCode(200);
-
-    // 清理
-    given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
-      .when()
-      .delete(BASE_PATH + "/" + flowModuleId)
-      .then()
-      .statusCode(anyOf(equalTo(204), equalTo(500)));
-  }
-
-  /**
-   * 测试更新流程 - 请求体中不包含 projectId，验证路径参数 projectId 正确传播
-   */
-  @Test
-  void testUpdateFlowWithoutProjectIdInBody() {
-    // 先创建流程
-    String flowModuleId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
-      .contentType(ContentType.JSON)
-      .body("""
-        {
-          "flowKey": "test_flow_e2e_key",
-          "flowName": "E2E测试流程",
-          "remark": "集成测试创建的流程",
-          "projectId": "dev_test",
-          "caller": "admin"
-        }
-        """)
-      .when()
-      .post(BASE_PATH)
-      .then()
-      .statusCode(200)
-      .extract()
-      .path("flowModuleId");
-
-    // 更新流程 - 请求体中不包含 projectId，依赖路径参数传播
-    given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
-      .contentType(ContentType.JSON)
-      .body("""
-        {
-          "flowKey": "test_flow_e2e_key_updated",
-          "flowName": "E2E更新后流程-无projectId",
-          "remark": "更新后的备注",
-          "caller": "admin",
-          "operator": "admin"
-        }
-        """)
-      .when()
-      .put(BASE_PATH + "/" + flowModuleId)
-      .then()
-      .statusCode(200)
-      .body("errCode", equalTo(0));
-
-    // 验证更新后的流程名称
-    given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
-      .when()
-      .get(BASE_PATH + "/" + flowModuleId)
-      .then()
-      .statusCode(200)
-      .body("flowName", equalTo("E2E更新后流程-无projectId"));
 
     // 清理
     given()

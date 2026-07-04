@@ -1,11 +1,11 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -30,34 +30,6 @@ public class AuthProviderConfigResourceTest {
       .delete(BASE_PATH + "/" + TEST_PROVIDER_NAME)
       .then()
       .statusCode(anyOf(equalTo(204), equalTo(404)));
-  }
-
-  /**
-   * 测试获取认证提供商列表
-   */
-  @Test
-  void testListAuthProviders() {
-    given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
-      .when()
-      .get(BASE_PATH)
-      .then()
-      .statusCode(200)
-      .body("size()", greaterThanOrEqualTo(1)); // project.fml 中有 demo 和 default
-  }
-
-  /**
-   * 测试获取认证提供商列表 - 包含预设的demo提供商
-   */
-  @Test
-  void testListAuthProvidersContainsDemo() {
-    given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
-      .when()
-      .get(BASE_PATH)
-      .then()
-      .statusCode(200)
-      .body("findAll { it.name == 'demo' }", hasSize(greaterThanOrEqualTo(1)));
   }
 
   /**

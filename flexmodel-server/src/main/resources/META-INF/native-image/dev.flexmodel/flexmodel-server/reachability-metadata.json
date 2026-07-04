@@ -9,6 +9,13 @@
       "type": "com.mysql.cj.jdbc.MysqlDataSource",
       "allPublicConstructors": true,
       "allPublicMethods": true
+    },
+    {
+      "type": "io.agroal.pool.DataSource",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
     }
   ]
 }

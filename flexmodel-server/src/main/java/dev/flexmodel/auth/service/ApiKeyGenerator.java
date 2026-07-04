@@ -1,7 +1,5 @@
 package dev.flexmodel.auth.service;
 
-import io.quarkus.runtime.annotations.RuntimeInitialize;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -13,11 +11,11 @@ import java.util.HexFormat;
  * 生成格式：fm_ak_{type}_{random40chars}
  * 存储 SHA-256 哈希，不存原文。
  *
- * <p>使用 {@link RuntimeInitialize} 标记类在运行时初始化，避免 {@link SecureRandom}
- * 实例在 Native Image 构建期被嵌入 image heap（GraalVM 禁止 Random 类实例进入 image heap，
- * 否则种子值会被缓存导致运行时随机性失效）。
+ * <p>注意：本类包含 {@code static final SecureRandom} 字段，必须在 Native Image 运行时初始化，
+ * 否则 GraalVM 在构建期会因 Random 实例进入 image heap 而报错。运行时初始化通过
+ * {@code application.properties} 中的 {@code quarkus.native.additional-build-args}
+ * 配置 {@code --initialize-at-run-time} 实现。
  */
-@RuntimeInitialize
 public class ApiKeyGenerator {
 
   private static final SecureRandom RANDOM = new SecureRandom();

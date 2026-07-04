@@ -84,6 +84,12 @@
       <artifactId>HikariCP</artifactId>
       <scope>compile</scope>
     </dependency>
+    <!-- HikariCP optional dependency: required at native-image build time
+         (HikariPool references com.codahale.metrics.MetricRegistry) -->
+    <dependency>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-container-image-docker</artifactId>

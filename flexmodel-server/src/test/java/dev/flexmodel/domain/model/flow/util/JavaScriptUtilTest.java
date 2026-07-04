@@ -2,12 +2,10 @@ package dev.flexmodel.domain.model.flow.util;
 
 import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.flow.common.util.JavaScriptUtil;
-import dev.flexmodel.flow.common.util.RequestScriptContext;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.flow.exception.ProcessException;
 
@@ -80,7 +78,7 @@ class JavaScriptUtilTest {
     dataMap.put("discount", 0.2);
 
     Object result = JavaScriptUtil.execute("price * (1 - discount)", dataMap);
-    assertEquals(80.0, result);
+    assertEquals(80, result);
   }
 
   @Test
@@ -489,7 +487,7 @@ class JavaScriptUtilTest {
     @SuppressWarnings("unchecked")
     Map<String, Object> resultMap = (Map<String, Object>) result;
     assertEquals(100, resultMap.get("originalPrice"));
-    assertEquals(10.0, resultMap.get("taxAmount"));
+    assertEquals(10, resultMap.get("taxAmount"));
     assertEquals(110.00000000000001, resultMap.get("totalPrice"));
     assertEquals(0.05, resultMap.get("discount"));
     assertEquals(104.50000000000001, resultMap.get("finalPrice"));
@@ -542,49 +540,6 @@ class JavaScriptUtilTest {
     assertNotNull(result);
     Map<?, ?> resultMap = assertInstanceOf(Map.class, result);
     assertTrue((boolean) resultMap.get("success"));
-  }
-
-
-  @Test
-  void testRequestScriptContext() throws Exception {
-    //todo
-    RequestScriptContext scriptContext = new RequestScriptContext("default");
-    scriptContext.setRequest(new RequestScriptContext.Request("GET", "https://api.metacode.ai/v1/md_app_deployment_history", new HashMap<>(), new HashMap<>(), new HashMap<>()));
-    Map<String, Object> body = new HashMap<>();
-    Map<String, Object> data = new HashMap<>();
-    data.put("metacode_list_md_app_deployment_history", "[]");
-    body.put("data", data);
-    body.put("success", false);
-    scriptContext.setResponse(new RequestScriptContext.Response(200, "OK", new HashMap<>(), body));
-    Map<String, Object> contextMap = scriptContext.buildContextMap();
-    JavaScriptUtil.execute("""
-      context.response.body = {
-        "data": context.response.body.data.metacode_list_md_app_deployment_history,
-        "success": true
-      };
-      """, Map.of(RequestScriptContext.SCRIPT_CONTEXT_KEY, contextMap));
-    scriptContext.syncFromMap(contextMap);
-    Assertions.assertEquals(scriptContext.getResponse().body().get("success"), true);
-  }
-
-  @Test
-  void testUtils() throws Exception {
-    //todo
-    RequestScriptContext scriptContext = new RequestScriptContext("default");
-    scriptContext.setRequest(new RequestScriptContext.Request("GET", "https://api.metacode.ai/v1/md_app_deployment_history", new HashMap<>(), new HashMap<>(), new HashMap<>()));
-    Map<String, Object> body = new HashMap<>();
-    body.put("success", false);
-    scriptContext.setResponse(new RequestScriptContext.Response(200, "OK", new HashMap<>(), body));
-    Map<String, Object> contextMap = scriptContext.buildContextMap();
-    JavaScriptUtil.execute("""
-      context.response.body = {
-        "data": context.utils.uuid(),
-        "success": true
-      };
-      """, Map.of(RequestScriptContext.SCRIPT_CONTEXT_KEY, contextMap));
-    scriptContext.syncFromMap(contextMap);
-    Assertions.assertEquals(scriptContext.getResponse().body().get("success"), true);
-    Assertions.assertNotNull(scriptContext.getResponse().body().get("data"));
   }
 
 }

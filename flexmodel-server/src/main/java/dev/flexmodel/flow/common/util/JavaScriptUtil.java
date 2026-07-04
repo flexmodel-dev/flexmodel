@@ -10,7 +10,7 @@ import javax.script.*;
 import java.util.Map;
 
 /**
- * JavaScript执行工具类，使用GraalVM JavaScript ScriptEngine
+ * JavaScript执行工具类，使用 quickjs4j (QuickJS) ScriptEngine
  *
  * @author cjbi
  */
@@ -21,32 +21,15 @@ public class JavaScriptUtil {
   private static final ScriptEngineManager SCRIPT_ENGINE_MANAGER = new ScriptEngineManager();
   private static final ThreadLocal<ScriptEngine> ENGINE_THREAD_LOCAL = ThreadLocal.withInitial(() -> {
     try {
-      // 尝试获取GraalVM JavaScript引擎
-      ScriptEngine engine = SCRIPT_ENGINE_MANAGER.getEngineByName("graal.js");
+      ScriptEngine engine = SCRIPT_ENGINE_MANAGER.getEngineByName("quickjs4j");
       if (engine == null) {
-        LOGGER.warn("GraalVM JavaScript engine not found, trying JavaScript engine");
-        engine = SCRIPT_ENGINE_MANAGER.getEngineByName("JavaScript");
-      }
-      if (engine == null) {
-        throw new RuntimeException("No JavaScript engine available");
+        throw new RuntimeException("quickjs4j JavaScript engine not found on classpath");
       }
 
-      // 配置引擎选项
-      Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
-      if (bindings != null) {
-        // ECMAScript版本：使用最新标准
-        bindings.put("polyglot.js.ecmascript-version", "2023");
-        // 允许主机访问
-        bindings.put("polyglot.js.allowHostAccess", true);
-        bindings.put("polyglot.js.allowHostClassLookup", false);
-        // 兼容性设置
-        bindings.put("polyglot.js.nashorn-compat", false);
-      }
-
-      LOGGER.info("GraalVM JavaScript ScriptEngine initialized successfully");
+      LOGGER.info("quickjs4j JavaScript ScriptEngine initialized successfully");
       return engine;
     } catch (Exception e) {
-      LOGGER.error("Failed to initialize GraalVM JavaScript ScriptEngine", e);
+      LOGGER.error("Failed to initialize quickjs4j JavaScript ScriptEngine", e);
       throw new RuntimeException("Failed to initialize JavaScript engine", e);
     }
   });

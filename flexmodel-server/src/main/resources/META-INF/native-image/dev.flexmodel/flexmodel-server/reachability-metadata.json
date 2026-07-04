@@ -6262,6 +6262,16 @@
       "allPublicConstructors": true,
       "allDeclaredMethods": true,
       "allPublicMethods": true
+    },
+    {
+      "type": "java.lang.invoke.SerializedLambda",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true,
+      "unsafeAllocated": true
     }
   ],
   "resources": [
@@ -7192,6 +7202,14 @@
     },
     {
       "bundle": "org.hibernate.validator.ValidationMessages"
+    }
+  ],
+  "serialization": [
+    {
+      "type": "java.lang.invoke.SerializedLambda"
+    },
+    {
+      "type": "dev.flexmodel.query.Expressions$SFunction"
     }
   ]
 }

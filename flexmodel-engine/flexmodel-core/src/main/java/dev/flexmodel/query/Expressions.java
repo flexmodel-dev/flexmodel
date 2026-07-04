@@ -1,8 +1,8 @@
 package dev.flexmodel.query;
 
+import dev.flexmodel.annotation.ModelField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import dev.flexmodel.annotation.ModelField;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.SerializedLambda;
@@ -165,53 +165,63 @@ public class Expressions {
   }
 
   /**
-   * 获取目标类
+   * 尝试从 serializable lambda 中提取 SerializedLambda。
+   * 在 GraalVM native image 中，lambda 代理类的 writeReplace 方法可能无法通过反射访问，
+   * 此时返回 null 而非抛出异常。
+   */
+  private static SerializedLambda tryGetSerializedLambda(SFunction<?, ?> fn) {
+    try {
+      Method writeReplace = fn.getClass().getDeclaredMethod("writeReplace");
+      writeReplace.setAccessible(true);
+      Object result = writeReplace.invoke(fn);
+      if (result instanceof SerializedLambda) {
+        return (SerializedLambda) result;
+      }
+    } catch (NoSuchMethodException e) {
+      // GraalVM native image: lambda proxy class 未暴露 writeReplace 方法
+      log.warn("无法从 lambda 获取 writeReplace 方法 (native image 限制): {}", e.getMessage());
+    } catch (Exception e) {
+      log.error("提取 SerializedLambda 失败: {}", e.getMessage());
+    }
+    return null;
+  }
+
+  /**
+   * 获取目标类（从 serializable lambda 中提取）
    */
   private static <T, R> Class<?> getTargetClass(SFunction<T, R> fn) {
+    SerializedLambda serializedLambda = tryGetSerializedLambda(fn);
+    if (serializedLambda == null) {
+      return null;
+    }
     try {
-      Method declaredMethod = fn.getClass().getDeclaredMethod("writeReplace");
-      declaredMethod.setAccessible(Boolean.TRUE);
-      SerializedLambda serializedLambda = (SerializedLambda) declaredMethod.invoke(fn);
       String implClass = serializedLambda.getImplClass();
-
-      // 尝试多种类加载策略
       String className = implClass.replace('/', '.');
 
-      // 策略1: 使用当前线程的类加载器
       try {
         return Class.forName(className);
       } catch (ClassNotFoundException e1) {
-        // 策略2: 使用系统类加载器
         try {
           return Class.forName(className, false, ClassLoader.getSystemClassLoader());
         } catch (ClassNotFoundException e2) {
-          // 策略3: 使用 lambda 表达式的类加载器
           try {
             return Class.forName(className, false, fn.getClass().getClassLoader());
           } catch (ClassNotFoundException e3) {
-            // 策略4: 尝试从上下文类加载器加载
-            try {
-              ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-              if (contextClassLoader != null) {
-                return Class.forName(className, false, contextClassLoader);
+            ClassLoader ctxLoader = Thread.currentThread().getContextClassLoader();
+            if (ctxLoader != null) {
+              try {
+                return Class.forName(className, false, ctxLoader);
+              } catch (ClassNotFoundException e4) {
+                log.error("无法加载类: {}，错误: {}", className, e4.getMessage());
               }
-            } catch (ClassNotFoundException e4) {
-              // 所有策略都失败了，记录日志并返回 null
-              log.error("无法加载类: " + className +
-                        "，错误: " + e4.getMessage() +
-                        "，lambda 类: " + fn.getClass().getName());
             }
           }
         }
       }
-
-      return null;
     } catch (Exception e) {
-      // 如果获取 SerializedLambda 失败，记录详细错误信息
-      log.error("获取 SerializedLambda 失败: " + e.getMessage());
-      e.printStackTrace();
-      return null;
+      log.error("获取目标类失败: {}", e.getMessage());
     }
+    return null;
   }
 
   /**
@@ -219,10 +229,8 @@ public class Expressions {
    */
   private static Field findFieldByName(Class<?> clazz, String fieldName) {
     try {
-      // 首先尝试直接获取字段
       return clazz.getDeclaredField(fieldName);
     } catch (NoSuchFieldException e) {
-      // 如果直接找不到，遍历所有字段查找
       Field[] fields = clazz.getDeclaredFields();
       for (Field field : fields) {
         if (field.getName().equals(fieldName)) {
@@ -233,22 +241,22 @@ public class Expressions {
     }
   }
 
+  /**
+   * 从 serializable lambda 方法引用中提取方法名。
+   * 例如：User::getName -> "getName"
+   * <p>
+   * GraalVM native image 兼容：当 writeReplace 不可用时返回 null。
+   */
   public static String getMethodName(SFunction<?, ?> fn) {
-    try {
-      // 获取 writeReplace 方法
-      Method method = fn.getClass().getDeclaredMethod("writeReplace");
-      method.setAccessible(true);
-
-      // 获取 SerializedLambda
-      Object serializedForm = method.invoke(fn);
-      if (serializedForm instanceof SerializedLambda) {
-        SerializedLambda lambda = (SerializedLambda) serializedForm;
-        return lambda.getImplMethodName(); // e.g. getName
-      }
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to extract method name from lambda", e);
+    SerializedLambda serializedLambda = tryGetSerializedLambda(fn);
+    if (serializedLambda != null) {
+      return serializedLambda.getImplMethodName();
     }
-    return null;
+    throw new RuntimeException(
+      "Failed to extract method name from lambda. " +
+        "java.lang.invoke.SerializedLambda.writeReplace() is not available in native image. " +
+        "Ensure reachability-metadata.json includes SerializedLambda with unsafeAllocated=true. " +
+        "Lambda class: " + fn.getClass().getName());
   }
 
 }

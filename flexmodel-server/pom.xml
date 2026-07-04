@@ -84,17 +84,6 @@
       <artifactId>HikariCP</artifactId>
       <scope>compile</scope>
     </dependency>
-    <!-- HikariCP optional dependencies: required at native-image build time
-         (HikariPool references these classes via optional deps, GraalVM
-         eagerly resolves all referenced types during analysis) -->
-    <dependency>
-      <groupId>io.dropwizard.metrics</groupId>
-      <artifactId>metrics-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-core</artifactId>
-    </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-container-image-docker</artifactId>
@@ -291,6 +280,25 @@
         <skipITs>false</skipITs>
         <quarkus.native.enabled>true</quarkus.native.enabled>
       </properties>
+      <dependencies>
+        <!-- HikariCP optional dependencies: required at native-image build time.
+             HikariPool.<init> references these classes via optional deps.
+             JVM 模式下字节码延迟解析，缺失不影响运行；但 GraalVM native image
+             构建时静态分析会强制解析所有引用类型，缺失则报 UnresolvedElementException。
+             这里一次性列出全部，避免逐个补充。 -->
+        <dependency>
+          <groupId>io.dropwizard.metrics</groupId>
+          <artifactId>metrics-core</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>io.dropwizard.metrics</groupId>
+          <artifactId>metrics-healthchecks</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>io.micrometer</groupId>
+          <artifactId>micrometer-core</artifactId>
+        </dependency>
+      </dependencies>
     </profile>
   </profiles>
 </project>

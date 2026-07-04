@@ -84,11 +84,16 @@
       <artifactId>HikariCP</artifactId>
       <scope>compile</scope>
     </dependency>
-    <!-- HikariCP optional dependency: required at native-image build time
-         (HikariPool references com.codahale.metrics.MetricRegistry) -->
+    <!-- HikariCP optional dependencies: required at native-image build time
+         (HikariPool references these classes via optional deps, GraalVM
+         eagerly resolves all referenced types during analysis) -->
     <dependency>
       <groupId>io.dropwizard.metrics</groupId>
       <artifactId>metrics-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-core</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>

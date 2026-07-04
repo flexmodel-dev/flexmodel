@@ -5,10 +5,10 @@ import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
+import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.sql.JdbcSchemaProvider;
-import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -157,6 +157,9 @@ public class SchemaRegistry {
     dev.flexmodel.common.config.EngineConfig.ensureSqliteParentDir(jdbcUrl);
     HikariDataSource ds = new HikariDataSource();
     ds.setJdbcUrl(jdbcUrl);
+    // 显式指定 JDBC 驱动类，避免在 native image 中依赖 DriverManager 的 SPI 自动注册
+    dev.flexmodel.common.config.EngineConfig.resolveDriverClassName(jdbcUrl)
+      .ifPresent(ds::setDriverClassName);
     if (username != null) ds.setUsername(username);
     if (password != null) ds.setPassword(password);
     ds.setMaximumPoolSize(10);

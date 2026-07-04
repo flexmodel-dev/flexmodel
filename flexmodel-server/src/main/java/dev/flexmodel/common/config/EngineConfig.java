@@ -1,25 +1,26 @@
 package dev.flexmodel.common.config;
 
 import com.zaxxer.hikari.HikariDataSource;
+import dev.flexmodel.codegen.entity.Branch;
+import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.common.AuditDataEventListener;
+import dev.flexmodel.common.FlexmodelConfig;
 import dev.flexmodel.common.SchemaRegistry;
+import dev.flexmodel.project.BranchRepository;
+import dev.flexmodel.project.ProjectService;
+import dev.flexmodel.realtime.RealtimeEventListener;
+import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
+import dev.flexmodel.session.SessionFactory;
+import dev.flexmodel.sql.JdbcSchemaProvider;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Produces;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.common.AuditDataEventListener;
-import dev.flexmodel.realtime.RealtimeEventListener;
-import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
-import dev.flexmodel.codegen.entity.Branch;
-import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.project.BranchRepository;
-import dev.flexmodel.project.ProjectService;
-import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.sql.JdbcSchemaProvider;
 
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author cjbi
@@ -78,6 +79,9 @@ public class EngineConfig {
     ensureSqliteParentDir(config.url());
     HikariDataSource ds = new HikariDataSource();
     ds.setJdbcUrl(config.url());
+    // 显式指定 JDBC 驱动类，避免在 native image 中依赖 DriverManager 的 SPI 自动注册
+    // （GraalVM native image 默认禁用 ServiceLoader，DriverManager.getDriver() 会返回 null）
+    resolveDriverClassName(config.url()).ifPresent(ds::setDriverClassName);
     ds.setUsername(config.username().orElse(null));
     ds.setPassword(config.password().orElse(null));
     // 连接池最大连接数
@@ -112,6 +116,33 @@ public class EngineConfig {
         }
       }
     }
+  }
+
+  /**
+   * 根据 JDBC URL 解析对应的驱动类名。
+   * 在 native image 中，HikariCP 不能通过 DriverManager 的 SPI 自动查找驱动，
+   * 需要显式设置 driverClassName 让 HikariCP 直接加载驱动类。
+   */
+  public static Optional<String> resolveDriverClassName(String jdbcUrl) {
+    if (jdbcUrl == null) {
+      return Optional.empty();
+    }
+    if (jdbcUrl.startsWith("jdbc:sqlite:")) {
+      return Optional.of("org.sqlite.JDBC");
+    }
+    if (jdbcUrl.startsWith("jdbc:mysql:") || jdbcUrl.startsWith("jdbc:mariadb:")) {
+      return Optional.of("com.mysql.cj.jdbc.Driver");
+    }
+    if (jdbcUrl.startsWith("jdbc:postgresql:")) {
+      return Optional.of("org.postgresql.Driver");
+    }
+    if (jdbcUrl.startsWith("jdbc:oracle:")) {
+      return Optional.of("oracle.jdbc.OracleDriver");
+    }
+    if (jdbcUrl.startsWith("jdbc:sqlserver:")) {
+      return Optional.of("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+    }
+    return Optional.empty();
   }
 
 }

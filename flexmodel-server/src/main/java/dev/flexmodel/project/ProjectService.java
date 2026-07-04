@@ -257,11 +257,16 @@ public class ProjectService {
    */
   static DataSource getSystemDataSource(FlexmodelConfig flexmodelConfig) {
     FlexmodelConfig.DatasourceConfig config = flexmodelConfig.datasources().get(EngineConfig.SYSTEM_DS_KEY);
-    // 在 native image 中显式注册 JDBC 驱动到 DriverManager
-    EngineConfig.registerDriverIfNeeded(config.url());
+    // 在 native image 中直接创建底层 DataSource，绕过 DriverManager
+    javax.sql.DataSource underlyingDs = EngineConfig.createUnderlyingDataSource(
+      config.url(), config.username().orElse(null), config.password().orElse(null));
     HikariDataSource ds = new HikariDataSource();
     ds.setMaxLifetime(30000);
-    ds.setJdbcUrl(config.url());
+    if (underlyingDs != null) {
+      ds.setDataSource(underlyingDs);
+    } else {
+      ds.setJdbcUrl(config.url());
+    }
     ds.setUsername(config.username().orElse(null));
     ds.setPassword(config.password().orElse(null));
     return ds;

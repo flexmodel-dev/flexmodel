@@ -1,5 +1,6 @@
 package dev.flexmodel.common.config;
 
+import com.mysql.cj.jdbc.MysqlDataSource;
 import com.zaxxer.hikari.HikariDataSource;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
@@ -17,10 +18,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Produces;
 import lombok.extern.slf4j.Slf4j;
+import org.sqlite.SQLiteDataSource;
 
+import javax.sql.DataSource;
 import java.io.File;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -75,15 +76,23 @@ public class EngineConfig {
 
   /**
    * 创建优化配置的 HikariDataSource，包含连接泄漏检测和合理的超时设置。
+   * <p>
+   * 在 native image 中，HikariCP 不能通过 DriverManager 的 SPI 自动查找驱动，
+   * 因此直接创建底层 DataSource（如 SQLiteDataSource）并传给 HikariCP，
+   * 完全绕过 DriverManager。
    */
   static HikariDataSource createDataSource(FlexmodelConfig.DatasourceConfig config) {
     ensureSqliteParentDir(config.url());
     HikariDataSource ds = new HikariDataSource();
-    ds.setJdbcUrl(config.url());
-    // 在 native image 中 DriverManager 的 SPI 自动注册被禁用，需要显式注册驱动
-    registerDriverIfNeeded(config.url());
-    ds.setUsername(config.username().orElse(null));
-    ds.setPassword(config.password().orElse(null));
+    // 直接设置底层 DataSource，绕过 DriverManager
+    DataSource underlyingDs = createUnderlyingDataSource(config);
+    if (underlyingDs != null) {
+      ds.setDataSource(underlyingDs);
+    } else {
+      ds.setJdbcUrl(config.url());
+    }
+    config.username().ifPresent(ds::setUsername);
+    config.password().ifPresent(ds::setPassword);
     // 连接池最大连接数
     ds.setMaximumPoolSize(10);
     // 获取连接超时：10 秒（默认 30 秒），快速失败而非长时间阻塞
@@ -97,6 +106,35 @@ public class EngineConfig {
     // 连接验证超时：3 秒
     ds.setValidationTimeout(3000);
     return ds;
+  }
+
+  /**
+   * 根据 JDBC URL 创建对应的底层 DataSource。
+   * 在 native image 中直接实例化驱动厂商的 DataSource，
+   * 绕过 DriverManager 的 SPI 自动注册机制。
+   */
+  public static DataSource createUnderlyingDataSource(String url, String username, String password) {
+    if (url == null) {
+      return null;
+    }
+    if (url.startsWith("jdbc:sqlite:")) {
+      SQLiteDataSource sqliteDs = new SQLiteDataSource();
+      sqliteDs.setUrl(url);
+      return sqliteDs;
+    }
+    if (url.startsWith("jdbc:mysql:") || url.startsWith("jdbc:mariadb:")) {
+      MysqlDataSource mysqlDs = new MysqlDataSource();
+      mysqlDs.setUrl(url);
+      if (username != null) mysqlDs.setUser(username);
+      if (password != null) mysqlDs.setPassword(password);
+      return mysqlDs;
+    }
+    return null;
+  }
+
+  private static DataSource createUnderlyingDataSource(FlexmodelConfig.DatasourceConfig config) {
+    return createUnderlyingDataSource(config.url(),
+      config.username().orElse(null), config.password().orElse(null));
   }
 
   /**
@@ -115,36 +153,6 @@ public class EngineConfig {
           parentDir.mkdirs();
         }
       }
-    }
-  }
-
-  /**
-   * 根据 JDBC URL 显式注册对应的驱动到 DriverManager。
-   * 在 native image 中，JDBC 驱动的 SPI 自动注册被禁用，
-   * DriverManager.getDriver() 会返回 null，导致 HikariCP 报 "No suitable driver"。
-   * 这里直接实例化驱动类并注册，绕过 Class.forName() 的反射限制。
-   */
-  public static void registerDriverIfNeeded(String jdbcUrl) {
-    if (jdbcUrl == null) {
-      return;
-    }
-    try {
-      if (jdbcUrl.startsWith("jdbc:sqlite:") && !isDriverRegistered("jdbc:sqlite:")) {
-        DriverManager.registerDriver(new org.sqlite.JDBC());
-      } else if ((jdbcUrl.startsWith("jdbc:mysql:") || jdbcUrl.startsWith("jdbc:mariadb:"))
-        && !isDriverRegistered("jdbc:mysql:")) {
-        DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
-      }
-    } catch (Exception e) {
-      log.warn("Failed to register JDBC driver for url: {}", jdbcUrl, e);
-    }
-  }
-
-  private static boolean isDriverRegistered(String jdbcUrl) {
-    try {
-      return DriverManager.getDriver(jdbcUrl) != null;
-    } catch (SQLException e) {
-      return false;
     }
   }
 

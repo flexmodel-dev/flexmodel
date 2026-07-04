@@ -2,12 +2,12 @@ package dev.flexmodel.domain.model.flow.util;
 
 import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.flow.common.util.JavaScriptUtil;
+import dev.flexmodel.flow.exception.ProcessException;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.flow.exception.ProcessException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -541,5 +541,6 @@ class JavaScriptUtilTest {
     Map<?, ?> resultMap = assertInstanceOf(Map.class, result);
     assertTrue((boolean) resultMap.get("success"));
   }
+
 
 }

@@ -2,6 +2,7 @@ package dev.flexmodel.flow.executor;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import jakarta.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.flexmodel.codegen.entity.InstanceData;
@@ -12,6 +13,8 @@ import dev.flexmodel.flow.common.InstanceDataType;
 import dev.flexmodel.flow.common.NodeInstanceStatus;
 import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.JavaScriptUtil;
+import dev.flexmodel.functions.FunctionService;
+import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
@@ -37,6 +40,9 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
   @Inject
   SessionFactory sessionFactory;
+
+  @Inject
+  FunctionService functionService;
 
   @Override
   protected void doExecute(RuntimeContext runtimeContext) throws ProcessException {
@@ -68,13 +74,14 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
     try {
       Object result;
-      // CRUD 操作不需要 script 参数
+      // CRUD 操作和云函数调用不需要 script 参数
       if (subType.equalsIgnoreCase("insert_record") ||
           subType.equalsIgnoreCase("update_record") ||
           subType.equalsIgnoreCase("delete_record") ||
-          subType.equalsIgnoreCase("query_record")) {
-        // 执行 CRUD 操作
-        result = executeAction(subType, null, nodeInstance, runtimeContext.getInstanceDataMap());
+          subType.equalsIgnoreCase("query_record") ||
+          subType.equalsIgnoreCase("function")) {
+        // 执行 CRUD 操作或云函数调用
+        result = executeAction(subType, null, nodeInstance, runtimeContext);
       } else {
         // 获取脚本内容（用于 js、sql 等脚本类型）
         Object scriptObj = nodeInstance.get("script");
@@ -92,7 +99,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
         }
 
         // 执行脚本
-        result = executeAction(subType, script, nodeInstance, runtimeContext.getInstanceDataMap());
+        result = executeAction(subType, script, nodeInstance, runtimeContext);
       }
 
       // 处理执行结果
@@ -143,7 +150,8 @@ public class ServiceTaskExecutor extends ElementExecutor {
   /**
    * 执行脚本或CRUD操作
    */
-  private Object executeAction(String subType, String script, NodeInstanceBO nodeInstance, Map<String, Object> contextData) throws Exception {
+  private Object executeAction(String subType, String script, NodeInstanceBO nodeInstance, RuntimeContext runtimeContext) throws Exception {
+    Map<String, Object> contextData = runtimeContext.getInstanceDataMap();
     switch (subType.toLowerCase()) {
       case "script" -> {
         LOGGER.debug("executeScript: executing JavaScript script.||script={}", script);
@@ -164,6 +172,11 @@ public class ServiceTaskExecutor extends ElementExecutor {
       }
       case "query_record" -> {
         return executeQueryRecord(nodeInstance, contextData);
+      }
+      case "function" -> {
+        LOGGER.debug("executeCloudFunction: invoking cloud function.||functionName={}",
+          nodeInstance.get("functionName"));
+        return executeCloudFunction(nodeInstance, contextData, runtimeContext.getProjectId());
       }
       default -> {
         LOGGER.error("executeScript: unsupported subType.||subType={}", subType);
@@ -547,6 +560,48 @@ public class ServiceTaskExecutor extends ElementExecutor {
       long endTime = System.currentTimeMillis() - beginTime;
       // 释放Session
       LOGGER.info("executeSqlScript: completed, executionTime={}ms", endTime);
+    }
+  }
+
+  /**
+   * 执行云函数调用
+   */
+  private Object executeCloudFunction(NodeInstanceBO nodeInstance, Map<String, Object> contextData, String projectId) {
+    String functionName = getRequiredProperty(nodeInstance, "functionName");
+
+    LOGGER.info("executeCloudFunction: invoking cloud function.||functionName={}||projectId={}",
+      functionName, projectId);
+
+    // 构建函数输入
+    Object inputData;
+    String inputPath = getOptionalProperty(nodeInstance, "inputPath");
+    if (StringUtils.isNotBlank(inputPath)) {
+      inputData = getInputData(inputPath, contextData);
+    } else {
+      inputData = contextData;
+    }
+
+    FunctionInvokeRequest request = new FunctionInvokeRequest();
+    request.setInput(inputData);
+
+    // 调用函数
+    Response response = functionService.invoke(projectId, functionName, request);
+
+    try {
+      if (response.getStatus() >= 200 && response.getStatus() < 300) {
+        Object result = response.readEntity(Object.class);
+        LOGGER.info("executeCloudFunction: cloud function completed successfully.||functionName={}||status={}",
+          functionName, response.getStatus());
+        return result;
+      } else {
+        String errorBody = response.hasEntity() ? response.readEntity(String.class) : "no response body";
+        LOGGER.error("executeCloudFunction: cloud function returned error.||functionName={}||status={}||body={}",
+          functionName, response.getStatus(), errorBody);
+        throw new ProcessException(ErrorEnum.SERVICE_TASK_EXECUTION_FAILED,
+          "云函数执行失败 [" + functionName + "]: HTTP " + response.getStatus() + " - " + errorBody);
+      }
+    } finally {
+      response.close();
     }
   }
 

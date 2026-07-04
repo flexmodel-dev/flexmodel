@@ -1,0 +1,7 @@
+interface:
+  display_name: "Design Style Loader"
+  short_description: "Read DESIGN.md and apply Flexmodel design tokens before any UI work"
+  default_prompt: "Use $design-style-loader to load the Flexmodel design system from DESIGN.md before writing or editing any UI, styling, components, or theme tokens."
+
+policy:
+  allow_implicit_invocation: true

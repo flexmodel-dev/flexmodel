@@ -61,7 +61,6 @@
 
 核心配置位于 `src/main/resources/application.properties`。
 - 数据库配置: 默认使用 SQLite，可根据需要切换。
-- AI 模型配置: 配置 `base-url` 和 `api-key` 以集成大模型。
 
 ## 📦 构建与部署
 

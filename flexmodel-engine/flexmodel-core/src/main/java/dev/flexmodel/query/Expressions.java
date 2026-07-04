@@ -166,20 +166,61 @@ public class Expressions {
 
   /**
    * 尝试从 serializable lambda 中提取 SerializedLambda。
-   * 在 GraalVM native image 中，lambda 代理类的 writeReplace 方法可能无法通过反射访问，
-   * 此时返回 null 而非抛出异常。
+   * <p>
+   * 策略：
+   * <ol>
+   *   <li>先尝试 {@code getDeclaredMethod("writeReplace")} — JVM 模式正常路径</li>
+   *   <li>失败则遍历 {@code getDeclaredMethods()} — GraalVM native image 中
+   *       lambda 类的 writeReplace 可能无法按名称查找，但遍历所有方法可找到</li>
+   *   <li>尝试 {@code getMethod}（查找 public 继承方法）</li>
+   * </ol>
    */
   private static SerializedLambda tryGetSerializedLambda(SFunction<?, ?> fn) {
+    Class<?> lambdaClass = fn.getClass();
+    Method writeReplace = null;
+
+    // 策略 1: getDeclaredMethod（JVM 模式正常路径）
     try {
-      Method writeReplace = fn.getClass().getDeclaredMethod("writeReplace");
+      writeReplace = lambdaClass.getDeclaredMethod("writeReplace");
+    } catch (NoSuchMethodException e) {
+      // GraalVM native image: getDeclaredMethod 找不到，尝试其他方式
+    }
+
+    // 策略 2: 遍历 getDeclaredMethods()（GraalVM 中按名查找可能失败但遍历可行）
+    if (writeReplace == null) {
+      try {
+        for (Method m : lambdaClass.getDeclaredMethods()) {
+          if ("writeReplace".equals(m.getName()) && m.getParameterCount() == 0) {
+            writeReplace = m;
+            break;
+          }
+        }
+      } catch (Exception ignored) {
+        // 如果 getDeclaredMethods() 也失败，继续尝试
+      }
+    }
+
+    // 策略 3: 从父类/接口查找（writeReplace 可能是继承来的）
+    if (writeReplace == null) {
+      try {
+        writeReplace = lambdaClass.getMethod("writeReplace");
+      } catch (NoSuchMethodException ignored) {
+        // writeReplace 不是 public 方法，这很正常
+      }
+    }
+
+    if (writeReplace == null) {
+      log.warn("无法获取 lambda 的 writeReplace 方法 (native image 限制): {}",
+        lambdaClass.getName());
+      return null;
+    }
+
+    try {
       writeReplace.setAccessible(true);
       Object result = writeReplace.invoke(fn);
-      if (result instanceof SerializedLambda) {
-        return (SerializedLambda) result;
+      if (result instanceof SerializedLambda serializedLambda) {
+        return serializedLambda;
       }
-    } catch (NoSuchMethodException e) {
-      // GraalVM native image: lambda proxy class 未暴露 writeReplace 方法
-      log.warn("无法从 lambda 获取 writeReplace 方法 (native image 限制): {}", e.getMessage());
     } catch (Exception e) {
       log.error("提取 SerializedLambda 失败: {}", e.getMessage());
     }

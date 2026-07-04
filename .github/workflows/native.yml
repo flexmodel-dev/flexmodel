@@ -26,7 +26,7 @@ jobs:
           cache-dependency-path: '**/pom.xml'
       - name: Build and push server image
         run: |
-          mvn -B -X -Dmaven.test.skip=true clean package -Pnative -pl flexmodel-server -am \
+          mvn -B -Dmaven.test.skip=true clean package -Pnative -pl flexmodel-server -am \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.container-image.image=cjbi/flexmodel-server:latest \

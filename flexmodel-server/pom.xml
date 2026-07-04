@@ -25,6 +25,13 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <dependency>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>quarkus-amazon-services-bom</artifactId>
+        <version>${quarkus.platform.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   <dependencies>
@@ -111,34 +118,32 @@
     </dependency>
     <!-- test start -->
     <dependency>
+      <groupId>io.quarkiverse.amazonservices</groupId>
+      <artifactId>quarkus-amazon-s3</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- test end -->
     <dependency>
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- test end -->
+    <!-- AWS SDK S3 -->
     <dependency>
       <groupId>io.quarkiverse.mcp</groupId>
       <artifactId>quarkus-mcp-server-http</artifactId>
       <version>1.12.0</version>
     </dependency>
-    <!-- AWS SDK S3 -->
-    <dependency>
-      <groupId>software.amazon.awssdk</groupId>
-      <artifactId>s3</artifactId>
-      <version>2.29.52</version>
-    </dependency>
-    <!-- quickjs4j: lightweight QuickJS-based JavaScript engine (GraalVM Native Image compatible) -->
+    <!-- quickjs4j JSR-223 ScriptEngine (javax.script integration) -->
     <dependency>
       <groupId>io.roastedroot</groupId>
       <artifactId>quickjs4j</artifactId>
       <version>0.1.0</version>
     </dependency>
-    <!-- quickjs4j JSR-223 ScriptEngine (javax.script integration) -->
     <dependency>
       <groupId>io.roastedroot</groupId>
       <artifactId>quickjs4j-scripting-experimental</artifactId>
@@ -164,8 +169,7 @@
             <schemas>
               <schema>
                 <name>system</name>
-                <import-script>
-                  src/main/resources/platform.fml,
+                <import-script>src/main/resources/platform.fml,
                   src/main/resources/project.fml
                 </import-script>
                 <packageName>dev.flexmodel.codegen</packageName>
@@ -173,8 +177,7 @@
               </schema>
               <schema>
                 <name>dev_test</name>
-                <import-script>
-                  src/main/resources/project.fml,
+                <import-script>src/main/resources/project.fml,
                   src/main/resources/dev_test.fml
                 </import-script>
                 <packageName>dev.flexmodel.test.codegen</packageName>

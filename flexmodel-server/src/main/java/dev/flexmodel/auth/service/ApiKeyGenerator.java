@@ -1,5 +1,7 @@
 package dev.flexmodel.auth.service;
 
+import io.quarkus.runtime.annotations.RuntimeInitialize;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -10,7 +12,12 @@ import java.util.HexFormat;
  * API Key 生成工具。
  * 生成格式：fm_ak_{type}_{random40chars}
  * 存储 SHA-256 哈希，不存原文。
+ *
+ * <p>使用 {@link RuntimeInitialize} 标记类在运行时初始化，避免 {@link SecureRandom}
+ * 实例在 Native Image 构建期被嵌入 image heap（GraalVM 禁止 Random 类实例进入 image heap，
+ * 否则种子值会被缓存导致运行时随机性失效）。
  */
+@RuntimeInitialize
 public class ApiKeyGenerator {
 
   private static final SecureRandom RANDOM = new SecureRandom();

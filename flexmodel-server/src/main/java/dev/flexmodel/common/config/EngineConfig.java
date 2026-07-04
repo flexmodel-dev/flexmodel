@@ -19,8 +19,9 @@ import jakarta.enterprise.inject.Produces;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * @author cjbi
@@ -79,9 +80,8 @@ public class EngineConfig {
     ensureSqliteParentDir(config.url());
     HikariDataSource ds = new HikariDataSource();
     ds.setJdbcUrl(config.url());
-    // 显式指定 JDBC 驱动类，避免在 native image 中依赖 DriverManager 的 SPI 自动注册
-    // （GraalVM native image 默认禁用 ServiceLoader，DriverManager.getDriver() 会返回 null）
-    resolveDriverClassName(config.url()).ifPresent(ds::setDriverClassName);
+    // 在 native image 中 DriverManager 的 SPI 自动注册被禁用，需要显式注册驱动
+    registerDriverIfNeeded(config.url());
     ds.setUsername(config.username().orElse(null));
     ds.setPassword(config.password().orElse(null));
     // 连接池最大连接数
@@ -119,30 +119,33 @@ public class EngineConfig {
   }
 
   /**
-   * 根据 JDBC URL 解析对应的驱动类名。
-   * 在 native image 中，HikariCP 不能通过 DriverManager 的 SPI 自动查找驱动，
-   * 需要显式设置 driverClassName 让 HikariCP 直接加载驱动类。
+   * 根据 JDBC URL 显式注册对应的驱动到 DriverManager。
+   * 在 native image 中，JDBC 驱动的 SPI 自动注册被禁用，
+   * DriverManager.getDriver() 会返回 null，导致 HikariCP 报 "No suitable driver"。
+   * 这里直接实例化驱动类并注册，绕过 Class.forName() 的反射限制。
    */
-  public static Optional<String> resolveDriverClassName(String jdbcUrl) {
+  public static void registerDriverIfNeeded(String jdbcUrl) {
     if (jdbcUrl == null) {
-      return Optional.empty();
+      return;
     }
-    if (jdbcUrl.startsWith("jdbc:sqlite:")) {
-      return Optional.of("org.sqlite.JDBC");
+    try {
+      if (jdbcUrl.startsWith("jdbc:sqlite:") && !isDriverRegistered("jdbc:sqlite:")) {
+        DriverManager.registerDriver(new org.sqlite.JDBC());
+      } else if ((jdbcUrl.startsWith("jdbc:mysql:") || jdbcUrl.startsWith("jdbc:mariadb:"))
+        && !isDriverRegistered("jdbc:mysql:")) {
+        DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
+      }
+    } catch (Exception e) {
+      log.warn("Failed to register JDBC driver for url: {}", jdbcUrl, e);
     }
-    if (jdbcUrl.startsWith("jdbc:mysql:") || jdbcUrl.startsWith("jdbc:mariadb:")) {
-      return Optional.of("com.mysql.cj.jdbc.Driver");
+  }
+
+  private static boolean isDriverRegistered(String jdbcUrl) {
+    try {
+      return DriverManager.getDriver(jdbcUrl) != null;
+    } catch (SQLException e) {
+      return false;
     }
-    if (jdbcUrl.startsWith("jdbc:postgresql:")) {
-      return Optional.of("org.postgresql.Driver");
-    }
-    if (jdbcUrl.startsWith("jdbc:oracle:")) {
-      return Optional.of("oracle.jdbc.OracleDriver");
-    }
-    if (jdbcUrl.startsWith("jdbc:sqlserver:")) {
-      return Optional.of("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-    }
-    return Optional.empty();
   }
 
 }

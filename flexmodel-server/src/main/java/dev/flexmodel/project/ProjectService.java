@@ -257,11 +257,11 @@ public class ProjectService {
    */
   static DataSource getSystemDataSource(FlexmodelConfig flexmodelConfig) {
     FlexmodelConfig.DatasourceConfig config = flexmodelConfig.datasources().get(EngineConfig.SYSTEM_DS_KEY);
+    // 在 native image 中显式注册 JDBC 驱动到 DriverManager
+    EngineConfig.registerDriverIfNeeded(config.url());
     HikariDataSource ds = new HikariDataSource();
     ds.setMaxLifetime(30000);
     ds.setJdbcUrl(config.url());
-    // 显式指定 JDBC 驱动类，避免在 native image 中依赖 DriverManager 的 SPI 自动注册
-    EngineConfig.resolveDriverClassName(config.url()).ifPresent(ds::setDriverClassName);
     ds.setUsername(config.username().orElse(null));
     ds.setPassword(config.password().orElse(null));
     return ds;

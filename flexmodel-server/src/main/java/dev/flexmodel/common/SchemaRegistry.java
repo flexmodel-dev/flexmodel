@@ -155,11 +155,10 @@ public class SchemaRegistry {
    */
   private HikariDataSource buildOptimizedDataSource(String jdbcUrl, String username, String password) {
     dev.flexmodel.common.config.EngineConfig.ensureSqliteParentDir(jdbcUrl);
+    // 在 native image 中显式注册 JDBC 驱动到 DriverManager
+    dev.flexmodel.common.config.EngineConfig.registerDriverIfNeeded(jdbcUrl);
     HikariDataSource ds = new HikariDataSource();
     ds.setJdbcUrl(jdbcUrl);
-    // 显式指定 JDBC 驱动类，避免在 native image 中依赖 DriverManager 的 SPI 自动注册
-    dev.flexmodel.common.config.EngineConfig.resolveDriverClassName(jdbcUrl)
-      .ifPresent(ds::setDriverClassName);
     if (username != null) ds.setUsername(username);
     if (password != null) ds.setPassword(password);
     ds.setMaximumPoolSize(10);

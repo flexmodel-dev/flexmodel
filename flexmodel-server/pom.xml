@@ -121,6 +121,11 @@
       <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-s3</artifactId>
     </dependency>
+    <!-- Lightweight URL Connection HTTP client for AWS SDK (avoids apache-client's NTLMEngineImpl) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
+    </dependency>
     <!-- test start -->
     <dependency>
       <groupId>io.quarkus</groupId>

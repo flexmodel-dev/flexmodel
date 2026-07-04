@@ -38,15 +38,9 @@
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>com.zaxxer</groupId>
-        <artifactId>HikariCP</artifactId>
-        <version>${HikariCP.version}</version>
-        <exclusions>
-          <exclusion>
-            <artifactId>slf4j-api</artifactId>
-            <groupId>org.slf4j</groupId>
-          </exclusion>
-        </exclusions>
+        <groupId>io.agroal</groupId>
+        <artifactId>agroal-pool</artifactId>
+        <version>${agroal.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>

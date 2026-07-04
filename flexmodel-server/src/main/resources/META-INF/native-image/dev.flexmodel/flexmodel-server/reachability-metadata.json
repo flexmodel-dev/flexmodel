@@ -1,7 +1,14 @@
 {
   "reflection": [
     {
-      "type": "java.sql.Statement[]"
+      "type": "org.sqlite.SQLiteDataSource",
+      "allPublicConstructors": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "com.mysql.cj.jdbc.MysqlDataSource",
+      "allPublicConstructors": true,
+      "allPublicMethods": true
     }
   ]
 }

@@ -1,11 +1,12 @@
 package dev.flexmodel;
 
-import com.zaxxer.hikari.HikariDataSource;
+import dev.flexmodel.model.NativeQueryDefinition;
+import dev.flexmodel.sql.JdbcSchemaProvider;
+import io.agroal.api.AgroalDataSource;
+import io.agroal.api.configuration.supplier.AgroalDataSourceConfigurationSupplier;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.model.NativeQueryDefinition;
-import dev.flexmodel.sql.JdbcSchemaProvider;
 
 import java.util.List;
 import java.util.Map;
@@ -16,9 +17,11 @@ import java.util.Map;
 public class SQLiteIntegrationTests extends AbstractSessionTests {
 
   @BeforeAll
-  public static void beforeAll() {
-    HikariDataSource dataSource = new HikariDataSource();
-    dataSource.setJdbcUrl("jdbc:sqlite:file::memory:?cache=shared");
+  public static void beforeAll() throws Exception {
+    AgroalDataSourceConfigurationSupplier cfg = new AgroalDataSourceConfigurationSupplier();
+    cfg.connectionPoolConfiguration().connectionFactoryConfiguration()
+      .jdbcUrl("jdbc:sqlite:file::memory:?cache=shared");
+    AgroalDataSource dataSource = AgroalDataSource.from(cfg);
     initSession(new JdbcSchemaProvider("default", dataSource));
   }
 

@@ -29,6 +29,6 @@ jobs:
           mvn -B -Dmaven.test.skip=true clean package -Pnative -pl flexmodel-server -am \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
-            -Dquarkus.container-image.image=cjbi/flexmodel-server:latest \
+            -Dquarkus.container-image.image=cjbi/flexmodel-server-native:latest \
             -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} \
             -Dquarkus.container-image.password=${{ secrets.DOCKER_PASSWORD }}

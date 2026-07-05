@@ -194,17 +194,20 @@ public class SchedulerTest {
     JobDetail job = JobBuilder.newJob(NoopJob.class)
       .withIdentity("job-RS", "grp-RS")
       .build();
+    // 使用未来时间启动，避免 QuartzSchedulerThread 在读取 nextFireTime 之前就触发并完成
+    Date startAt = new Date(System.currentTimeMillis() + 5000);
     Trigger trig = TriggerBuilder.newTrigger()
       .withIdentity("trig-RS", "grp-RS")
       .forJob(job)
       .withSchedule(SimpleScheduleBuilder.simpleSchedule()
         .withIntervalInSeconds(10)
         .withRepeatCount(0))
-      .startNow()
+      .startAt(startAt)
       .build();
     quartz.scheduleJob(job, trig);
 
     Date oldNext = quartz.getTrigger(trig.getKey()).getNextFireTime();
+    assertNotNull(oldNext, "nextFireTime 不应为 null（触发器尚未到启动时间）");
     Trigger newTrig = TriggerBuilder.newTrigger()
       .withIdentity(trig.getKey())
       .forJob(job)
@@ -215,7 +218,6 @@ public class SchedulerTest {
       .build();
     quartz.rescheduleJob(trig.getKey(), newTrig);
     Date newNext = quartz.getTrigger(trig.getKey()).getNextFireTime();
-    assertNotNull(oldNext);
     assertNotNull(newNext);
     assertTrue(newNext.after(oldNext));
   }

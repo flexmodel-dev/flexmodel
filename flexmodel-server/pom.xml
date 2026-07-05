@@ -36,8 +36,8 @@
   </dependencyManagement>
   <dependencies>
     <dependency>
-      <groupId>org.quartz-scheduler</groupId>
-      <artifactId>quartz</artifactId>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-quartz</artifactId>
     </dependency>
     <dependency>
       <groupId>com.auth0</groupId>

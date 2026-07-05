@@ -5824,6 +5824,46 @@
       "type": "dev.flexmodel.scheduling.job.ScheduledFlowExecutionJobListener"
     },
     {
+      "type": "dev.flexmodel.scheduling.job.ScheduledFunctionExecutionJob",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.quartz.impl.DefaultThreadExecutor",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.quartz.impl.StdSchedulerFactory",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.quartz.impl.triggers.CronTriggerImpl",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.quartz.impl.triggers.SimpleTriggerImpl",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.quartz.simpl.CascadingClassLoadHelper",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true
+    },
+    {
+      "type": "org.quartz.simpl.SimpleThreadPool",
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
       "type": "dev.flexmodel.session.MemoryScriptManager",
       "methods": [
         {

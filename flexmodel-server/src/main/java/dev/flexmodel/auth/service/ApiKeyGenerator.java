@@ -11,14 +11,11 @@ import java.util.HexFormat;
  * 生成格式：fm_ak_{type}_{random40chars}
  * 存储 SHA-256 哈希，不存原文。
  *
- * <p>注意：本类包含 {@code static final SecureRandom} 字段，必须在 Native Image 运行时初始化，
- * 否则 GraalVM 在构建期会因 Random 实例进入 image heap 而报错。运行时初始化通过
- * {@code application.properties} 中的 {@code quarkus.native.additional-build-args}
- * 配置 {@code --initialize-at-run-time} 实现。
+ * <p>{@link SecureRandom} 实例为方法内局部变量，
+ * 避免 static 字段在 Native Image 构建期进入 image heap 的问题。
  */
 public class ApiKeyGenerator {
 
-  private static final SecureRandom RANDOM = new SecureRandom();
   private static final String CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
   public record GeneratedKey(String plainText, String hash, String prefix) {
@@ -31,9 +28,10 @@ public class ApiKeyGenerator {
    * @return 包含明文、SHA-256 哈希和前缀的 GeneratedKey
    */
   public static GeneratedKey generate(String keyType) {
+    SecureRandom random = new SecureRandom();
     StringBuilder sb = new StringBuilder(40);
     for (int i = 0; i < 40; i++) {
-      sb.append(CHARS.charAt(RANDOM.nextInt(CHARS.length())));
+      sb.append(CHARS.charAt(random.nextInt(CHARS.length())));
     }
     String randomPart = sb.toString();
     String plainText = "fm_ak_" + keyType + "_" + randomPart;

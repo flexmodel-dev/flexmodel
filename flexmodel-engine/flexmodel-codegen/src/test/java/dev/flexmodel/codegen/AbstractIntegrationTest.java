@@ -22,7 +22,9 @@ public class AbstractIntegrationTest {
   @BeforeAll
   static void init() throws Exception {
     AgroalDataSourceConfigurationSupplier cfg = new AgroalDataSourceConfigurationSupplier();
-    cfg.connectionPoolConfiguration().connectionFactoryConfiguration()
+    cfg.connectionPoolConfiguration()
+      .maxSize(5)
+      .connectionFactoryConfiguration()
       .jdbcUrl("jdbc:sqlite:file::memory:?cache=shared");
     AgroalDataSource dataSource = AgroalDataSource.from(cfg);
     JdbcSchemaProvider jdbcSchemaProvider = new JdbcSchemaProvider(SCHEMA_NAME, dataSource);

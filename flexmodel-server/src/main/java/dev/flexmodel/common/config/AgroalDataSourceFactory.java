@@ -67,7 +67,7 @@ public final class AgroalDataSourceFactory {
       factoryConfig.credential(new SimplePassword(password));
     }
 
-    // 连接池参数（与 HikariCP 对齐）
+    // 连接池参数
     poolConfig.maxSize(10);
     poolConfig.minSize(0);
     poolConfig.initialSize(0);

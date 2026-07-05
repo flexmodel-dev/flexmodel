@@ -378,8 +378,11 @@ public class SessionConfig {
     @Produces
     @ApplicationScoped
     public SessionFactory sessionFactory() {
-        HikariDataSource dataSource = new HikariDataSource();
-        dataSource.setJdbcUrl("jdbc:sqlite:file::memory:?cache=shared");
+        AgroalDataSourceConfigurationSupplier config = new AgroalDataSourceConfigurationSupplier();
+        config.connectionPoolConfiguration()
+              .connectionFactoryConfiguration()
+              .jdbcUrl("jdbc:sqlite:file::memory:?cache=shared");
+        DataSource dataSource = AgroalDataSource.from(config);
 
         return SessionFactory.builder()
             .setDefaultDataSourceProvider(new JdbcDataSourceProvider("system", dataSource))
@@ -471,10 +474,12 @@ public class FullNameCalculator implements FieldCalculator {
 ### 连接池配置
 
 ```java
-// 配置连接池
-DataSource datasource = new HikariDataSource();
-((HikariDataSource) datasource).setMaximumPoolSize(20);
-((HikariDataSource) datasource).setMinimumIdle(5);
+// 配置连接池（以 Agroal 为例）
+AgroalDataSourceConfigurationSupplier config = new AgroalDataSourceConfigurationSupplier();
+AgroalConnectionPoolConfigurationSupplier poolConfig = config.connectionPoolConfiguration();
+poolConfig.maxSize(20);
+poolConfig.minSize(5);
+DataSource datasource = AgroalDataSource.from(config);
 ```
 
 ### 缓存机制
@@ -514,10 +519,13 @@ public class MySQLIntegrationTests extends AbstractSessionTests {
 
     @BeforeAll
     public static void beforeAll() {
-        HikariDataSource dataSource = new HikariDataSource();
-        dataSource.setJdbcUrl(container.getJdbcUrl());
-        dataSource.setUsername(container.getUsername());
-        dataSource.setPassword(container.getPassword());
+        AgroalDataSourceConfigurationSupplier config = new AgroalDataSourceConfigurationSupplier();
+        AgroalConnectionFactoryConfigurationSupplier factoryConfig = config.connectionPoolConfiguration()
+                .connectionFactoryConfiguration();
+        factoryConfig.jdbcUrl(container.getJdbcUrl());
+        factoryConfig.principal(new NamePrincipal(container.getUsername()));
+        factoryConfig.credential(new SimplePassword(container.getPassword()));
+        DataSource dataSource = AgroalDataSource.from(config);
         initSession(new JdbcDataSourceProvider("default", dataSource));
     }
 }

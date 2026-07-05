@@ -17,7 +17,7 @@
 - **云函数**: Deno Functions Runtime (Hono.js, Worker 隔离执行)
 - **API 协议**: REST API, GraphQL, OpenAPI/Swagger UI
 - **持久化**: SQLite (默认演示) / 支持扩展多种关系型与 NoSQL 数据库
-- **其他**: Lombok, GraalVM JavaScript, Docker, Maven
+- **其他**: Lombok, QuickJS, Docker, Maven
 
 ## 🏗️ 架构设计
 

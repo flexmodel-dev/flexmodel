@@ -199,11 +199,14 @@ schemaOps.dropIndex("User", "name_index");
 #### JDBC数据源
 
 ```java
-// 创建JDBC数据源
-DataSource dataSource = new HikariDataSource();
-((HikariDataSource) dataSource).setJdbcUrl("jdbc:mysql://localhost:3306/test");
-((HikariDataSource) dataSource).setUsername("root");
-((HikariDataSource) dataSource).setPassword("password");
+// 创建JDBC数据源（以 Agroal 连接池为例）
+AgroalDataSourceConfigurationSupplier config = new AgroalDataSourceConfigurationSupplier();
+AgroalConnectionPoolConfigurationSupplier poolConfig = config.connectionPoolConfiguration();
+AgroalConnectionFactoryConfigurationSupplier factoryConfig = poolConfig.connectionFactoryConfiguration();
+factoryConfig.jdbcUrl("jdbc:mysql://localhost:3306/test");
+factoryConfig.principal(new NamePrincipal("root"));
+factoryConfig.credential(new SimplePassword("password"));
+DataSource dataSource = AgroalDataSource.from(config);
 
 JdbcDataSourceProvider jdbcProvider = new JdbcDataSourceProvider(dataSource);
 ```
@@ -477,12 +480,14 @@ try (Session session = sessionFactory.createSession("mySchema")) {
 ### 1. 连接池配置
 
 ```java
-HikariDataSource dataSource = new HikariDataSource();
-dataSource.setMaximumPoolSize(20);
-dataSource.setMinimumIdle(5);
-dataSource.setConnectionTimeout(30000);
-dataSource.setIdleTimeout(600000);
-dataSource.setMaxLifetime(1800000);
+AgroalDataSourceConfigurationSupplier config = new AgroalDataSourceConfigurationSupplier();
+AgroalConnectionPoolConfigurationSupplier poolConfig = config.connectionPoolConfiguration();
+poolConfig.maxSize(20);
+poolConfig.minSize(5);
+poolConfig.acquisitionTimeout(Duration.ofSeconds(30));
+poolConfig.reapTimeout(Duration.ofMinutes(10));
+poolConfig.maxLifetime(Duration.ofMinutes(30));
+DataSource dataSource = AgroalDataSource.from(config);
 ```
 
 ### 2. 查询优化

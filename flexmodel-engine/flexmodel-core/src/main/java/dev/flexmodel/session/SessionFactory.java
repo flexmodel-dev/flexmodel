@@ -88,7 +88,15 @@ public class SessionFactory {
     if (config == null) {
       return;
     }
+    // 始终将模型写入缓存（即使没有数据源，查询时仍能从缓存命中模型定义）
     config.getSchema().forEach(model -> cache.put(schemaName + ":" + model.getName(), model));
+
+    // 如果没有为此 schema 注册数据源，跳过 DDL 和数据导入
+    if (!isSchemaExists(schemaName)) {
+      log.warn("Schema '{}' has no registered datasource, skipping table/data import", schemaName);
+      return;
+    }
+
     try (Session session = createFailsafeSession(schemaName)) {
       config.getSchema().forEach(obj -> {
         if (obj instanceof EntityDefinition e) {

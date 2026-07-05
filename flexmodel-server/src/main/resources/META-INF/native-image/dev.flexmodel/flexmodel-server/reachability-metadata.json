@@ -936,12 +936,5 @@
       "bundle": "org.hibernate.validator.ValidationMessages"
     }
   ],
-  "serialization": [
-    {
-      "type": "java.lang.invoke.SerializedLambda"
-    },
-    {
-      "type": "dev.flexmodel.query.Expressions$SFunction"
-    }
-  ]
+  "serialization": []
 }

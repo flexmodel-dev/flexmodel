@@ -53,7 +53,7 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
         .from(Trigger.class)
         .where(filter)
         .page(page, size)
-        .orderByDesc("createdAt")
+        .orderByDesc("created_at")
         .execute();
     }
   }

@@ -27,6 +27,14 @@ public class TypedDSLUpdateBuilder<T> {
   }
 
   /**
+   * 设置单个字段的值（使用字段引用）
+   */
+  public TypedDSLUpdateBuilder<T> set(FilterExpression<?> field, Object value) {
+    delegate.set(field.getFieldName(), value);
+    return this;
+  }
+
+  /**
    * 设置多个字段的值
    */
   public TypedDSLUpdateBuilder<T> values(T values) {

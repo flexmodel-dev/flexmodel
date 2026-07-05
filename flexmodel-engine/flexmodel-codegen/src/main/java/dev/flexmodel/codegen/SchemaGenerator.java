@@ -110,9 +110,9 @@ public class SchemaGenerator extends AbstractGenerator {
             rawType = "Object";
           }
           String typeStr = boxType(rawType);
-          String fieldName = field.getVariableName();
+          String variableName = field.getVariableName();
           out.println("    public final FilterExpression<" + typeStr + "> "
-            + fieldName + " = new FilterExpression<>(\"" + fieldName + "\");");
+            + variableName + " = new FilterExpression<>(\"" + field.getOriginal().getName() + "\");");
         }
         out.println("  }");
       }

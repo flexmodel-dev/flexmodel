@@ -67,7 +67,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
                 .from(Function.class)
                 .where(filter)
                 .page(page, size)
-              .orderByDesc("createdAt")
+              .orderByDesc("created_at")
                 .execute();
         }
     }

@@ -230,7 +230,7 @@ public class FmJobRepository {
         .where(qrtzTrigger.schedName.eq(schedName)
           .and(qrtzTrigger.triggerState.eq(Trigger.TriggerState.NORMAL.name()))
           .and(qrtzTrigger.nextFireTime.lte(noLaterThan + timeWindow)))
-        .orderBy("nextFireTime")
+        .orderBy("next_fire_time")
         .orderByDesc("priority")
         .page(1, maxCount)
         .forUpdate()

@@ -72,10 +72,26 @@ public class TypedDSLQueryBuilder<T> {
   }
 
   /**
+   * 设置升序排序（使用字段引用）
+   */
+  public TypedDSLQueryBuilder<T> orderBy(FilterExpression<?> field) {
+    orderBy(field.getFieldName(), Direction.ASC);
+    return this;
+  }
+
+  /**
    * 设置排序
    */
   public TypedDSLQueryBuilder<T> orderByDesc(String field) {
     orderBy(field, Direction.DESC);
+    return this;
+  }
+
+  /**
+   * 设置降序排序（使用字段引用）
+   */
+  public TypedDSLQueryBuilder<T> orderByDesc(FilterExpression<?> field) {
+    orderBy(field.getFieldName(), Direction.DESC);
     return this;
   }
 

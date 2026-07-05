@@ -74,6 +74,10 @@ public class FilterExpression<T> implements Expression {
     return new Predicate(fieldName, "_between", Arrays.asList(start, end));
   }
 
+  public String getFieldName() {
+    return fieldName;
+  }
+
   @Override
   public Map<String, Object> toMap() {
     return Collections.singletonMap(fieldName, null);

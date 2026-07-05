@@ -18,7 +18,7 @@ public class FlowInstanceMappingFmRepository extends AbstractRepository implemen
       return session.dsl().selectFrom(FlowInstanceMapping.class)
         .where(flowInstanceMapping.flowInstanceId.eq(flowInstanceId)
           .and(flowInstanceMapping.nodeInstanceId.eq(nodeInstanceId)))
-        .orderBy("createTime")
+        .orderBy("create_time")
         .execute();
     }
   }

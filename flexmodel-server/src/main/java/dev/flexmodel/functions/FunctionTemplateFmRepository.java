@@ -18,7 +18,7 @@ public class FunctionTemplateFmRepository extends AbstractRepository implements 
         try (Session session = sessionFactory.createSession()) {
             return session.dsl()
                 .selectFrom(FunctionTemplate.class)
-              .orderBy("sortOrder")
+              .orderBy("sort_order")
                 .execute();
         }
     }

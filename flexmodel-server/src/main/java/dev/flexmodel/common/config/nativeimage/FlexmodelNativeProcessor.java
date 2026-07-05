@@ -223,7 +223,9 @@ public class FlexmodelNativeProcessor {
         // Auth0 JWT — 无 Quarkus 扩展
         "com.auth0.jwt.exceptions.JWTVerificationException",
         // MySQL JDBC 反射由 quarkus-jdbc-mysql 扩展自动处理
-        // Agroal 连接池反射由 quarkus-agroal 扩展自动处理
+        // Agroal 连接池 — quarkus-agroal 扩展未覆盖数组类型，需手动注册
+        "io.agroal.pool.ConnectionHandler",
+        "io.agroal.pool.ConnectionHandler[]",
         // SQLite JDBC — 原生驱动需要手动注册 DataSource 反射
         "org.sqlite.SQLiteDataSource",
         // Caffeine 缓存 — 内部类需反射

@@ -6316,6 +6316,15 @@
   ],
   "resources": [
     {
+      "glob": "project.fml"
+    },
+    {
+      "glob": "platform.fml"
+    },
+    {
+      "glob": "dev_test.fml"
+    },
+    {
       "glob": ""
     },
     {

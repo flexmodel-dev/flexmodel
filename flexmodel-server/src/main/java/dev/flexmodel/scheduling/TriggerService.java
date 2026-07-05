@@ -1,31 +1,33 @@
 package dev.flexmodel.scheduling;
 
-import dev.flexmodel.scheduling.config.*;
-import io.vertx.mutiny.core.eventbus.EventBus;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
-import org.quartz.*;
-import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.scheduling.dto.TriggerDTO;
-import dev.flexmodel.scheduling.dto.TriggerPageRequest;
-import dev.flexmodel.scheduling.job.ScheduledFlowExecutionJob;
-import dev.flexmodel.scheduling.job.ScheduledFunctionExecutionJob;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.FlowDeployment;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.codegen.entity.Trigger;
+import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.flow.service.FlowDeploymentService;
 import dev.flexmodel.functions.FunctionService;
 import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
-import dev.flexmodel.common.SessionContextHolder;
-import dev.flexmodel.JsonUtils;
+import dev.flexmodel.scheduling.config.*;
+import dev.flexmodel.scheduling.dto.TriggerDTO;
+import dev.flexmodel.scheduling.dto.TriggerPageRequest;
+import dev.flexmodel.scheduling.job.ScheduledFlowExecutionJob;
+import dev.flexmodel.scheduling.job.ScheduledFunctionExecutionJob;
+import io.vertx.mutiny.core.eventbus.EventBus;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
+import org.quartz.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import static dev.flexmodel.codegen.System.trigger;
 
 /**
  * @author cjbi
@@ -170,16 +172,16 @@ public class TriggerService {
   public PageDTO<TriggerDTO> findPage(String projectId, TriggerPageRequest request) {
     Predicate filter = Expressions.TRUE;
     if (request.getName() != null) {
-      filter = filter.and(Expressions.field(Trigger::getName).eq(request.getName()));
+      filter = filter.and(trigger.name.eq(request.getName()));
     }
     if (request.getJobType() != null) {
-      filter = filter.and(Expressions.field(Trigger::getJobType).eq(request.getJobType()));
+      filter = filter.and(trigger.jobType.eq(request.getJobType()));
     }
     if (request.getJobId() != null) {
-      filter = filter.and(Expressions.field(Trigger::getJobId).eq(request.getJobId()));
+      filter = filter.and(trigger.jobId.eq(request.getJobId()));
     }
     if (request.getJobGroup() != null) {
-      filter = filter.and(Expressions.field(Trigger::getJobGroup).eq(request.getJobGroup()));
+      filter = filter.and(trigger.jobGroup.eq(request.getJobGroup()));
     }
     long total = triggerRepository.count(projectId, filter);
     if (total == 0) {

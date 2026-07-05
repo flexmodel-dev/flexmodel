@@ -1,18 +1,18 @@
 package dev.flexmodel.scheduling;
 
+import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.query.Expressions;
+import dev.flexmodel.query.Predicate;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.codegen.entity.JobExecutionLog;
-import dev.flexmodel.query.Expressions;
-import dev.flexmodel.query.Predicate;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.jobExecutionLog;
 
 /**
  * 作业执行日志服务
@@ -171,7 +171,7 @@ public class JobExecutionLogService {
     public int purgeOldLogs(int days) {
         log.info("清理 {} 天之前的作业执行日志", days);
         LocalDateTime purgeDate = LocalDateTime.now().minusDays(days);
-        Predicate filter = field(JobExecutionLog::getCreatedAt).lte(purgeDate);
+      Predicate filter = jobExecutionLog.createdAt.lte(purgeDate);
 
         jobExecutionLogRepository.delete("", filter);
 
@@ -197,27 +197,27 @@ public class JobExecutionLogService {
         Predicate filter = Expressions.TRUE;
 
         if (triggerId != null && !triggerId.trim().isEmpty()) {
-            filter = filter.and(field(JobExecutionLog::getTriggerId).eq(triggerId));
+          filter = filter.and(jobExecutionLog.triggerId.eq(triggerId));
         }
 
         if (jobId != null && !jobId.trim().isEmpty()) {
-            filter = filter.and(field(JobExecutionLog::getJobId).eq(jobId));
+          filter = filter.and(jobExecutionLog.jobId.eq(jobId));
         }
 
         if (status != null && !status.trim().isEmpty()) {
-            filter = filter.and(field(JobExecutionLog::getExecutionStatus).eq(status));
+          filter = filter.and(jobExecutionLog.executionStatus.eq(status));
         }
 
         if (startTime != null) {
-            filter = filter.and(field(JobExecutionLog::getStartTime).gte(startTime));
+          filter = filter.and(jobExecutionLog.startTime.gte(startTime));
         }
 
         if (endTime != null) {
-            filter = filter.and(field(JobExecutionLog::getStartTime).lte(endTime));
+          filter = filter.and(jobExecutionLog.startTime.lte(endTime));
         }
 
         if (isSuccess != null) {
-            filter = filter.and(field(JobExecutionLog::getIsSuccess).eq(isSuccess));
+          filter = filter.and(jobExecutionLog.isSuccess.eq(isSuccess));
         }
 
         return find(filter, page, size);
@@ -239,27 +239,27 @@ public class JobExecutionLogService {
         Predicate filter = Expressions.TRUE;
 
         if (triggerId != null && !triggerId.trim().isEmpty()) {
-            filter = filter.and(field(JobExecutionLog::getTriggerId).eq(triggerId));
+          filter = filter.and(jobExecutionLog.triggerId.eq(triggerId));
         }
 
         if (jobId != null && !jobId.trim().isEmpty()) {
-            filter = filter.and(field(JobExecutionLog::getJobId).eq(jobId));
+          filter = filter.and(jobExecutionLog.jobId.eq(jobId));
         }
 
         if (status != null && !status.trim().isEmpty()) {
-            filter = filter.and(field(JobExecutionLog::getExecutionStatus).eq(status));
+          filter = filter.and(jobExecutionLog.executionStatus.eq(status));
         }
 
         if (startTime != null) {
-            filter = filter.and(field(JobExecutionLog::getStartTime).gte(startTime));
+          filter = filter.and(jobExecutionLog.startTime.gte(startTime));
         }
 
         if (endTime != null) {
-            filter = filter.and(field(JobExecutionLog::getStartTime).lte(endTime));
+          filter = filter.and(jobExecutionLog.startTime.lte(endTime));
         }
 
         if (isSuccess != null) {
-            filter = filter.and(field(JobExecutionLog::getIsSuccess).eq(isSuccess));
+          filter = filter.and(jobExecutionLog.isSuccess.eq(isSuccess));
         }
 
         return count(filter);

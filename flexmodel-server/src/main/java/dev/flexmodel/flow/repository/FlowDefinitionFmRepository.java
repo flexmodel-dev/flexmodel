@@ -1,14 +1,14 @@
 package dev.flexmodel.flow.repository;
 
-import dev.flexmodel.common.AbstractRepository;
-import jakarta.enterprise.context.ApplicationScoped;
 import dev.flexmodel.codegen.entity.FlowDefinition;
+import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.session.Session;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.flowDefinition;
 
 @ApplicationScoped
 public class FlowDefinitionFmRepository extends AbstractRepository implements FlowDefinitionRepository {
@@ -21,12 +21,12 @@ public class FlowDefinitionFmRepository extends AbstractRepository implements Fl
   }
 
   @Override
-  public int updateByModuleId(String projectId, FlowDefinition flowDefinition) {
+  public int updateByModuleId(String projectId, FlowDefinition record) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .update(FlowDefinition.class)
-        .values(flowDefinition)
-        .where(field(FlowDefinition::getFlowModuleId).eq(flowDefinition.getFlowModuleId()))
+        .values(record)
+        .where(flowDefinition.flowModuleId.eq(record.getFlowModuleId()))
         .execute();
     }
   }
@@ -36,7 +36,7 @@ public class FlowDefinitionFmRepository extends AbstractRepository implements Fl
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowDefinition.class)
-        .where(field(FlowDefinition::getFlowModuleId).eq(flowModuleId))
+        .where(flowDefinition.flowModuleId.eq(flowModuleId))
         .executeOne();
     }
   }

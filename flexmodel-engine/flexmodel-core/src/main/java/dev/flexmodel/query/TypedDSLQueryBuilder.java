@@ -79,19 +79,6 @@ public class TypedDSLQueryBuilder<T> {
     return this;
   }
 
-  public <R> TypedDSLQueryBuilder<T> orderBy(Expressions.SFunction<T, R> getter) {
-    orderBy(Expressions.getFieldName(getter), Direction.ASC);
-    return this;
-  }
-
-  /**
-   * 设置排序
-   */
-  public <R> TypedDSLQueryBuilder<T> orderByDesc(Expressions.SFunction<T, R> getter) {
-    orderBy(Expressions.getFieldName(getter), Direction.DESC);
-    return this;
-  }
-
   /**
    * 设置分页
    */
@@ -120,16 +107,6 @@ public class TypedDSLQueryBuilder<T> {
    * 设置分组
    */
   public TypedDSLQueryBuilder<T> groupBy(String... fields) {
-    delegate.groupBy(fields);
-    return this;
-  }
-
-  @SafeVarargs
-  public final <R> TypedDSLQueryBuilder<T> groupBy(Expressions.SFunction<T, R>... getters) {
-    String[] fields = new String[getters.length];
-    for (int i = 0; i < fields.length; i++) {
-      fields[i] = Expressions.getFieldName(getters[i]);
-    }
     delegate.groupBy(fields);
     return this;
   }

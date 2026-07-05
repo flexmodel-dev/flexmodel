@@ -2,6 +2,7 @@ package dev.flexmodel.common.config.nativeimage;
 
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
+import io.quarkus.deployment.builditem.nativeimage.ServiceProviderBuildItem;
 
 /**
  * Flexmodel 原生镜像反射配置处理器。
@@ -53,6 +54,21 @@ public class FlexmodelNativeProcessor {
       .methods()
       .fields()
       .build();
+  }
+
+  /**
+   * 注册 BuildItem SPI 服务，使得 ServiceLoader.load(BuildItem.class)
+   * 在原生镜像中能正确发现并实例化所有实现类。
+   * <p>
+   * ServiceProviderBuildItem 同时处理两件事：
+   * <ul>
+   *   <li>将 META-INF/services/dev.flexmodel.BuildItem 描述符嵌入原生镜像</li>
+   *   <li>将提供者类注册为反射可实例化</li>
+   * </ul>
+   */
+  @BuildStep
+  ServiceProviderBuildItem registerBuildItemServiceProvider() {
+    return ServiceProviderBuildItem.allProvidersFromClassPath("dev.flexmodel.BuildItem");
   }
 
   /**

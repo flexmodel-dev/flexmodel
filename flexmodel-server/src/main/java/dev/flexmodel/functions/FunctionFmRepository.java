@@ -8,7 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.function;
 
 /**
  * @author cjbi
@@ -22,7 +22,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
             return session.dsl()
                 .select()
                 .from(Function.class)
-                .where(field(Function::getId).eq(id))
+              .where(function.id.eq(id))
                 .executeOne();
         }
     }
@@ -33,7 +33,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
             return session.dsl()
                 .select()
                 .from(Function.class)
-                .where(field(Function::getName).eq(name))
+              .where(function.name.eq(name))
                 .executeOne();
         }
     }
@@ -54,7 +54,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
         try (Session session = getProjectSession(projectId)) {
             session.dsl()
                 .deleteFrom(Function.class)
-                .where(field(Function::getId).eq(id))
+              .where(function.id.eq(id))
                 .execute();
         }
     }
@@ -67,7 +67,7 @@ public class FunctionFmRepository extends AbstractRepository implements Function
                 .from(Function.class)
                 .where(filter)
                 .page(page, size)
-                .orderByDesc(Function::getCreatedAt)
+              .orderByDesc("createdAt")
                 .execute();
         }
     }

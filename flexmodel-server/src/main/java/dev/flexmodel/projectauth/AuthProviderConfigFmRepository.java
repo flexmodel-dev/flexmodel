@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.authProviderConfig;
 
 @ApplicationScoped
 public class AuthProviderConfigFmRepository implements AuthProviderConfigRepository {
@@ -30,7 +30,7 @@ public class AuthProviderConfigFmRepository implements AuthProviderConfigReposit
     try (Session session = sessionFactory.createSession(projectId)) {
       return session.dsl()
         .selectFrom(AuthProviderConfig.class)
-        .where(field(AuthProviderConfig::getName).eq(name))
+        .where(authProviderConfig.name.eq(name))
         .executeOne();
     }
   }
@@ -51,7 +51,7 @@ public class AuthProviderConfigFmRepository implements AuthProviderConfigReposit
     try (Session session = sessionFactory.createSession(projectId)) {
       session.dsl()
         .deleteFrom(AuthProviderConfig.class)
-        .where(field(AuthProviderConfig::getName).eq(name))
+        .where(authProviderConfig.name.eq(name))
         .execute();
     }
   }

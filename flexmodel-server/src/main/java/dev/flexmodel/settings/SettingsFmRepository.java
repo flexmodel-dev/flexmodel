@@ -1,17 +1,16 @@
 package dev.flexmodel.settings;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import dev.flexmodel.JsonUtils;
+import dev.flexmodel.codegen.System;
 import dev.flexmodel.codegen.entity.Config;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.JsonUtils;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.flexmodel.query.Expressions.field;
 
 /**
  * @author cjbi
@@ -32,7 +31,7 @@ public class SettingsFmRepository implements SettingsRepository {
 
           Config config = session.dsl()
             .selectFrom(Config.class)
-            .where(field(Config::getKey).eq(key))
+            .where(System.config.key.eq(key))
             .executeOne();
 
           if (config == null) {

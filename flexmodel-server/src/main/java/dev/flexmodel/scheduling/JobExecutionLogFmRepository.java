@@ -1,16 +1,16 @@
 package dev.flexmodel.scheduling;
 
-import dev.flexmodel.common.AbstractRepository;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.control.ActivateRequestContext;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
+import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.session.Session;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.jobExecutionLog;
 
 @ApplicationScoped
 @ActivateRequestContext
@@ -21,7 +21,7 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(JobExecutionLog.class)
-        .where(field(JobExecutionLog::getId).eq(id))
+        .where(jobExecutionLog.id.eq(id))
         .executeOne();
     }
   }
@@ -54,7 +54,7 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
         .selectFrom(JobExecutionLog.class)
         .where(filter)
         .page(page, size)
-        .orderByDesc(JobExecutionLog::getStartTime)
+        .orderByDesc("startTime")
         .execute();
     }
   }
@@ -72,7 +72,7 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
   @Override
   public int purgeOldLogs(String projectId, int days) {
     LocalDateTime purgeDate = LocalDateTime.now().minusDays(days);
-    Predicate filter = field(JobExecutionLog::getCreatedAt).lte(purgeDate);
+    Predicate filter = jobExecutionLog.createdAt.lte(purgeDate);
 
     long count = count(projectId, filter);
 

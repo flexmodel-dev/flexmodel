@@ -1,14 +1,14 @@
 package dev.flexmodel.auth.repository;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.Role;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.role;
 
 @ApplicationScoped
 public class RoleFmRepository implements RoleRepository {
@@ -21,7 +21,7 @@ public class RoleFmRepository implements RoleRepository {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(Role.class)
-        .where(field(Role::getId).eq(roleId))
+        .where(role.id.eq(roleId))
         .executeOne();
     }
   }
@@ -51,7 +51,7 @@ public class RoleFmRepository implements RoleRepository {
     try (Session session = sessionFactory.createSession()) {
       session.dsl()
         .deleteFrom(Role.class)
-        .where(field(Role::getId).eq(roleId))
+        .where(role.id.eq(roleId))
         .execute();
     }
   }
@@ -61,7 +61,7 @@ public class RoleFmRepository implements RoleRepository {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(Role.class)
-        .where(field(Role::getId).in(roleIds))
+        .where(role.id.in(roleIds))
         .execute();
     }
   }

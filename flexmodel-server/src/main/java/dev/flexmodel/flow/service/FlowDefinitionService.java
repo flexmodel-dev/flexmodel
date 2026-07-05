@@ -1,22 +1,31 @@
 package dev.flexmodel.flow.service;
 
+import dev.flexmodel.codegen.entity.FlowDefinition;
 import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.flow.dto.*;
-import dev.flexmodel.flow.dto.param.*;
-import dev.flexmodel.flow.dto.result.*;
+import dev.flexmodel.common.utils.StringUtils;
+import dev.flexmodel.flow.common.FlowDeploymentStatus;
+import dev.flexmodel.flow.dto.FlowModuleListRequest;
+import dev.flexmodel.flow.dto.FlowModuleResponse;
+import dev.flexmodel.flow.dto.FlowModuleStatusEnum;
+import dev.flexmodel.flow.dto.param.CreateFlowParam;
+import dev.flexmodel.flow.dto.param.DeployFlowParam;
+import dev.flexmodel.flow.dto.param.GetFlowModuleParam;
+import dev.flexmodel.flow.dto.param.UpdateFlowParam;
+import dev.flexmodel.flow.dto.result.CreateFlowResult;
+import dev.flexmodel.flow.dto.result.DeployFlowResult;
+import dev.flexmodel.flow.dto.result.FlowModuleResult;
+import dev.flexmodel.flow.dto.result.UpdateFlowResult;
+import dev.flexmodel.flow.repository.FlowDefinitionRepository;
+import dev.flexmodel.query.Predicate;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.codegen.entity.FlowDefinition;
-import dev.flexmodel.codegen.entity.FlowDeployment;
-import dev.flexmodel.flow.repository.FlowDefinitionRepository;
-import dev.flexmodel.flow.common.FlowDeploymentStatus;
-import dev.flexmodel.query.Expressions;
-import dev.flexmodel.query.Predicate;
-import dev.flexmodel.common.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static dev.flexmodel.codegen.System.flowDefinition;
+import static dev.flexmodel.codegen.System.flowDeployment;
 
 /**
  * 流程定义服务
@@ -49,15 +58,15 @@ public class FlowDefinitionService {
    */
   public PageDTO<FlowModuleResponse> findFlowModuleList(FlowModuleListRequest request) {
     log.info("获取流程模块列表，参数: {}", request);
-    Predicate predicate = Expressions.field(FlowDefinition::getIsDeleted).eq(false);
+    Predicate predicate = flowDefinition.isDeleted.eq(false);
     if (StringUtils.isNotBlank(request.getFlowModuleId())) {
-      predicate = predicate.and(Expressions.field(FlowDefinition::getFlowModuleId).eq(request.getFlowModuleId()));
+      predicate = predicate.and(flowDefinition.flowModuleId.eq(request.getFlowModuleId()));
     }
     if (StringUtils.isNotBlank(request.getFlowKey())) {
-      predicate = predicate.and(Expressions.field(FlowDefinition::getFlowKey).eq(request.getFlowKey()));
+      predicate = predicate.and(flowDefinition.flowKey.eq(request.getFlowKey()));
     }
     if (StringUtils.isNotBlank(request.getFlowName())) {
-      predicate = predicate.and(Expressions.field(FlowDefinition::getFlowName).contains(request.getFlowName()));
+      predicate = predicate.and(flowDefinition.flowName.contains(request.getFlowName()));
     }
     long count = count(request.getProjectId(), predicate);
     if (count == 0) {
@@ -68,9 +77,9 @@ public class FlowDefinitionService {
     List<FlowModuleResponse> flowModuleList = new ArrayList<>();
     for (FlowDefinition entity : list) {
       FlowModuleResponse response = new FlowModuleResponse(entity);
-      long deploymentCount = flowDeploymentService.count(request.getProjectId(), Expressions.field(
-          FlowDeployment::getFlowModuleId).eq(entity.getFlowModuleId())
-        .and(Expressions.field(FlowDeployment::getStatus).eq(FlowDeploymentStatus.DEPLOYED))
+      long deploymentCount = flowDeploymentService.count(request.getProjectId(),
+        flowDeployment.flowModuleId.eq(entity.getFlowModuleId())
+          .and(flowDeployment.status.eq(FlowDeploymentStatus.DEPLOYED))
       );
       if (deploymentCount >= 1) {
         //4 已发布

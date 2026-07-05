@@ -1,14 +1,14 @@
 package dev.flexmodel.auth.repository;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.Resource;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.resource;
 
 @ApplicationScoped
 public class ResourceFmRepository implements ResourceRepository {
@@ -21,7 +21,7 @@ public class ResourceFmRepository implements ResourceRepository {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(Resource.class)
-        .where(field(Resource::getId).eq(resourceId))
+        .where(resource.id.eq(resourceId))
         .executeOne();
     }
   }
@@ -51,7 +51,7 @@ public class ResourceFmRepository implements ResourceRepository {
     try (Session session = sessionFactory.createSession()) {
       session.dsl()
         .deleteFrom(Resource.class)
-        .where(field(Resource::getId).eq(resourceId))
+        .where(resource.id.eq(resourceId))
         .execute();
     }
   }
@@ -61,7 +61,7 @@ public class ResourceFmRepository implements ResourceRepository {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(Resource.class)
-        .where(field(Resource::getId).in(resourceIds))
+        .where(resource.id.in(resourceIds))
         .execute().stream()
         .map(Resource::getPermission)
         .toList();

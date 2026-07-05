@@ -26,11 +26,6 @@ public class TypedDSLUpdateBuilder<T> {
     return this;
   }
 
-  public <R> TypedDSLUpdateBuilder<T> set(Expressions.SFunction<T, R> getter, Object value) {
-    delegate.set(Expressions.getFieldName(getter), value);
-    return this;
-  }
-
   /**
    * 设置多个字段的值
    */

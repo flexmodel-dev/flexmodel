@@ -1,13 +1,14 @@
 package dev.flexmodel.project;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.query.Expressions;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.List;
+
+import static dev.flexmodel.codegen.System.project;
 
 /**
  * 租户
@@ -24,7 +25,7 @@ public class ProjectFmRepository implements ProjectRepository {
   public List<Project> findProjects() {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(Project.class)
-        .where(Expressions.field(Project::getEnabled).eq(true)).orderByDesc(Project::getCreatedAt).execute();
+        .where(project.enabled.eq(true)).orderByDesc("createdAt").execute();
     }
   }
 
@@ -46,7 +47,7 @@ public class ProjectFmRepository implements ProjectRepository {
   public Project findProject(String projectId) {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(Project.class)
-          .where(Expressions.field(Project::getId).eq(projectId))
+        .where(project.id.eq(projectId))
           .executeOne();
     }
   }
@@ -64,7 +65,7 @@ public class ProjectFmRepository implements ProjectRepository {
   public void delete(String projectId) {
     try (Session session = sessionFactory.createSession()) {
       session.dsl().deleteFrom(Project.class)
-          .where(Expressions.field(Project::getId).eq(projectId))
+        .where(project.id.eq(projectId))
           .execute();
     }
   }

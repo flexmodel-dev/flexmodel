@@ -1,14 +1,14 @@
 package dev.flexmodel.auth.repository;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.ResourceTemplate;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.resourceTemplate;
 
 @ApplicationScoped
 public class ResourceTemplateFmRepository implements ResourceTemplateRepository {
@@ -21,7 +21,7 @@ public class ResourceTemplateFmRepository implements ResourceTemplateRepository 
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(ResourceTemplate.class)
-        .where(field(ResourceTemplate::getId).eq(templateId))
+        .where(resourceTemplate.id.eq(templateId))
         .executeOne();
     }
   }
@@ -51,7 +51,7 @@ public class ResourceTemplateFmRepository implements ResourceTemplateRepository 
     try (Session session = sessionFactory.createSession()) {
       session.dsl()
         .deleteFrom(ResourceTemplate.class)
-        .where(field(ResourceTemplate::getId).eq(templateId))
+        .where(resourceTemplate.id.eq(templateId))
         .execute();
     }
   }

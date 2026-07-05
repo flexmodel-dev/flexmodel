@@ -1,24 +1,25 @@
 package dev.flexmodel.scheduling;
 
-import io.vertx.mutiny.core.eventbus.EventBus;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.codegen.entity.Trigger;
-import dev.flexmodel.flow.dto.StartProcessParamEvent;
-import dev.flexmodel.functions.FunctionService;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
+import dev.flexmodel.common.SessionContextHolder;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventListener;
 import dev.flexmodel.event.EventType;
 import dev.flexmodel.event.PreChangeEvent;
-import dev.flexmodel.query.Expressions;
-import dev.flexmodel.common.SessionContextHolder;
-import dev.flexmodel.JsonUtils;
+import dev.flexmodel.flow.dto.StartProcessParamEvent;
+import dev.flexmodel.functions.FunctionService;
+import dev.flexmodel.functions.dto.FunctionInvokeRequest;
+import io.vertx.mutiny.core.eventbus.EventBus;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
+
+import static dev.flexmodel.codegen.System.trigger;
 
 /**
  * @author cjbi
@@ -55,8 +56,8 @@ public class TriggerDataChangedEventListener implements EventListener {
       String projectId = SessionContextHolder.getProjectId();
       // 最多支持触发100个事件
       List<Trigger> triggers = triggerRepository.find(projectId,
-        Expressions.field(Trigger::getJobGroup).eq(groupName)
-          .and(Expressions.field(Trigger::getState).eq(true)), 1, 100);
+        trigger.jobGroup.eq(groupName)
+          .and(trigger.state.eq(true)), 1, 100);
 
       for (Trigger trigger : triggers) {
         @SuppressWarnings("unchecked")
@@ -91,8 +92,8 @@ public class TriggerDataChangedEventListener implements EventListener {
       String projectId = SessionContextHolder.getProjectId();
       // 最多支持触发100个事件
       List<Trigger> triggers = triggerRepository.find(projectId,
-        Expressions.field(Trigger::getJobGroup).eq(groupName)
-          .and(Expressions.field(Trigger::getState).eq(true)), 1, 100);
+        trigger.jobGroup.eq(groupName)
+          .and(trigger.state.eq(true)), 1, 100);
 
       for (Trigger trigger : triggers) {
         @SuppressWarnings("unchecked")

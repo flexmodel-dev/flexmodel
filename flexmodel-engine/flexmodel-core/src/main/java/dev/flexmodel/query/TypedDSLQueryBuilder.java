@@ -66,6 +66,14 @@ public class TypedDSLQueryBuilder<T> {
     return this;
   }
 
+  /**
+   * 设置排序（使用字段引用）
+   */
+  public TypedDSLQueryBuilder<T> orderBy(FilterExpression<?> field, Direction direction) {
+    delegate.orderBy(field.getFieldName(), direction);
+    return this;
+  }
+
   public TypedDSLQueryBuilder<T> orderBy(String field) {
     orderBy(field, Direction.ASC);
     return this;

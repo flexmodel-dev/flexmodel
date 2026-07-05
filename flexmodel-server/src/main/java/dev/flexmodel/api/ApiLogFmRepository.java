@@ -1,15 +1,16 @@
 package dev.flexmodel.api;
 
-import dev.flexmodel.common.AbstractRepository;
-import jakarta.enterprise.context.ApplicationScoped;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
+import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
+import static dev.flexmodel.codegen.System.apiRequestLog;
 import static dev.flexmodel.query.Query.dateFormat;
 import static dev.flexmodel.query.Query.field;
 
@@ -21,7 +22,7 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(ApiRequestLog.class)
         .where(filter)
-        .orderBy("id", Direction.DESC)
+        .orderBy(apiRequestLog.id, Direction.DESC)
         .page(page, size)
         .execute();
     }

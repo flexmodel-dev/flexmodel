@@ -24,7 +24,7 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(InstanceData.class)
         .where(System.instanceData.flowInstanceId.eq(flowInstanceId))
-        .orderByDesc("id")
+        .orderByDesc(System.instanceData.id)
         .limit(1)
         .executeOne();
     }

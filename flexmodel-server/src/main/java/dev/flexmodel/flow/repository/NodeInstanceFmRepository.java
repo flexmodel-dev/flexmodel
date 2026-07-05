@@ -23,8 +23,8 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
         } else {
           int r = session.dsl()
             .update(NodeInstance.class)
-            .set("status", ni.getStatus())
-            .set("modifyTime", ni.getModifyTime())
+            .set(System.nodeInstance.status, ni.getStatus())
+            .set(System.nodeInstance.modifyTime, ni.getModifyTime())
             .where(System.nodeInstance.id.eq(ni.getId()))
             .execute();
           ok = ok && r > 0;
@@ -60,7 +60,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
         .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
-        .orderByDesc("id")
+        .orderByDesc(System.nodeInstance.id)
         .limit(1)
         .executeOne();
     }
@@ -72,7 +72,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
       return session.dsl().selectFrom(NodeInstance.class)
         .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId)
           .and(System.nodeInstance.status.eq(NodeInstanceStatus.ACTIVE)))
-        .orderByDesc("id")
+        .orderByDesc(System.nodeInstance.id)
         .limit(1)
         .executeOne();
     }
@@ -84,7 +84,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
       return session.dsl().selectFrom(NodeInstance.class)
         .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId)
           .and(System.nodeInstance.status.eq(NodeInstanceStatus.COMPLETED)))
-        .orderByDesc("id")
+        .orderByDesc(System.nodeInstance.id)
         .limit(1)
         .executeOne();
     }
@@ -104,7 +104,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
         .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
-        .orderBy("id")
+        .orderBy(System.nodeInstance.id)
         .execute();
     }
   }
@@ -114,7 +114,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(NodeInstance.class)
         .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
-        .orderByDesc("id")
+        .orderByDesc(System.nodeInstance.id)
         .execute();
     }
   }
@@ -123,7 +123,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
   public void updateStatus(String projectId, NodeInstance nodeInstance, int status) {
     try (Session session = getProjectSession(projectId)) {
       session.dsl().update(NodeInstance.class)
-        .set("status", status)
+        .set(System.nodeInstance.status, status)
         .where(System.nodeInstance.id.eq(nodeInstance.getId()))
         .execute();
     }

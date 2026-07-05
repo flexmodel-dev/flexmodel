@@ -54,7 +54,7 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
         .selectFrom(JobExecutionLog.class)
         .where(filter)
         .page(page, size)
-        .orderByDesc("start_time")
+        .orderByDesc(jobExecutionLog.startTime)
         .execute();
     }
   }

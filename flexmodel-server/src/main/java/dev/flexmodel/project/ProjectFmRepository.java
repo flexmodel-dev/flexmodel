@@ -25,7 +25,7 @@ public class ProjectFmRepository implements ProjectRepository {
   public List<Project> findProjects() {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(Project.class)
-        .where(project.enabled.eq(true)).orderByDesc("created_at").execute();
+        .where(project.enabled.eq(true)).orderByDesc(project.createdAt).execute();
     }
   }
 

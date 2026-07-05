@@ -47,7 +47,7 @@ public class FlowDefinitionFmRepository extends AbstractRepository implements Fl
       return session.dsl().selectFrom(FlowDefinition.class)
         .page(page, size)
         .where(filter)
-        .orderByDesc("id")
+        .orderByDesc(flowDefinition.id)
         .execute();
     }
   }

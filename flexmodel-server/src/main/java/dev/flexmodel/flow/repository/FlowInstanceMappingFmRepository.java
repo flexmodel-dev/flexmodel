@@ -18,7 +18,7 @@ public class FlowInstanceMappingFmRepository extends AbstractRepository implemen
       return session.dsl().selectFrom(FlowInstanceMapping.class)
         .where(flowInstanceMapping.flowInstanceId.eq(flowInstanceId)
           .and(flowInstanceMapping.nodeInstanceId.eq(nodeInstanceId)))
-        .orderBy("create_time")
+        .orderBy(flowInstanceMapping.createTime)
         .execute();
     }
   }
@@ -44,7 +44,7 @@ public class FlowInstanceMappingFmRepository extends AbstractRepository implemen
   public void updateType(String projectId, String flowInstanceId, String nodeInstanceId, int type) {
     try (Session session = getProjectSession(projectId)) {
       session.dsl().update(FlowInstanceMapping.class)
-        .set("type", type)
+        .set(flowInstanceMapping.type, type)
         .where(flowInstanceMapping.flowInstanceId.eq(flowInstanceId)
           .and(flowInstanceMapping.nodeInstanceId.eq(nodeInstanceId)))
         .execute();

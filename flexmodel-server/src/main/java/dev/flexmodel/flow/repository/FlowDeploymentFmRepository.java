@@ -34,7 +34,7 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
       return session.dsl()
         .selectFrom(FlowDeployment.class)
         .where(flowDeployment.flowModuleId.eq(flowModuleId))
-        .orderByDesc("id")
+        .orderByDesc(flowDeployment.id)
         .limit(1)
         .executeOne();
     }

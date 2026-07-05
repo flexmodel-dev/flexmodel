@@ -7,6 +7,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
+import static dev.flexmodel.codegen.System.functionTemplate;
+
 /**
  * @author cjbi
  */
@@ -18,7 +20,7 @@ public class FunctionTemplateFmRepository extends AbstractRepository implements 
         try (Session session = sessionFactory.createSession()) {
             return session.dsl()
                 .selectFrom(FunctionTemplate.class)
-              .orderBy("sort_order")
+              .orderBy(functionTemplate.sortOrder)
                 .execute();
         }
     }

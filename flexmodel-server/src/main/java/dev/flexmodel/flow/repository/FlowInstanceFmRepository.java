@@ -34,7 +34,7 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
     try (Session session = getProjectSession(projectId)) {
       session.dsl()
         .update(FlowInstance.class)
-        .set("status", status)
+        .set(System.flowInstance.status, status)
         .where(System.flowInstance.flowInstanceId.eq(flowInstanceId))
         .execute();
     }
@@ -45,7 +45,7 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
     try (Session session = getProjectSession(projectId)) {
       session.dsl()
         .update(FlowInstance.class)
-        .set("status", status)
+        .set(System.flowInstance.status, status)
         .where(System.flowInstance.flowInstanceId.eq(flowInstance.getFlowInstanceId()))
         .execute();
     }
@@ -68,7 +68,7 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
         .selectFrom(FlowInstance.class)
         .where(predicate)
         .page(page, size)
-        .orderByDesc("create_time")
+        .orderByDesc(System.flowInstance.createTime)
         .execute();
     }
   }

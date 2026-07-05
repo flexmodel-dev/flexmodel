@@ -192,7 +192,7 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set("triggerState", state)
+        .set(qrtzTrigger.triggerState, state)
         .where(qrtzTrigger.schedName.eq(schedName)
           .and(qrtzTrigger.calendarName.eq(calName)))
         .execute();
@@ -230,8 +230,8 @@ public class FmJobRepository {
         .where(qrtzTrigger.schedName.eq(schedName)
           .and(qrtzTrigger.triggerState.eq(Trigger.TriggerState.NORMAL.name()))
           .and(qrtzTrigger.nextFireTime.lte(noLaterThan + timeWindow)))
-        .orderBy("next_fire_time")
-        .orderByDesc("priority")
+        .orderBy(qrtzTrigger.nextFireTime)
+        .orderByDesc(qrtzTrigger.priority)
         .page(1, maxCount)
         .forUpdate()
         .execute();
@@ -242,7 +242,7 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set("triggerState", state)
+        .set(qrtzTrigger.triggerState, state)
         .where(qrtzTrigger.schedName.eq(schedName)
           .and(qrtzTrigger.triggerName.eq(triggerName))
           .and(qrtzTrigger.triggerGroup.eq(triggerGroup)))
@@ -254,7 +254,7 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set("triggerState", state)
+        .set(qrtzTrigger.triggerState, state)
         .where(qrtzTrigger.schedName.eq(schedName))
         .execute();
     }
@@ -264,7 +264,7 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set("triggerState", Trigger.TriggerState.BLOCKED.name())
+        .set(qrtzTrigger.triggerState, Trigger.TriggerState.BLOCKED.name())
         .where(qrtzTrigger.schedName.eq(schedName)
           .and(qrtzTrigger.jobName.eq(jobKey.getName()))
           .and(qrtzTrigger.jobGroup.eq(jobKey.getGroup()))
@@ -279,7 +279,7 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set("triggerState", Trigger.TriggerState.NORMAL.name())
+        .set(qrtzTrigger.triggerState, Trigger.TriggerState.NORMAL.name())
         .where(qrtzTrigger.schedName.eq(schedName)
           .and(qrtzTrigger.jobName.eq(jobKey.getName()))
           .and(qrtzTrigger.jobGroup.eq(jobKey.getGroup()))
@@ -325,8 +325,8 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set("prevFireTime", prev)
-        .set("nextFireTime", next)
+        .set(qrtzTrigger.prevFireTime, prev)
+        .set(qrtzTrigger.nextFireTime, next)
         .where(qrtzTrigger.schedName.eq(schedName)
           .and(qrtzTrigger.triggerName.eq(triggerName))
           .and(qrtzTrigger.triggerGroup.eq(triggerGroup)))
@@ -338,7 +338,7 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzJobDetail.class)
-        .set("jobData", jobDataMap)
+        .set(qrtzJobDetail.jobData, jobDataMap)
         .where(qrtzJobDetail.schedName.eq(schedName)
           .and(qrtzJobDetail.jobName.eq(jobKey.getName()))
           .and(qrtzJobDetail.jobGroup.eq(jobKey.getGroup())))

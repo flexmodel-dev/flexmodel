@@ -68,29 +68,45 @@ public class SessionFactory {
     // 将BuildItem脚本加载到内存中（通过 SPI ServiceLoader）
     memoryScriptManager.loadScriptsFromBuildItems();
 
-    // 将内存中的脚本应用到缓存中
-    memoryScriptManager.getSchemaNames().forEach(schemaName -> {
-      MemoryScriptManager.SchemaScriptConfig config = memoryScriptManager.getScriptConfig(schemaName);
-      config.getSchema().forEach(model -> cache.put(schemaName + ":" + model.getName(), model));
-      try (Session session = createFailsafeSession(schemaName)) {
-        config.getSchema().forEach(obj -> {
-          if (obj instanceof EntityDefinition e) {
-            session.schema().createEntity(e);
-          } else if (obj instanceof EnumDefinition e) {
-            session.schema().createEnum(e);
+    // 将内存中的脚本应用到缓存和数据库
+    memoryScriptManager.getSchemaNames().forEach(this::applyBuildItemSchemas);
+  }
+
+  /**
+   * 将指定 schema 的 BuildItem 配置应用到缓存和数据库中。
+   * 从内存脚本管理器读取 schema 定义和数据，然后：
+   * <ul>
+   *   <li>将模型定义写入缓存</li>
+   *   <li>在数据库中创建实体和枚举表结构</li>
+   *   <li>导入初始数据</li>
+   * </ul>
+   *
+   * @param schemaName 要应用的 schema 名称
+   */
+  private void applyBuildItemSchemas(String schemaName) {
+    MemoryScriptManager.SchemaScriptConfig config = memoryScriptManager.getScriptConfig(schemaName);
+    if (config == null) {
+      return;
+    }
+    config.getSchema().forEach(model -> cache.put(schemaName + ":" + model.getName(), model));
+    try (Session session = createFailsafeSession(schemaName)) {
+      config.getSchema().forEach(obj -> {
+        if (obj instanceof EntityDefinition e) {
+          session.schema().createEntity(e);
+        } else if (obj instanceof EnumDefinition e) {
+          session.schema().createEnum(e);
+        }
+      });
+      config.getData().forEach(d -> {
+        for (Map<String, Object> record : d.getValues()) {
+          try {
+            session.dsl().mergeInto(d.getModelName()).values(record).execute();
+          } catch (Exception e) {
+            log.error("Failed to insert record: {}", e.getMessage(), e);
           }
-        });
-        config.getData().forEach(d -> {
-          for (Map<String, Object> record : d.getValues()) {
-            try {
-              session.dsl().mergeInto(d.getModelName()).values(record).execute();
-            } catch (Exception e) {
-              log.error("Failed to insert record: {}", e.getMessage(), e);
-            }
-          }
-        });
-      }
-    });
+        }
+      });
+    }
   }
 
   private void loadJSONString(String schemaName, String jsonString) {
@@ -312,6 +328,10 @@ public class SessionFactory {
    */
   public void registerBuildItem(BuildItem buildItem) {
     memoryScriptManager.loadScriptFromBuildItem(buildItem);
+    // 立即将加载的 schema 应用到缓存和数据库
+    // 因为 processBuildItem() 在构造函数中已执行过，此方法调用时
+    // buildItem 是新追加的，需要独立触发应用逻辑
+    applyBuildItemSchemas(buildItem.getSchemaName());
   }
 
   public String getDefaultSchema() {

@@ -222,14 +222,8 @@ public class FlexmodelNativeProcessor {
     return ReflectiveClassBuildItem.builder(
         // Auth0 JWT — 无 Quarkus 扩展
         "com.auth0.jwt.exceptions.JWTVerificationException",
-        // MySQL JDBC — DataSource、Driver、异常/协议类（Util.getInstance 反射加载）
-        "com.mysql.cj.jdbc.MysqlDataSource",
-        "com.mysql.cj.jdbc.Driver",
-        "com.mysql.cj.exceptions.**",
-        "com.mysql.cj.conf.url.**",
-        "com.mysql.cj.conf.ConnectionUrl",
-        "com.mysql.cj.conf.HostInfo",
-        // SQLite JDBC — 原生镜像需要 DataSource 反射
+        // MySQL JDBC 反射由 quarkus-jdbc-mysql 扩展自动处理
+        // SQLite JDBC — 原生驱动需要手动注册 DataSource 反射
         "org.sqlite.SQLiteDataSource",
         // Agroal 连接池 — 原生镜像需要反射访问 DataSource 接口实现
         "io.agroal.pool.DataSource",

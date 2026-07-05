@@ -1,13 +1,13 @@
 package dev.flexmodel.scheduling.config;
 
+import dev.flexmodel.JsonUtils;
+import dev.flexmodel.codegen.entity.*;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
 import org.quartz.Calendar;
 import org.quartz.Trigger;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.spi.*;
-import dev.flexmodel.codegen.entity.*;
-import dev.flexmodel.JsonUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -16,6 +16,7 @@ import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 
@@ -39,6 +40,9 @@ public class FmJobStore implements JobStore {
 
   // JobDataMap 的内存级最新值缓存（避免 DB 提交时序导致的覆盖）
   private final ConcurrentHashMap<JobKey, JobDataMap> lastJobData = new ConcurrentHashMap<>();
+
+  // 触发器获取互斥锁：替代 SQLite 等不支持 SELECT ... FOR UPDATE 的数据库的行锁能力
+  private final ReentrantLock triggerAcquireLock = new ReentrantLock();
 
   @Override
   public void initialize(ClassLoadHelper loadHelper, SchedulerSignaler signaler) throws SchedulerConfigException {
@@ -652,6 +656,7 @@ public class FmJobStore implements JobStore {
 
   @Override
   public List<OperableTrigger> acquireNextTriggers(long noLaterThan, int maxCount, long timeWindow) throws JobPersistenceException {
+    triggerAcquireLock.lock();
     try {
       List<QrtzTrigger> triggers = jobRepository.findDueTriggers(instanceName, noLaterThan, timeWindow, maxCount);
 
@@ -685,6 +690,8 @@ public class FmJobStore implements JobStore {
     } catch (Exception e) {
       log.error("Failed to acquire next triggers", e);
       throw new JobPersistenceException("Failed to acquire next triggers", e);
+    } finally {
+      triggerAcquireLock.unlock();
     }
   }
 

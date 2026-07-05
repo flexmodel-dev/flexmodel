@@ -43,6 +43,10 @@ public class FlexmodelNativeProcessor {
    * 注册 BuildItem SPI 实现类。
    * 这些类通过 ServiceLoader 加载，在原生镜像中需要显式注册
    * 以支持反射实例化（含无参构造函数）和 Java 序列化（ObjectUtils.deserialize）。
+   * <p>
+   * <b>注意</b>：必须显式调用 {@code .constructors()}，因为 {@code .methods()} 仅注册
+   * 已声明方法（通过 {@link Class#getDeclaredMethods()}），不包含构造函数。
+   * ServiceLoader 在原生镜像中需要无参构造函数的反射访问权限才能实例化提供者类。
    */
   @BuildStep
   ReflectiveClassBuildItem registerBuildItemImplementations() {
@@ -51,6 +55,7 @@ public class FlexmodelNativeProcessor {
         "dev.flexmodel.test.codegen.DevTest",
         "dev.flexmodel.codegen.ObjectUtils"
       )
+      .constructors()
       .methods()
       .fields()
       .build();
@@ -65,10 +70,17 @@ public class FlexmodelNativeProcessor {
    *   <li>将 META-INF/services/dev.flexmodel.BuildItem 描述符嵌入原生镜像</li>
    *   <li>将提供者类注册为反射可实例化</li>
    * </ul>
+   * <p>
+   * <b>注意</b>：使用构造函数 {@code new ServiceProviderBuildItem(serviceInterface, providerClass...)}
+   * 显式指定提供者类名，而非依赖 {@code allProvidersFromClassPath} 的类路径扫描。
+   * 因为 SPI 描述符文件由 codegen 动态生成到 {@code target/classes/} 目录下，
+   * 在 Quarkus 构建阶段的类加载器中可能无法被扫描到。
    */
   @BuildStep
   ServiceProviderBuildItem registerBuildItemServiceProvider() {
-    return ServiceProviderBuildItem.allProvidersFromClassPath("dev.flexmodel.BuildItem");
+    return new ServiceProviderBuildItem("dev.flexmodel.BuildItem",
+      "dev.flexmodel.codegen.System",
+      "dev.flexmodel.test.codegen.DevTest");
   }
 
   /**

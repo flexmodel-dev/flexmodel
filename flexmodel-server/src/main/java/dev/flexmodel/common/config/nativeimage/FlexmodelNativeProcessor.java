@@ -241,16 +241,54 @@ public class FlexmodelNativeProcessor {
   }
 
   /**
-   * 注册需要运行时重新初始化的类。
-   * 这些类在构建期触发了不安全的初始化，必须在运行时重新初始化。
+   * 注册核心基础设施类。
+   * 包含缓存、通用工具、配置、过滤器、Session、SQL、MongoDB、查询、解析器等。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerRuntimeReinitializedClasses() {
+  ReflectiveClassBuildItem registerCoreInfrastructure() {
     return ReflectiveClassBuildItem.builder(
-        // MySQL 连接清理线程
-        "com.mysql.cj.jdbc.AbandonedConnectionCleanupThread"
+        "dev.flexmodel.cache.**",
+        "dev.flexmodel.common.**",
+        "dev.flexmodel.mongodb.**",
+        "dev.flexmodel.parser.**",
+        "dev.flexmodel.query.**",
+        "dev.flexmodel.session.**",
+        "dev.flexmodel.sql.**",
+        "dev.flexmodel.ModelImportBundle",
+        "dev.flexmodel.ModelImportBundle$ImportData",
+        "dev.flexmodel.ModelRegistry",
+        "dev.flexmodel.SchemaProvider"
+      )
+      .constructors()
+      .methods()
+      .fields()
+      .build();
+  }
+
+  /**
+   * 注册无 Quarkus 扩展覆盖的第三方库类。
+   * 包括 Gson、Guice、JZlib、MongoDB Driver、GraphQL 内部类等。
+   * 已有 Quarkus 扩展处理的库（MySQL JDBC、Agroal、crypto）由扩展自行注册。
+   */
+  @BuildStep
+  ReflectiveClassBuildItem registerAdditionalThirdParty() {
+    return ReflectiveClassBuildItem.builder(
+        // Gson
+        "com.google.gson.Gson",
+        // Guice
+        "com.google.inject.AbstractModule",
+        "com.google.inject.Module",
+        // JZlib 压缩
+        "com.jcraft.jzlib.JZlib",
+        // MongoDB Driver
+        "com.mongodb.client.MongoDatabase",
+        // GraphQL Java 内部类（不可变集合）
+        "graphql.com.google.common.collect.ImmutableCollection",
+        "graphql.com.google.common.collect.ImmutableList",
+        "graphql.com.google.common.collect.RegularImmutableList"
       )
       .methods()
+      .fields()
       .build();
   }
 

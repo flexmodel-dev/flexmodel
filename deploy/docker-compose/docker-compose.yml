@@ -70,6 +70,7 @@ services:
       - FLEXMODEL_DATASOURCE_DEV_TEST_DB_KIND=sqlite
       - FLEXMODEL_DATASOURCE_DEV_TEST_URL=jdbc:sqlite:file:database/sqlite_dev_test.db
       - QUARKUS_REST_CLIENT_FUNCTION_RUNTIME_URL=http://flexmodel-functions-runtime:9999
+      - QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=100M
 
     networks:
       - flexmodel

@@ -7,7 +7,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Generates the schema BuildItem Java class.
@@ -38,6 +40,26 @@ public class SchemaGenerator extends AbstractGenerator {
         out.println("import dev.flexmodel.model.EnumDefinition;");
         out.println("import dev.flexmodel.model.SchemaObject;");
         out.println("import dev.flexmodel.ModelImportBundle;");
+      out.println("import dev.flexmodel.query.FilterExpression;");
+      out.println();
+
+      // Collect all imports from entity models' own import lists
+      Set<String> allEntityImports = new LinkedHashSet<>();
+      for (ModelClass model : modelClassList) {
+        for (String imp : model.getImports()) {
+          if (imp != null && !imp.isEmpty() && !imp.startsWith("dev.flexmodel.annotation")) {
+            allEntityImports.add(imp);
+          }
+        }
+        // Also add the entity class itself (may be needed for relation field references)
+        if (model.getFullClassName() != null && !model.getFullClassName().startsWith("null.")) {
+          allEntityImports.add(model.getFullClassName());
+        }
+      }
+      for (String importType : allEntityImports) {
+        out.println("import " + importType + ";");
+      }
+
         out.println();
         out.println("import java.util.ArrayList;");
         out.println("import java.util.List;");
@@ -73,6 +95,39 @@ public class SchemaGenerator extends AbstractGenerator {
         out.println("    return list;");
         out.println("  }");
         out.println();
+
+      // === Entity field models (zero-reflection, instance fields) ===
+      // e.g.:  System.project.enabled.eq(true)
+      // First pass: declare the nested field class for each entity
+      for (ModelClass model : modelClassList) {
+        String entityName = model.getShortClassName();
+        String fieldsClassName = entityName + "Fields";
+        out.println("  /** Field references for {@link " + entityName + "} */");
+        out.println("  public static final class " + fieldsClassName + " {");
+        for (ModelField field : model.getAllFields()) {
+          String rawType = field.getShortTypeName();
+          if (rawType == null || rawType.isEmpty()) {
+            rawType = "Object";
+          }
+          String typeStr = boxType(rawType);
+          String fieldName = field.getVariableName();
+          out.println("    public final FilterExpression<" + typeStr + "> "
+            + fieldName + " = new FilterExpression<>(\"" + fieldName + "\");");
+        }
+        out.println("  }");
+      }
+      out.println();
+
+      // Second pass: declare static instances, one per entity
+      for (ModelClass model : modelClassList) {
+        String entityName = model.getShortClassName();
+        String fieldsClassName = entityName + "Fields";
+        String instanceName = StringUtils.uncapitalize(entityName);
+        out.println("  /** {@link " + entityName + "} field references */");
+        out.println("  public static final " + fieldsClassName + " " + instanceName
+          + " = new " + fieldsClassName + "();");
+      }
+      out.println();
 
         // getData() method
         out.println("  @Override");
@@ -122,4 +177,22 @@ public class SchemaGenerator extends AbstractGenerator {
             }
         }
     }
+
+  /**
+   * Box primitive types for use in generics (e.g. int → Integer).
+   */
+  private static String boxType(String type) {
+    return switch (type) {
+      case "int" -> "Integer";
+      case "long" -> "Long";
+      case "boolean" -> "Boolean";
+      case "double" -> "Double";
+      case "float" -> "Float";
+      case "short" -> "Short";
+      case "byte" -> "Byte";
+      case "char" -> "Character";
+      default -> type;
+    };
+  }
+
 }

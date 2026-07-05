@@ -29,7 +29,26 @@ public class FlexmodelNativeProcessor {
   ReflectiveClassBuildItem registerCodegenEntities() {
     return ReflectiveClassBuildItem.builder(
         "dev.flexmodel.codegen.entity.**",
-        "dev.flexmodel.codegen.enumeration.**"
+        "dev.flexmodel.codegen.enumeration.**",
+        "dev.flexmodel.test.codegen.entity.**",
+        "dev.flexmodel.test.codegen.enumeration.**"
+      )
+      .methods()
+      .fields()
+      .build();
+  }
+
+  /**
+   * 注册 BuildItem SPI 实现类。
+   * 这些类通过 ServiceLoader 加载，在原生镜像中需要显式注册
+   * 以支持反射实例化（含无参构造函数）和 Java 序列化（ObjectUtils.deserialize）。
+   */
+  @BuildStep
+  ReflectiveClassBuildItem registerBuildItemImplementations() {
+    return ReflectiveClassBuildItem.builder(
+        "dev.flexmodel.codegen.System",
+        "dev.flexmodel.test.codegen.DevTest",
+        "dev.flexmodel.codegen.ObjectUtils"
       )
       .methods()
       .fields()

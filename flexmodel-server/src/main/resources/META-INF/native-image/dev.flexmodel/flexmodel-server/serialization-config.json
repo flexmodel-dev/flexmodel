@@ -4,5 +4,62 @@
   },
   {
     "name": "dev.flexmodel.query.Expressions$SFunction"
+  },
+  {
+    "name": "dev.flexmodel.model.EntityDefinition"
+  },
+  {
+    "name": "dev.flexmodel.model.EnumDefinition"
+  },
+  {
+    "name": "dev.flexmodel.model.AbstractModelDefinition"
+  },
+  {
+    "name": "dev.flexmodel.model.IndexDefinition"
+  },
+  {
+    "name": "dev.flexmodel.model.IndexDefinition$Field"
+  },
+  {
+    "name": "dev.flexmodel.model.field.StringField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.LongField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.IntField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.BooleanField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.DateTimeField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.DateField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.TimeField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.FloatField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.JSONField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.EnumRefField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.RelationField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.TypedField"
+  },
+  {
+    "name": "dev.flexmodel.model.field.DefaultValue"
+  },
+  {
+    "name": "dev.flexmodel.ModelImportBundle$ImportData"
   }
 ]

@@ -138,19 +138,12 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
           cache-dependency-path: '**/pom.xml'
-      - name: Configure Maven settings
-        env:
-          GITHUB_USERNAME: cjbi
-          MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
-        run: |
-          mkdir -p ~/.m2
-          cp .github/settings.xml ~/.m2/settings.xml
-      - name: Build and push server image
+      - name: Build and push server native image
         run: |
           mvn -B -Dmaven.test.skip=true clean package -Pnative -pl flexmodel-server -am \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
-            -Dquarkus.container-image.image=cjbi/flexmodel-server:latest \
+            -Dquarkus.container-image.image=cjbi/flexmodel-server-native:latest \
             -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} \
             -Dquarkus.container-image.password=${{ secrets.DOCKER_PASSWORD }}
 

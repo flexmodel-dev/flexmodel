@@ -65,12 +65,14 @@ public class EngineConfig {
       if (key.equals(SYSTEM_DS_KEY)) {
         return;
       }
+      log.info("Registering datasource: key={}, url={}", key, value.url());
       AgroalDataSource ds = AgroalDataSourceFactory.createDataSource(
         value.url(),
         value.username().orElse(null),
         value.password().orElse(null));
       builder.registerSchemaProvider(new JdbcSchemaProvider(key, ds));
     });
+    log.info("Total registered datasources: {}", flexmodelConfig.datasources().keySet());
     SessionFactory sf = builder.build();
     // 直接注册 BuildItem 实例，绕过 SPI ServiceLoader 机制
     // 在 GraalVM 原生镜像中 ServiceLoader.load() 无法正确发现 SPI 实现类

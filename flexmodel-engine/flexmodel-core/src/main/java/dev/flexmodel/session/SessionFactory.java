@@ -48,7 +48,7 @@ public class SessionFactory {
     schemaProviders.forEach(this::registerSchemaProvider);
     this.modelRegistry = initializeModelRegistry(defaultSchemaProvider);
     this.failsafe = failsafe;
-    processBuildItem();
+//    processBuildItem();
   }
 
   private ModelRegistry initializeModelRegistry(SchemaProvider schemaProvider) {
@@ -64,13 +64,13 @@ public class SessionFactory {
   /**
    * 处理构建步骤的项目
    */
-  void processBuildItem() {
-    // 将BuildItem脚本加载到内存中（通过 SPI ServiceLoader）
-    memoryScriptManager.loadScriptsFromBuildItems();
-
-    // 将内存中的脚本应用到缓存和数据库
-    memoryScriptManager.getSchemaNames().forEach(this::applyBuildItemSchemas);
-  }
+//  void processBuildItem() {
+//    // 将BuildItem脚本加载到内存中（通过 SPI ServiceLoader）
+//    memoryScriptManager.loadScriptsFromBuildItems();
+//
+//    // 将内存中的脚本应用到缓存和数据库
+//    memoryScriptManager.getSchemaNames().forEach(this::applyBuildItemSchemas);
+//  }
 
   /**
    * 将指定 schema 的 BuildItem 配置应用到缓存和数据库中。

@@ -13,11 +13,10 @@ import org.quartz.TriggerKey;
 import java.util.List;
 
 import static dev.flexmodel.codegen.System.*;
+import static dev.flexmodel.common.FlexmodelConfig.DEFAULT_SCHEMA_NAME;
 
 @ApplicationScoped
 public class FmJobRepository {
-
-  private static final String DEFAULT_SCHEMA_NAME = "system";
 
   SessionFactory sessionFactory;
 

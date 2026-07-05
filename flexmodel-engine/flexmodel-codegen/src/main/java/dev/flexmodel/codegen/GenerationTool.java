@@ -30,7 +30,7 @@ public class GenerationTool {
       new EnumGenerator().generate(context, targetDirectory);
       new SchemaGenerator().generate(context, targetDirectory);
       context.putVariable("buildItems", buildItems);
-      new BuildItemSPIFileGenerator().generate(context, schema.getBaseDir());
+//      new BuildItemSPIFileGenerator().generate(context, schema.getBaseDir());
     }
   }
 }

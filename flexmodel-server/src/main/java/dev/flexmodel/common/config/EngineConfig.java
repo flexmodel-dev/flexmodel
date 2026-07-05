@@ -37,7 +37,6 @@ public class EngineConfig {
     long beginTime = System.currentTimeMillis();
     List<Project> projects = projectService.findProjects();
     for (Project project : projects) {
-      schemaRegistry.add(project);
       // 注册非 main 分支的数据库 SchemaProvider
       List<Branch> branches = branchRepository.findByProjectId(project.getId());
       for (Branch branch : branches) {

@@ -33,7 +33,6 @@ public class FmJobStore implements JobStore {
   private long acquireRetryDelay = 1000L;
   private ClassLoadHelper loadHelper;
   private SchedulerSignaler signaler;
-  private static final String DEFAULT_SCHEMA_NAME = "system"; // kept for backward compat but unused
 
   // 进程内非并发作业占用表（仅用于 @DisallowConcurrentExecution）
   private final ConcurrentHashMap<JobKey, AtomicInteger> nonConcurrentRunning = new ConcurrentHashMap<>();

@@ -1,5 +1,13 @@
 {
-  "reflection": [],
+  "reflection": [
+    {
+      "type": "io.agroal.pool.ConnectionHandler",
+      "allDeclaredConstructors": true
+    },
+    {
+      "type": "io.agroal.pool.ConnectionHandler[]"
+    }
+  ],
   "resources": [
     {
       "glob": "project.fml"

@@ -4852,9 +4852,6 @@
       "type": "dev.flexmodel.functions.FunctionTemplateResource"
     },
     {
-      "type": "dev.flexmodel.functions.RuntimeFunctionResource"
-    },
-    {
       "type": "dev.flexmodel.functions.dto.FunctionDeployRequest"
     },
     {

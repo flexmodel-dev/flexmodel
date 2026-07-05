@@ -66,8 +66,24 @@ public class TypedDSLQueryBuilder<T> {
     return this;
   }
 
+  /**
+   * 设置排序（使用字段引用）
+   */
+  public TypedDSLQueryBuilder<T> orderBy(FilterExpression<?> field, Direction direction) {
+    delegate.orderBy(field.getFieldName(), direction);
+    return this;
+  }
+
   public TypedDSLQueryBuilder<T> orderBy(String field) {
     orderBy(field, Direction.ASC);
+    return this;
+  }
+
+  /**
+   * 设置升序排序（使用字段引用）
+   */
+  public TypedDSLQueryBuilder<T> orderBy(FilterExpression<?> field) {
+    orderBy(field.getFieldName(), Direction.ASC);
     return this;
   }
 
@@ -79,16 +95,11 @@ public class TypedDSLQueryBuilder<T> {
     return this;
   }
 
-  public <R> TypedDSLQueryBuilder<T> orderBy(Expressions.SFunction<T, R> getter) {
-    orderBy(Expressions.getFieldName(getter), Direction.ASC);
-    return this;
-  }
-
   /**
-   * 设置排序
+   * 设置降序排序（使用字段引用）
    */
-  public <R> TypedDSLQueryBuilder<T> orderByDesc(Expressions.SFunction<T, R> getter) {
-    orderBy(Expressions.getFieldName(getter), Direction.DESC);
+  public TypedDSLQueryBuilder<T> orderByDesc(FilterExpression<?> field) {
+    orderBy(field.getFieldName(), Direction.DESC);
     return this;
   }
 
@@ -120,16 +131,6 @@ public class TypedDSLQueryBuilder<T> {
    * 设置分组
    */
   public TypedDSLQueryBuilder<T> groupBy(String... fields) {
-    delegate.groupBy(fields);
-    return this;
-  }
-
-  @SafeVarargs
-  public final <R> TypedDSLQueryBuilder<T> groupBy(Expressions.SFunction<T, R>... getters) {
-    String[] fields = new String[getters.length];
-    for (int i = 0; i < fields.length; i++) {
-      fields[i] = Expressions.getFieldName(getters[i]);
-    }
     delegate.groupBy(fields);
     return this;
   }

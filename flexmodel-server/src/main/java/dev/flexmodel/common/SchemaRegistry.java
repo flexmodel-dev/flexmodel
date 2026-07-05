@@ -1,14 +1,15 @@
 package dev.flexmodel.common;
 
-import com.zaxxer.hikari.HikariDataSource;
 import dev.flexmodel.SchemaProvider;
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.common.config.AgroalDataSourceFactory;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
+import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.sql.JdbcSchemaProvider;
-import dev.flexmodel.project.ProjectService;
+import io.agroal.api.AgroalDataSource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -91,7 +92,7 @@ public class SchemaRegistry {
           return;
         }
         // 配置存在但SchemaProvider未注册，使用配置URL创建
-        HikariDataSource ds = buildOptimizedDataSource(configDs.url(), configDs.username().orElse(null), configDs.password().orElse(null));
+        AgroalDataSource ds = AgroalDataSourceFactory.createDataSource(configDs.url(), configDs.username().orElse(null), configDs.password().orElse(null));
         SchemaProvider schemaProvider = new JdbcSchemaProvider(actualSchemaName, ds);
         sessionFactory.registerSchemaProvider(schemaProvider);
         log.info("Registered SchemaProvider '{}' from config URL: {}", actualSchemaName, configDs.url());
@@ -112,14 +113,14 @@ public class SchemaRegistry {
    * @param schemaName Schema 名称
    */
   public void unregisterSchema(String schemaName) {
-    // 取消注册前关闭对应的 HikariDataSource
+    // 取消注册前关闭对应的 AgroalDataSource
     try {
       dev.flexmodel.SchemaProvider sp = sessionFactory.getSchemaProvider(schemaName);
-      if (sp instanceof JdbcSchemaProvider jsp) {
-        jsp.dataSource().unwrap(HikariDataSource.class).close();
+      if (sp instanceof JdbcSchemaProvider jsp && jsp.dataSource() instanceof AgroalDataSource ads) {
+        ads.close();
       }
     } catch (Exception e) {
-      log.warn("Failed to close HikariDataSource for schema '{}'", schemaName, e);
+      log.warn("Failed to close AgroalDataSource for schema '{}'", schemaName, e);
     }
     sessionFactory.unregisterSchemaProvider(schemaName);
     log.info("Unregistered SchemaProvider '{}'", schemaName);
@@ -147,25 +148,7 @@ public class SchemaRegistry {
     String jdbcUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", databaseName);
     String username = datasource.username().orElse(null);
     String password = datasource.password().orElse(null);
-    return buildOptimizedDataSource(getContent(jdbcUrl), getContent(username), getContent(password));
-  }
-
-  /**
-   * 创建优化配置的 HikariDataSource，统一连接池参数。
-   */
-  private HikariDataSource buildOptimizedDataSource(String jdbcUrl, String username, String password) {
-    dev.flexmodel.common.config.EngineConfig.ensureSqliteParentDir(jdbcUrl);
-    HikariDataSource ds = new HikariDataSource();
-    ds.setJdbcUrl(jdbcUrl);
-    if (username != null) ds.setUsername(username);
-    if (password != null) ds.setPassword(password);
-    ds.setMaximumPoolSize(10);
-    ds.setConnectionTimeout(10000);
-    ds.setMaxLifetime(600000);
-    ds.setIdleTimeout(300000);
-    ds.setLeakDetectionThreshold(60000);
-    ds.setValidationTimeout(3000);
-    return ds;
+    return AgroalDataSourceFactory.createDataSource(getContent(jdbcUrl), getContent(username), getContent(password));
   }
 
   public void delete(Project project) {

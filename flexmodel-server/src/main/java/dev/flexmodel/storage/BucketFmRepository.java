@@ -1,5 +1,6 @@
 package dev.flexmodel.storage;
 
+import dev.flexmodel.codegen.System;
 import dev.flexmodel.codegen.entity.Bucket;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.session.Session;
@@ -7,8 +8,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 import java.util.Optional;
-
-import static dev.flexmodel.query.Expressions.field;
 
 /**
  * Bucket 仓储 Flexmodel 实现
@@ -23,8 +22,8 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
     try (Session session = getProjectSession(ownerId)) {
       return session.dsl()
         .selectFrom(Bucket.class)
-        .where(field(Bucket::getOwnerType).eq(ownerType)
-          .and(field(Bucket::getOwnerId).eq(ownerId)))
+        .where(System.bucket.ownerType.eq(ownerType)
+          .and(System.bucket.ownerId.eq(ownerId)))
         .execute();
     }
   }
@@ -34,9 +33,9 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
     try (Session session = getProjectSession(ownerId)) {
       return session.dsl()
         .selectFrom(Bucket.class)
-        .where(field(Bucket::getOwnerType).eq(ownerType)
-          .and(field(Bucket::getOwnerId).eq(ownerId))
-          .and(field(Bucket::getName).eq(bucketName)))
+        .where(System.bucket.ownerType.eq(ownerType)
+          .and(System.bucket.ownerId.eq(ownerId))
+          .and(System.bucket.name.eq(bucketName)))
         .execute()
         .stream()
         .findFirst();
@@ -58,9 +57,9 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
   public void delete(String ownerType, String ownerId, String bucketName) {
     try (Session session = getProjectSession(ownerId)) {
       session.dsl().deleteFrom(Bucket.class)
-        .where(field(Bucket::getOwnerType).eq(ownerType)
-          .and(field(Bucket::getOwnerId).eq(ownerId))
-          .and(field(Bucket::getName).eq(bucketName)))
+        .where(System.bucket.ownerType.eq(ownerType)
+          .and(System.bucket.ownerId.eq(ownerId))
+          .and(System.bucket.name.eq(bucketName)))
         .execute();
     }
   }
@@ -69,8 +68,8 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
   public Integer count(String ownerType, String ownerId) {
     try (Session session = getProjectSession(ownerId)) {
       return (int) session.dsl().selectFrom(Bucket.class)
-        .where(field(Bucket::getOwnerType).eq(ownerType)
-          .and(field(Bucket::getOwnerId).eq(ownerId)))
+        .where(System.bucket.ownerType.eq(ownerType)
+          .and(System.bucket.ownerId.eq(ownerId)))
         .count();
     }
   }

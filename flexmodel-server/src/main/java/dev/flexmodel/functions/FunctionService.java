@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static dev.flexmodel.codegen.System.function;
+
 /**
  * Function lifecycle management: CRUD, deploy to Deno functions runtime, invoke.
  *
@@ -125,7 +127,7 @@ public class FunctionService {
   public PageDTO<FunctionResponse> findPage(String projectId, FunctionPageRequest request) {
     Predicate filter = Expressions.TRUE;
     if (request.getName() != null && !request.getName().isBlank()) {
-      filter = filter.and(Expressions.field(Function::getName).eq(request.getName()));
+      filter = filter.and(function.name.eq(request.getName()));
     }
 
     long total = functionRepository.count(projectId, filter);

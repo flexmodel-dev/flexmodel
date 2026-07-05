@@ -1,6 +1,8 @@
 package dev.flexmodel.storage.config;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -11,10 +13,16 @@ import java.util.Map;
  * 应用级别单例，持有 StorageBackend 实例。
  * 由 StorageProviderInitializer 在启动时初始化。
  *
+ * <p>S3Client 由 quarkus-amazon-s3 扩展自动创建并注入，
+ * 连接参数通过 application.properties 中的 quarkus.s3.* 配置。
+ *
  * @author cjbi
  */
 @ApplicationScoped
 public class StorageProvider {
+
+  @Inject
+  S3Client s3Client;
 
   private StorageBackend backend;
   private StorageProviderConfig config;
@@ -67,15 +75,10 @@ public class StorageProvider {
   }
 
   private S3Backend createS3Backend(StorageProviderConfig config) {
-    String accessKey = config.s3AccessKey()
-      .orElseThrow(() -> new RuntimeException("S3 storage requires 'flexmodel.storage.s3-access-key'"));
-    String secretKey = config.s3SecretKey()
-      .orElseThrow(() -> new RuntimeException("S3 storage requires 'flexmodel.storage.s3-secret-key'"));
     String bucket = config.s3Bucket()
       .orElseThrow(() -> new RuntimeException("S3 storage requires 'flexmodel.storage.s3-bucket'"));
     String endpoint = config.s3Endpoint().orElse(null);
 
-    return new S3Backend(accessKey, secretKey, bucket, config.s3Region(),
-      endpoint, config.s3PathStyle(), config.readOnly());
+    return new S3Backend(s3Client, bucket, endpoint, config.readOnly());
   }
 }

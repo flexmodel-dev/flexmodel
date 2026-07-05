@@ -1,15 +1,10 @@
 package dev.flexmodel.storage.config;
 
 import dev.flexmodel.storage.StorageOperations;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.*;
 
-import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,6 +13,10 @@ import java.util.stream.Collectors;
  * <p>
  * 使用一个真实 S3 Bucket，容器对应 Bucket 下的前缀路径。
  * 兼容 AWS S3、MinIO、阿里云 OSS 等 S3 兼容存储。
+ * <p>
+ * S3Client 由 quarkus-amazon-s3 扩展自动创建并注入，
+ * 连接参数（region、credentials、endpoint-override 等）通过
+ * application.properties 中的 quarkus.s3.* 配置。
  *
  * @author cjbi
  */
@@ -30,25 +29,11 @@ public class S3Backend implements StorageBackend {
   private final String endpoint;
   private final boolean readOnly;
 
-  public S3Backend(String accessKey, String secretKey, String bucket, String region,
-                   String endpoint, boolean pathStyle, boolean readOnly) {
+  public S3Backend(S3Client s3Client, String bucket, String endpoint, boolean readOnly) {
+    this.s3Client = s3Client;
     this.bucket = bucket;
     this.endpoint = endpoint;
     this.readOnly = readOnly;
-
-    AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
-    S3ClientBuilder builder = S3Client.builder()
-      .credentialsProvider(StaticCredentialsProvider.create(credentials))
-      .region(Region.of(region));
-
-    if (endpoint != null && !endpoint.isEmpty()) {
-      builder.endpointOverride(URI.create(endpoint));
-      if (pathStyle) {
-        builder.forcePathStyle(true);
-      }
-    }
-
-    this.s3Client = builder.build();
   }
 
   @Override

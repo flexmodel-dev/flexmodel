@@ -1,5 +1,6 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
@@ -7,7 +8,6 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -21,7 +21,7 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class TriggerResourceTest {
 
-  private static final String BASE_PATH = "/api/projects/dev_test/triggers";
+  private static final String BASE_PATH = "/projects/dev_test/triggers";
 
   // 测试数据中的触发器ID
   private static final String INTERVAL_TRIGGER_ID = "bf492f37-1f01-4eb8-b76d-d319299b4d8e";

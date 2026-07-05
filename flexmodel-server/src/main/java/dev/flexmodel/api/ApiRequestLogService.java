@@ -1,14 +1,14 @@
 package dev.flexmodel.api;
 
 import dev.flexmodel.api.dto.LogStatResponse;
+import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.query.Expressions;
+import dev.flexmodel.query.Predicate;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.codegen.entity.ApiRequestLog;
-import dev.flexmodel.query.Predicate;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.apiRequestLog;
 
 /**
  * @author cjbi
@@ -88,8 +88,8 @@ public class ApiRequestLogService {
 
     Predicate condition = getCondition(keyword, startDate, endDate, isSuccess);
 
-    Map<String, Long> successMap = stat(projectId, condition.and(field(ApiRequestLog::getIsSuccess).eq(true)), fmt).stream().collect(Collectors.toMap(LogStat::getDate, LogStat::getTotal));
-    Map<String, Long> failMap = stat(projectId, condition.and(field(ApiRequestLog::getIsSuccess).eq(false)), fmt).stream().collect(Collectors.toMap(LogStat::getDate, LogStat::getTotal));
+    Map<String, Long> successMap = stat(projectId, condition.and(apiRequestLog.isSuccess.eq(true)), fmt).stream().collect(Collectors.toMap(LogStat::getDate, LogStat::getTotal));
+    Map<String, Long> failMap = stat(projectId, condition.and(apiRequestLog.isSuccess.eq(false)), fmt).stream().collect(Collectors.toMap(LogStat::getDate, LogStat::getTotal));
     statDTO = new LogStatResponse.ApiChart();
     List<Long> successData = new ArrayList<>();
     List<Long> failData = new ArrayList<>();
@@ -111,13 +111,13 @@ public class ApiRequestLogService {
   private static Predicate getCondition(String keyword, LocalDateTime startDate, LocalDateTime endDate, Boolean isSuccess) {
     Predicate condition = Expressions.TRUE;
     if (keyword != null) {
-      condition = condition.and(field(ApiRequestLog::getRequestBody).contains(keyword));
+      condition = condition.and(apiRequestLog.requestBody.contains(keyword));
     }
     if (startDate != null && endDate != null) {
-      condition = condition.and(field(ApiRequestLog::getCreatedAt).between(startDate, endDate));
+      condition = condition.and(apiRequestLog.createdAt.between(startDate, endDate));
     }
     if (isSuccess != null) {
-      condition = condition.and(field(ApiRequestLog::getIsSuccess).eq(isSuccess));
+      condition = condition.and(apiRequestLog.isSuccess.eq(isSuccess));
     }
     return condition;
   }
@@ -146,6 +146,6 @@ public class ApiRequestLogService {
   public void purgeOldLogs(String projectId, int maxDays) {
     log.info("Purging old logs older than {} days for project {}", maxDays, projectId);
     LocalDateTime purgeDate = LocalDateTime.now().minusDays(maxDays);
-    apiLogRepository.delete(projectId, field(ApiRequestLog::getCreatedAt).lte(purgeDate));
+    apiLogRepository.delete(projectId, apiRequestLog.createdAt.lte(purgeDate));
   }
 }

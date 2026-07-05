@@ -1,13 +1,14 @@
 package dev.flexmodel.project;
 
 import dev.flexmodel.codegen.entity.Branch;
-import dev.flexmodel.query.Expressions;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.util.List;
+
+import static dev.flexmodel.codegen.System.branch;
 
 /**
  * 分支仓库实现
@@ -24,7 +25,7 @@ public class BranchFmRepository implements BranchRepository {
   public List<Branch> findByProjectId(String projectId) {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(Branch.class)
-          .where(Expressions.field(Branch::getProjectId).eq(projectId))
+        .where(branch.projectId.eq(projectId))
           .execute().stream()
           .toList();
     }
@@ -34,8 +35,8 @@ public class BranchFmRepository implements BranchRepository {
   public Branch findByProjectIdAndName(String projectId, String branchName) {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(Branch.class)
-          .where(Expressions.field(Branch::getProjectId).eq(projectId)
-              .and(Expressions.field(Branch::getName).eq(branchName)))
+        .where(branch.projectId.eq(projectId)
+          .and(branch.name.eq(branchName)))
           .executeOne();
     }
   }
@@ -53,8 +54,8 @@ public class BranchFmRepository implements BranchRepository {
   public void delete(String projectId, String branchName) {
     try (Session session = sessionFactory.createSession()) {
       session.dsl().deleteFrom(Branch.class)
-          .where(Expressions.field(Branch::getProjectId).eq(projectId)
-              .and(Expressions.field(Branch::getName).eq(branchName)))
+        .where(branch.projectId.eq(projectId)
+          .and(branch.name.eq(branchName)))
           .execute();
     }
   }

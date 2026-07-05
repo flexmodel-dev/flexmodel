@@ -17,16 +17,16 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.deploy.skip>true</maven.deploy.skip>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
-        <HikariCP.version>5.1.0</HikariCP.version>
+        <agroal.version>2.8</agroal.version>
         <sqlite-jdbc.version>3.45.3.0</sqlite-jdbc.version>
         <graphql-java.version>22.3</graphql-java.version>
     </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>com.zaxxer</groupId>
-                <artifactId>HikariCP</artifactId>
-                <version>${HikariCP.version}</version>
+                <groupId>io.agroal</groupId>
+                <artifactId>agroal-pool</artifactId>
+                <version>${agroal.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.xerial</groupId>

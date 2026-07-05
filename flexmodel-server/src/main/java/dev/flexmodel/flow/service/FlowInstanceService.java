@@ -1,31 +1,33 @@
 package dev.flexmodel.flow.service;
 
-import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.flow.dto.FlowInstanceListRequest;
-import dev.flexmodel.flow.dto.FlowInstanceResponse;
-import dev.flexmodel.flow.dto.result.*;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.FlowDeployment;
 import dev.flexmodel.codegen.entity.FlowInstance;
 import dev.flexmodel.codegen.entity.FlowInstanceMapping;
 import dev.flexmodel.codegen.entity.NodeInstance;
+import dev.flexmodel.common.dto.PageDTO;
+import dev.flexmodel.common.utils.CollectionUtils;
+import dev.flexmodel.common.utils.StringUtils;
+import dev.flexmodel.flow.common.FlowElementType;
+import dev.flexmodel.flow.common.util.FlowModelUtil;
+import dev.flexmodel.flow.dto.FlowInstanceListRequest;
+import dev.flexmodel.flow.dto.FlowInstanceResponse;
 import dev.flexmodel.flow.dto.model.FlowElement;
+import dev.flexmodel.flow.dto.result.TerminateResult;
 import dev.flexmodel.flow.repository.FlowDeploymentRepository;
 import dev.flexmodel.flow.repository.FlowInstanceMappingRepository;
 import dev.flexmodel.flow.repository.FlowInstanceRepository;
 import dev.flexmodel.flow.repository.NodeInstanceRepository;
-import dev.flexmodel.flow.common.FlowElementType;
-import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
-import dev.flexmodel.common.utils.CollectionUtils;
-import dev.flexmodel.JsonUtils;
-import dev.flexmodel.common.utils.StringUtils;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
+
+import static dev.flexmodel.codegen.System.flowInstance;
 
 @ApplicationScoped
 public class FlowInstanceService {
@@ -220,16 +222,16 @@ public class FlowInstanceService {
     LOGGER.info("获取流程实例列表，参数: {}", request);
     Predicate predicate = Expressions.TRUE;
     if (StringUtils.isNotBlank(request.getFlowInstanceId())) {
-      predicate = predicate.and(Expressions.field(FlowInstance::getFlowInstanceId).eq(request.getFlowInstanceId()));
+      predicate = predicate.and(flowInstance.flowInstanceId.eq(request.getFlowInstanceId()));
     }
     if (StringUtils.isNotBlank(request.getFlowModuleId())) {
-      predicate = predicate.and(Expressions.field(FlowInstance::getFlowModuleId).eq(request.getFlowModuleId()));
+      predicate = predicate.and(flowInstance.flowModuleId.eq(request.getFlowModuleId()));
     }
     if (StringUtils.isNotBlank(request.getFlowDeployId())) {
-      predicate = predicate.and(Expressions.field(FlowInstance::getFlowDeployId).eq(request.getFlowDeployId()));
+      predicate = predicate.and(flowInstance.flowDeployId.eq(request.getFlowDeployId()));
     }
     if (request.getStatus() != null) {
-      predicate = predicate.and(Expressions.field(FlowInstance::getStatus).eq(request.getStatus()));
+      predicate = predicate.and(flowInstance.status.eq(request.getStatus()));
     }
     long count = count(request.getProjectId(), predicate);
     if (count == 0) {

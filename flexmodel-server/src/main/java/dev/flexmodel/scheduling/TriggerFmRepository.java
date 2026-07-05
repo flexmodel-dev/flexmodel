@@ -1,14 +1,14 @@
 package dev.flexmodel.scheduling;
 
-import dev.flexmodel.common.AbstractRepository;
-import jakarta.enterprise.context.ApplicationScoped;
 import dev.flexmodel.codegen.entity.Trigger;
+import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.session.Session;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.trigger;
 
 @ApplicationScoped
 public class TriggerFmRepository extends AbstractRepository implements TriggerRepository {
@@ -19,7 +19,7 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
       return session.dsl()
         .select()
         .from(Trigger.class)
-        .where(field(Trigger::getId).eq(id))
+        .where(trigger.id.eq(id))
         .executeOne();
     }
   }
@@ -40,7 +40,7 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
     try (Session session = getProjectSession(projectId)) {
       session.dsl()
         .deleteFrom(Trigger.class)
-        .where(field(Trigger::getId).eq(id))
+        .where(trigger.id.eq(id))
         .execute();
     }
   }
@@ -53,7 +53,7 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
         .from(Trigger.class)
         .where(filter)
         .page(page, size)
-        .orderByDesc(Trigger::getCreatedAt)
+        .orderByDesc(trigger.createdAt)
         .execute();
     }
   }

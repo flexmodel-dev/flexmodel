@@ -15,11 +15,13 @@ import java.util.Optional;
 @ConfigMapping(prefix = "flexmodel")
 public interface FlexmodelConfig extends Serializable {
 
+  String DEFAULT_SCHEMA_NAME = "system";
+
   @WithName("project-url-template")
   String projectUrlTemplate();
 
   @WithName("datasource")
-  @WithUnnamedKey("system")
+  @WithUnnamedKey(DEFAULT_SCHEMA_NAME)
   Map<String, DatasourceConfig> datasources();
 
   @WithDefault("${quarkus.http.root-path}")

@@ -1,11 +1,10 @@
 package dev.flexmodel.flow.repository;
 
-import dev.flexmodel.common.AbstractRepository;
-import jakarta.enterprise.context.ApplicationScoped;
+import dev.flexmodel.codegen.System;
 import dev.flexmodel.codegen.entity.InstanceData;
+import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.session.Session;
-
-import static dev.flexmodel.query.Expressions.field;
+import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class InstanceDataFmRepository extends AbstractRepository implements InstanceDataRepository {
@@ -14,8 +13,8 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
   public InstanceData select(String projectId, String flowInstanceId, String instanceDataId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(InstanceData.class)
-        .where(field(InstanceData::getFlowInstanceId).eq(flowInstanceId)
-          .and(field(InstanceData::getInstanceDataId).eq(instanceDataId)))
+        .where(System.instanceData.flowInstanceId.eq(flowInstanceId)
+          .and(System.instanceData.instanceDataId.eq(instanceDataId)))
         .executeOne();
     }
   }
@@ -24,8 +23,8 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
   public InstanceData selectRecentOne(String projectId, String flowInstanceId) {
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(InstanceData.class)
-        .where(field(InstanceData::getFlowInstanceId).eq(flowInstanceId))
-        .orderByDesc(InstanceData::getId)
+        .where(System.instanceData.flowInstanceId.eq(flowInstanceId))
+        .orderByDesc(System.instanceData.id)
         .limit(1)
         .executeOne();
     }
@@ -43,7 +42,7 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
     try (Session session = getProjectSession(projectId)) {
       return session.dsl().update(InstanceData.class)
         .values(instanceData)
-        .where(field(InstanceData::getId).eq(instanceData.getId()))
+        .where(System.instanceData.id.eq(instanceData.getId()))
         .execute();
     }
   }

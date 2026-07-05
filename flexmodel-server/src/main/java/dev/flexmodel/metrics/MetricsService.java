@@ -1,21 +1,20 @@
 package dev.flexmodel.metrics;
 
-import dev.flexmodel.metrics.dto.FmMetricsResponse;
-import dev.flexmodel.project.ProjectService;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.codegen.entity.FlowDefinition;
-import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.api.ApiRequestLogService;
 import dev.flexmodel.flow.service.FlowDefinitionService;
 import dev.flexmodel.flow.service.FlowInstanceService;
+import dev.flexmodel.metrics.dto.FmMetricsResponse;
 import dev.flexmodel.modeling.ModelService;
 import dev.flexmodel.project.BranchService;
+import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.scheduling.JobExecutionLogService;
 import dev.flexmodel.scheduling.TriggerService;
-import dev.flexmodel.query.Expressions;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 
+import static dev.flexmodel.codegen.System.flowDefinition;
+import static dev.flexmodel.codegen.System.jobExecutionLog;
 import static dev.flexmodel.query.Expressions.TRUE;
 
 /**
@@ -48,11 +47,11 @@ public class MetricsService {
         .filter(model -> !model.isSystem()).count();
       int branchCount = branchService.listBranches(projectId).size();
       long reqLogCount = apiLogService.count(projectId, TRUE);
-      long flowDefCount = flowDefService.count(projectId, Expressions.field(FlowDefinition::getIsDeleted).eq(false));
+      long flowDefCount = flowDefService.count(projectId, flowDefinition.isDeleted.eq(false));
       long flowInsCount = flowInstanceService.count(projectId, TRUE);
       long triggerCount = triggerService.count(projectId, TRUE);
-      long jobSuccessCount = jobExecutionLogService.count(Expressions.field(JobExecutionLog::getExecutionStatus).eq("SUCCESS"));
-      long jobFailureCount = jobExecutionLogService.count(Expressions.field(JobExecutionLog::getExecutionStatus).eq("FAILED"));
+      long jobSuccessCount = jobExecutionLogService.count(jobExecutionLog.executionStatus.eq("SUCCESS"));
+      long jobFailureCount = jobExecutionLogService.count(jobExecutionLog.executionStatus.eq("FAILED"));
 
       return FmMetricsResponse.builder()
         .requestCount((int) reqLogCount)

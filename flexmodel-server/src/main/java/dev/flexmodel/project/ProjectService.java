@@ -1,24 +1,24 @@
 package dev.flexmodel.project;
 
-import com.zaxxer.hikari.HikariDataSource;
 import dev.flexmodel.api.consumer.GraphQLEventConsumer;
-import dev.flexmodel.common.SchemaInitializer;
-import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.codegen.entity.Branch;
+import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.FlexmodelConfig;
+import dev.flexmodel.common.SchemaInitializer;
+import dev.flexmodel.common.SchemaRegistry;
+import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.common.config.AgroalDataSourceFactory;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
-import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.flow.service.FlowDeploymentService;
-import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.project.dto.ProjectListRequest;
 import dev.flexmodel.project.dto.ProjectResponse;
+import dev.flexmodel.projectauth.AuthProviderConfigService;
 import dev.flexmodel.sql.JdbcSchemaManager;
 import dev.flexmodel.sql.SchemaManager;
 import dev.flexmodel.storage.BucketRepository;
-import dev.flexmodel.projectauth.AuthProviderConfigService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import dev.flexmodel.codegen.entity.Project;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
@@ -257,11 +257,9 @@ public class ProjectService {
    */
   static DataSource getSystemDataSource(FlexmodelConfig flexmodelConfig) {
     FlexmodelConfig.DatasourceConfig config = flexmodelConfig.datasources().get(EngineConfig.SYSTEM_DS_KEY);
-    HikariDataSource ds = new HikariDataSource();
-    ds.setMaxLifetime(30000);
-    ds.setJdbcUrl(config.url());
-    ds.setUsername(config.username().orElse(null));
-    ds.setPassword(config.password().orElse(null));
-    return ds;
+    return AgroalDataSourceFactory.createSystemDataSource(
+      config.url(),
+      config.username().orElse(null),
+      config.password().orElse(null));
   }
 }

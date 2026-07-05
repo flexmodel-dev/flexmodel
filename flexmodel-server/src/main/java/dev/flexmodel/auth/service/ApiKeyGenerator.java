@@ -10,10 +10,12 @@ import java.util.HexFormat;
  * API Key 生成工具。
  * 生成格式：fm_ak_{type}_{random40chars}
  * 存储 SHA-256 哈希，不存原文。
+ *
+ * <p>{@link SecureRandom} 实例为方法内局部变量，
+ * 避免 static 字段在 Native Image 构建期进入 image heap 的问题。
  */
 public class ApiKeyGenerator {
 
-  private static final SecureRandom RANDOM = new SecureRandom();
   private static final String CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
   public record GeneratedKey(String plainText, String hash, String prefix) {
@@ -26,9 +28,10 @@ public class ApiKeyGenerator {
    * @return 包含明文、SHA-256 哈希和前缀的 GeneratedKey
    */
   public static GeneratedKey generate(String keyType) {
+    SecureRandom random = new SecureRandom();
     StringBuilder sb = new StringBuilder(40);
     for (int i = 0; i < 40; i++) {
-      sb.append(CHARS.charAt(RANDOM.nextInt(CHARS.length())));
+      sb.append(CHARS.charAt(random.nextInt(CHARS.length())));
     }
     String randomPart = sb.toString();
     String plainText = "fm_ak_" + keyType + "_" + randomPart;

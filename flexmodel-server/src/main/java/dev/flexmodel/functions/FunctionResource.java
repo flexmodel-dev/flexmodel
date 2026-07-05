@@ -1,12 +1,16 @@
 package dev.flexmodel.functions;
 
 import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.functions.dto.*;
+import dev.flexmodel.functions.dto.FunctionDeployRequest;
+import dev.flexmodel.functions.dto.FunctionInvokeRequest;
+import dev.flexmodel.functions.dto.FunctionPageRequest;
+import dev.flexmodel.functions.dto.FunctionResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 /**
  * REST API for Cloud Function management.
@@ -55,4 +59,25 @@ public class FunctionResource {
                                     @Valid FunctionDeployRequest request) {
         return functionService.deploy(projectId, name, request);
     }
+
+  @POST
+  @Path("/{name}/invoke")
+  public Response invoke(@PathParam("projectId") String projectId,
+                         @PathParam("name") String name,
+                         FunctionInvokeRequest request) {
+    Response runtimeResponse = functionService.invoke(projectId, name, request);
+
+    // Pass through function result directly as HTTP response
+    Response.ResponseBuilder builder = Response
+      .status(runtimeResponse.getStatus())
+      .entity(runtimeResponse.readEntity(Object.class));
+
+    // Forward x-function-meta header for observability
+    String meta = runtimeResponse.getHeaderString("x-function-meta");
+    if (meta != null) {
+      builder.header("X-Function-Meta", meta);
+    }
+
+    return builder.build();
+  }
 }

@@ -1,14 +1,14 @@
 package dev.flexmodel.auth.repository;
 
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import dev.flexmodel.codegen.entity.User;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.user;
 
 /**
  * @author cjbi
@@ -24,8 +24,8 @@ public class UserFmRepository implements UserRepository {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(User.class)
-        .where(field(User::getId).eq(username)
-          .or(field(User::getEmail).eq(username)))
+        .where(user.id.eq(username)
+          .or(user.email.eq(username)))
         .executeOne();
     }
   }
@@ -35,7 +35,7 @@ public class UserFmRepository implements UserRepository {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl()
         .selectFrom(User.class)
-        .where(field(User::getId).eq(userId))
+        .where(user.id.eq(userId))
         .executeOne();
     }
   }
@@ -65,7 +65,7 @@ public class UserFmRepository implements UserRepository {
     try (Session session = sessionFactory.createSession()) {
       session.dsl()
         .deleteFrom(User.class)
-        .where(field(User::getId).eq(userId))
+        .where(user.id.eq(userId))
         .execute();
     }
   }

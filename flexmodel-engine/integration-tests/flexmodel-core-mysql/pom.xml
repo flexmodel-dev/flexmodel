@@ -15,9 +15,8 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.zaxxer</groupId>
-      <artifactId>HikariCP</artifactId>
-      <version>${HikariCP.version}</version>
+      <groupId>io.agroal</groupId>
+      <artifactId>agroal-pool</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

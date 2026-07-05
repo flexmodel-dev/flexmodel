@@ -44,8 +44,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.zaxxer</groupId>
-      <artifactId>HikariCP</artifactId>
+      <groupId>io.agroal</groupId>
+      <artifactId>agroal-pool</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

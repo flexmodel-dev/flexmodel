@@ -1,5 +1,8 @@
 package dev.flexmodel.scheduling.config;
 
+import dev.flexmodel.codegen.entity.*;
+import dev.flexmodel.session.Session;
+import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.spi.CDI;
 import org.quartz.JobDataMap;
@@ -7,23 +10,13 @@ import org.quartz.JobKey;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
 
-import dev.flexmodel.codegen.entity.QrtzJobDetail;
-import dev.flexmodel.codegen.entity.QrtzTrigger;
-import dev.flexmodel.codegen.entity.QrtzCronTrigger;
-import dev.flexmodel.codegen.entity.QrtzSimpleTrigger;
-import dev.flexmodel.codegen.entity.QrtzSimpropTrigger;
-import dev.flexmodel.codegen.entity.QrtzCalendar;
-import dev.flexmodel.session.Session;
-import dev.flexmodel.session.SessionFactory;
-
 import java.util.List;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.*;
+import static dev.flexmodel.common.FlexmodelConfig.DEFAULT_SCHEMA_NAME;
 
 @ApplicationScoped
 public class FmJobRepository {
-
-  private static final String DEFAULT_SCHEMA_NAME = "system";
 
   SessionFactory sessionFactory;
 
@@ -35,9 +28,9 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl()
         .selectFrom(QrtzJobDetail.class)
-        .where(field(QrtzJobDetail::getSchedName).eq(schedName)
-          .and(field(QrtzJobDetail::getJobName).eq(jobName))
-          .and(field(QrtzJobDetail::getJobGroup).eq(jobGroup)))
+        .where(qrtzJobDetail.schedName.eq(schedName)
+          .and(qrtzJobDetail.jobName.eq(jobName))
+          .and(qrtzJobDetail.jobGroup.eq(jobGroup)))
         .executeOne();
     }
   }
@@ -52,9 +45,9 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .deleteFrom(QrtzJobDetail.class)
-        .where(field(QrtzJobDetail::getSchedName).eq(schedName)
-          .and(field(QrtzJobDetail::getJobName).eq(jobName))
-          .and(field(QrtzJobDetail::getJobGroup).eq(jobGroup)))
+        .where(qrtzJobDetail.schedName.eq(schedName)
+          .and(qrtzJobDetail.jobName.eq(jobName))
+          .and(qrtzJobDetail.jobGroup.eq(jobGroup)))
         .execute();
     }
   }
@@ -63,9 +56,9 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl()
         .selectFrom(QrtzTrigger.class)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getJobName).eq(jobName))
-          .and(field(QrtzTrigger::getJobGroup).eq(jobGroup)))
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.jobName.eq(jobName))
+          .and(qrtzTrigger.jobGroup.eq(jobGroup)))
         .execute();
     }
   }
@@ -74,9 +67,9 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl()
         .selectFrom(QrtzTrigger.class)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzTrigger::getTriggerGroup).eq(triggerGroup)))
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.triggerName.eq(triggerName))
+          .and(qrtzTrigger.triggerGroup.eq(triggerGroup)))
         .executeOne();
     }
   }
@@ -109,27 +102,27 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .deleteFrom(QrtzTrigger.class)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzTrigger::getTriggerGroup).eq(triggerGroup)))
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.triggerName.eq(triggerName))
+          .and(qrtzTrigger.triggerGroup.eq(triggerGroup)))
         .execute();
       session.dsl()
         .deleteFrom(QrtzSimpleTrigger.class)
-        .where(field(QrtzSimpleTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzSimpleTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzSimpleTrigger::getTriggerGroup).eq(triggerGroup)))
+        .where(qrtzSimpleTrigger.schedName.eq(schedName)
+          .and(qrtzSimpleTrigger.triggerName.eq(triggerName))
+          .and(qrtzSimpleTrigger.triggerGroup.eq(triggerGroup)))
         .execute();
       session.dsl()
         .deleteFrom(QrtzCronTrigger.class)
-        .where(field(QrtzCronTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzCronTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzCronTrigger::getTriggerGroup).eq(triggerGroup)))
+        .where(qrtzCronTrigger.schedName.eq(schedName)
+          .and(qrtzCronTrigger.triggerName.eq(triggerName))
+          .and(qrtzCronTrigger.triggerGroup.eq(triggerGroup)))
         .execute();
       session.dsl()
         .deleteFrom(QrtzSimpropTrigger.class)
-        .where(field(QrtzSimpropTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzSimpropTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzSimpropTrigger::getTriggerGroup).eq(triggerGroup)))
+        .where(qrtzSimpropTrigger.schedName.eq(schedName)
+          .and(qrtzSimpropTrigger.triggerName.eq(triggerName))
+          .and(qrtzSimpropTrigger.triggerGroup.eq(triggerGroup)))
         .execute();
     }
   }
@@ -137,7 +130,7 @@ public class FmJobRepository {
   public List<QrtzTrigger> findTriggers(String schedName) {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl().selectFrom(QrtzTrigger.class)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName))
+        .where(qrtzTrigger.schedName.eq(schedName))
         .execute();
     }
   }
@@ -145,7 +138,7 @@ public class FmJobRepository {
   public List<QrtzJobDetail> findJobs(String schedName) {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl().selectFrom(QrtzJobDetail.class)
-        .where(field(QrtzJobDetail::getSchedName).eq(schedName))
+        .where(qrtzJobDetail.schedName.eq(schedName))
         .execute();
     }
   }
@@ -153,7 +146,7 @@ public class FmJobRepository {
   public List<QrtzCalendar> findCalendars(String schedName) {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl().selectFrom(QrtzCalendar.class)
-        .where(field(QrtzCalendar::getSchedName).eq(schedName))
+        .where(qrtzCalendar.schedName.eq(schedName))
         .execute();
     }
   }
@@ -172,8 +165,8 @@ public class FmJobRepository {
   public QrtzCalendar findCalendar(String schedName, String calName) {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl().selectFrom(QrtzCalendar.class)
-        .where(field(QrtzCalendar::getSchedName).eq(schedName)
-          .and(field(QrtzCalendar::getCalendarName).eq(calName)))
+        .where(qrtzCalendar.schedName.eq(schedName)
+          .and(qrtzCalendar.calendarName.eq(calName)))
         .executeOne();
     }
   }
@@ -188,8 +181,8 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl().
         deleteFrom(QrtzCalendar.class)
-        .where(field(QrtzCalendar::getSchedName).eq(schedName)
-          .and(field(QrtzCalendar::getCalendarName).eq(calName)))
+        .where(qrtzCalendar.schedName.eq(schedName)
+          .and(qrtzCalendar.calendarName.eq(calName)))
         .execute();
     }
   }
@@ -198,9 +191,9 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set(QrtzTrigger::getTriggerState, state)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getCalendarName).eq(calName)))
+        .set(qrtzTrigger.triggerState, state)
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.calendarName.eq(calName)))
         .execute();
     }
   }
@@ -208,7 +201,7 @@ public class FmJobRepository {
   public long countJobs(String schedName) {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl().selectFrom(QrtzJobDetail.class)
-        .where(field(QrtzJobDetail::getSchedName).eq(schedName))
+        .where(qrtzJobDetail.schedName.eq(schedName))
         .count();
     }
   }
@@ -216,7 +209,7 @@ public class FmJobRepository {
   public long countTriggers(String schedName) {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl().selectFrom(QrtzTrigger.class)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName))
+        .where(qrtzTrigger.schedName.eq(schedName))
         .count();
     }
   }
@@ -224,7 +217,7 @@ public class FmJobRepository {
   public long countCalendars(String schedName) {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl().selectFrom(QrtzCalendar.class)
-        .where(field(QrtzCalendar::getSchedName).eq(schedName))
+        .where(qrtzCalendar.schedName.eq(schedName))
         .count();
     }
   }
@@ -233,11 +226,11 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl()
         .selectFrom(QrtzTrigger.class)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getTriggerState).eq(Trigger.TriggerState.NORMAL.name()))
-          .and(field(QrtzTrigger::getNextFireTime).lte(noLaterThan + timeWindow)))
-        .orderBy(QrtzTrigger::getNextFireTime)
-        .orderByDesc(QrtzTrigger::getPriority)
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.triggerState.eq(Trigger.TriggerState.NORMAL.name()))
+          .and(qrtzTrigger.nextFireTime.lte(noLaterThan + timeWindow)))
+        .orderBy(qrtzTrigger.nextFireTime)
+        .orderByDesc(qrtzTrigger.priority)
         .page(1, maxCount)
         .forUpdate()
         .execute();
@@ -248,10 +241,10 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set(QrtzTrigger::getTriggerState, state)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzTrigger::getTriggerGroup).eq(triggerGroup)))
+        .set(qrtzTrigger.triggerState, state)
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.triggerName.eq(triggerName))
+          .and(qrtzTrigger.triggerGroup.eq(triggerGroup)))
         .execute();
     }
   }
@@ -260,8 +253,8 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set(QrtzTrigger::getTriggerState, state)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName))
+        .set(qrtzTrigger.triggerState, state)
+        .where(qrtzTrigger.schedName.eq(schedName))
         .execute();
     }
   }
@@ -270,13 +263,13 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set(QrtzTrigger::getTriggerState, Trigger.TriggerState.BLOCKED.name())
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getJobName).eq(jobKey.getName()))
-          .and(field(QrtzTrigger::getJobGroup).eq(jobKey.getGroup()))
-          .and(field(QrtzTrigger::getTriggerState).eq(Trigger.TriggerState.NORMAL.name()))
-          .and(field(QrtzTrigger::getTriggerName).ne(current.getName())
-            .or(field(QrtzTrigger::getTriggerGroup).ne(current.getGroup()))))
+        .set(qrtzTrigger.triggerState, Trigger.TriggerState.BLOCKED.name())
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.jobName.eq(jobKey.getName()))
+          .and(qrtzTrigger.jobGroup.eq(jobKey.getGroup()))
+          .and(qrtzTrigger.triggerState.eq(Trigger.TriggerState.NORMAL.name()))
+          .and(qrtzTrigger.triggerName.ne(current.getName())
+            .or(qrtzTrigger.triggerGroup.ne(current.getGroup()))))
         .execute();
     }
   }
@@ -285,11 +278,11 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set(QrtzTrigger::getTriggerState, Trigger.TriggerState.NORMAL.name())
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getJobName).eq(jobKey.getName()))
-          .and(field(QrtzTrigger::getJobGroup).eq(jobKey.getGroup()))
-          .and(field(QrtzTrigger::getTriggerState).eq(Trigger.TriggerState.BLOCKED.name())))
+        .set(qrtzTrigger.triggerState, Trigger.TriggerState.NORMAL.name())
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.jobName.eq(jobKey.getName()))
+          .and(qrtzTrigger.jobGroup.eq(jobKey.getGroup()))
+          .and(qrtzTrigger.triggerState.eq(Trigger.TriggerState.BLOCKED.name())))
         .execute();
     }
   }
@@ -298,9 +291,9 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl()
         .selectFrom(QrtzCronTrigger.class)
-        .where(field(QrtzCronTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzCronTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzCronTrigger::getTriggerGroup).eq(triggerGroup)))
+        .where(qrtzCronTrigger.schedName.eq(schedName)
+          .and(qrtzCronTrigger.triggerName.eq(triggerName))
+          .and(qrtzCronTrigger.triggerGroup.eq(triggerGroup)))
         .executeOne();
     }
   }
@@ -309,9 +302,9 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl()
         .selectFrom(QrtzSimpleTrigger.class)
-        .where(field(QrtzSimpleTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzSimpleTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzSimpleTrigger::getTriggerGroup).eq(triggerGroup)))
+        .where(qrtzSimpleTrigger.schedName.eq(schedName)
+          .and(qrtzSimpleTrigger.triggerName.eq(triggerName))
+          .and(qrtzSimpleTrigger.triggerGroup.eq(triggerGroup)))
         .executeOne();
     }
   }
@@ -320,9 +313,9 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       return session.dsl()
         .selectFrom(QrtzSimpropTrigger.class)
-        .where(field(QrtzSimpropTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzSimpropTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzSimpropTrigger::getTriggerGroup).eq(triggerGroup)))
+        .where(qrtzSimpropTrigger.schedName.eq(schedName)
+          .and(qrtzSimpropTrigger.triggerName.eq(triggerName))
+          .and(qrtzSimpropTrigger.triggerGroup.eq(triggerGroup)))
         .executeOne();
     }
   }
@@ -331,11 +324,11 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzTrigger.class)
-        .set(QrtzTrigger::getPrevFireTime, prev)
-        .set(QrtzTrigger::getNextFireTime, next)
-        .where(field(QrtzTrigger::getSchedName).eq(schedName)
-          .and(field(QrtzTrigger::getTriggerName).eq(triggerName))
-          .and(field(QrtzTrigger::getTriggerGroup).eq(triggerGroup)))
+        .set(qrtzTrigger.prevFireTime, prev)
+        .set(qrtzTrigger.nextFireTime, next)
+        .where(qrtzTrigger.schedName.eq(schedName)
+          .and(qrtzTrigger.triggerName.eq(triggerName))
+          .and(qrtzTrigger.triggerGroup.eq(triggerGroup)))
         .execute();
     }
   }
@@ -344,10 +337,10 @@ public class FmJobRepository {
     try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
       session.dsl()
         .update(QrtzJobDetail.class)
-        .set(QrtzJobDetail::getJobData, jobDataMap)
-        .where(field(QrtzJobDetail::getSchedName).eq(schedName)
-          .and(field(QrtzJobDetail::getJobName).eq(jobKey.getName()))
-          .and(field(QrtzJobDetail::getJobGroup).eq(jobKey.getGroup())))
+        .set(qrtzJobDetail.jobData, jobDataMap)
+        .where(qrtzJobDetail.schedName.eq(schedName)
+          .and(qrtzJobDetail.jobName.eq(jobKey.getName()))
+          .and(qrtzJobDetail.jobGroup.eq(jobKey.getGroup())))
         .execute();
     }
   }

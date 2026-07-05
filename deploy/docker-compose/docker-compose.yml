@@ -54,25 +54,21 @@ services:
       - flexmodel
   flexmodel-server:
     container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-server
-    image: cjbi/flexmodel-server:latest
+    image: ${FLEXMODEL_SERVER_IMAGE:-cjbi/flexmodel-server-native:latest}
     restart: always
     volumes:
-      - ./storage:/deployments/storage
-      - ./database:/deployments/database
-      - ./logs/flexmodel-server:/deployments/logs
+      - ./flexmodel-server/storage:/deployments/storage
+      - ./flexmodel-server/database:/deployments/database
+      - ./flexmodel-server/logs:/deployments/logs
     environment:
-      - |
-        JAVA_OPTS=
-        -Dfile.encoding=UTF-8
-        -Duser.timezone=GMT+8
-        -Dflexmodel.datasource.db-kind=mysql
-        -Dflexmodel.datasource.url=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
-        -Dflexmodel.datasource.username=root
-        -Dflexmodel.datasource.password=${MYSQL_ROOT_PASSWORD}
-        -Dflexmodel.project-url-template=jdbc:mysql://mysql:3306/{{databaseName}}
-        -Dflexmodel.datasource.dev_test.db-kind=sqlite
-        -Dflexmodel.datasource.dev_test.url=jdbc:sqlite:file:database/sqlite_dev_test.db
-        -Dquarkus.rest-client.function-runtime.url=http://flexmodel-functions-runtime:9999
+      - TZ=GMT+08
+      - FLEXMODEL_DATASOURCE_DB_KIND=mysql
+      - FLEXMODEL_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
+      - FLEXMODEL_DATASOURCE_USERNAME=root
+      - FLEXMODEL_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - FLEXMODEL_PROJECT_URL_TEMPLATE=jdbc:mysql://mysql:3306/{{databaseName}}
+      - QUARKUS_REST_CLIENT_FUNCTION_RUNTIME_URL=http://flexmodel-functions-runtime:9999
+      - QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=100M
 
     networks:
       - flexmodel

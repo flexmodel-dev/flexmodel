@@ -1,12 +1,12 @@
 package dev.flexmodel.flow.repository;
 
-import dev.flexmodel.common.AbstractRepository;
-import jakarta.enterprise.context.ApplicationScoped;
 import dev.flexmodel.codegen.entity.FlowDeployment;
+import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.session.Session;
+import jakarta.enterprise.context.ApplicationScoped;
 
-import static dev.flexmodel.query.Expressions.field;
+import static dev.flexmodel.codegen.System.flowDeployment;
 
 @ApplicationScoped
 public class FlowDeploymentFmRepository extends AbstractRepository implements FlowDeploymentRepository {
@@ -23,7 +23,7 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowDeployment.class)
-        .where(field(FlowDeployment::getFlowDeployId).eq(flowDeployId))
+        .where(flowDeployment.flowDeployId.eq(flowDeployId))
         .executeOne();
     }
   }
@@ -33,8 +33,8 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
     try (Session session = getProjectSession(projectId)) {
       return session.dsl()
         .selectFrom(FlowDeployment.class)
-        .where(field(FlowDeployment::getFlowModuleId).eq(flowModuleId))
-        .orderByDesc(FlowDeployment::getId)
+        .where(flowDeployment.flowModuleId.eq(flowModuleId))
+        .orderByDesc(flowDeployment.id)
         .limit(1)
         .executeOne();
     }
@@ -44,7 +44,7 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
   public void deleteById(String projectId, Long id) {
     try (Session session = getProjectSession(projectId)) {
       session.dsl().deleteFrom(FlowDeployment.class)
-        .where(field(FlowDeployment::getId).eq(id))
+        .where(flowDeployment.id.eq(id))
         .execute();
     }
   }

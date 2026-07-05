@@ -1,13 +1,7 @@
 package dev.flexmodel.session;
 
 import com.mongodb.client.MongoDatabase;
-import dev.flexmodel.sql.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import dev.flexmodel.SchemaProvider;
-import dev.flexmodel.JsonUtils;
-import dev.flexmodel.ModelImportBundle;
-import dev.flexmodel.ModelRegistry;
+import dev.flexmodel.*;
 import dev.flexmodel.cache.Cache;
 import dev.flexmodel.cache.CachingModelRegistry;
 import dev.flexmodel.cache.ConcurrentHashMapCache;
@@ -20,9 +14,11 @@ import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.mongodb.MongoContext;
 import dev.flexmodel.mongodb.MongoSchemaProvider;
 import dev.flexmodel.mongodb.MongoSession;
-
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.EventAwareDataService;
+import dev.flexmodel.sql.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,7 +48,7 @@ public class SessionFactory {
     schemaProviders.forEach(this::registerSchemaProvider);
     this.modelRegistry = initializeModelRegistry(defaultSchemaProvider);
     this.failsafe = failsafe;
-    processBuildItem();
+//    processBuildItem();
   }
 
   private ModelRegistry initializeModelRegistry(SchemaProvider schemaProvider) {
@@ -68,33 +64,57 @@ public class SessionFactory {
   /**
    * 处理构建步骤的项目
    */
-  void processBuildItem() {
-    // 将BuildItem脚本加载到内存中
-    memoryScriptManager.loadScriptsFromBuildItems();
+//  void processBuildItem() {
+//    // 将BuildItem脚本加载到内存中（通过 SPI ServiceLoader）
+//    memoryScriptManager.loadScriptsFromBuildItems();
+//
+//    // 将内存中的脚本应用到缓存和数据库
+//    memoryScriptManager.getSchemaNames().forEach(this::applyBuildItemSchemas);
+//  }
 
-    // 将内存中的脚本应用到缓存中
-    memoryScriptManager.getSchemaNames().forEach(schemaName -> {
-      MemoryScriptManager.SchemaScriptConfig config = memoryScriptManager.getScriptConfig(schemaName);
-      config.getSchema().forEach(model -> cache.put(schemaName + ":" + model.getName(), model));
-      try (Session session = createFailsafeSession(schemaName)) {
-        config.getSchema().forEach(obj -> {
-          if (obj instanceof EntityDefinition e) {
-            session.schema().createEntity(e);
-          } else if (obj instanceof EnumDefinition e) {
-            session.schema().createEnum(e);
+  /**
+   * 将指定 schema 的 BuildItem 配置应用到缓存和数据库中。
+   * 从内存脚本管理器读取 schema 定义和数据，然后：
+   * <ul>
+   *   <li>将模型定义写入缓存</li>
+   *   <li>在数据库中创建实体和枚举表结构</li>
+   *   <li>导入初始数据</li>
+   * </ul>
+   *
+   * @param schemaName 要应用的 schema 名称
+   */
+  private void applyBuildItemSchemas(String schemaName) {
+    MemoryScriptManager.SchemaScriptConfig config = memoryScriptManager.getScriptConfig(schemaName);
+    if (config == null) {
+      return;
+    }
+    // 始终将模型写入缓存（即使没有数据源，查询时仍能从缓存命中模型定义）
+    config.getSchema().forEach(model -> cache.put(schemaName + ":" + model.getName(), model));
+
+    // 如果没有为此 schema 注册数据源，跳过 DDL 和数据导入
+    if (!isSchemaExists(schemaName)) {
+      log.warn("Schema '{}' has no registered datasource, skipping table/data import", schemaName);
+      return;
+    }
+
+    try (Session session = createFailsafeSession(schemaName)) {
+      config.getSchema().forEach(obj -> {
+        if (obj instanceof EntityDefinition e) {
+          session.schema().createEntity(e);
+        } else if (obj instanceof EnumDefinition e) {
+          session.schema().createEnum(e);
+        }
+      });
+      config.getData().forEach(d -> {
+        for (Map<String, Object> record : d.getValues()) {
+          try {
+            session.dsl().mergeInto(d.getModelName()).values(record).execute();
+          } catch (Exception e) {
+            log.error("Failed to insert record: {}", e.getMessage(), e);
           }
-        });
-        config.getData().forEach(d -> {
-          for (Map<String, Object> record : d.getValues()) {
-            try {
-              session.dsl().mergeInto(d.getModelName()).values(record).execute();
-            } catch (Exception e) {
-              log.error("Failed to insert record: {}", e.getMessage(), e);
-            }
-          }
-        });
-      }
-    });
+        }
+      });
+    }
   }
 
   private void loadJSONString(String schemaName, String jsonString) {
@@ -302,6 +322,24 @@ public class SessionFactory {
 
   public MemoryScriptManager getMemoryScriptManager() {
     return memoryScriptManager;
+  }
+
+  /**
+   * 直接注册 BuildItem 实例，绕过 SPI ServiceLoader 机制。
+   * <p>
+   * 在 GraalVM 原生镜像中，ServiceLoader 的 SPI 服务注册机制可能不可靠。
+   * 此方法允许调用方直接传入已实例化的 BuildItem 对象，
+   * 避免对 ServiceLoader 的依赖。
+   * </p>
+   *
+   * @param buildItem 要注册的 BuildItem 实例
+   */
+  public void registerBuildItem(BuildItem buildItem) {
+    memoryScriptManager.loadScriptFromBuildItem(buildItem);
+    // 立即将加载的 schema 应用到缓存和数据库
+    // 因为 processBuildItem() 在构造函数中已执行过，此方法调用时
+    // buildItem 是新追加的，需要独立触发应用逻辑
+    applyBuildItemSchemas(buildItem.getSchemaName());
   }
 
   public String getDefaultSchema() {

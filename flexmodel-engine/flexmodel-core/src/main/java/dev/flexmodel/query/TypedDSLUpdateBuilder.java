@@ -26,8 +26,11 @@ public class TypedDSLUpdateBuilder<T> {
     return this;
   }
 
-  public <R> TypedDSLUpdateBuilder<T> set(Expressions.SFunction<T, R> getter, Object value) {
-    delegate.set(Expressions.getFieldName(getter), value);
+  /**
+   * 设置单个字段的值（使用字段引用）
+   */
+  public TypedDSLUpdateBuilder<T> set(FilterExpression<?> field, Object value) {
+    delegate.set(field.getFieldName(), value);
     return this;
   }
 

@@ -1,11 +1,11 @@
 package dev.flexmodel.common.config.web.exception;
 
 import dev.flexmodel.auth.exception.AuthException;
+import dev.flexmodel.common.BusinessException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.common.BusinessException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,7 +19,11 @@ public class BusinessExceptionMapper implements ExceptionMapper<BusinessExceptio
 
   @Override
   public Response toResponse(BusinessException e) {
-    log.error("Handle exception, message={}", e.getMessage(), e);
+    if (e instanceof AuthException) {
+      log.warn("Handle exception, message={}", e.getMessage());
+    } else {
+      log.error("Handle exception, message={}", e.getMessage(), e);
+    }
     if (e instanceof AuthException) {
       Map<String, Object> body = new HashMap<>();
       body.put("code", 401);

@@ -1,6 +1,11 @@
 package dev.flexmodel;
 
-import com.zaxxer.hikari.HikariDataSource;
+import io.agroal.api.AgroalDataSource;
+import io.agroal.api.configuration.supplier.AgroalConnectionFactoryConfigurationSupplier;
+import io.agroal.api.configuration.supplier.AgroalConnectionPoolConfigurationSupplier;
+import io.agroal.api.configuration.supplier.AgroalDataSourceConfigurationSupplier;
+import io.agroal.api.security.NamePrincipal;
+import io.agroal.api.security.SimplePassword;
 import org.testcontainers.containers.MSSQLServerContainer;
 import dev.flexmodel.sql.JdbcSchemaProvider;
 
@@ -14,11 +19,13 @@ public class SQLServerIntegrationTests extends AbstractSessionTests {
   public static MSSQLServerContainer container = new MSSQLServerContainer().acceptLicense();
 
   // @BeforeAll
-  public static void beforeAll() {
-    HikariDataSource dataSource = new HikariDataSource();
-    dataSource.setJdbcUrl(container.getJdbcUrl());
-    dataSource.setUsername(container.getUsername());
-    dataSource.setPassword(container.getPassword());
+  public static void beforeAll() throws Exception {
+    AgroalDataSourceConfigurationSupplier cfg = new AgroalDataSourceConfigurationSupplier();
+    AgroalConnectionFactoryConfigurationSupplier factoryCfg = cfg.connectionPoolConfiguration().connectionFactoryConfiguration();
+    factoryCfg.jdbcUrl(container.getJdbcUrl());
+    factoryCfg.principal(new NamePrincipal(container.getUsername()));
+    factoryCfg.credential(new SimplePassword(container.getPassword()));
+    AgroalDataSource dataSource = AgroalDataSource.from(cfg);
     initSession(new JdbcSchemaProvider("default", dataSource));
   }
 }

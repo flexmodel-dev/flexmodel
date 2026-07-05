@@ -38,5 +38,6 @@ build/
 ### Project ###
 
 *.db
-flexmodel-server/logs/
-flexmodel-server/storage/
+/logs/
+/storage/
+/database/

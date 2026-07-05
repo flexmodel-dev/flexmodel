@@ -1,4 +1,2 @@
 /docker-compose/mysql/data/
-/docker-compose/database/
-/docker-compose/storage/
-.idea
+/docker-compose/flexmodel-sever/

@@ -11,6 +11,7 @@ import dev.flexmodel.realtime.RealtimeEventListener;
 import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.sql.JdbcSchemaProvider;
+import dev.flexmodel.test.codegen.DevTest;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -71,6 +72,10 @@ public class EngineConfig {
       builder.registerSchemaProvider(new JdbcSchemaProvider(key, ds));
     });
     SessionFactory sf = builder.build();
+    // 直接注册 BuildItem 实例，绕过 SPI ServiceLoader 机制
+    // 在 GraalVM 原生镜像中 ServiceLoader.load() 无法正确发现 SPI 实现类
+    sf.registerBuildItem(new dev.flexmodel.codegen.System());
+    sf.registerBuildItem(new DevTest());
     sf.getEventPublisher().addListener(triggerDataChangedEventListener);
     sf.getEventPublisher().addListener(auditDataEventListener);
     sf.getEventPublisher().addListener(realtimeEventListener);

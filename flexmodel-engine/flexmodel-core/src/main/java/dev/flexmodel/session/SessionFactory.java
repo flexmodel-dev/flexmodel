@@ -1,13 +1,7 @@
 package dev.flexmodel.session;
 
 import com.mongodb.client.MongoDatabase;
-import dev.flexmodel.sql.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import dev.flexmodel.SchemaProvider;
-import dev.flexmodel.JsonUtils;
-import dev.flexmodel.ModelImportBundle;
-import dev.flexmodel.ModelRegistry;
+import dev.flexmodel.*;
 import dev.flexmodel.cache.Cache;
 import dev.flexmodel.cache.CachingModelRegistry;
 import dev.flexmodel.cache.ConcurrentHashMapCache;
@@ -20,9 +14,11 @@ import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.mongodb.MongoContext;
 import dev.flexmodel.mongodb.MongoSchemaProvider;
 import dev.flexmodel.mongodb.MongoSession;
-
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.EventAwareDataService;
+import dev.flexmodel.sql.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,7 +65,7 @@ public class SessionFactory {
    * 处理构建步骤的项目
    */
   void processBuildItem() {
-    // 将BuildItem脚本加载到内存中
+    // 将BuildItem脚本加载到内存中（通过 SPI ServiceLoader）
     memoryScriptManager.loadScriptsFromBuildItems();
 
     // 将内存中的脚本应用到缓存中
@@ -302,6 +298,20 @@ public class SessionFactory {
 
   public MemoryScriptManager getMemoryScriptManager() {
     return memoryScriptManager;
+  }
+
+  /**
+   * 直接注册 BuildItem 实例，绕过 SPI ServiceLoader 机制。
+   * <p>
+   * 在 GraalVM 原生镜像中，ServiceLoader 的 SPI 服务注册机制可能不可靠。
+   * 此方法允许调用方直接传入已实例化的 BuildItem 对象，
+   * 避免对 ServiceLoader 的依赖。
+   * </p>
+   *
+   * @param buildItem 要注册的 BuildItem 实例
+   */
+  public void registerBuildItem(BuildItem buildItem) {
+    memoryScriptManager.loadScriptFromBuildItem(buildItem);
   }
 
   public String getDefaultSchema() {

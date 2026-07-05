@@ -17,8 +17,6 @@ public interface FlexmodelConfig extends Serializable {
 
   String DEFAULT_SCHEMA_NAME = "system";
 
-  String DEV_TEST_SCHEMA_NAME = "dev_test";
-
   @WithName("project-url-template")
   String projectUrlTemplate();
 

@@ -57,9 +57,9 @@ services:
     image: ${FLEXMODEL_SERVER_IMAGE:-cjbi/flexmodel-server-native:latest}
     restart: always
     volumes:
-      - ./storage:/deployments/storage
-      - ./database:/deployments/database
-      - ./logs/flexmodel-server:/deployments/logs
+      - ./flexmodel-server/storage:/deployments/storage
+      - ./flexmodel-server/database:/deployments/database
+      - ./flexmodel-server/logs:/deployments/logs
     environment:
       - TZ=GMT+08
       - FLEXMODEL_DATASOURCE_DB_KIND=mysql
@@ -67,8 +67,6 @@ services:
       - FLEXMODEL_DATASOURCE_USERNAME=root
       - FLEXMODEL_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - FLEXMODEL_PROJECT_URL_TEMPLATE=jdbc:mysql://mysql:3306/{{databaseName}}
-      - FLEXMODEL_DATASOURCE_DEV_TEST_DB_KIND=sqlite
-      - FLEXMODEL_DATASOURCE_DEV_TEST_URL=jdbc:sqlite:file:database/sqlite_dev_test.db
       - QUARKUS_REST_CLIENT_FUNCTION_RUNTIME_URL=http://flexmodel-functions-runtime:9999
       - QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=100M
 

@@ -107,7 +107,11 @@ public class FlexmodelNativeProcessor {
 
   /**
    * 注册引擎模块中的模型定义类。
-   * 这些类使用 Jackson 多态反序列化（@JsonSubTypes / @JsonTypeInfo）。
+   * 这些类使用 Jackson 多态反序列化（@JsonSubTypes / @JsonTypeInfo），
+   * 并通过 ObjectUtils.deserialize() 在运行时从 JSON 反序列化。
+   * <p>
+   * <b>注意</b>：必须包含 {@code .constructors()}，因为 Jackson 在原生镜像中
+   * 需要通过反射调用无参构造函数来实例化模型对象。
    */
   @BuildStep
   ReflectiveClassBuildItem registerModelDefinitions() {
@@ -116,8 +120,11 @@ public class FlexmodelNativeProcessor {
         "dev.flexmodel.model.field.**",
         "dev.flexmodel.condition.**",
         "dev.flexmodel.event.**",
-        "dev.flexmodel.event.impl.**"
+        "dev.flexmodel.event.impl.**",
+        "dev.flexmodel.ModelImportBundle",
+        "dev.flexmodel.ModelImportBundle$ImportData"
       )
+      .constructors()
       .methods()
       .fields()
       .build();

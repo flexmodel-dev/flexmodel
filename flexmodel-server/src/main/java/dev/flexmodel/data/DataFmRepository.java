@@ -1,8 +1,6 @@
 package dev.flexmodel.data;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.StringUtils;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.field.TypedField;
@@ -11,7 +9,9 @@ import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.JsonUtils;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
@@ -169,8 +169,7 @@ public class DataFmRepository implements DataRepository {
   @Override
   public long deleteRecords(String projectId, String datasourceName, String modelName, List<Object> ids) {
     try (Session session = sessionFactory.createSession(datasourceName)) {
-      session.dsl().deleteFrom(modelName).where(Expressions.field("id").in(ids));
-      return ids.size();
+      return session.dsl().deleteFrom(modelName).where(Expressions.field("id").in(ids)).execute();
     }
   }
 

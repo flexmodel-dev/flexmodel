@@ -1,11 +1,12 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -19,13 +20,16 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class RoleResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   private static final String BASE_PATH = Resources.ROOT_PATH + "/roles";
 
   @BeforeEach
   void cleanupTestRole() {
     // 尝试删除测试创建的角色
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/test_role_e2e")
       .then()
@@ -38,7 +42,7 @@ public class RoleResourceTest {
   @Test
   void testFindAllRoles() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -53,7 +57,7 @@ public class RoleResourceTest {
   void testFindRoleById() {
     // 先获取角色列表，找到第一个角色的ID
     String roleId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -62,7 +66,7 @@ public class RoleResourceTest {
       .path("[0].id");
 
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/" + roleId)
       .then()
@@ -77,7 +81,7 @@ public class RoleResourceTest {
   @Test
   void testCreateRole() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -97,7 +101,7 @@ public class RoleResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/test_role_e2e")
       .then()
@@ -110,7 +114,7 @@ public class RoleResourceTest {
   @Test
   void testCreateRoleWithResources() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -129,7 +133,7 @@ public class RoleResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/test_role_e2e")
       .then()
@@ -143,7 +147,7 @@ public class RoleResourceTest {
   void testUpdateRole() {
     // 先创建角色
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -160,7 +164,7 @@ public class RoleResourceTest {
 
     // 更新角色
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -179,7 +183,7 @@ public class RoleResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/test_role_e2e")
       .then()
@@ -193,7 +197,7 @@ public class RoleResourceTest {
   void testDeleteRole() {
     // 先创建角色
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -210,7 +214,7 @@ public class RoleResourceTest {
 
     // 删除角色
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/test_role_e2e")
       .then()
@@ -218,7 +222,7 @@ public class RoleResourceTest {
 
     // 验证角色已被删除 - 列表中不包含该角色
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -233,7 +237,7 @@ public class RoleResourceTest {
   void testCompleteRoleCrudFlow() {
     // 1. 创建
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -251,7 +255,7 @@ public class RoleResourceTest {
 
     // 2. 查询详情
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/test_role_e2e")
       .then()
@@ -260,7 +264,7 @@ public class RoleResourceTest {
 
     // 3. 更新
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -277,7 +281,7 @@ public class RoleResourceTest {
 
     // 4. 删除
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/test_role_e2e")
       .then()

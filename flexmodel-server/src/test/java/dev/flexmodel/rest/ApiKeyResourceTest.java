@@ -1,10 +1,11 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -18,6 +19,9 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class ApiKeyResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   private static final String BASE_PATH = Resources.ROOT_PATH + "/api-keys";
 
   /**
@@ -26,7 +30,7 @@ public class ApiKeyResourceTest {
   @Test
   void testListApiKeys() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -39,7 +43,7 @@ public class ApiKeyResourceTest {
   @Test
   void testCreateApiKey() {
     String apiKeyId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .accept(ContentType.JSON)
       .body("""
@@ -62,7 +66,7 @@ public class ApiKeyResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + apiKeyId)
       .then()
@@ -75,7 +79,7 @@ public class ApiKeyResourceTest {
   @Test
   void testCreateReadOnlyApiKey() {
     String apiKeyId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .accept(ContentType.JSON)
       .body("""
@@ -96,7 +100,7 @@ public class ApiKeyResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + apiKeyId)
       .then()
@@ -110,7 +114,7 @@ public class ApiKeyResourceTest {
   void testRegenerateApiKey() {
     // 先创建API Key
     String apiKeyId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .accept(ContentType.JSON)
       .body("""
@@ -130,7 +134,7 @@ public class ApiKeyResourceTest {
 
     // 重新生成 - POST请求带空body但需要JSON content type
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .accept(ContentType.JSON)
       .body("{}")
@@ -144,7 +148,7 @@ public class ApiKeyResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + apiKeyId)
       .then()
@@ -158,7 +162,7 @@ public class ApiKeyResourceTest {
   void testDeleteApiKey() {
     // 先创建API Key
     String apiKeyId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .accept(ContentType.JSON)
       .body("""
@@ -178,7 +182,7 @@ public class ApiKeyResourceTest {
 
     // 删除API Key
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + apiKeyId)
       .then()
@@ -186,7 +190,7 @@ public class ApiKeyResourceTest {
 
     // 验证已被删除 - 列表中不包含该key
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -201,7 +205,7 @@ public class ApiKeyResourceTest {
   void testCompleteApiKeyCrudFlow() {
     // 1. 创建
     String apiKeyId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .accept(ContentType.JSON)
       .body("""
@@ -222,7 +226,7 @@ public class ApiKeyResourceTest {
 
     // 2. 查看列表确认存在
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -231,7 +235,7 @@ public class ApiKeyResourceTest {
 
     // 3. 重新生成
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .accept(ContentType.JSON)
       .body("{}")
@@ -243,7 +247,7 @@ public class ApiKeyResourceTest {
 
     // 4. 删除
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + apiKeyId)
       .then()

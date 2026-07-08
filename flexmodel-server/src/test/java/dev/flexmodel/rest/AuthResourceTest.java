@@ -1,11 +1,12 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
+import dev.flexmodel.common.config.web.jwt.JwtService;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.common.config.web.jwt.JwtUtil;
 
 import java.time.Duration;
 
@@ -20,6 +21,12 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
 class AuthResourceTest {
+
+  @Inject
+  JwtService jwtService;
+
+  @Inject
+  TestTokenHelper testTokenHelper;
 
   /**
    * 测试登录成功
@@ -162,7 +169,7 @@ class AuthResourceTest {
    */
   @Test
   void testGetUserInfoSuccess() {
-    String accessToken = TestTokenHelper.getTestToken();
+    String accessToken = testTokenHelper.getTestToken();
 
     given()
       .when()
@@ -206,7 +213,7 @@ class AuthResourceTest {
    */
   @Test
   void testGetUserInfoFailureExpiredToken() {
-    String expiredToken = JwtUtil.sign("admin", Duration.ofSeconds(-1));
+    String expiredToken = jwtService.sign("admin", Duration.ofSeconds(-1));
 
     given()
       .when()
@@ -234,7 +241,7 @@ class AuthResourceTest {
    */
   @Test
   void testGetUserInfoFailureUserNotExists() {
-    String tokenForNonExistentUser = TestTokenHelper.getTestToken("non_existent_user");
+    String tokenForNonExistentUser = testTokenHelper.getTestToken("non_existent_user");
 
     given()
       .when()

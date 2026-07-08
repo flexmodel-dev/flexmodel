@@ -1,10 +1,11 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -18,6 +19,9 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class ProjectResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   private static final String BASE_PATH = Resources.ROOT_PATH + "/projects";
 
   /**
@@ -26,7 +30,7 @@ public class ProjectResourceTest {
   @Test
   void testFindProjects() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -40,7 +44,7 @@ public class ProjectResourceTest {
   @Test
   void testFindProjectsWithInclude() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .queryParam("include", "models")
       .when()
       .get(BASE_PATH)
@@ -55,7 +59,7 @@ public class ProjectResourceTest {
   @Test
   void testFindProjectDetail() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/dev_test")
       .then()
@@ -70,7 +74,7 @@ public class ProjectResourceTest {
   @Test
   void testCreateProject() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -91,7 +95,7 @@ public class ProjectResourceTest {
   @Test
   void testUpdateProject() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -116,7 +120,7 @@ public class ProjectResourceTest {
   void testPatchProject() {
     // 先PUT确保项目状态一致
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -132,7 +136,7 @@ public class ProjectResourceTest {
 
     // 部分更新 - 只更新名称
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -153,7 +157,7 @@ public class ProjectResourceTest {
   @Test
   void testDeleteProjectNotAllowed() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/default")
       .then()

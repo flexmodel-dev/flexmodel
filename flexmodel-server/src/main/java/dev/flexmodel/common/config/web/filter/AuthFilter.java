@@ -1,24 +1,20 @@
 package dev.flexmodel.common.config.web.filter;
 
+import dev.flexmodel.auth.exception.AuthException;
+import dev.flexmodel.auth.service.ApiKeyService;
 import dev.flexmodel.codegen.entity.AuthApiKey;
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.SessionContextHolder;
-import dev.flexmodel.common.config.web.jwt.JwtUtil;
-import dev.flexmodel.auth.exception.AuthException;
+import dev.flexmodel.common.config.web.jwt.JwtService;
 import dev.flexmodel.project.ProjectService;
-import dev.flexmodel.auth.service.ApiKeyService;
 import dev.flexmodel.projectauth.AuthProviderConfigService;
 import dev.flexmodel.projectauth.provider.AuthContext;
 import dev.flexmodel.projectauth.provider.AuthProvider;
 import dev.flexmodel.projectauth.provider.AuthResult;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.container.ContainerResponseContext;
-import jakarta.ws.rs.container.ContainerResponseFilter;
-import jakarta.ws.rs.container.ResourceInfo;
+import jakarta.ws.rs.container.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +42,8 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   ApiKeyService apiKeyService;
   @Inject
   AuthProviderConfigService authProviderConfigService;
+  @Inject
+  JwtService jwtService;
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
@@ -90,13 +88,13 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
    */
   private boolean trySystemJwt(String token, ContainerRequestContext requestContext, String projectId) {
     try {
-      if (!JwtUtil.verify(token)) {
+      if (!jwtService.verify(token)) {
         return false;
       }
     } catch (Exception e) {
       return false;
     }
-    String userId = JwtUtil.getAccount(token);
+    String userId = jwtService.getAccount(token);
     fillSessionContextForUser(requestContext, projectId, userId);
     return true;
   }

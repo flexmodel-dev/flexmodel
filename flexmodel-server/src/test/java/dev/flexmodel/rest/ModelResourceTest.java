@@ -2,8 +2,9 @@ package dev.flexmodel.rest;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
-import org.junit.jupiter.api.Test;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -13,6 +14,9 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
  */
 @QuarkusTest
 class ModelResourceTest {
+
+  @Inject
+  TestTokenHelper testTokenHelper;
 
   // 测试表名列表，用于清理
   private static final String[] TEST_TABLE_NAMES = {
@@ -31,7 +35,7 @@ class ModelResourceTest {
     // 清理测试创建的模型
     for (String tableName : TEST_TABLE_NAMES) {
       given()
-        .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .when()
         .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}", tableName);
     }
@@ -40,7 +44,7 @@ class ModelResourceTest {
   @Test
   void testFindModels() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(Resources.ROOT_PATH + "/projects/dev_test/models")
       .then()
@@ -51,7 +55,7 @@ class ModelResourceTest {
   @Test
   void testCreateModel() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -103,7 +107,7 @@ class ModelResourceTest {
   @Test
   void testDropModel() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -161,7 +165,7 @@ class ModelResourceTest {
       .then()
       .statusCode(200);
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}", "testDropModel")
@@ -172,7 +176,7 @@ class ModelResourceTest {
   @Test
   void testCreateField() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -230,7 +234,7 @@ class ModelResourceTest {
       .then()
       .statusCode(200);
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -251,7 +255,7 @@ class ModelResourceTest {
   @Test
   void testModifyField() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -308,7 +312,7 @@ class ModelResourceTest {
       .then()
       .statusCode(200);
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -331,7 +335,7 @@ class ModelResourceTest {
   @Test
   void testDropField() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -390,7 +394,7 @@ class ModelResourceTest {
       .then()
       .statusCode(200);
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/fields/{fieldName}",
         "testDropFieldStudent",
@@ -402,7 +406,7 @@ class ModelResourceTest {
   @Test
   void testCreateIndex() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -459,7 +463,7 @@ class ModelResourceTest {
       .then()
       .statusCode(200);
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -485,7 +489,7 @@ class ModelResourceTest {
   @Test
   void testModifyIndex() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -553,7 +557,7 @@ class ModelResourceTest {
       .then()
       .statusCode(200);
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -580,7 +584,7 @@ class ModelResourceTest {
   @Test
   void testDropIndex() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -648,7 +652,7 @@ class ModelResourceTest {
       .then()
       .statusCode(200);
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .delete(Resources.ROOT_PATH + "/projects/dev_test/models/{modelName}/indexes/{indexName}",

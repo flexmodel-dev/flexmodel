@@ -6,6 +6,7 @@ import io.smallrye.config.WithName;
 import io.smallrye.config.WithUnnamedKey;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,6 +28,9 @@ public interface FlexmodelConfig extends Serializable {
   @WithDefault("${quarkus.http.root-path}")
   String apiRootPath();
 
+  @WithName("jwt")
+  JwtConfig jwt();
+
   interface DatasourceConfig {
 
     @WithName("db-kind")
@@ -37,5 +41,17 @@ public interface FlexmodelConfig extends Serializable {
     Optional<String> username();
 
     Optional<String> password();
+  }
+
+  interface JwtConfig {
+
+    @WithDefault("storewebkey")
+    String secret();
+
+    @WithDefault("7d")
+    Duration accessTokenLifetime();
+
+    @WithDefault("30d")
+    Duration refreshTokenLifetime();
   }
 }

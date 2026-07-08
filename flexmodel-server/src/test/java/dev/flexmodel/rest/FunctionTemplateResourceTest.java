@@ -1,12 +1,13 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 /**
  * FunctionTemplateResource 集成测试
@@ -17,6 +18,9 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class FunctionTemplateResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   private static final String BASE_PATH = Resources.ROOT_PATH + "/function-templates";
 
   /**
@@ -25,7 +29,7 @@ public class FunctionTemplateResourceTest {
   @Test
   void testListFunctionTemplates() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -38,7 +42,7 @@ public class FunctionTemplateResourceTest {
   @Test
   void testFunctionTemplatesContainRequiredFields() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()

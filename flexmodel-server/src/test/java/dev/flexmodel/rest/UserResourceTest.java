@@ -1,11 +1,12 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -19,13 +20,16 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class UserResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   private static final String BASE_PATH = Resources.ROOT_PATH + "/users";
   private static final String TEST_USER_ID = "test_user_e2e";
 
   @BeforeEach
   void cleanupTestUser() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_USER_ID)
       .then()
@@ -38,7 +42,7 @@ public class UserResourceTest {
   @Test
   void testFindAllUsers() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -52,7 +56,7 @@ public class UserResourceTest {
   @Test
   void testFindUserById() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/admin")
       .then()
@@ -67,7 +71,7 @@ public class UserResourceTest {
   @Test
   void testFindUserByIdNotFound() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/nonexistent_user")
       .then()
@@ -80,7 +84,7 @@ public class UserResourceTest {
   @Test
   void testCreateUser() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -101,7 +105,7 @@ public class UserResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_USER_ID)
       .then()
@@ -114,7 +118,7 @@ public class UserResourceTest {
   @Test
   void testCreateUserWithRoles() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -134,7 +138,7 @@ public class UserResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_USER_ID)
       .then()
@@ -148,7 +152,7 @@ public class UserResourceTest {
   void testUpdateUser() {
     // 先创建用户
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -166,7 +170,7 @@ public class UserResourceTest {
 
     // 更新用户
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -185,7 +189,7 @@ public class UserResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_USER_ID)
       .then()
@@ -199,7 +203,7 @@ public class UserResourceTest {
   void testDeleteUser() {
     // 先创建用户
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -217,7 +221,7 @@ public class UserResourceTest {
 
     // 删除用户
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_USER_ID)
       .then()
@@ -225,7 +229,7 @@ public class UserResourceTest {
 
     // 验证用户已被删除
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -240,7 +244,7 @@ public class UserResourceTest {
   void testCompleteUserCrudFlow() {
     // 1. 创建
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -259,7 +263,7 @@ public class UserResourceTest {
 
     // 2. 查询详情
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/" + TEST_USER_ID)
       .then()
@@ -268,7 +272,7 @@ public class UserResourceTest {
 
     // 3. 更新
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -285,7 +289,7 @@ public class UserResourceTest {
 
     // 4. 删除
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_USER_ID)
       .then()

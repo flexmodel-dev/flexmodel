@@ -5,6 +5,7 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,9 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
 public class TriggerResourceTest {
+
+  @Inject
+  TestTokenHelper testTokenHelper;
 
   private static final String BASE_PATH = "/projects/dev_test/triggers";
 
@@ -53,7 +57,7 @@ public class TriggerResourceTest {
       """.formatted(TEST_JOB_ID);
 
     String triggerId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(triggerJson)
       .when()
@@ -69,7 +73,7 @@ public class TriggerResourceTest {
   void tearDown() {
     if (createdTriggerId != null) {
       given()
-        .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .when()
         .delete(BASE_PATH + "/" + createdTriggerId);
       createdTriggerId = null;
@@ -82,7 +86,7 @@ public class TriggerResourceTest {
   @Test
   void testFindPageWithoutFilter() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -100,7 +104,7 @@ public class TriggerResourceTest {
   @Test
   void testFindPageWithNameFilter() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .queryParam("name", "定时触发-间隔触发")
       .when()
       .get(BASE_PATH)
@@ -117,7 +121,7 @@ public class TriggerResourceTest {
   @Test
   void testFindPageWithPagination() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .queryParam("page", 1)
       .queryParam("size", 2)
       .when()
@@ -151,7 +155,7 @@ public class TriggerResourceTest {
       """.formatted(TEST_JOB_ID);
 
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(triggerJson)
       .when()
@@ -191,7 +195,7 @@ public class TriggerResourceTest {
       """.formatted(TEST_JOB_ID);
 
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(triggerJson)
       .when()
@@ -227,7 +231,7 @@ public class TriggerResourceTest {
       """.formatted(TEST_JOB_ID);
 
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(triggerJson)
       .when()
@@ -265,7 +269,7 @@ public class TriggerResourceTest {
       """.formatted(INTERVAL_TRIGGER_ID, TEST_JOB_ID);
 
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(updateJson)
       .when()
@@ -292,7 +296,7 @@ public class TriggerResourceTest {
       """;
 
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(patchJson)
       .when()
@@ -310,7 +314,7 @@ public class TriggerResourceTest {
   @Test
   void testExecuteNow() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .post(BASE_PATH + "/" + INTERVAL_TRIGGER_ID + "/execute")
       .then()
@@ -341,7 +345,7 @@ public class TriggerResourceTest {
       """.formatted(TEST_JOB_ID);
 
     String createdTriggerId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(triggerJson)
       .when()
@@ -353,7 +357,7 @@ public class TriggerResourceTest {
 
     // 删除创建的触发器
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + createdTriggerId)
       .then()
@@ -361,7 +365,7 @@ public class TriggerResourceTest {
 
     // 验证触发器已被删除
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/" + createdTriggerId)
       .then()
@@ -375,7 +379,7 @@ public class TriggerResourceTest {
   void testValidateDifferentTriggerTypes() {
     // 验证间隔触发配置
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/" + INTERVAL_TRIGGER_ID)
       .then()
@@ -387,7 +391,7 @@ public class TriggerResourceTest {
 
     // 验证Cron触发配置
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/" + CRON_TRIGGER_ID)
       .then()
@@ -397,7 +401,7 @@ public class TriggerResourceTest {
 
     // 验证事件触发配置
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/" + EVENT_AFTER_TRIGGER_ID)
       .then()

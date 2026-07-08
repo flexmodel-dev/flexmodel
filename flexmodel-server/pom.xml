@@ -42,7 +42,7 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.4.1</version>
+      <version>4.4.0</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -69,7 +69,7 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>1.18.44</version>
-      <scope>compile</scope>
+      <scope>provided</scope>
     </dependency>
     <!-- Quarkus JDBC 扩展 — MySQL 官方扩展内置 native-image 元数据 -->
     <dependency>
@@ -270,6 +270,28 @@
             <id>make-index</id>
             <goals>
               <goal>jandex</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.15</version>
+        <executions>
+          <!-- 准备代理以收集覆盖率 -->
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <!-- 测试完成后生成 HTML 报告 -->
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
             </goals>
           </execution>
         </executions>

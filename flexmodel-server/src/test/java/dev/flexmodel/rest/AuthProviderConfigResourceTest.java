@@ -4,6 +4,7 @@ import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -19,13 +20,16 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class AuthProviderConfigResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   private static final String BASE_PATH = Resources.ROOT_PATH + "/projects/dev_test/auth-providers";
   private static final String TEST_PROVIDER_NAME = "test_provider_e2e";
 
   @BeforeEach
   void cleanupTestProvider() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_PROVIDER_NAME)
       .then()
@@ -38,7 +42,7 @@ public class AuthProviderConfigResourceTest {
   @Test
   void testCreateOidcAuthProvider() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -62,7 +66,7 @@ public class AuthProviderConfigResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_PROVIDER_NAME)
       .then()
@@ -75,7 +79,7 @@ public class AuthProviderConfigResourceTest {
   @Test
   void testCreateFunctionAuthProvider() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -96,7 +100,7 @@ public class AuthProviderConfigResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_PROVIDER_NAME)
       .then()
@@ -110,7 +114,7 @@ public class AuthProviderConfigResourceTest {
   void testUpdateAuthProvider() {
     // 先创建
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -131,7 +135,7 @@ public class AuthProviderConfigResourceTest {
 
     // 更新
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -154,7 +158,7 @@ public class AuthProviderConfigResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_PROVIDER_NAME)
       .then()
@@ -168,7 +172,7 @@ public class AuthProviderConfigResourceTest {
   void testDeleteAuthProvider() {
     // 先创建
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -187,7 +191,7 @@ public class AuthProviderConfigResourceTest {
 
     // 删除
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_PROVIDER_NAME)
       .then()
@@ -195,7 +199,7 @@ public class AuthProviderConfigResourceTest {
 
     // 验证已被删除
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -210,7 +214,7 @@ public class AuthProviderConfigResourceTest {
   void testCompleteAuthProviderCrudFlow() {
     // 1. 创建
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -232,7 +236,7 @@ public class AuthProviderConfigResourceTest {
 
     // 2. 列表确认存在
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -241,7 +245,7 @@ public class AuthProviderConfigResourceTest {
 
     // 3. 更新
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -261,7 +265,7 @@ public class AuthProviderConfigResourceTest {
 
     // 4. 删除
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + TEST_PROVIDER_NAME)
       .then()

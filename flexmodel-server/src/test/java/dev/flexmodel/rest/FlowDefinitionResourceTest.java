@@ -4,6 +4,7 @@ import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -19,6 +20,9 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class FlowDefinitionResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   private static final String BASE_PATH = Resources.ROOT_PATH + "/projects/dev_test/flows";
 
   // 项目.fml 中已有的流程ID
@@ -27,7 +31,7 @@ public class FlowDefinitionResourceTest {
   @BeforeEach
   void cleanupTestFlow() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/test_flow_e2e_key")
       .then()
@@ -40,7 +44,7 @@ public class FlowDefinitionResourceTest {
   @Test
   void testFindFlowList() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH)
       .then()
@@ -57,7 +61,7 @@ public class FlowDefinitionResourceTest {
   @Test
   void testFindFlowListWithFlowName() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .queryParam("flowName", "脚本测试")
       .when()
       .get(BASE_PATH)
@@ -73,7 +77,7 @@ public class FlowDefinitionResourceTest {
   @Test
   void testFindFlowListWithPagination() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .queryParam("page", 1)
       .queryParam("size", 2)
       .when()
@@ -89,7 +93,7 @@ public class FlowDefinitionResourceTest {
   @Test
   void testGetFlowModule() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/" + EXISTING_FLOW_MODULE_ID)
       .then()
@@ -104,7 +108,7 @@ public class FlowDefinitionResourceTest {
   @Test
   void testCreateFlow() {
     String flowModuleId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -125,7 +129,7 @@ public class FlowDefinitionResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + flowModuleId)
       .then()
@@ -139,7 +143,7 @@ public class FlowDefinitionResourceTest {
   void testUpdateFlow() {
     // 先创建流程
     String flowModuleId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -159,7 +163,7 @@ public class FlowDefinitionResourceTest {
 
     // 更新流程
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -179,7 +183,7 @@ public class FlowDefinitionResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + flowModuleId)
       .then()
@@ -192,7 +196,7 @@ public class FlowDefinitionResourceTest {
   @Test
   void testCreateFlowWithoutProjectIdInBody() {
     String flowModuleId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -212,7 +216,7 @@ public class FlowDefinitionResourceTest {
 
     // 清理
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + flowModuleId)
       .then()
@@ -226,7 +230,7 @@ public class FlowDefinitionResourceTest {
   void testDeleteFlow() {
     // 先创建流程
     String flowModuleId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -246,7 +250,7 @@ public class FlowDefinitionResourceTest {
 
     // 删除流程
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + flowModuleId)
       .then()
@@ -259,7 +263,7 @@ public class FlowDefinitionResourceTest {
   @Test
   void testDeployFlow() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -284,7 +288,7 @@ public class FlowDefinitionResourceTest {
   void testCompleteFlowCrudFlow() {
     // 1. 创建流程
     String flowModuleId = given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -305,7 +309,7 @@ public class FlowDefinitionResourceTest {
 
     // 2. 查看流程详情
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH + "/" + flowModuleId)
       .then()
@@ -314,7 +318,7 @@ public class FlowDefinitionResourceTest {
 
     // 3. 更新流程
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body("""
         {
@@ -332,7 +336,7 @@ public class FlowDefinitionResourceTest {
 
     // 4. 删除流程
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(BASE_PATH + "/" + flowModuleId)
       .then()

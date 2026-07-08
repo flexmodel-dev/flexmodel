@@ -1,6 +1,9 @@
 package dev.flexmodel.auth;
 
 import dev.flexmodel.auth.service.AuthService;
+import dev.flexmodel.codegen.entity.User;
+import dev.flexmodel.common.config.web.jwt.JwtService;
+import dev.flexmodel.common.config.web.response.UserinfoResponse;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -9,11 +12,6 @@ import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.codegen.entity.User;
-import dev.flexmodel.common.config.web.jwt.JwtUtil;
-import dev.flexmodel.common.config.web.response.UserinfoResponse;
-
-import java.time.Duration;
 
 /**
  * @author cjbi
@@ -27,15 +25,18 @@ public class AuthResource {
   @Inject
   AuthService authService;
 
+  @Inject
+  JwtService jwtService;
+
   @POST
   @Path("/login")
   @PermitAll
   public Response login(LoginRequest req) {
     User user = authService.login(req.username, req.password);
     // 签发 accessToken
-    String accessToken = JwtUtil.sign(user.getId(), Duration.ofDays(7));
+    String accessToken = jwtService.signAccessToken(user.getId());
     // 签发 refreshToken
-    String refreshToken = JwtUtil.sign(user.getId(), Duration.ofDays(30));
+    String refreshToken = jwtService.signRefreshToken(user.getId());
 
     NewCookie cookie = new NewCookie
       .Builder("refreshToken")
@@ -56,11 +57,11 @@ public class AuthResource {
       return Response.status(Response.Status.UNAUTHORIZED).build();
     }
     try {
-      String userId = JwtUtil.getClaim(refreshToken, JwtUtil.ACCOUNT);
+      String userId = jwtService.getClaim(refreshToken, JwtService.ACCOUNT);
 
       User user = authService.getUser(userId);
       // 签发新 accessToken
-      String newAccess = JwtUtil.sign(userId, Duration.ofMinutes(5));
+      String newAccess = jwtService.signAccessToken(userId);
 
       //refresh Token 即将到期续约功能
       // 旋转 refreshToken：签发新 refreshToken 并更新存储
@@ -90,7 +91,7 @@ public class AuthResource {
   public Response getUserInfo(@HeaderParam("Authorization") String authorization) {
     try {
       String accessToken = authorization.replace("Bearer ", "");
-      String userId = JwtUtil.getClaim(accessToken, JwtUtil.ACCOUNT);
+      String userId = jwtService.getClaim(accessToken, JwtService.ACCOUNT);
       User user = authService.getUser(userId);
       return Response.ok(buildUserInfo(accessToken, user)).build();
     } catch (Exception e) {

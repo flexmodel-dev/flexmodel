@@ -1,6 +1,8 @@
 package dev.flexmodel.rest;
 
-import dev.flexmodel.common.config.web.jwt.JwtUtil;
+import dev.flexmodel.common.config.web.jwt.JwtService;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.time.Duration;
 
@@ -10,6 +12,7 @@ import java.time.Duration;
  *
  * @author cjbi
  */
+@ApplicationScoped
 public class TestTokenHelper {
 
   /**
@@ -22,13 +25,16 @@ public class TestTokenHelper {
    */
   private static final Duration DEFAULT_TOKEN_DURATION = Duration.ofMinutes(5);
 
+  @Inject
+  JwtService jwtService;
+
   /**
    * 获取测试用的token
    *
    * @return JWT token字符串
    */
-  public static String getTestToken() {
-    return JwtUtil.sign(DEFAULT_TEST_USER_ID, DEFAULT_TOKEN_DURATION);
+  public String getTestToken() {
+    return jwtService.sign(DEFAULT_TEST_USER_ID, DEFAULT_TOKEN_DURATION);
   }
 
   /**
@@ -37,8 +43,8 @@ public class TestTokenHelper {
    * @param userId 用户ID
    * @return JWT token字符串
    */
-  public static String getTestToken(String userId) {
-    return JwtUtil.sign(userId, DEFAULT_TOKEN_DURATION);
+  public String getTestToken(String userId) {
+    return jwtService.sign(userId, DEFAULT_TOKEN_DURATION);
   }
 
   /**
@@ -47,8 +53,8 @@ public class TestTokenHelper {
    * @param duration token过期时间
    * @return JWT token字符串
    */
-  public static String getTestToken(Duration duration) {
-    return JwtUtil.sign(DEFAULT_TEST_USER_ID, duration);
+  public String getTestToken(Duration duration) {
+    return jwtService.sign(DEFAULT_TEST_USER_ID, duration);
   }
 
   /**
@@ -58,8 +64,8 @@ public class TestTokenHelper {
    * @param duration token过期时间
    * @return JWT token字符串
    */
-  public static String getTestToken(String userId, Duration duration) {
-    return JwtUtil.sign(userId, duration);
+  public String getTestToken(String userId, Duration duration) {
+    return jwtService.sign(userId, duration);
   }
 
   /**
@@ -67,7 +73,7 @@ public class TestTokenHelper {
    *
    * @return "Bearer {token}"格式的字符串
    */
-  public static String getAuthorizationHeader() {
+  public String getAuthorizationHeader() {
     return "Bearer " + getTestToken();
   }
 
@@ -77,7 +83,7 @@ public class TestTokenHelper {
    * @param userId 用户ID
    * @return "Bearer {token}"格式的字符串
    */
-  public static String getAuthorizationHeader(String userId) {
+  public String getAuthorizationHeader(String userId) {
     return "Bearer " + getTestToken(userId);
   }
 }

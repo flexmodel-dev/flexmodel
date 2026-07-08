@@ -1,20 +1,15 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
-import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import dev.flexmodel.SQLiteTestResource;
-
-import java.time.Duration;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.*;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.equalTo;
 
 /**
  * RecordResource 集成测试
@@ -26,11 +21,14 @@ import static org.hamcrest.Matchers.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RecordResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   @AfterEach
   void cleanupTestData() {
     // 清理测试创建的记录（id = 100000）
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(Resources.ROOT_PATH + "/projects/{projectId}/models/{modelName}/records/{recordId}",
         "dev_test", "Student", 100000)
@@ -41,7 +39,7 @@ class RecordResourceTest {
   @Test
   void testFindPagingRecords() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .param("current", "1")
       .param("pageSize", "20")
@@ -55,7 +53,7 @@ class RecordResourceTest {
   @Order(1)
   void testCreateRecord() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -76,7 +74,7 @@ class RecordResourceTest {
   @Order(2)
   void testUpdateRecord() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .contentType(ContentType.JSON)
       .body("""
@@ -97,7 +95,7 @@ class RecordResourceTest {
   @Order(3)
   void testFindOneRecord() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .param("nestedQuery", "true")
       .get(Resources.ROOT_PATH + "/projects/{projectId}/models/{modelName}/records/{recordId}", "dev_test", "Student", 100000)
@@ -109,7 +107,7 @@ class RecordResourceTest {
   @Order(4)
   void testDeleteRecord() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .delete(Resources.ROOT_PATH + "/projects/{projectId}/models/{modelName}/records/{recordId}", "dev_test", "Student", 100000)
       .then()

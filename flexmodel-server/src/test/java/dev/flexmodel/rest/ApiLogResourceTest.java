@@ -1,9 +1,10 @@
 package dev.flexmodel.rest;
 
+import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import dev.flexmodel.SQLiteTestResource;
 
 import static io.restassured.RestAssured.given;
 
@@ -14,10 +15,13 @@ import static io.restassured.RestAssured.given;
 @QuarkusTestResource(SQLiteTestResource.class)
 public class ApiLogResourceTest {
 
+  @Inject
+  TestTokenHelper testTokenHelper;
+
   @Test
   void testFindApiLogs() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(Resources.ROOT_PATH + "/projects/dev_test/logs")
       .then()
@@ -27,7 +31,7 @@ public class ApiLogResourceTest {
   @Test
   void testStat() {
     given()
-      .header("Authorization", TestTokenHelper.getAuthorizationHeader())
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(Resources.ROOT_PATH + "/projects/dev_test/logs/stat")
       .then()

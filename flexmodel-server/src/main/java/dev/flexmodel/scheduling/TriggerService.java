@@ -9,7 +9,6 @@ import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.flow.service.FlowDeploymentService;
 import dev.flexmodel.functions.FunctionService;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.scheduling.config.*;
@@ -214,15 +213,14 @@ public class TriggerService {
 
       if ("FUNCTION".equals(trigger.getJobType())) {
         // 执行云函数
-        FunctionInvokeRequest invokeReq = new FunctionInvokeRequest();
-        invokeReq.setInput(Map.of("triggerId", trigger.getId(), "triggerTime", startTime));
+        Object invokeBody = Map.of("triggerId", trigger.getId(), "triggerTime", startTime);
 
         JobExecutionLog jobExecutionLog = jobExecutionLogService.recordJobStart(trigger.getId(), trigger.getJobId(), trigger.getJobGroup(),
           trigger.getJobType(), trigger.getName(), trigger.getName(), trigger.getName(), startTime,
-          startTime, invokeReq, projectId2);
+          startTime, invokeBody, projectId2);
 
         try {
-          jakarta.ws.rs.core.Response response = functionService.invoke(projectId2, trigger.getJobId(), invokeReq);
+          jakarta.ws.rs.core.Response response = functionService.invoke(projectId2, trigger.getJobId(), invokeBody);
           Object result = response.readEntity(Object.class);
           jobExecutionLogService.recordJobSuccess(jobExecutionLog.getId(), result,
             System.currentTimeMillis() - startTime);

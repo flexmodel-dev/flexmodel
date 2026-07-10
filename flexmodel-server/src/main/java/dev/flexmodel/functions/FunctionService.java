@@ -6,7 +6,10 @@ import dev.flexmodel.auth.service.InternalTokenService;
 import dev.flexmodel.codegen.entity.Function;
 import dev.flexmodel.codegen.entity.FunctionTemplate;
 import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.functions.dto.*;
+import dev.flexmodel.functions.dto.FunctionDeployRequest;
+import dev.flexmodel.functions.dto.FunctionPageRequest;
+import dev.flexmodel.functions.dto.FunctionResponse;
+import dev.flexmodel.functions.dto.FunctionRuntimeDeployRequest;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -152,27 +155,30 @@ public class FunctionService {
    *
    * <p>不再每次 invoke 都预先 deploy。仅当 runtime 返回 404（函数未注册，如 runtime 重启后）
    * 才按需 deploy 并重试一次。避免频繁写文件触发 Deno --watch 重启。
+   *
+   * @param projectId project ID
+   * @param name function name
+   * @param body request body sent directly to the function (becomes Request JSON body)
    */
-  public Response invoke(String projectId, String name,
-                         FunctionInvokeRequest req) {
+  public Response invoke(String projectId, String name, Object body) {
     Function fn = functionRepository.findByName(projectId, name);
     if (fn == null) {
       throw new FunctionException("Function not found: " + name);
     }
 
     // 为本次 invoke 签发 Runtime 回调专用 JWT（5 分钟有效期）
-    req.setAuthToken(internalTokenService.signToken(projectId));
+    String authToken = internalTokenService.signToken(projectId);
     // 生成本次调用的唯一ID，用于关联 f_function_log 日志记录
-    req.setInvokeId(UUID.randomUUID().toString());
+    String invokeId = UUID.randomUUID().toString();
 
-    Response response = functionInvoker.invoke(projectId, name, req);
+    Response response = functionInvoker.invoke(projectId, name, body, authToken, invokeId);
 
     // runtime 重启等情况会导致函数未注册（404），此时按需部署后重试一次
     if (response.getStatus() == 404) {
       log.info("Function not registered in runtime, deploying: {}:{}", projectId, name);
       response.close();
       deployToRuntime(projectId, fn);
-      response = functionInvoker.invoke(projectId, name, req);
+      response = functionInvoker.invoke(projectId, name, body, authToken, invokeId);
     }
 
     log.info("Function {} invoked, status={}", name, response.getStatus());

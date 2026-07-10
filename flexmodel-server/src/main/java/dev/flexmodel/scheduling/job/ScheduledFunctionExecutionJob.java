@@ -1,7 +1,6 @@
 package dev.flexmodel.scheduling.job;
 
 import dev.flexmodel.functions.FunctionService;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.Job;
@@ -36,10 +35,7 @@ public class ScheduledFunctionExecutionJob implements Job {
 
       log.info("开始执行定时云函数任务: triggerId={}, functionName={}", triggerId, functionName);
 
-      FunctionInvokeRequest invokeReq = new FunctionInvokeRequest();
-      invokeReq.setInput(Map.of("triggerId", triggerId, "triggerTime", System.currentTimeMillis()));
-
-      functionService.invoke(projectId, functionName, invokeReq);
+      functionService.invoke(projectId, functionName, Map.of("triggerId", triggerId, "triggerTime", System.currentTimeMillis()));
 
       context.setResult(Map.of(
         "success", true,

@@ -1,7 +1,6 @@
 package dev.flexmodel.functions;
 
 import dev.flexmodel.functions.dto.FunctionRuntimeDeployRequest;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
@@ -46,10 +45,11 @@ public class FunctionInvoker {
 
     /**
      * Invoke a function via the Deno functions runtime.
+     * authToken and invokeId are passed via HTTP headers; body is sent directly as JSON.
      */
-    public Response invoke(String projectId, String name, FunctionInvokeRequest req) {
+    public Response invoke(String projectId, String name, Object body, String authToken, String invokeId) {
         try {
-            return runtimeClient.invoke(projectId, name, req);
+          return runtimeClient.invoke(projectId, name, authToken, invokeId, body);
         } catch (WebApplicationException e) {
             // 4xx/5xx 响应直接返回 Response，由调用方根据状态码决定处理方式（如 404 触发按需部署）
             return e.getResponse();

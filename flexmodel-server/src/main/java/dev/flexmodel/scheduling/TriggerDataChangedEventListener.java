@@ -10,7 +10,6 @@ import dev.flexmodel.event.EventType;
 import dev.flexmodel.event.PreChangeEvent;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.functions.FunctionService;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -134,13 +133,11 @@ public class TriggerDataChangedEventListener implements EventListener {
   private void dispatchEventTrigger(Trigger trigger, Object eventData, String logId) {
     String projectId = SessionContextHolder.getProjectId();
     if ("FUNCTION".equals(trigger.getJobType())) {
-      FunctionInvokeRequest invokeReq = new FunctionInvokeRequest();
-      invokeReq.setInput(Map.of(
+      functionService.invoke(projectId, trigger.getJobId(), Map.of(
         "triggerId", trigger.getId(),
         "eventData", eventData,
         "triggerTime", System.currentTimeMillis()
       ));
-      functionService.invoke(projectId, trigger.getJobId(), invokeReq);
     } else {
       StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
       startProcessParam.setProjectId(projectId);

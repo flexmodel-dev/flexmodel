@@ -2,15 +2,10 @@
 // Functions Routes — Tests
 // ============================================================
 
-import { assertEquals } from "@std/assert";
-import { createApp } from "../server.ts";
-import { registry } from "../runner/registry.ts";
-import {
-  cleanupTempDirs,
-  makeTempDir,
-  restoreEnv,
-  setEnv,
-} from "../test_helpers.ts";
+import {assertEquals} from "@std/assert";
+import {createApp} from "../server.ts";
+import {registry} from "../runner/registry.ts";
+import {cleanupTempDirs, makeTempDir, restoreEnv, setEnv,} from "../test_helpers.ts";
 
 Deno.test("POST /functions/deploy validates required fields", async () => {
   const app = createApp();
@@ -88,7 +83,7 @@ Deno.test("DELETE /functions/:projectId/:name removes deployed function", async 
           projectId: "del-proj",
           functionId: "del-id",
           name: "deleteme",
-          sourceFiles: { "index.ts": "export default () => new Response('ok');" },
+            sourceFiles: {"index.ts": "export default async (req: Request) => new Response('ok');"},
           timeout: 5,
         }),
       }),
@@ -138,8 +133,9 @@ Deno.test("POST /functions/:projectId/:name/invoke executes function via Worker"
           name: "echo",
           sourceFiles: {
             "index.ts": `
-              export default async (input: any) => {
-                return { echo: input };
+              export default async (req: Request) => {
+                const body = await req.json();
+                return { echo: body };
               };
             `,
           },
@@ -148,11 +144,12 @@ Deno.test("POST /functions/:projectId/:name/invoke executes function via Worker"
       }),
     );
 
+      // invoke — 请求体直接作为函数输入，不再嵌套在 input 字段中
     const res = await app.fetch(
       new Request("http://localhost/functions/inv-proj/echo/invoke", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ input: { message: "hi" } }),
+          body: JSON.stringify({message: "hi"}),
       }),
     );
 

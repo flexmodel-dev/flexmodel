@@ -5,7 +5,6 @@ import dev.flexmodel.codegen.entity.FunctionTemplate;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.functions.FunctionService;
 import dev.flexmodel.functions.dto.FunctionDeployRequest;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.functions.dto.FunctionPageRequest;
 import dev.flexmodel.functions.dto.FunctionResponse;
 import io.quarkiverse.mcp.server.Tool;
@@ -135,13 +134,17 @@ public class FunctionTools {
 
   @Tool(description = """
     Invoke (execute) a deployed cloud function and return its output. \
-    The function receives the input data as the request body, processes it in an isolated Deno Worker, \
-    and returns the result as the response body. \
+    The function receives the input data as a standard Request object, \
+    processes it in an isolated Deno Worker, and returns the result. \
+    \
+    The input parameter is passed as the Request body — the function \
+    can read it via req.json() or req.text(). Metadata like projectId \
+    and invokeId are available via Request headers (x-flexmodel-project-id, \
+    x-flexmodel-invoke-id, x-flexmodel-function-name). \
     \
     If the function is not currently registered in the runtime (e.g. after a runtime restart), \
     it will be automatically re-deployed before invocation. \
     \
-    The input parameter is passed as the function's request body. \
     The function's Response is returned directly. \
     Execution metadata (time, logs) may be available.\
     """)
@@ -156,12 +159,11 @@ public class FunctionTools {
   ) {
     log.infof("invoke_function called, projectId=%s, name=%s", projectId, name);
     try {
-      FunctionInvokeRequest request = new FunctionInvokeRequest();
+      Object input = null;
       if (inputJson != null && !inputJson.isBlank()) {
-        Object input = JsonUtils.parseToObject(inputJson, Object.class);
-        request.setInput(input);
+        input = JsonUtils.parseToObject(inputJson, Object.class);
       }
-      Response response = functionService.invoke(projectId, name, request);
+      Response response = functionService.invoke(projectId, name, input);
       int status = response.getStatus();
       Object body = response.readEntity(Object.class);
       String meta = response.getHeaderString("x-function-meta");

@@ -4855,9 +4855,6 @@
       "type": "dev.flexmodel.functions.dto.FunctionDeployRequest"
     },
     {
-      "type": "dev.flexmodel.functions.dto.FunctionInvokeRequest"
-    },
-    {
       "type": "dev.flexmodel.functions.dto.FunctionResponse",
       "methods": [
         {

@@ -1,19 +1,16 @@
 package dev.flexmodel.functions;
 
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.functions.dto.FunctionRuntimeDeployRequest;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 /**
  * Reactive REST client interface for the flexmodel-functions-runtime (Deno process).
+ *
+ * <p>Invoke endpoint sends the request body directly as JSON (no wrapping DTO).
+ * authToken and invokeId are passed via custom headers.
  *
  * @author cjbi
  */
@@ -31,7 +28,9 @@ public interface FunctionRuntimeClient {
     @Path("/{projectId}/{name}/invoke")
     Response invoke(@PathParam("projectId") String projectId,
                     @PathParam("name") String name,
-                    FunctionInvokeRequest request);
+                    @HeaderParam("x-flexmodel-auth-token") String authToken,
+                    @HeaderParam("x-flexmodel-invoke-id") String invokeId,
+                    Object body);
 
     @DELETE
     @Path("/{projectId}/{name}")

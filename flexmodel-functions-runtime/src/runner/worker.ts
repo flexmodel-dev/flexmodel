@@ -7,8 +7,8 @@
 // SDK runs directly inside Worker — no RPC proxying needed.
 // ============================================================
 
-import type { FunctionMeta, InvokeRequest, InvokeResult } from "../types.ts";
-import { registry } from "./registry.ts";
+import type {FunctionMeta, InvokeResult} from "../types.ts";
+import {registry} from "./registry.ts";
 
 /**
  * Invoke a function by name within a project.
@@ -19,14 +19,16 @@ import { registry } from "./registry.ts";
 export async function invokeFunction(
   projectId: string,
   name: string,
-  req: InvokeRequest,
+  body: unknown,
+  authToken?: string,
+  invokeId?: string,
 ): Promise<InvokeResult> {
   const meta = registry.get(projectId, name);
   if (!meta) {
     throw new Error(`Function not found: ${projectId}:${name}`);
   }
 
-  return executeInWorker(meta, req);
+  return executeInWorker(meta, body, authToken, invokeId);
 }
 
 /**
@@ -34,7 +36,9 @@ export async function invokeFunction(
  */
 async function executeInWorker(
   meta: FunctionMeta,
-  req: InvokeRequest,
+  body: unknown,
+  authToken?: string,
+  invokeId?: string,
 ): Promise<InvokeResult> {
   // Validate that the function directory exists before attempting Worker creation
   try {
@@ -94,7 +98,7 @@ async function executeInWorker(
           status: data.status,
           headers: data.headers,
           body: data.body,
-          _meta: { executionTimeMs, invokeId: req.invokeId },
+          _meta: {executionTimeMs, invokeId},
         });
         return;
       }
@@ -113,14 +117,14 @@ async function executeInWorker(
       reject(new Error(`Worker error: ${e.message}`));
     };
 
-    // 4. Trigger execution — pass authToken + projectId so the wrapper can
-    //    inject them into the SDK singleton before running user code.
+    // 4. Trigger execution — pass body + metadata so the wrapper can
+    //    build a standard Request object and inject authToken into SDK singleton.
     worker.postMessage({
       type: "invoke",
-      request: req,
-      authToken: req.authToken,
+      body,
+      authToken,
       projectId: meta.projectId,
-      invokeId: req.invokeId,
+      invokeId,
       functionName: meta.name,
     });
   });

@@ -1,26 +1,25 @@
 package dev.flexmodel.flow.executor;
 
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
-import jakarta.ws.rs.core.Response;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.InstanceData;
-import dev.flexmodel.flow.dto.bo.NodeInstanceBO;
-import dev.flexmodel.flow.exception.ProcessException;
+import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.flow.common.ErrorEnum;
 import dev.flexmodel.flow.common.InstanceDataType;
 import dev.flexmodel.flow.common.NodeInstanceStatus;
 import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.JavaScriptUtil;
+import dev.flexmodel.flow.dto.bo.NodeInstanceBO;
+import dev.flexmodel.flow.exception.ProcessException;
 import dev.flexmodel.functions.FunctionService;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.JsonUtils;
-import dev.flexmodel.common.utils.StringUtils;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import jakarta.ws.rs.core.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -581,11 +580,8 @@ public class ServiceTaskExecutor extends ElementExecutor {
       inputData = contextData;
     }
 
-    FunctionInvokeRequest request = new FunctionInvokeRequest();
-    request.setInput(inputData);
-
-    // 调用函数
-    Response response = functionService.invoke(projectId, functionName, request);
+    // 调用函数 — 直接传数据对象作为 Request body
+    Response response = functionService.invoke(projectId, functionName, inputData);
 
     try {
       if (response.getStatus() >= 200 && response.getStatus() < 300) {

@@ -1,7 +1,6 @@
 package dev.flexmodel.projectauth.provider;
 
 import dev.flexmodel.functions.FunctionService;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import jakarta.enterprise.inject.spi.CDI;
 import jakarta.ws.rs.core.Response;
 import lombok.Getter;
@@ -30,10 +29,7 @@ public class FunctionAuthProvider implements AuthProvider {
     try {
       FunctionService functionService = CDI.current().select(FunctionService.class).get();
 
-      FunctionInvokeRequest req = new FunctionInvokeRequest();
-      req.setInput(context);
-
-      Response response = functionService.invoke(context.getProjectId(), functionName, req);
+      Response response = functionService.invoke(context.getProjectId(), functionName, context);
       int status = response.getStatus();
 
       if (status == 200) {

@@ -2,11 +2,11 @@
 // Functions Routes — Deploy, Delete, Invoke
 // ============================================================
 
-import { Hono } from "hono";
-import type { StatusCode } from "hono/utils/http-status";
-import { registry } from "../runner/registry.ts";
-import { invokeFunction } from "../runner/worker.ts";
-import type { DeployRequest, InvokeRequest } from "../types.ts";
+import {Hono} from "hono";
+import type {StatusCode} from "hono/utils/http-status";
+import {registry} from "../runner/registry.ts";
+import {invokeFunction} from "../runner/worker.ts";
+import type {DeployRequest} from "../types.ts";
 
 const router = new Hono();
 
@@ -52,6 +52,8 @@ router.delete("/functions/:projectId/:name", async (c) => {
 
 // ---- POST /functions/:projectId/:name/invoke ----
 // Invoke a function by creating an isolated Worker (file:// URL)
+// authToken 和 invokeId 通过 HTTP headers 传入（由 Java 服务端设置）
+// 请求体直接作为函数的 Request body
 router.post("/functions/:projectId/:name/invoke", async (c) => {
   const { projectId, name } = c.req.param();
 
@@ -62,16 +64,15 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     );
   }
 
-  const body = await c.req.json().catch(() => ({}));
+    // 从 headers 提取服务端注入的元数据
+    const authToken = c.req.header("x-flexmodel-auth-token");
+    const invokeId = c.req.header("x-flexmodel-invoke-id");
 
-  const request: InvokeRequest = {
-    input: body.input,
-    authToken: body.authToken,
-    invokeId: body.invokeId,
-  };
+    // 请求体直接作为函数输入（不再嵌套在 input 字段中）
+    const body = await c.req.json().catch(() => null);
 
   try {
-    const result = await invokeFunction(projectId, name, request);
+      const result = await invokeFunction(projectId, name, body, authToken, invokeId);
 
     // Return function result directly as HTTP response
     // _meta is passed via response header for debug/observability
@@ -89,7 +90,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     const message = err instanceof Error ? err.message : String(err);
     const isTimeout = message.includes("timed out");
     const status = isTimeout ? 504 : 500;
-    const errorMeta = { executionTimeMs: 0, invokeId: request.invokeId };
+      const errorMeta = {executionTimeMs: 0, invokeId};
 
     return c.json(
       { error: isTimeout ? "Function execution timed out" : message },

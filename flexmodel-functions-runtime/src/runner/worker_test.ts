@@ -6,15 +6,10 @@
 // Requires --unstable-worker-options flag.
 // ============================================================
 
-import { assertEquals, assertRejects } from "@std/assert";
-import { invokeFunction } from "./worker.ts";
-import { registry } from "./registry.ts";
-import {
-  cleanupTempDirs,
-  makeTempDir,
-  restoreEnv,
-  setEnv,
-} from "../test_helpers.ts";
+import {assertEquals, assertRejects} from "@std/assert";
+import {invokeFunction} from "./worker.ts";
+import {registry} from "./registry.ts";
+import {cleanupTempDirs, makeTempDir, restoreEnv, setEnv,} from "../test_helpers.ts";
 
 // Helper to quickly deploy a test function
 async function deployTestFunction(
@@ -47,9 +42,7 @@ Deno.test("invokeFunction runs a simple function returning plain object", async 
       `,
     );
 
-    const result = await invokeFunction("wk-p1", "jsonFn", {
-      input: {},
-    });
+    const result = await invokeFunction("wk-p1", "jsonFn", {});
 
     assertEquals(result.status, 200);
     assertEquals(result.body, { answer: 42 });
@@ -80,9 +73,7 @@ Deno.test("invokeFunction runs a function returning a Response object", async ()
       `,
     );
 
-    const result = await invokeFunction("wk-p2", "responseFn", {
-      input: {},
-    });
+    const result = await invokeFunction("wk-p2", "responseFn", {});
 
     assertEquals(result.status, 201);
     assertEquals((result.body as Record<string, unknown>).type, "response");
@@ -104,7 +95,7 @@ Deno.test("invokeFunction enforces timeout", async () => {
       "wk-p3",
       "slow",
       `
-        export default async () => {
+        export default async (req: Request) => {
           await new Promise(r => setTimeout(r, 10000));
           return { ok: true };
         };
@@ -114,7 +105,7 @@ Deno.test("invokeFunction enforces timeout", async () => {
 
     await assertRejects(
       () =>
-        invokeFunction("wk-p3", "slow", { input: {} }),
+          invokeFunction("wk-p3", "slow", {}),
       Error,
       "timed out",
     );
@@ -135,7 +126,7 @@ Deno.test("invokeFunction propagates runtime errors", async () => {
       "wk-p4",
       "boom",
       `
-        export default async () => {
+        export default async (req: Request) => {
           throw new Error("intentional boom");
         };
       `,
@@ -143,7 +134,7 @@ Deno.test("invokeFunction propagates runtime errors", async () => {
 
     await assertRejects(
       () =>
-        invokeFunction("wk-p4", "boom", { input: {} }),
+          invokeFunction("wk-p4", "boom", {}),
       Error,
       "intentional boom",
     );
@@ -163,7 +154,7 @@ Deno.test("invokeFunction fails when function directory is missing", async () =>
     await deployTestFunction(
       "wk-p5",
       "ghost",
-      `export default () => ({ok:true});`,
+        `export default async (req: Request) => ({ok:true});`,
     );
 
     // Manually nuke directory to simulate corruption
@@ -172,7 +163,7 @@ Deno.test("invokeFunction fails when function directory is missing", async () =>
 
     await assertRejects(
       () =>
-        invokeFunction("wk-p5", "ghost", { input: {} }),
+          invokeFunction("wk-p5", "ghost", {}),
       Error,
       "Function directory not found",
     );
@@ -225,10 +216,7 @@ Deno.test("invokeFunction runs user code that calls SDK directly", async () => {
       `,
     );
 
-    const result = await invokeFunction("wk-p6", "sdkUser", {
-      input: {},
-      authToken: "test-token",
-    });
+    const result = await invokeFunction("wk-p6", "sdkUser", {}, "test-token");
     assertEquals(result.status, 200);
     const body = result.body as Record<string, unknown>;
     assertEquals(body.users !== undefined, true);
@@ -236,6 +224,49 @@ Deno.test("invokeFunction runs user code that calls SDK directly", async () => {
     await registry.delete("wk-p6", "sdkUser");
   } finally {
     await mockServer.shutdown();
+    await cleanupTempDirs();
+    restoreEnv();
+  }
+});
+
+Deno.test("invokeFunction passes Request with accessible body and headers", async () => {
+  const tempDir = makeTempDir();
+  setEnv("FUNCTIONS_DIR", tempDir);
+
+  try {
+    await deployTestFunction(
+        "wk-p7",
+        "requestInspector",
+        `
+        export default async (req: Request) => {
+          const body = await req.json();
+          return {
+            method: req.method,
+            url: req.url,
+            projectId: req.headers.get("x-flexmodel-project-id"),
+            invokeId: req.headers.get("x-flexmodel-invoke-id"),
+            functionName: req.headers.get("x-flexmodel-function-name"),
+            contentType: req.headers.get("content-type"),
+            echo: body,
+          };
+        };
+      `,
+    );
+
+    const invokeId = "test-invoke-123";
+    const result = await invokeFunction("wk-p7", "requestInspector", {message: "hello"}, undefined, invokeId);
+
+    assertEquals(result.status, 200);
+    const body = result.body as Record<string, unknown>;
+    assertEquals(body.method, "POST");
+    assertEquals(body.projectId, "wk-p7");
+    assertEquals(body.invokeId, invokeId);
+    assertEquals(body.functionName, "requestInspector");
+    assertEquals(body.contentType, "application/json");
+    assertEquals((body.echo as Record<string, unknown>).message, "hello");
+
+    await registry.delete("wk-p7", "requestInspector");
+  } finally {
     await cleanupTempDirs();
     restoreEnv();
   }

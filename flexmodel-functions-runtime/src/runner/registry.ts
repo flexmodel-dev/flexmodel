@@ -7,7 +7,7 @@
 // - Deploy-before-invoke pattern ensures consistency with Java server
 // ============================================================
 
-import type { DeployRequest, FunctionMeta } from "../types.ts";
+import type {DeployRequest, FunctionMeta} from "../types.ts";
 
 const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions";
 
@@ -25,7 +25,7 @@ self.addEventListener("message", async (e) => {
   const { type } = e.data;
 
   if (type === "invoke") {
-    const { request, authToken, projectId, invokeId, functionName } = e.data;
+    const { body, authToken, projectId, invokeId, functionName } = e.data;
 
     // ---- console 拦截：日志缓冲，统一通过 SDK 批量接口写入 f_function_log ----
     const __logBuffer = [];
@@ -84,26 +84,37 @@ self.addEventListener("message", async (e) => {
         return;
       }
 
-      const input = request.input ?? null;
+      // 构建标准 Request 对象传入 handler，与 Deno Deploy / Cloudflare Workers 等现代运行时一致
+      // body 数据作为 JSON body，元数据通过 headers 传递
+      const reqHeaders = new Headers({
+        "content-type": "application/json",
+      });
+      if (projectId) reqHeaders.set("x-flexmodel-project-id", projectId);
+      if (invokeId) reqHeaders.set("x-flexmodel-invoke-id", invokeId);
+      if (functionName) reqHeaders.set("x-flexmodel-function-name", functionName);
 
-      const response = await handler(input);
-      let body = response;
+      const reqUrl = "http://" + (Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost") + ":" + (Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080") + "/api/projects/" + (projectId ?? "unknown") + "/functions/" + (functionName ?? "unknown") + "/invoke";
+      const reqBody = JSON.stringify(body ?? null);
+      const req = new Request(reqUrl, { method: "POST", headers: reqHeaders, body: reqBody });
+
+      const response = await handler(req);
+      let resultBody = response;
       let status = 200;
-      let headers = {};
+      let resultHeaders = {};
 
       if (response instanceof Response) {
         status = response.status;
-        response.headers.forEach((value, key) => { headers[key] = value; });
+        response.headers.forEach((value, key) => { resultHeaders[key] = value; });
         try {
-          body = await response.json();
+          resultBody = await response.json();
         } catch {
-          body = await response.text();
+          resultBody = await response.text();
         }
       }
 
       // flush 日志：确保所有 console 输出落库后再返回结果
       await __flushLogs();
-      self.postMessage({ type: "result", data: { status, headers, body } });
+      self.postMessage({ type: "result", data: { status, headers: resultHeaders, body: resultBody } });
     } catch (err) {
       await __flushLogs();
       self.postMessage({ type: "error", data: { message: err instanceof Error ? err.message : String(err) } });

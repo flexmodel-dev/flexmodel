@@ -22,13 +22,14 @@ export async function invokeFunction(
   body: unknown,
   authToken?: string,
   invokeId?: string,
+  forwardedHeaders?: Record<string, string>,
 ): Promise<InvokeResult> {
   const meta = registry.get(projectId, name);
   if (!meta) {
     throw new Error(`Function not found: ${projectId}:${name}`);
   }
 
-  return executeInWorker(meta, body, authToken, invokeId);
+    return executeInWorker(meta, body, authToken, invokeId, forwardedHeaders);
 }
 
 /**
@@ -39,6 +40,7 @@ async function executeInWorker(
   body: unknown,
   authToken?: string,
   invokeId?: string,
+  forwardedHeaders?: Record<string, string>,
 ): Promise<InvokeResult> {
   // Validate that the function directory exists before attempting Worker creation
   try {
@@ -126,6 +128,7 @@ async function executeInWorker(
       projectId: meta.projectId,
       invokeId,
       functionName: meta.name,
+        forwardedHeaders,
     });
   });
 }

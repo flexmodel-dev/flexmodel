@@ -1,9 +1,9 @@
 package dev.flexmodel.projectauth.provider;
 
+import dev.flexmodel.JsonUtils;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.JsonUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -12,7 +12,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -56,11 +59,11 @@ public class OidcAuthProvider implements AuthProvider {
     }
 
     String paramString = Map.of(
-      "token", token,
-      "token_type_hint", "access_token",
-      "client_id", clientId,
-      "client_secret", clientSecret
-    ).entrySet().stream()
+        "token", token,
+        "token_type_hint", "access_token",
+        "client_id", clientId,
+        "client_secret", clientSecret
+      ).entrySet().stream()
       .map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
       .collect(Collectors.joining("&"));
 
@@ -83,7 +86,8 @@ public class OidcAuthProvider implements AuthProvider {
 
     String sub = Objects.toString(result.get("sub"), "oidc-user");
     Set<String> scopes = parseScopes(result.get("scope"));
-    return AuthResult.ok(sub, scopes);
+    log.info("OIDC introspect sub: {}, scopes: {}", sub, scopes);
+    return AuthResult.ok(sub);
   }
 
   private Set<String> parseScopes(Object scopeObj) {

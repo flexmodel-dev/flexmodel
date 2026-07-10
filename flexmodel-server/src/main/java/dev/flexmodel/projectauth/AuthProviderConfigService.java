@@ -1,7 +1,7 @@
 package dev.flexmodel.projectauth;
 
-import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.projectauth.provider.AuthProvider;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -31,11 +31,11 @@ public class AuthProviderConfigService {
   }
 
   public AuthProviderConfig update(String projectId, String name, AuthProviderConfig config) {
+    config.setName(name);
     AuthProviderConfig existing = authProviderConfigRepository.find(projectId, name);
     if (existing == null) {
-      throw new IllegalArgumentException("Auth provider not found: " + name);
+      return authProviderConfigRepository.save(projectId, config);
     }
-    config.setName(name);
     config.setCreatedAt(existing.getCreatedAt());
     if (config.getEnabled()) {
       disableOtherProviders(projectId, name);

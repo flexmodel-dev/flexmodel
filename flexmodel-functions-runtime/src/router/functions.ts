@@ -68,11 +68,22 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     const authToken = c.req.header("x-flexmodel-auth-token");
     const invokeId = c.req.header("x-flexmodel-invoke-id");
 
+    // 收集所有 incoming headers 传给 Worker，让云函数的 Request 对象能访问原始客户端 headers
+    const forwardedHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(c.req.header())) {
+        // 排除 hop-by-hop headers 和内部元数据 headers（内部 headers 通过单独字段传递）
+        const lower = key.toLowerCase();
+        if (lower !== "host" && lower !== "content-length" && lower !== "transfer-encoding"
+            && lower !== "connection" && lower !== "x-flexmodel-auth-token" && lower !== "x-flexmodel-invoke-id") {
+            forwardedHeaders[key] = value;
+        }
+    }
+
     // 请求体直接作为函数输入（不再嵌套在 input 字段中）
     const body = await c.req.json().catch(() => null);
 
   try {
-      const result = await invokeFunction(projectId, name, body, authToken, invokeId);
+      const result = await invokeFunction(projectId, name, body, authToken, invokeId, forwardedHeaders);
 
     // Return function result directly as HTTP response
     // _meta is passed via response header for debug/observability

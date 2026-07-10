@@ -3,8 +3,6 @@ package dev.flexmodel.projectauth.provider;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Set;
-
 /**
  * 认证结果。
  */
@@ -12,22 +10,20 @@ import java.util.Set;
 @Setter
 public class AuthResult {
   private boolean success;
-  private String caller;
-  private Set<String> scopes;
+  private String userId;
   private String message;
 
-  public AuthResult(boolean success, String caller, Set<String> scopes, String message) {
+  public AuthResult(boolean success, String userId, String message) {
     this.success = success;
-    this.caller = caller;
-    this.scopes = scopes;
+    this.userId = userId;
     this.message = message;
   }
 
   public static AuthResult fail(String message) {
-    return new AuthResult(false, null, null, message);
+    return new AuthResult(false, null, message);
   }
 
-  public static AuthResult ok(String caller, Set<String> scopes) {
-    return new AuthResult(true, caller, scopes, "success");
+  public static AuthResult ok(String userId) {
+    return new AuthResult(true, userId, "success");
   }
 }

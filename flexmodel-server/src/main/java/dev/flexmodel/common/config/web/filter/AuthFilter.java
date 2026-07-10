@@ -25,7 +25,7 @@ import java.util.*;
 /**
  * 认证过滤器。
  * <p>
- * 认证链：PermitAll -> 系统 JWT -> API Key(fm_ak_ 前缀) -> 项目 Provider(OIDC/Script) ->
+ * 认证链：PermitAll -> 项目 Provider(OIDC/Function) -> API Key(fm_ak_ 前缀) -> 系统 JWT ->
  * 401
  *
  * @author cjbi
@@ -68,7 +68,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
 
     String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
 
-    // 3. 认证链
+    // 3. 认证链：系统 JWT -> API Key -> IdP
     if (trySystemJwt(accessToken, requestContext, projectId)) {
       return;
     }
@@ -78,6 +78,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     if (projectId != null && tryProjectProviders(accessToken, requestContext, projectId)) {
       return;
     }
+
 
     // 4. 全部失败 -> 401
     throw new AuthException("Invalid token");
@@ -196,7 +197,6 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
     }
     SessionContextHolder.setUserId(userId);
-    SessionContextHolder.setCaller(userId);
     requestContext.setProperty("projectId", projectId);
     requestContext.setProperty("userId", userId);
   }
@@ -205,8 +205,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
    * API Key 认证 -> 填充上下文。
    */
   private void fillSessionContextForApiKey(ContainerRequestContext requestContext, AuthApiKey apiKey,
-      String requestProjectId) {
-    String projectId = requestProjectId;
+                                           String projectId) {
     if (projectId != null) {
       Project project = projectService.findProject(projectId);
       if (project == null) {
@@ -215,7 +214,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       SessionContextHolder.setProjectId(projectId);
       SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
     }
-    SessionContextHolder.setCaller(apiKey.getName());
+    SessionContextHolder.setUserId(apiKey.getName());
     requestContext.setProperty("projectId", projectId);
   }
 
@@ -230,7 +229,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     }
     SessionContextHolder.setProjectId(projectId);
     SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
-    SessionContextHolder.setCaller(result.getCaller());
+    SessionContextHolder.setUserId(result.getUserId());
     requestContext.setProperty("projectId", projectId);
   }
 

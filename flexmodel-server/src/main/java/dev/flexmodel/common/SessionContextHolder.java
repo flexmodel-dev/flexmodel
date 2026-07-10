@@ -34,22 +34,12 @@ public class SessionContextHolder {
     return CONTEXT_HOLDER.get().getUserId();
   }
 
-  public static void setCaller(String caller) {
-    CONTEXT_HOLDER.get().setCaller(caller);
-  }
-
-  public static String getCaller() {
-    return CONTEXT_HOLDER.get().getCaller();
-  }
-
-
   @Getter
   @Setter
   static class SessionContext {
     private String projectId;
     private String projectDatabaseName;
     private String userId;
-    private String caller;
   }
 
 

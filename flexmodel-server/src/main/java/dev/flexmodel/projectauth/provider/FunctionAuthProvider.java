@@ -1,5 +1,6 @@
 package dev.flexmodel.projectauth.provider;
 
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.functions.FunctionService;
 import jakarta.enterprise.inject.spi.CDI;
 import jakarta.ws.rs.core.Response;
@@ -7,10 +8,13 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Map;
+
 /**
  * 云函数认证提供商。
  * 调用配置的云函数进行自定义认证。
- * 函数返回 HTTP 200 即认证成功，其他状态码视为认证失败。
+ * 函数返回 HTTP 200 即认证成功，从 response body 中提取 userId；
+ * 其他状态码视为认证失败。
  */
 @Getter
 @Setter
@@ -33,7 +37,8 @@ public class FunctionAuthProvider implements AuthProvider {
       int status = response.getStatus();
 
       if (status == 200) {
-        return AuthResult.ok("function-user", java.util.Set.of("read"));
+        String userId = extractUserId(response);
+        return AuthResult.ok(userId);
       } else {
         return AuthResult.fail("Function auth failed with status: " + status);
       }
@@ -41,5 +46,31 @@ public class FunctionAuthProvider implements AuthProvider {
       log.error("Function auth error: {}", e.getMessage(), e);
       return AuthResult.fail("Function error: " + e.getMessage());
     }
+  }
+
+  /**
+   * 从云函数 response body 中提取 userId。
+   * 约定函数返回 JSON 格式：{ "userId": "xxx", ... }
+   * 若 body 中无 userId 字段，则 fallback 为 "function-user"。
+   */
+  @SuppressWarnings("unchecked")
+  private String extractUserId(Response response) {
+    try {
+      String body = response.readEntity(String.class);
+      if (body == null || body.isEmpty()) {
+        return "function-user";
+      }
+      Map<String, Object> result = JsonUtils.parseToObject(body, Map.class);
+      if (result == null) {
+        return "function-user";
+      }
+      Object userIdObj = result.get("userId");
+      if (userIdObj != null) {
+        return userIdObj.toString();
+      }
+    } catch (Exception e) {
+      log.warn("Failed to extract userId from function response, using fallback", e);
+    }
+    return "function-user";
   }
 }

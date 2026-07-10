@@ -25,7 +25,7 @@ self.addEventListener("message", async (e) => {
   const { type } = e.data;
 
   if (type === "invoke") {
-    const { body, authToken, projectId, invokeId, functionName } = e.data;
+    const { body, authToken, projectId, invokeId, functionName, forwardedHeaders } = e.data;
 
     // ---- console 拦截：日志缓冲，统一通过 SDK 批量接口写入 f_function_log ----
     const __logBuffer = [];
@@ -86,12 +86,19 @@ self.addEventListener("message", async (e) => {
 
       // 构建标准 Request 对象传入 handler，与 Deno Deploy / Cloudflare Workers 等现代运行时一致
       // body 数据作为 JSON body，元数据通过 headers 传递
+      // forwardedHeaders 包含原始客户端请求的所有 headers（由 ClientHeadersFactory 自动传播）
       const reqHeaders = new Headers({
         "content-type": "application/json",
       });
       if (projectId) reqHeaders.set("x-flexmodel-project-id", projectId);
       if (invokeId) reqHeaders.set("x-flexmodel-invoke-id", invokeId);
       if (functionName) reqHeaders.set("x-flexmodel-function-name", functionName);
+      // 合并原始客户端 headers
+      if (forwardedHeaders) {
+        for (const [key, value] of Object.entries(forwardedHeaders)) {
+          reqHeaders.set(key, value);
+        }
+      }
 
       const reqUrl = "http://" + (Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost") + ":" + (Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080") + "/api/projects/" + (projectId ?? "unknown") + "/functions/" + (functionName ?? "unknown") + "/invoke";
       const reqBody = JSON.stringify(body ?? null);

@@ -2,7 +2,6 @@ package dev.flexmodel.functions;
 
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.functions.dto.FunctionDeployRequest;
-import dev.flexmodel.functions.dto.FunctionInvokeRequest;
 import dev.flexmodel.functions.dto.FunctionPageRequest;
 import dev.flexmodel.functions.dto.FunctionResponse;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -64,7 +63,7 @@ public class FunctionResource {
   @Path("/{name}/invoke")
   public Response invoke(@PathParam("projectId") String projectId,
                          @PathParam("name") String name,
-                         FunctionInvokeRequest request) {
+                         Object request) {
     Response runtimeResponse = functionService.invoke(projectId, name, request);
 
     // Pass through function result directly as HTTP response

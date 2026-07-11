@@ -2,6 +2,8 @@ package dev.flexmodel.realtime;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.project.ProjectService;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.websocket.OnClose;
@@ -13,11 +15,7 @@ import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 实时订阅 WebSocket 端点。
@@ -42,19 +40,26 @@ public class RealtimeWebSocket {
 
   @OnOpen
   public void onOpen(Session session, @PathParam("projectId") String projectId) {
-    try {
-      String schemaName = projectService.resolveDatabaseName(projectId);
-      broadcaster.register(session, schemaName);
-      log.info("Realtime WebSocket connected: session={}, projectId={}, schemaName={}",
-        session.getId(), projectId, schemaName);
-    } catch (Exception e) {
-      log.error("Realtime WebSocket onOpen failed: projectId={}", projectId, e);
-      try {
-        session.close();
-      } catch (IOException ex) {
-        log.error("Failed to close session", ex);
-      }
-    }
+    // resolveDatabaseName → findProject 触发 @CacheResult 拦截器，
+    // CacheResultInterceptor 内部使用 Uni.await().indefinitely() 会阻塞当前线程，
+    // 但 WebSocket @OnOpen 默认在 Vert.x event loop 上执行，禁止阻塞 → 必须 offload 到 worker 线程池。
+    Uni.createFrom().item(() -> projectService.resolveDatabaseName(projectId))
+      .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+      .subscribe().with(
+        schemaName -> {
+          broadcaster.register(session, schemaName);
+          log.info("Realtime WebSocket connected: session={}, projectId={}, schemaName={}",
+            session.getId(), projectId, schemaName);
+        },
+        error -> {
+          log.error("Realtime WebSocket onOpen failed: projectId={}", projectId, error);
+          try {
+            session.close();
+          } catch (IOException e) {
+            log.error("Failed to close session", e);
+          }
+        }
+      );
   }
 
   @OnClose

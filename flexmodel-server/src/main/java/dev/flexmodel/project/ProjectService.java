@@ -17,6 +17,8 @@ import dev.flexmodel.projectauth.AuthProviderConfigService;
 import dev.flexmodel.sql.JdbcSchemaManager;
 import dev.flexmodel.sql.SchemaManager;
 import dev.flexmodel.storage.BucketRepository;
+import io.quarkus.cache.CacheInvalidateAll;
+import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -98,6 +100,7 @@ public class ProjectService {
       ).toList();
   }
 
+  @CacheResult(cacheName = "project-cache")
   public Project findProject(String projectId) {
     return projectRepository.findProject(projectId);
   }
@@ -177,6 +180,7 @@ public class ProjectService {
     return saved;
   }
 
+  @CacheInvalidateAll(cacheName = "project-cache")
   public Project updateProject(Project project) {
     if ("default".equals(project.getId())) {
       throw new IllegalArgumentException("默认项目不能修改");
@@ -198,6 +202,7 @@ public class ProjectService {
     return projectRepository.save(project);
   }
 
+  @CacheInvalidateAll(cacheName = "project-cache")
   public void deleteProject(String projectId) {
     if ("default".equals(projectId)) {
       throw new IllegalArgumentException("默认项目不能删除");

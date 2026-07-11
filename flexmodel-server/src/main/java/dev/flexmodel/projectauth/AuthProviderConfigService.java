@@ -3,6 +3,9 @@ package dev.flexmodel.projectauth;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.projectauth.provider.AuthProvider;
+import io.quarkus.cache.CacheInvalidate;
+import io.quarkus.cache.CacheKey;
+import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +19,7 @@ public class AuthProviderConfigService {
   @Inject
   AuthProviderConfigRepository authProviderConfigRepository;
 
+  @CacheResult(cacheName = "auth-config-cache")
   public List<AuthProviderConfig> listByProject(String projectId) {
     return authProviderConfigRepository.findByProjectId(projectId);
   }
@@ -24,13 +28,15 @@ public class AuthProviderConfigService {
     return authProviderConfigRepository.find(projectId, name);
   }
 
-  public AuthProviderConfig create(String projectId, AuthProviderConfig config) {
+  @CacheInvalidate(cacheName = "auth-config-cache")
+  public AuthProviderConfig create(@CacheKey String projectId, AuthProviderConfig config) {
     disableOtherProviders(projectId, null);
     config.setEnabled(true);
     return authProviderConfigRepository.save(projectId, config);
   }
 
-  public AuthProviderConfig update(String projectId, String name, AuthProviderConfig config) {
+  @CacheInvalidate(cacheName = "auth-config-cache")
+  public AuthProviderConfig update(@CacheKey String projectId, String name, AuthProviderConfig config) {
     config.setName(name);
     AuthProviderConfig existing = authProviderConfigRepository.find(projectId, name);
     if (existing == null) {
@@ -43,7 +49,8 @@ public class AuthProviderConfigService {
     return authProviderConfigRepository.save(projectId, config);
   }
 
-  public void delete(String projectId, String name) {
+  @CacheInvalidate(cacheName = "auth-config-cache")
+  public void delete(@CacheKey String projectId, String name) {
     authProviderConfigRepository.delete(projectId, name);
   }
 

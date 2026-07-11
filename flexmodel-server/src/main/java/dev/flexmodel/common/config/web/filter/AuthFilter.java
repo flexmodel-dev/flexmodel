@@ -25,7 +25,7 @@ import java.util.*;
 /**
  * 认证过滤器。
  * <p>
- * 认证链：PermitAll -> 项目 Provider(OIDC/Function) -> API Key(fm_ak_ 前缀) -> 系统 JWT ->
+ * 认证链：PermitAll -> 临时 Token(svc:runtime) -> 项目 Provider(OIDC/Function) -> API Key(fm_ak_ 前缀) -> 系统 JWT ->
  * 401
  *
  * @author cjbi
@@ -68,14 +68,18 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
 
     String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
 
-    // 3. 认证链：系统 JWT -> API Key -> IdP
-    if (trySystemJwt(accessToken, requestContext, projectId)) {
+    // 3. 认证链：临时 Token -> IdP -> API Key -> 系统 JWT
+
+    if (tryInternalToken(accessToken, requestContext, projectId)) {
+      return;
+    }
+    if (projectId != null && tryProjectProviders(accessToken, requestContext, projectId)) {
       return;
     }
     if (accessToken.startsWith("fm_ak_") && tryApiKey(accessToken, requestContext, projectId)) {
       return;
     }
-    if (projectId != null && tryProjectProviders(accessToken, requestContext, projectId)) {
+    if (trySystemJwt(accessToken, requestContext, projectId)) {
       return;
     }
 
@@ -98,6 +102,31 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     String userId = jwtService.getAccount(token);
     fillSessionContextForUser(requestContext, projectId, userId);
     return true;
+  }
+
+  /**
+   * 尝试内部临时 Token 验证（functions-runtime 回调等内部服务调用）。
+   * <p>
+   * 临时 Token 由 {@link dev.flexmodel.auth.service.InternalTokenService} 签发，
+   * 使用固定账号 {@code svc:runtime}，有效期 5 分钟，projectId 编码在 JWT claims 中。
+   */
+  private boolean tryInternalToken(String token, ContainerRequestContext requestContext, String projectId) {
+    try {
+      String account = jwtService.getClaim(token, JwtService.ACCOUNT);
+      if (!"svc:runtime".equals(account)) {
+        return false;
+      }
+      if (!jwtService.verify(token)) {
+        return false;
+      }
+      // 临时 token 的 projectId 编码在 JWT claims 中，优先使用
+      String tokenProjectId = jwtService.getClaim(token, "projectId");
+      String effectiveProjectId = tokenProjectId != null ? tokenProjectId : projectId;
+      fillSessionContextForUser(requestContext, effectiveProjectId, account);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   /**

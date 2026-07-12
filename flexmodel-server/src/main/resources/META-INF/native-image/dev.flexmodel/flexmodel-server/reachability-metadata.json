@@ -5669,6 +5669,75 @@
       "type": "dev.flexmodel.projectauth.AuthProviderConfigService"
     },
     {
+      "type": "dev.flexmodel.projectauth.provider.AuthContext",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getBearerToken",
+          "parameterTypes": []
+        },
+        {
+          "name": "getHeaders",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMethod",
+          "parameterTypes": []
+        },
+        {
+          "name": "getProjectId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getQuery",
+          "parameterTypes": []
+        },
+        {
+          "name": "getUrl",
+          "parameterTypes": []
+        },
+        {
+          "name": "setBearerToken",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setHeaders",
+          "parameterTypes": [
+            "java.util.Map"
+          ]
+        },
+        {
+          "name": "setMethod",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setProjectId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setQuery",
+          "parameterTypes": [
+            "java.util.Map"
+          ]
+        },
+        {
+          "name": "setUrl",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
       "type": "dev.flexmodel.projectauth.provider.AuthProvider"
     },
     {

@@ -60,6 +60,7 @@ services:
       - ./flexmodel-server/storage:/deployments/storage
       - ./flexmodel-server/database:/deployments/database
       - ./flexmodel-server/logs:/deployments/logs
+    env_file: .env
     environment:
       - TZ=GMT+08
       - FLEXMODEL_DATASOURCE_DB_KIND=mysql
@@ -80,6 +81,7 @@ services:
     container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-functions-runtime
     image: cjbi/flexmodel-functions-runtime:latest
     restart: always
+    env_file: .env
     environment:
       - FLEXMODEL_JAVA_HOST=flexmodel-server
       - FLEXMODEL_JAVA_PORT=8080

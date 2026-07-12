@@ -138,9 +138,10 @@ self.addEventListener("message", async (e) => {
         }
       }
 
-      // flush 日志：确保所有 console 输出落库后再返回结果
+      // 成功路径：fire-and-forget 刷日志，不阻塞 result 返回
+      // 错误路径（下方 catch）仍 await 确保错误日志落库
       __originalConsole.log("[perf] import=" + Math.round(__tImport - __t0) + "ms handler=" + Math.round(__tHandler - __tBeforeHandler) + "ms total=" + Math.round(__tHandler - __t0) + "ms");
-      await __flushLogs();
+      __flushLogs();
       self.postMessage({ type: "result", data: { status, headers: resultHeaders, body: resultBody } });
     } catch (err) {
       await __flushLogs();

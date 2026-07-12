@@ -1,7 +1,7 @@
 package dev.flexmodel.scheduling;
 
 import dev.flexmodel.codegen.entity.JobExecutionLog;
-import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -26,6 +26,9 @@ public class JobExecutionLogService {
 
     @Inject
     JobExecutionLogRepository jobExecutionLogRepository;
+
+  @Inject
+  SessionContext sessionContext;
 
     /**
      * 创建作业执行日志
@@ -70,7 +73,7 @@ public class JobExecutionLogService {
      * @return 作业执行日志列表
      */
     public List<JobExecutionLog> find(Predicate filter, Integer page, Integer size) {
-        return jobExecutionLogRepository.find(SessionContextHolder.getProjectId(), filter, page, size);
+      return jobExecutionLogRepository.find(sessionContext.getProjectId(), filter, page, size);
     }
 
     /**
@@ -80,7 +83,7 @@ public class JobExecutionLogService {
      * @return 日志数量
      */
     public long count(Predicate filter) {
-        return jobExecutionLogRepository.count(SessionContextHolder.getProjectId(), filter);
+      return jobExecutionLogRepository.count(sessionContext.getProjectId(), filter);
     }
 
     /**
@@ -137,7 +140,7 @@ public class JobExecutionLogService {
             log.setEndTime(LocalDateTime.now());
             log.setExecutionDuration(executionDuration);
             log.setOutputData(outputData);
-            update(SessionContextHolder.getProjectId(), log);
+          update(sessionContext.getProjectId(), log);
         }
     }
 
@@ -158,7 +161,7 @@ public class JobExecutionLogService {
             log.setExecutionDuration(executionDuration);
             log.setErrorMessage(errorMessage);
             log.setErrorStackTrace(errorStackTrace);
-            update(SessionContextHolder.getProjectId(), log);
+          update(sessionContext.getProjectId(), log);
         }
     }
 

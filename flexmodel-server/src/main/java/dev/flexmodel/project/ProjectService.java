@@ -6,7 +6,7 @@ import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.FlexmodelConfig;
 import dev.flexmodel.common.SchemaInitializer;
 import dev.flexmodel.common.SchemaRegistry;
-import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.config.AgroalDataSourceFactory;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
@@ -57,6 +57,9 @@ public class ProjectService {
   SchemaRegistry schemaRegistry;
   @Inject
   SchemaInitializer schemaInitializer;
+
+  @Inject
+  SessionContext sessionContext;
   @Inject
   FlexmodelConfig flexmodelConfig;
   @Inject
@@ -148,7 +151,8 @@ public class ProjectService {
     }
     // main 分支的 databaseName 约定为 projectId
     String mainDatabaseName = project.getId();
-    project.setOwnerId(SessionContextHolder.getUserId() != null ? SessionContextHolder.getUserId() : "admin");
+    String userId = sessionContext.getUserId();
+    project.setOwnerId(userId != null ? userId : "admin");
     project.setDatabaseName(mainDatabaseName);
 
 

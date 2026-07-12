@@ -1,20 +1,17 @@
 package dev.flexmodel.common;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.event.EventListener;
 import dev.flexmodel.event.PreChangeEvent;
 import dev.flexmodel.event.impl.PreInsertEvent;
 import dev.flexmodel.event.impl.PreUpdateEvent;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.field.TypedField;
-import dev.flexmodel.query.Query;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.JsonUtils;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,6 +20,10 @@ import java.util.Map;
 @Slf4j
 @ApplicationScoped
 public class AuditDataEventListener implements EventListener {
+
+  @Inject
+  SessionContext sessionContext;
+
   @Override
   public void onPreChange(PreChangeEvent event) {
     if (!"system".equals(event.getSchemaName())) {
@@ -36,8 +37,8 @@ public class AuditDataEventListener implements EventListener {
 
   private void invokeData(PreChangeEvent event) {
     Map<String, Object> newData = event.getNewData();
-    String projectId = SessionContextHolder.getProjectId();
-    String userId = SessionContextHolder.getUserId();
+    String projectId = sessionContext.getProjectId();
+    String userId = sessionContext.getUserId();
     if (newData == null) {
       return;
     }

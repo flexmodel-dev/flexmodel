@@ -1,13 +1,13 @@
 package dev.flexmodel.scheduling.job;
 
+import dev.flexmodel.common.SessionContext;
+import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import dev.flexmodel.flow.dto.StartProcessParamEvent;
-import dev.flexmodel.common.SessionContextHolder;
 
 import java.util.Map;
 
@@ -22,6 +22,9 @@ public class ScheduledFlowExecutionJob implements Job {
 
   @Inject
   EventBus eventBus;
+
+  @Inject
+  SessionContext sessionContext;
 
   @Override
   public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -42,8 +45,8 @@ public class ScheduledFlowExecutionJob implements Job {
       StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
       startProcessParam.setFlowModuleId(flowModuleId);
       startProcessParam.setVariables(Map.of());
-      startProcessParam.setProjectId(SessionContextHolder.getProjectId());
-      startProcessParam.setUserId(SessionContextHolder.getUserId());
+      startProcessParam.setProjectId(sessionContext.getProjectId());
+      startProcessParam.setUserId(sessionContext.getUserId());
 
       // 启动流程实例
       eventBus.send("flow.start", startProcessParam);

@@ -15,12 +15,15 @@ public abstract class AbstractRepository {
   @Inject
   protected SessionFactory sessionFactory;
 
+  @Inject
+  protected SessionContext sessionContext;
+
   protected Session getProjectSession(String projectId) {
     if (projectId != null) {
       // 仅当缓存的 projectId 与请求的一致时才复用 databaseName
-      String cachedProjectId = SessionContextHolder.getProjectId();
+      String cachedProjectId = sessionContext.getProjectId();
       if (projectId.equals(cachedProjectId)) {
-        String cachedDb = SessionContextHolder.getProjectDatabaseName();
+        String cachedDb = sessionContext.getProjectDatabaseName();
         if (cachedDb != null) {
           return sessionFactory.createSession(cachedDb);
         }
@@ -33,12 +36,12 @@ public abstract class AbstractRepository {
         if (project == null || project.getDatabaseName() == null) {
           throw new IllegalArgumentException("项目不存在或 databaseName 为空: " + projectId);
         }
-        SessionContextHolder.setProjectId(projectId);
-        SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
+        sessionContext.setProjectId(projectId);
+        sessionContext.setProjectDatabaseName(project.getDatabaseName());
         return sessionFactory.createSession(project.getDatabaseName());
       }
     }
-    String projectDatabaseName = SessionContextHolder.getProjectDatabaseName();
+    String projectDatabaseName = sessionContext.getProjectDatabaseName();
     if (projectDatabaseName != null) {
       return sessionFactory.createSession(projectDatabaseName);
     }

@@ -3,7 +3,7 @@ package dev.flexmodel.scheduling;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.codegen.entity.Trigger;
-import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventListener;
 import dev.flexmodel.event.EventType;
@@ -36,6 +36,9 @@ public class TriggerDataChangedEventListener implements EventListener {
   @Inject
   EventBus eventBus;
 
+  @Inject
+  SessionContext sessionContext;
+
   private final Map<String, String> beforeMutationTypeMap = Map.of(
     "delete", "PRE_DELETE",
     "update", "PRE_UPDATE",
@@ -52,7 +55,7 @@ public class TriggerDataChangedEventListener implements EventListener {
   public void onPreChange(PreChangeEvent event) {
     try {
       String groupName = event.getSchemaName() + "_" + event.getModelName();
-      String projectId = SessionContextHolder.getProjectId();
+      String projectId = sessionContext.getProjectId();
       // 最多支持触发100个事件
       List<Trigger> triggers = triggerRepository.find(projectId,
         trigger.jobGroup.eq(groupName)
@@ -88,7 +91,7 @@ public class TriggerDataChangedEventListener implements EventListener {
   public void onChanged(ChangedEvent event) {
     try {
       String groupName = event.getSchemaName() + "_" + event.getModelName();
-      String projectId = SessionContextHolder.getProjectId();
+      String projectId = sessionContext.getProjectId();
       // 最多支持触发100个事件
       List<Trigger> triggers = triggerRepository.find(projectId,
         trigger.jobGroup.eq(groupName)
@@ -131,7 +134,7 @@ public class TriggerDataChangedEventListener implements EventListener {
    * 根据触发器任务类型分派执行（流程或云函数）
    */
   private void dispatchEventTrigger(Trigger trigger, Object eventData, String logId) {
-    String projectId = SessionContextHolder.getProjectId();
+    String projectId = sessionContext.getProjectId();
     if ("FUNCTION".equals(trigger.getJobType())) {
       functionService.invoke(projectId, trigger.getJobId(), Map.of(
         "triggerId", trigger.getId(),
@@ -141,7 +144,7 @@ public class TriggerDataChangedEventListener implements EventListener {
     } else {
       StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
       startProcessParam.setProjectId(projectId);
-      startProcessParam.setUserId(SessionContextHolder.getUserId());
+      startProcessParam.setUserId(sessionContext.getUserId());
       startProcessParam.setFlowModuleId(trigger.getJobId());
       @SuppressWarnings("unchecked")
       Map<String, Object> variables = JsonUtils.convertValue(eventData, Map.class);
@@ -180,7 +183,7 @@ public class TriggerDataChangedEventListener implements EventListener {
         System.currentTimeMillis(),
         System.currentTimeMillis(),
         inputData,
-        SessionContextHolder.getProjectId()
+        sessionContext.getProjectId()
       );
 
       log.debug("已记录事件触发日志: triggerId={}, phase={}, mutationType={}",

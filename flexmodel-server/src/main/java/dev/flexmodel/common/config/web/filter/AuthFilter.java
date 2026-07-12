@@ -5,7 +5,7 @@ import dev.flexmodel.auth.service.ApiKeyService;
 import dev.flexmodel.codegen.entity.AuthApiKey;
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.config.web.jwt.JwtService;
 import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.projectauth.AuthProviderConfigService;
@@ -44,6 +44,8 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   AuthProviderConfigService authProviderConfigService;
   @Inject
   JwtService jwtService;
+  @Inject
+  SessionContext sessionContext;
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
@@ -222,10 +224,10 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       if (project == null) {
         throw new AuthException("Project not found");
       }
-      SessionContextHolder.setProjectId(projectId);
-      SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
+      sessionContext.setProjectId(projectId);
+      sessionContext.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
     }
-    SessionContextHolder.setUserId(userId);
+    sessionContext.setUserId(userId);
     requestContext.setProperty("projectId", projectId);
     requestContext.setProperty("userId", userId);
   }
@@ -240,10 +242,10 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       if (project == null) {
         throw new AuthException("Project not found");
       }
-      SessionContextHolder.setProjectId(projectId);
-      SessionContextHolder.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
+      sessionContext.setProjectId(projectId);
+      sessionContext.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
     }
-    SessionContextHolder.setUserId(apiKey.getName());
+    sessionContext.setUserId(apiKey.getName());
     requestContext.setProperty("projectId", projectId);
   }
 
@@ -256,16 +258,17 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     if (project == null) {
       throw new AuthException("Project not found");
     }
-    SessionContextHolder.setProjectId(projectId);
-    SessionContextHolder.setProjectDatabaseName(project.getDatabaseName());
-    SessionContextHolder.setUserId(result.getUserId());
+    sessionContext.setProjectId(projectId);
+    sessionContext.setProjectDatabaseName(project.getDatabaseName());
+    sessionContext.setUserId(result.getUserId());
     requestContext.setProperty("projectId", projectId);
   }
 
   @Override
   public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext)
       throws IOException {
-    SessionContextHolder.clear();
+    // CDI @RequestScoped 自动管理生命周期，无需手动 clear
+    // SessionContext 在请求结束时由 CDI 自动销毁
   }
 
 }

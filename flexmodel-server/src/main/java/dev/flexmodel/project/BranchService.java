@@ -6,8 +6,8 @@ import dev.flexmodel.api.consumer.GraphQLEventConsumer;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.common.SessionContextHolder;
 import dev.flexmodel.common.SchemaRegistry;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
 import dev.flexmodel.model.NativeQueryDefinition;
@@ -17,11 +17,7 @@ import dev.flexmodel.project.dto.BranchMergeRequest;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
-import dev.flexmodel.sql.JdbcSchemaManager;
-import dev.flexmodel.sql.JdbcSchemaProvider;
-import dev.flexmodel.sql.SchemaCopier;
-import dev.flexmodel.sql.SchemaCopierFactory;
-import dev.flexmodel.sql.SchemaManager;
+import dev.flexmodel.sql.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +65,9 @@ public class BranchService {
 
   @Inject
   GraphQLManager graphQLManager;
+
+  @Inject
+  SessionContext sessionContext;
 
   private final SchemaManager schemaManager = new JdbcSchemaManager();
 
@@ -160,7 +159,7 @@ public class BranchService {
     branch.setDatabaseName(branchDbName);
     branch.setSourceBranch(sourceBranch != null ? sourceBranch : "main");
     branch.setDescription(description);
-    branch.setCreatedBy(SessionContextHolder.getUserId());
+    branch.setCreatedBy(sessionContext.getUserId());
     Branch saved = branchRepository.save(branch);
 
     // 8. 创建分支项目记录（Supabase 风格：每个分支是独立可寻址的项目）

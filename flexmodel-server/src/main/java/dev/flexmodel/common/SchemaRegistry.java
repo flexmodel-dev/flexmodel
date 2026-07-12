@@ -13,12 +13,14 @@ import io.agroal.api.AgroalDataSource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.ConfigProvider;
 
 import javax.sql.DataSource;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,8 +49,25 @@ public class SchemaRegistry {
   @Inject
   ProjectService projectService;
 
+  @SuppressWarnings("all")
+  public Map<String, Object> getSystemVariables() {
+    Map all = new HashMap<>();
+    all.putAll(System.getenv());
+    all.putAll(System.getProperties());
+    Iterable<String> propertyNames = ConfigProvider.getConfig().getPropertyNames();
+    for (String propertyName : propertyNames) {
+      if (propertyName.isEmpty()) {
+        continue;
+      }
+      ConfigProvider.getConfig()
+        .getOptionalValue(propertyName, String.class)
+        .ifPresent(val -> all.put(propertyName, val));
+    }
+    return all;
+  }
+
   private String getContent(String template) {
-    return StringUtils.simpleRenderTemplate(template, SystemVariablesHolder.getSystemVariables());
+    return StringUtils.simpleRenderTemplate(template, getSystemVariables());
   }
 
   public List<String> getPhysicsModelNames(Project project) {

@@ -1,14 +1,12 @@
 package dev.flexmodel.flow.service;
 
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.flow.dto.param.*;
-import dev.flexmodel.flow.dto.param.*;
-import dev.flexmodel.flow.dto.result.*;
-import dev.flexmodel.common.SessionContextHolder;
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import dev.flexmodel.flow.dto.result.*;
 import dev.flexmodel.flow.processor.DefinitionProcessor;
 import dev.flexmodel.flow.processor.RuntimeProcessor;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
 @Singleton
 public class ProcessEngineImpl implements ProcessService {
@@ -19,24 +17,27 @@ public class ProcessEngineImpl implements ProcessService {
   @Inject
   RuntimeProcessor runtimeProcessor;
 
+  @Inject
+  SessionContext sessionContext;
+
   @Override
   public CreateFlowResult createFlow(CreateFlowParam createFlowParam) {
-    createFlowParam.setCaller(SessionContextHolder.getUserId());
-    createFlowParam.setOperator(SessionContextHolder.getUserId());
+    createFlowParam.setCaller(sessionContext.getUserId());
+    createFlowParam.setOperator(sessionContext.getUserId());
     return definitionProcessor.create(createFlowParam);
   }
 
   @Override
   public UpdateFlowResult updateFlow(UpdateFlowParam updateFlowParam) {
-    updateFlowParam.setCaller(SessionContextHolder.getUserId());
-    updateFlowParam.setOperator(SessionContextHolder.getUserId());
+    updateFlowParam.setCaller(sessionContext.getUserId());
+    updateFlowParam.setOperator(sessionContext.getUserId());
     return definitionProcessor.update(updateFlowParam);
   }
 
   @Override
   public DeployFlowResult deployFlow(DeployFlowParam deployFlowParam) {
-    deployFlowParam.setCaller(SessionContextHolder.getUserId());
-    deployFlowParam.setOperator(SessionContextHolder.getUserId());
+    deployFlowParam.setCaller(sessionContext.getUserId());
+    deployFlowParam.setOperator(sessionContext.getUserId());
     return definitionProcessor.deploy(deployFlowParam);
   }
 

@@ -4,7 +4,7 @@ import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.FlowDeployment;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.codegen.entity.Trigger;
-import dev.flexmodel.common.SessionContextHolder;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.flow.service.FlowDeploymentService;
@@ -47,6 +47,9 @@ public class TriggerService {
   EventBus eventBus;
   @Inject
   JobExecutionLogService jobExecutionLogService;
+
+  @Inject
+  SessionContext sessionContext;
 
   private TriggerDTO toTriggerDTO(String projectId, Trigger trigger) {
     if (trigger == null) {
@@ -208,7 +211,7 @@ public class TriggerService {
       log.info("开始立即执行触发器: triggerId={}, jobId={}, jobType={}",
         trigger.getId(), trigger.getJobId(), trigger.getJobType());
 
-      String projectId2 = SessionContextHolder.getProjectId();
+      String projectId2 = sessionContext.getProjectId();
       long startTime = System.currentTimeMillis();
 
       if ("FUNCTION".equals(trigger.getJobType())) {
@@ -233,7 +236,7 @@ public class TriggerService {
         // 构建启动流程参数
         StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
         startProcessParam.setProjectId(projectId2);
-        startProcessParam.setUserId(SessionContextHolder.getUserId());
+        startProcessParam.setUserId(sessionContext.getUserId());
         startProcessParam.setFlowModuleId(trigger.getJobId());
         startProcessParam.setVariables(Map.of());
         startProcessParam.setStartTime(startTime);

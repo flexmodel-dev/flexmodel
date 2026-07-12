@@ -1,7 +1,9 @@
 // ============================================================
 // Worker Executor — Main Process
 //
-// Creates an isolated Deno Worker for each function invocation.
+// Creates/reuses isolated Deno Workers for function invocation.
+// Workers are pooled and reused across invocations to eliminate
+// cold-start latency (module loading, npm resolution, TS compilation).
 // Enforces timeout via worker.terminate().
 // Worker loads function code via file:// URL (native relative import support).
 // SDK runs directly inside Worker — no RPC proxying needed.
@@ -9,6 +11,7 @@
 
 import type {FunctionMeta, InvokeResult} from "../types.ts";
 import {registry} from "./registry.ts";
+import {workerPool} from "./worker_pool.ts";
 
 /**
  * Invoke a function by name within a project.
@@ -34,6 +37,11 @@ export async function invokeFunction(
 
 /**
  * Execute function in an isolated Worker with timeout enforcement.
+ *
+ * Uses WorkerPool to reuse Workers across invocations. On first call
+ * for a function, a new Worker is created (cold start). On subsequent
+ * calls, an idle Worker is reused — skipping module loading, npm
+ * resolution, and TS compilation.
  */
 async function executeInWorker(
   meta: FunctionMeta,
@@ -51,51 +59,38 @@ async function executeInWorker(
     );
   }
 
-  // Dynamically construct net permission from env vars.
-  // In Docker: FLEXMODEL_JAVA_HOST=flexmodel-server → allow "flexmodel-server:8080"
-  // In dev:    FLEXMODEL_JAVA_HOST=localhost        → already covered by "localhost"
-  const javaHost = Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost";
-  const javaPort = Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080";
-  const allowedNet: string[] = ["localhost", `${javaHost}:${javaPort}`];
+    // 1. Try to acquire an idle Worker from the pool (warm path)
+    let worker: Worker = workerPool.acquire(meta) as Worker;
+    let fromPool = worker !== null;
 
-  let worker: Worker;
-  try {
-    // 1. Create Worker with minimal permissions, loading via file:// URL
-    worker = new Worker(meta.entryUrl, {
-      type: "module",
-      deno: {
-        permissions: {
-            net: true,                   // allow all hosts so cloud functions can call external APIs
-          read: [meta.functionDir],    // only allow reading function's own directory
-          write: false,
-            env: true,  // allow all env vars so cloud functions can access API keys, etc.
-          run: false,
-          ffi: false,
-        },
-      },
-    });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to create Worker: ${message}`);
+    if (!worker) {
+        // 2. Cold path: create a new Worker via the pool's factory
+        try {
+            worker = workerPool.createWorker(meta);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            throw new Error(`Failed to create Worker: ${message}`);
+        }
   }
 
   return new Promise((resolve, reject) => {
     const startTime = performance.now();
 
-    // 2. Timeout enforcement
+      // 3. Timeout enforcement
     const timer = setTimeout(() => {
-      worker.terminate();
+        worker!.terminate();
       reject(new Error(`Function execution timed out after ${meta.timeout}s`));
     }, meta.timeout * 1000);
 
-    // 3. Handle messages from Worker
-    worker.onmessage = (e: MessageEvent) => {
+      // 4. Handle messages from Worker
+      worker!.onmessage = (e: MessageEvent) => {
       const { type, data } = e.data;
 
       if (type === "result") {
         clearTimeout(timer);
         const executionTimeMs = Math.round(performance.now() - startTime);
-        worker.terminate();
+          // Return Worker to pool on success — avoid cold start next time
+          workerPool.release(meta, worker!);
         resolve({
           status: data.status,
           headers: data.headers,
@@ -107,28 +102,30 @@ async function executeInWorker(
 
       if (type === "error") {
         clearTimeout(timer);
-        worker.terminate();
+          // Don't return errored Workers to pool — they may be in a bad state
+          worker!.terminate();
         reject(new Error(data.message));
         return;
       }
     };
 
-    worker.onerror = (e: ErrorEvent) => {
+      worker!.onerror = (e: ErrorEvent) => {
       clearTimeout(timer);
-      worker.terminate();
+          // Worker-level errors: terminate, don't pool
+          worker!.terminate();
       reject(new Error(`Worker error: ${e.message}`));
     };
 
-    // 4. Trigger execution — pass body + metadata so the wrapper can
+      // 5. Trigger execution — pass body + metadata so the wrapper can
     //    build a standard Request object and inject authToken into SDK singleton.
-    worker.postMessage({
+      worker!.postMessage({
       type: "invoke",
       body,
       authToken,
       projectId: meta.projectId,
       invokeId,
       functionName: meta.name,
-        forwardedHeaders,
+          forwardedHeaders,
     });
   });
 }

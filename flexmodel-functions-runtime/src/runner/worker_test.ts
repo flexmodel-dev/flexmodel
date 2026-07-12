@@ -9,6 +9,7 @@
 import {assertEquals, assertRejects} from "@std/assert";
 import {invokeFunction} from "./worker.ts";
 import {registry} from "./registry.ts";
+import {workerPool} from "./worker_pool.ts";
 import {cleanupTempDirs, makeTempDir, restoreEnv, setEnv,} from "../test_helpers.ts";
 
 // Helper to quickly deploy a test function
@@ -270,4 +271,141 @@ Deno.test("invokeFunction passes Request with accessible body and headers", asyn
     await cleanupTempDirs();
     restoreEnv();
   }
+});
+
+// ============================================================
+// Worker Pool Tests
+// ============================================================
+
+Deno.test("workerPool reuses Workers across invocations", async () => {
+    const tempDir = makeTempDir();
+    setEnv("FUNCTIONS_DIR", tempDir);
+
+    try {
+        await deployTestFunction(
+            "pool-1",
+            "reuseFn",
+            `export default async (req: Request) => ({ reused: true });`,
+        );
+
+        // First invocation — creates a new Worker (cold start)
+        const result1 = await invokeFunction("pool-1", "reuseFn", {});
+        assertEquals(result1.body, {reused: true});
+
+        // After first invocation, at least 1 Worker should be pooled
+        // (warmup may have added a second one asynchronously)
+        const stats1 = workerPool.stats().find(s => s.function === "pool-1:reuseFn");
+        assertEquals((stats1?.idle ?? 0) >= 1, true, "Worker should be returned to pool after first invocation");
+
+        // Second invocation — should reuse the pooled Worker (warm)
+        const result2 = await invokeFunction("pool-1", "reuseFn", {});
+        assertEquals(result2.body, {reused: true});
+
+        // Pool still has idle Workers
+        const stats2 = workerPool.stats().find(s => s.function === "pool-1:reuseFn");
+        assertEquals((stats2?.idle ?? 0) >= 1, true, "Worker should be back in pool after reuse");
+
+        await registry.delete("pool-1", "reuseFn");
+    } finally {
+        await cleanupTempDirs();
+        restoreEnv();
+    }
+});
+
+Deno.test("workerPool drains on redeploy", async () => {
+    const tempDir = makeTempDir();
+    setEnv("FUNCTIONS_DIR", tempDir);
+
+    try {
+        await deployTestFunction(
+            "pool-2",
+            "redeployFn",
+            `export default async (req: Request) => ({ version: 1 });`,
+        );
+
+        // First invocation pools a Worker
+        const result1 = await invokeFunction("pool-2", "redeployFn", {});
+        assertEquals((result1.body as Record<string, unknown>).version, 1);
+
+        const statsBefore = workerPool.stats().find(s => s.function === "pool-2:redeployFn");
+        assertEquals((statsBefore?.idle ?? 0) >= 1, true, "Worker should be pooled before redeploy");
+
+        // Redeploy with new code
+        await deployTestFunction(
+            "pool-2",
+            "redeployFn",
+            `export default async (req: Request) => ({ version: 2 });`,
+        );
+
+        // Pool should be drained after redeploy, then refilled by warmup
+        const statsAfter = workerPool.stats().find(s => s.function === "pool-2:redeployFn");
+        assertEquals(statsAfter?.idle, 1, "Pool should have 1 warmup Worker after redeploy");
+
+        // New invocation gets fresh Worker with updated code
+        const result2 = await invokeFunction("pool-2", "redeployFn", {});
+        assertEquals((result2.body as Record<string, unknown>).version, 2);
+
+        await registry.delete("pool-2", "redeployFn");
+    } finally {
+        await cleanupTempDirs();
+        restoreEnv();
+    }
+});
+
+Deno.test("workerPool drains on delete", async () => {
+    const tempDir = makeTempDir();
+    setEnv("FUNCTIONS_DIR", tempDir);
+
+    try {
+        await deployTestFunction(
+            "pool-3",
+            "deleteFn",
+            `export default async (req: Request) => ({ ok: true });`,
+        );
+
+        // Invoke to create and pool a Worker
+        await invokeFunction("pool-3", "deleteFn", {});
+
+        const statsBefore = workerPool.stats().find(s => s.function === "pool-3:deleteFn");
+        assertEquals((statsBefore?.idle ?? 0) >= 1, true, "Worker should be pooled before delete");
+
+        // Delete should drain the pool
+        await registry.delete("pool-3", "deleteFn");
+
+        const statsAfter = workerPool.stats().find(s => s.function === "pool-3:deleteFn");
+        assertEquals(statsAfter, undefined, "Pool entry should be removed after delete");
+    } finally {
+        await cleanupTempDirs();
+        restoreEnv();
+    }
+});
+
+Deno.test("workerPool does not reuse Workers after user-code error", async () => {
+    const tempDir = makeTempDir();
+    setEnv("FUNCTIONS_DIR", tempDir);
+
+    try {
+        await deployTestFunction(
+            "pool-4",
+            "errorFn",
+            `export default async (req: Request) => { throw new Error("boom"); };`,
+        );
+
+        // Invocation that throws — Worker should NOT be pooled
+        await assertRejects(
+            () => invokeFunction("pool-4", "errorFn", {}),
+            Error,
+            "boom",
+        );
+
+        // Warmup Worker was acquired for the invoke, errored, and terminated.
+        // Since warmup is now awaited, no spare Worker remains.
+        const stats = workerPool.stats().find(s => s.function === "pool-4:errorFn");
+        assertEquals(stats ?? {idle: 0}, {function: "pool-4:errorFn", idle: 0}, "No Worker should remain after error");
+
+        await registry.delete("pool-4", "errorFn");
+    } finally {
+        await cleanupTempDirs();
+        restoreEnv();
+    }
 });

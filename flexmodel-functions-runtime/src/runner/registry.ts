@@ -8,6 +8,7 @@
 // ============================================================
 
 import type {DeployRequest, FunctionMeta} from "../types.ts";
+import {workerPool} from "./worker_pool.ts";
 
 const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions";
 
@@ -23,6 +24,20 @@ import { flexmodelClient } from "@flexmodel/sdk";
 
 self.addEventListener("message", async (e) => {
   const { type } = e.data;
+
+  // ---- warmup: pre-load user module (and all npm deps) into module cache ----
+  if (type === "warmup") {
+    try {
+      await import("./index.ts");
+      self.postMessage({ type: "warmed_up" });
+    } catch (err) {
+      self.postMessage({
+        type: "warmup_error",
+        data: { message: err instanceof Error ? err.message : String(err) },
+      });
+    }
+    return;
+  }
 
   if (type === "invoke") {
     const { body, authToken, projectId, invokeId, functionName, forwardedHeaders } = e.data;
@@ -76,7 +91,9 @@ self.addEventListener("message", async (e) => {
       if (authToken) flexmodelClient.setAuthToken(authToken);
       if (projectId) flexmodelClient.setProjectId(projectId);
 
+      const __t0 = performance.now();
       const mod = await import("./index.ts");
+      const __tImport = performance.now();
       const handler = mod.default;
       if (typeof handler !== "function") {
         await __flushLogs();
@@ -104,7 +121,9 @@ self.addEventListener("message", async (e) => {
       const reqBody = JSON.stringify(body ?? null);
       const req = new Request(reqUrl, { method: "POST", headers: reqHeaders, body: reqBody });
 
+      const __tBeforeHandler = performance.now();
       const response = await handler(req);
+      const __tHandler = performance.now();
       let resultBody = response;
       let status = 200;
       let resultHeaders = {};
@@ -120,6 +139,7 @@ self.addEventListener("message", async (e) => {
       }
 
       // flush 日志：确保所有 console 输出落库后再返回结果
+      __originalConsole.log("[perf] import=" + Math.round(__tImport - __t0) + "ms handler=" + Math.round(__tHandler - __tBeforeHandler) + "ms total=" + Math.round(__tHandler - __t0) + "ms");
       await __flushLogs();
       self.postMessage({ type: "result", data: { status, headers: resultHeaders, body: resultBody } });
     } catch (err) {
@@ -148,6 +168,10 @@ class Registry {
 
   /** Deploy: write source files to disk + generate wrapper + store metadata */
   async deploy(req: DeployRequest): Promise<void> {
+    // Invalidate pooled Workers for this function so new invocations
+    // pick up the updated code (old Workers may have stale module cache)
+    workerPool.drain(req.projectId, req.name);
+
     const rawDir = `${FUNCTIONS_DIR}/${req.projectId}/${req.functionId}`;
 
     // Ensure parent directory exists
@@ -189,6 +213,20 @@ class Registry {
     });
 
     console.log(`[registry] Deployed: ${key}`);
+
+    // Pre-warm Workers: create and load user code so the first
+    // real invocation hits a hot Worker with all npm deps loaded.
+    // Await completion so deploy() doesn't return until the Worker
+    // is ready — eliminates the race where invoke arrives before warmup.
+    // Internal 15s timeout prevents blocking forever.
+    try {
+      await workerPool.warmup(
+          {id: req.functionId, projectId: req.projectId, name: req.name, timeout: req.timeout, functionDir, entryUrl},
+          1,
+      );
+    } catch (err) {
+      console.warn(`[registry] Worker warmup failed for ${key}: ${err}`);
+    }
   }
 
   /** Get function metadata */
@@ -201,13 +239,15 @@ class Registry {
     return this.functions.has(`${projectId}:${name}`);
   }
 
-  /** Delete function: remove metadata + disk directory */
+  /** Delete function: remove metadata + disk directory + pooled workers */
   async delete(projectId: string, name: string): Promise<void> {
     const key = `${projectId}:${name}`;
     const meta = this.functions.get(key);
     if (meta) {
       try { await Deno.remove(meta.functionDir, { recursive: true }); } catch { /* ignore */ }
       this.functions.delete(key);
+      // Drain pooled Workers so they don't reference deleted files
+      workerPool.drain(projectId, name);
       console.log(`[registry] Removed: ${key}`);
     }
   }

@@ -3,8 +3,8 @@
   "version": "0.0.2",
   "exports": "./src/main.ts",
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-worker-options --watch src/main.ts",
-    "start": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-worker-options src/main.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-worker-options --env-file=.env --watch src/main.ts",
+    "start": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-worker-options --env-file=.env src/main.ts",
     "test": "deno test --allow-all --unstable-worker-options",
     "test:unit": "deno test --allow-all --unstable-worker-options src/server_test.ts src/router src/runner/registry_test.ts",
     "test:integration": "deno test --allow-all --unstable-worker-options src/runner/worker_test.ts",

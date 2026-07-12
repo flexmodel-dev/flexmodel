@@ -11,7 +11,8 @@
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@^1.1.5": "1.1.5",
     "jsr:@std/testing@1": "1.0.19",
-    "npm:@flexmodel/sdk@0.0.6": "0.0.6"
+    "npm:@flexmodel/sdk@0.0.6": "0.0.6",
+    "npm:openai@*": "6.46.0"
   },
   "jsr": {
     "@hono/hono@4.12.24": {
@@ -60,6 +61,10 @@
     "@flexmodel/sdk@0.0.6": {
       "integrity": "sha512-HIrln9cK0pSY23ZYMRxfIWjgqk8dXte3lN90wQCkYaI/kiThdHlvSFj32WEF+ZRL0Tlan+M+5kyMkv4KkXlJ6A==",
       "tarball": "https://registry.npmmirror.com/@flexmodel/sdk/-/sdk-0.0.6.tgz"
+    },
+    "openai@6.46.0": {
+      "integrity": "sha512-DFg6jEPT2RO+oAyXtddeUJU8zkGy1OQ1AjGzNIJUMQG03TTqvCpy9tBpQ+2VVVnvrl3E56F8GEin2JYtWpITtA==",
+      "tarball": "https://registry.npmmirror.com/openai/-/openai-6.46.0.tgz"
     }
   },
   "workspace": {

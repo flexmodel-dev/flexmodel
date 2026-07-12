@@ -65,10 +65,10 @@ async function executeInWorker(
       type: "module",
       deno: {
         permissions: {
-          net: allowedNet,           // SDK fetches Java API on allowed hosts
+            net: true,                   // allow all hosts so cloud functions can call external APIs
           read: [meta.functionDir],    // only allow reading function's own directory
           write: false,
-          env: ["FLEXMODEL_JAVA_HOST", "FLEXMODEL_JAVA_PORT"],  // SDK reads these for baseURL
+            env: true,  // allow all env vars so cloud functions can access API keys, etc.
           run: false,
           ffi: false,
         },

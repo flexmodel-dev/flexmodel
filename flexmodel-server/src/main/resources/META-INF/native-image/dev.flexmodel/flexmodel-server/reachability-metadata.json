@@ -1615,6 +1615,38 @@
           "parameterTypes": []
         },
         {
+          "name": "getCreatedAt",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCreatedBy",
+          "parameterTypes": []
+        },
+        {
+          "name": "getId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getSourceFiles",
+          "parameterTypes": []
+        },
+        {
+          "name": "getTimeout",
+          "parameterTypes": []
+        },
+        {
+          "name": "getUpdatedAt",
+          "parameterTypes": []
+        },
+        {
+          "name": "getUpdatedBy",
+          "parameterTypes": []
+        },
+        {
           "name": "setCreatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
@@ -3151,6 +3183,26 @@
       "methods": [
         {
           "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getParentId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getPermission",
+          "parameterTypes": []
+        },
+        {
+          "name": "getType",
           "parameterTypes": []
         },
         {

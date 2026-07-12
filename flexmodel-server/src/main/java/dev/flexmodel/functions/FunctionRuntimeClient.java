@@ -4,6 +4,7 @@ import dev.flexmodel.functions.dto.FunctionRuntimeDeployRequest;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 /**
@@ -15,6 +16,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
  * @author cjbi
  */
 @RegisterRestClient(configKey = "function-runtime")
+@RegisterClientHeaders(FunctionRuntimeClientHeadersFactory.class)
 @Path("/functions")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

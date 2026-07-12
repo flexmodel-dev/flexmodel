@@ -96,7 +96,7 @@ self.addEventListener("message", async (e) => {
       const __tImport = performance.now();
       const handler = mod.default;
       if (typeof handler !== "function") {
-        await __flushLogs();
+        __flushLogs();
         self.postMessage({ type: "error", data: { message: "export default is not a function in index.ts" } });
         return;
       }
@@ -144,7 +144,7 @@ self.addEventListener("message", async (e) => {
       __flushLogs();
       self.postMessage({ type: "result", data: { status, headers: resultHeaders, body: resultBody } });
     } catch (err) {
-      await __flushLogs();
+      __flushLogs();
       self.postMessage({ type: "error", data: { message: err instanceof Error ? err.message : String(err) } });
     }
   }

@@ -3,6 +3,8 @@ package dev.flexmodel.scheduling.job;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import io.vertx.mutiny.core.eventbus.EventBus;
+import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.Job;
@@ -18,6 +20,7 @@ import java.util.Map;
  * @author cjbi
  */
 @Slf4j
+@Dependent
 public class ScheduledFlowExecutionJob implements Job {
 
   @Inject
@@ -27,11 +30,13 @@ public class ScheduledFlowExecutionJob implements Job {
   SessionContext sessionContext;
 
   @Override
+  @ActivateRequestContext
   public void execute(JobExecutionContext context) throws JobExecutionException {
     try {
       // 从 JobDataMap 中获取流程执行参数
       String flowModuleId = context.getJobDetail().getJobDataMap().getString("jobId");
       String triggerId = context.getJobDetail().getJobDataMap().getString("triggerId");
+      String projectId = context.getJobDetail().getJobDataMap().getString("projectId");
 
       if (flowModuleId == null) {
         log.error("流程执行任务缺少必要参数: flowModuleId=null");
@@ -41,12 +46,16 @@ public class ScheduledFlowExecutionJob implements Job {
       log.info("开始执行定时流程任务: triggerId={}, flowModuleId={}",
         triggerId, flowModuleId);
 
+      // 设置会话上下文（定时任务无用户上下文，使用 system）
+      sessionContext.setProjectId(projectId);
+      sessionContext.setUserId("admin");
+
       // 构建启动流程参数
       StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
       startProcessParam.setFlowModuleId(flowModuleId);
       startProcessParam.setVariables(Map.of());
-      startProcessParam.setProjectId(sessionContext.getProjectId());
-      startProcessParam.setUserId(sessionContext.getUserId());
+      startProcessParam.setProjectId(projectId);
+      startProcessParam.setUserId("admin");
 
       // 启动流程实例
       eventBus.send("flow.start", startProcessParam);

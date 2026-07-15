@@ -89,10 +89,8 @@ public class TriggerService {
       if (triggerConfig instanceof ScheduledTriggerConfig) {
         if ("FUNCTION".equals(trigger.getJobType())) {
           return projectId + "_fn_" + trigger.getJobId();
-        }
-        FlowDeployment flowDeployment = flowService.findRecentByFlowModuleId(projectId, trigger.getJobId());
-        if (flowDeployment != null) {
-          return flowDeployment.getFlowKey();
+        } else if ("FLOW".equals(trigger.getJobType())) {
+          return projectId + "_flow_" + trigger.getJobId();
         }
       }
     }

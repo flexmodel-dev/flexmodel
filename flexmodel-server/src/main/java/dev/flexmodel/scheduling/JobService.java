@@ -1,10 +1,10 @@
 package dev.flexmodel.scheduling;
 
+import dev.flexmodel.codegen.entity.JobExecutionLog;
+import dev.flexmodel.common.dto.PageDTO;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.codegen.entity.JobExecutionLog;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -55,16 +55,6 @@ public class JobService {
    */
   public JobExecutionLog findLogById(String id) {
     return jobExecutionLogService.findById(id);
-  }
-
-  /**
-   * 清理指定天数之前的日志
-   *
-   * @param days 保留天数
-   * @return 清理的记录数
-   */
-  public int purgeOldLogs(int days) {
-    return jobExecutionLogService.purgeOldLogs(days);
   }
 
 }

@@ -38,7 +38,7 @@
       "description": "内置触发器、作业执行的任务调度系统",
       "dependencies": ["feat-001"],
       "status": "done",
-      "evidence": "flexmodel-server/scheduling 特性包已实现"
+      "evidence": "flexmodel-server/scheduling 特性包已实现；TriggerResourceTest e2e 用例已完善，通过注入的 Scheduler 直接校验 Quartz JobDetail/Trigger 的创建/移除/状态（create/update/patch/delete），16 个用例全部通过 (mvn -pl flexmodel-server -am test -Dtest=TriggerResourceTest)。附带修复 TriggerService.create 对 state=false 的 SCHEDULED 触发器不再误注册 Quartz 作业。"
     },
     {
       "id": "feat-006",

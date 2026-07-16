@@ -3,12 +3,16 @@ package dev.flexmodel.scheduling;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.FlowDeployment;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
+import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.codegen.entity.Trigger;
+import dev.flexmodel.codegen.enumeration.TriggerType;
+import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.flow.service.FlowDeploymentService;
 import dev.flexmodel.functions.FunctionService;
+import dev.flexmodel.project.ProjectRepository;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.scheduling.config.*;
@@ -16,8 +20,11 @@ import dev.flexmodel.scheduling.dto.TriggerDTO;
 import dev.flexmodel.scheduling.dto.TriggerPageRequest;
 import dev.flexmodel.scheduling.job.ScheduledFlowExecutionJob;
 import dev.flexmodel.scheduling.job.ScheduledFunctionExecutionJob;
+import io.quarkus.runtime.StartupEvent;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
@@ -47,9 +54,104 @@ public class TriggerService {
   EventBus eventBus;
   @Inject
   JobExecutionLogService jobExecutionLogService;
+  @Inject
+  ProjectRepository projectRepository;
+  @Inject
+  SchemaRegistry schemaRegistry;
 
   @Inject
   SessionContext sessionContext;
+
+  /**
+   * 应用启动时扫描全部启用项目的 f_trigger 表，
+   * 对其中调度触发器（SCHEDULED）按 scheduler.getTrigger(...) 查询 Quartz 中是否已存在对应调度任务，
+   * 不存在则（重建）调度。用于重启后恢复丢失的调度任务。
+   * <p>
+   * 为避免早于项目 Schema 注册执行，这里显式为每个可能尚未注册 Schema 的项目调用
+   * {@link SchemaRegistry#registerSchema(String)}，保证查询 f_trigger 时对应的 SchemaProvider 已就绪。
+   * 该方法内部对已注册的 Schema 是幂等跳过的。
+   */
+  @ActivateRequestContext
+  void restoreScheduledTriggersOnStartup(@Observes StartupEvent event) {
+    long beginTime = System.currentTimeMillis();
+    int restored = 0;
+    try {
+      List<Project> projects = projectRepository.findProjects();
+      log.info("启动时恢复定时任务调度: 项目数={}", projects.size());
+      for (Project project : projects) {
+        try {
+          // 确保项目对应 Schema 已注册（覆盖启动顺序早于 EngineConfig 注册的边界情况）
+          schemaRegistry.registerSchema(project.getDatabaseName());
+          restored += syncScheduledTriggers(project);
+        } catch (Exception e) {
+          log.error("恢复项目定时任务调度失败: projectId={}", project.getId(), e);
+        }
+      }
+    } catch (Exception e) {
+      log.error("启动时恢复定时任务调度失败", e);
+    }
+    log.info("========== 启动调度恢复完成: 恢复 {} 个定时任务 in {} ms", restored, System.currentTimeMillis() - beginTime);
+  }
+
+  /**
+   * 对单个项目同步 f_trigger 中的调度触发器到 Quartz。
+   * 遍历该项目 state=true 且 type=SCHEDULED 的触发器，
+   * 若 scheduler.getTrigger(...) 不存在对应调度任务则按配置重建。
+   *
+   * @return 本次恢复（新建）的调度任务数量
+   */
+  private int syncScheduledTriggers(Project project) {
+    String projectId = project.getId();
+    // 仅处理调度类型触发器；事件触发器（EVENT）不参与 Quartz 调度
+    List<Trigger> triggers = triggerRepository.find(projectId,
+      trigger.state.eq(true).and(trigger.type.eq(TriggerType.SCHEDULED)), 1, Integer.MAX_VALUE);
+
+    int restored = 0;
+    for (Trigger trigger : triggers) {
+      try {
+        TriggerConfig triggerConfig = JsonUtils.convertValue(trigger.getConfig(), TriggerConfig.class);
+        if (!(triggerConfig instanceof ScheduledTriggerConfig scheduledTriggerConfig)) {
+          continue;
+        }
+        TriggerKey triggerKey = buildTriggerKey(trigger);
+        try {
+          if (scheduler.getTrigger(triggerKey) != null) {
+            // Quartz 中已存在对应调度任务，无需重建
+            continue;
+          }
+        } catch (SchedulerException e) {
+          log.warn("查询调度任务状态失败，将尝试重建: triggerKey={}", triggerKey, e);
+        }
+        // 调度任务不存在（或查询失败），依据 f_trigger 配置重建
+        ensureScheduledTrigger(projectId, trigger, scheduledTriggerConfig, triggerKey);
+        restored++;
+        log.info("已恢复定时任务调度: projectId={}, triggerId={}, triggerKey={}", projectId, trigger.getId(), triggerKey);
+      } catch (Exception e) {
+        log.error("恢复定时任务调度失败: projectId={}, triggerId={}", projectId, trigger.getId(), e);
+      }
+    }
+    return restored;
+  }
+
+  /**
+   * 依据 f_trigger 记录重建 Quartz 调度任务。
+   * 仅在 scheduler.getTrigger(...) 判定调度任务不存在时调用。
+   */
+  private void ensureScheduledTrigger(String projectId, Trigger trigger, ScheduledTriggerConfig config, TriggerKey triggerKey) {
+    String jobGroup = trigger.getJobGroup();
+    if (jobGroup == null || jobGroup.isBlank()) {
+      // 兼容历史数据：jobGroup 未持久化时依据当前配置重新推导
+      trigger.setJobGroup(getJobGroup(projectId, trigger, config));
+    }
+    try {
+      scheduleTrigger(projectId, trigger, config);
+    } catch (ObjectAlreadyExistsException e) {
+      // 并发或脏数据导致已存在，跳过重建
+      log.warn("调度任务已存在，跳过重建: triggerKey={}", triggerKey);
+    } catch (SchedulerException e) {
+      log.error("重建调度任务失败: triggerKey={}", triggerKey, e);
+    }
+  }
 
   private TriggerDTO toTriggerDTO(String projectId, Trigger trigger) {
     if (trigger == null) {
@@ -107,8 +209,13 @@ public class TriggerService {
     if (triggerConfig instanceof ScheduledTriggerConfig scheduledTriggerConfig) {
       // 实现定时任务调度
       try {
-        scheduleTrigger(projectId, trigger, scheduledTriggerConfig);
-        log.info("成功创建定时任务: {}", trigger.getId());
+        // 只有启用态才调度，与 update 行为保持一致；禁用态仅持久化 DB 记录，不注册 Quartz 作业
+        if (Boolean.TRUE.equals(trigger.getState())) {
+          scheduleTrigger(projectId, trigger, scheduledTriggerConfig);
+          log.info("成功创建定时任务: {}", trigger.getId());
+        } else {
+          log.info("触发器状态为禁用，跳过定时任务调度: {}", trigger.getId());
+        }
       } catch (Exception e) {
         log.error("创建定时任务失败: {}", trigger.getId(), e);
         throw new TriggerException("创建定时任务失败: " + e.getMessage(), e);

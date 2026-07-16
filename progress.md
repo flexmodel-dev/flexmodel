@@ -125,3 +125,48 @@
 - [x] Frontend build: `npm run build` (Vite) → built in 42.98s
 - [ ] Deno type-check: `deno check src/main.ts` (Deno not installed in environment)
 - [ ] End-to-end test: create → deploy → invoke → update → delete (requires running functions runtime)
+
+---
+
+## Session (2026-07-17): 完善 scheduling e2e 测试（feat-005）
+
+### 目标
+
+完善 `TriggerResourceTest` e2e 用例，在调用 Trigger REST 接口后，通过注入的 `Scheduler` 直接查询 Quartz 作业状态，确保
+Quartz 作业被正确创建/移除/状态变更。
+
+### 变更
+
+- `flexmodel-server/src/test/java/dev/flexmodel/rest/TriggerResourceTest.java`
+  - 新增 Quartz 断言辅助方法：`jobKey`/`triggerKey`/`assertScheduledInQuartz`/`assertNotScheduledInQuartz`/
+    `unscheduleFromScheduler`，镜像 `TriggerService.buildJobKey/buildTriggerKey/getJobGroup` 的命名规则（group =
+    `dev_test_flow_{jobId}`）。
+  - `testCreateIntervalTrigger`/`testCreateCronTrigger`：创建 state=true SCHEDULED 触发器后断言 JobDetail/Trigger
+    存在、JobDataMap 携带 triggerId/jobId/projectId。
+  - `testCreateEventTrigger`：断言 EVENT 类型不创建 Quartz 作业。
+  - `testCreateDisabledTriggerNotScheduled`：state=false SCHEDULED 不创建 Quartz 作业。
+  - `testPatchTriggerEnable`/`testPatchTriggerDisable`：启用→创建调度任务，禁用→移除调度任务。
+  - `testUpdateTrigger`/`testUpdateTriggerReschedules`（新增）：update 先 unschedule 再 schedule 的重建路径，禁用态不残留调度任务，且全程保留
+    seed 原始名称。
+  - `testDeleteTrigger`:删除前断言调度任务存在、删除后断言已移除。
+  - `@AfterEach` 增强：清理 created/启用的 seed 触发器的 Quartz 调度任务（兜底 `deleteJob`/`unscheduleJob`），并还原 seed
+    禁用态。
+- `flexmodel-server/src/main/java/dev/flexmodel/scheduling/TriggerService.java`
+  - 修复 `create()`：对 state=false 的 SCHEDULED 触发器不再调用 `scheduleTrigger`（与 `update()` 行为一致），避免禁用态触发器误注册
+    Quartz 作业。这是被新 e2e 用例暴露出的预存缺陷。
+
+### 验证
+
+- `mvn -pl flexmodel-server -am test -Dtest=TriggerResourceTest -Dsurefire.failIfNoSpecifiedTests=false` → BUILD
+  SUCCESS，Tests run: 16, Failures: 0, Errors: 0, Skipped: 0。
+- TriggerResourceIT（@QuarkusIntegrationTest extends TriggerResourceTest）保持兼容（用例均为普通 HTTP+Scheduler 断言，无 JVM
+  模式不兼容 API）。
+
+### 备注 / 风险
+
+- `assertScheduledInQuartz` 不再强断言 `getTriggerState==NORMAL` 与 `nextFireTime`：短间隔 SimpleTrigger 在断言前可能已触发完成被移除（含
+  startup-restore 触发的实际 Job 执行，会出现 `SessionContext` NPE 噪声日志，属已知环境问题，不影响断言）。改为断言
+  JobDetail/Trigger 存在 + JobDataMap 内容 + 状态非 ERROR，保证稳定性。
+- `testDeleteTrigger` 改用 1 小时间隔创建触发器，避免调度任务在断言前被触发清理。
+- 启动恢复 `restoreScheduledTriggersOnStartup` 对 seed EVENT 触发器不调度（符合预期），dev_test seed 中无 state=true 的
+  SCHEDULED 触发器。

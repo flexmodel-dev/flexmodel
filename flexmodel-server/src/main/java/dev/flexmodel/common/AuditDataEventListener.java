@@ -8,7 +8,7 @@ import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import jakarta.enterprise.inject.spi.CDI;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -20,9 +20,6 @@ import java.util.Map;
 @Slf4j
 @ApplicationScoped
 public class AuditDataEventListener implements EventListener {
-
-  @Inject
-  SessionContext sessionContext;
 
   @Override
   public void onPreChange(PreChangeEvent event) {
@@ -37,11 +34,17 @@ public class AuditDataEventListener implements EventListener {
 
   private void invokeData(PreChangeEvent event) {
     Map<String, Object> newData = event.getNewData();
-    String projectId = sessionContext.getProjectId();
-    String userId = sessionContext.getUserId();
-    if (newData == null) {
-      return;
+    String userId = "admin";
+    try {
+      SessionContext sessionContext = CDI.current().select(SessionContext.class).get();
+      userId = sessionContext.getUserId();
+      if (newData == null) {
+        return;
+      }
+    } catch (Exception e) {
+      log.warn("AuditDataEventListener get userId error: {}", e.getMessage());
     }
+
     SessionFactory sf = event.getSource();
     EntityDefinition entity = (EntityDefinition) sf.getModelRegistry().getRegistered(event.getSchemaName(), event.getModelName());
     TypedField<?, ?> createdByField = entity.getField("created_by");

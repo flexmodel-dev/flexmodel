@@ -26,4 +26,6 @@ public interface ProjectRepository {
   Project save(Project project);
 
   void delete(String projectId);
+
+  Project findProjectByDatabaseName(String databaseName);
 }

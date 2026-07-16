@@ -69,4 +69,13 @@ public class ProjectFmRepository implements ProjectRepository {
           .execute();
     }
   }
+
+  @Override
+  public Project findProjectByDatabaseName(String databaseName) {
+    try (Session session = sessionFactory.createSession()) {
+      return session.dsl().selectFrom(Project.class)
+        .where(project.databaseName.eq(databaseName))
+        .executeOne();
+    }
+  }
 }

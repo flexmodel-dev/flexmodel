@@ -1,9 +1,8 @@
 package dev.flexmodel.scheduling.job;
 
 import dev.flexmodel.functions.FunctionService;
-import jakarta.enterprise.context.Dependent;
 import jakarta.enterprise.context.control.ActivateRequestContext;
-import jakarta.inject.Inject;
+import jakarta.enterprise.inject.spi.CDI;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -18,11 +17,13 @@ import java.util.Map;
  * @author cjbi
  */
 @Slf4j
-@Dependent
 public class ScheduledFunctionExecutionJob implements Job {
 
-  @Inject
-  FunctionService functionService;
+  private final FunctionService functionService;
+
+  public ScheduledFunctionExecutionJob() {
+    functionService = CDI.current().select(FunctionService.class).get();
+  }
 
   @Override
   @ActivateRequestContext

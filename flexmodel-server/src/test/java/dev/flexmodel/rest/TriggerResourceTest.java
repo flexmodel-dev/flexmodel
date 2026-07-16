@@ -9,9 +9,12 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * ScheduleResource 集成测试
@@ -25,13 +28,16 @@ public class TriggerResourceTest {
   @Inject
   TestTokenHelper testTokenHelper;
 
+  @Inject
+  Scheduler quartz;
+
   private static final String BASE_PATH = "/projects/dev_test/triggers";
 
   // 测试数据中的触发器ID
   private static final String INTERVAL_TRIGGER_ID = "bf492f37-1f01-4eb8-b76d-d319299b4d8e";
   private static final String CRON_TRIGGER_ID = "d8c60d2a-19d8-4c3c-b370-96318733858f";
-  private static final String DAILY_TRIGGER_ID = "78505887-128a-4b24-a637-42ea8836a69b";
   private static final String EVENT_AFTER_TRIGGER_ID = "f351b8d9-a450-4f2c-8fff-cf862d690352";
+  private static final String ENABLED_EVENT_TRIGGER_ID = "9434666d-6b3b-417a-80e3-3352f40ded71";
   private static final String TEST_JOB_ID = "5c41f37a-87a9-47af-bdba-44d0c27eda89";
 
   private String createdTriggerId;
@@ -39,34 +45,6 @@ public class TriggerResourceTest {
   @BeforeEach
   void setUp() {
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-    String triggerJson = """
-      {
-          "name": "测试间隔触发",
-          "description": "测试描述",
-          "type": "SCHEDULED",
-          "config": {
-              "type": "interval",
-              "interval": 5,
-              "intervalUnit": "minute",
-              "repeatCount": 10
-          },
-          "jobId": "%s",
-          "jobType": "FLOW",
-          "state": true
-      }
-      """.formatted(TEST_JOB_ID);
-
-    String triggerId = given()
-      .header("Authorization", testTokenHelper.getAuthorizationHeader())
-      .contentType(ContentType.JSON)
-      .body(triggerJson)
-      .when()
-      .post(BASE_PATH)
-      .then()
-      .statusCode(200)
-      .extract()
-      .path("id");
-    createdTriggerId = triggerId;
   }
 
   @AfterEach
@@ -133,7 +111,7 @@ public class TriggerResourceTest {
   }
 
   /**
-   * 测试创建触发器 - 间隔触发
+   * 测试创建触发器 - 间隔触发（state=true，应被Quartz调度）
    */
   @Test
   void testCreateIntervalTrigger() {
@@ -175,7 +153,7 @@ public class TriggerResourceTest {
   }
 
   /**
-   * 测试创建触发器 - Cron表达式触发
+   * 测试创建触发器 - Cron表达式触发（state=true，应被Quartz调度）
    */
   @Test
   void testCreateCronTrigger() {
@@ -209,7 +187,7 @@ public class TriggerResourceTest {
   }
 
   /**
-   * 测试创建触发器 - 事件触发
+   * 测试创建触发器 - 事件触发（非Quartz调度，仅DB记录）
    */
   @Test
   void testCreateEventTrigger() {
@@ -246,7 +224,51 @@ public class TriggerResourceTest {
   }
 
   /**
-   * 测试更新触发器
+   * 测试创建触发器 - state=false，不应被Quartz调度
+   */
+  @Test
+  void testCreateDisabledTriggerNotScheduled() {
+    String triggerJson = """
+      {
+          "name": "禁用的间隔触发",
+          "type": "SCHEDULED",
+          "config": {
+              "type": "interval",
+              "interval": 1,
+              "intervalUnit": "minute",
+              "repeatCount": 1
+          },
+          "jobId": "%s",
+          "jobType": "FLOW",
+          "state": false
+      }
+      """.formatted(TEST_JOB_ID);
+
+    String triggerId = given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body(triggerJson)
+      .when()
+      .post(BASE_PATH)
+      .then()
+      .statusCode(200)
+      .body("state", equalTo(false))
+      .extract()
+      .path("id");
+    createdTriggerId = triggerId;
+
+    // 验证可以被查询到
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get(BASE_PATH + "/" + triggerId)
+      .then()
+      .statusCode(200)
+      .body("state", equalTo(false));
+  }
+
+  /**
+   * 测试更新触发器 - 更新配置和状态
    */
   @Test
   void testUpdateTrigger() {
@@ -285,40 +307,107 @@ public class TriggerResourceTest {
   }
 
   /**
-   * 测试部分更新触发器 - 只更新状态
+   * 测试部分更新触发器 - 只更新状态为false
    */
   @Test
-  void testPatchTrigger() {
-    String patchJson = """
-      {
-          "state": false
-      }
-      """;
-
+  void testPatchTriggerDisable() {
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
-      .body(patchJson)
+      .body("""
+        { "state": false }
+        """)
       .when()
       .patch(BASE_PATH + "/" + CRON_TRIGGER_ID)
       .then()
       .statusCode(200)
       .body("id", equalTo(CRON_TRIGGER_ID))
-      .body("name", equalTo("定时触发-Cron表达式")) // 原有名称保持不变
-      .body("state", equalTo(false)); // 只有状态被更新
+      .body("name", equalTo("定时触发-Cron表达式"))
+      .body("state", equalTo(false));
   }
 
   /**
-   * 测试立即执行触发器
+   * 测试部分更新触发器 - 启用触发器（state: false → true）
    */
   @Test
-  void testExecuteNow() {
+  void testPatchTriggerEnable() {
+    // INTERVAL_TRIGGER_ID 是seed中state=false的SCHEDULED触发器
+    // PATCH state=true → TriggerService会调度到Quartz
+    String patchJson = """
+      { "state": true }
+      """;
+
+    String triggerId = given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body(patchJson)
+      .when()
+      .patch(BASE_PATH + "/" + INTERVAL_TRIGGER_ID)
+      .then()
+      .statusCode(200)
+      .body("id", equalTo(INTERVAL_TRIGGER_ID))
+      .body("state", equalTo(true))
+      .extract()
+      .path("id");
+
+    // 验证状态已持久化
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get(BASE_PATH + "/" + triggerId)
+      .then()
+      .statusCode(200)
+      .body("state", equalTo(true));
+
+    // 恢复为禁用状态
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        { "state": false }
+        """)
+      .when()
+      .patch(BASE_PATH + "/" + INTERVAL_TRIGGER_ID)
+      .then()
+      .statusCode(200)
+      .body("state", equalTo(false));
+  }
+
+  /**
+   * 测试立即执行触发器 - 已禁用的触发器应返回400
+   */
+  @Test
+  void testExecuteNowDisabledTrigger() {
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .post(BASE_PATH + "/" + INTERVAL_TRIGGER_ID + "/execute")
       .then()
       .statusCode(400);
+  }
+
+  /**
+   * 测试立即执行触发器 - 启用态的触发器应返回200
+   */
+  @Test
+  void testExecuteNowEnabledTrigger() {
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .post(BASE_PATH + "/" + ENABLED_EVENT_TRIGGER_ID + "/execute")
+      .then()
+      .statusCode(200);
+  }
+
+  /**
+   * 测试Quartz Scheduler元数据 - 验证Scheduler已启动且可用
+   */
+  @Test
+  void testQuartzSchedulerIsRunning() throws SchedulerException {
+    assertNotNull(quartz, "Quartz Scheduler 应被注入");
+    assertTrue(quartz.isStarted(), "Quartz Scheduler 应已启动");
+    assertFalse(quartz.isInStandbyMode(), "Quartz Scheduler 不应处于待机模式");
+    assertNotNull(quartz.getMetaData(), "SchedulerMetaData 不应为 null");
   }
 
   /**

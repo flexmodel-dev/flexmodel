@@ -17,8 +17,8 @@ import static dev.flexmodel.codegen.System.jobExecutionLog;
 public class JobExecutionLogFmRepository extends AbstractRepository implements JobExecutionLogRepository {
 
   @Override
-  public JobExecutionLog findById(String id) {
-    try (Session session = sessionFactory.createSession()) {
+  public JobExecutionLog findById(String projectId, String id) {
+    try (Session session = sessionFactory.createSession(projectId)) {
       return session.dsl()
         .selectFrom(JobExecutionLog.class)
         .where(jobExecutionLog.id.eq(id))

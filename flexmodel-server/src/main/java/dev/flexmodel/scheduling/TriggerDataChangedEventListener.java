@@ -2,6 +2,7 @@ package dev.flexmodel.scheduling;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
+import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.codegen.entity.Trigger;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.event.ChangedEvent;
@@ -10,8 +11,10 @@ import dev.flexmodel.event.EventType;
 import dev.flexmodel.event.PreChangeEvent;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.functions.FunctionService;
+import dev.flexmodel.project.ProjectRepository;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.spi.CDI;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,14 +33,13 @@ public class TriggerDataChangedEventListener implements EventListener {
   @Inject
   TriggerRepository triggerRepository;
   @Inject
+  ProjectRepository projectRepository;
+  @Inject
   JobExecutionLogService jobExecutionLogService;
   @Inject
   FunctionService functionService;
   @Inject
   EventBus eventBus;
-
-  @Inject
-  SessionContext sessionContext;
 
   private final Map<String, String> beforeMutationTypeMap = Map.of(
     "delete", "PRE_DELETE",
@@ -55,7 +57,8 @@ public class TriggerDataChangedEventListener implements EventListener {
   public void onPreChange(PreChangeEvent event) {
     try {
       String groupName = event.getSchemaName() + "_" + event.getModelName();
-      String projectId = sessionContext.getProjectId();
+      Project project = projectRepository.findProjectByDatabaseName(event.getSchemaName());
+      String projectId = project.getId();
       // 最多支持触发100个事件
       List<Trigger> triggers = triggerRepository.find(projectId,
         trigger.jobGroup.eq(groupName)
@@ -71,13 +74,13 @@ public class TriggerDataChangedEventListener implements EventListener {
           for (String mutationType : mutationTypes) {
             String eventType = beforeMutationTypeMap.get(mutationType);
             if (eventType.equals(event.getEventType())) {
-              log.info("触发前置定时任务: triggerId={}, eventType={}, schemaName={}, modelName={}",
+              log.info("触发前置任务: triggerId={}, eventType={}, schemaName={}, modelName={}",
                 trigger.getId(), eventType, event.getSchemaName(), event.getModelName());
 
               // 记录事件触发日志
-              String logId = recordEventTriggerLog(trigger, event, "PRE_CHANGE", mutationType);
+              String logId = recordEventTriggerLog(projectId, trigger, event, "PRE_CHANGE", mutationType);
 
-              dispatchEventTrigger(trigger, event.getNewData(), logId);
+              dispatchEventTrigger(projectId, trigger, event.getNewData(), logId);
             }
           }
         }
@@ -91,7 +94,8 @@ public class TriggerDataChangedEventListener implements EventListener {
   public void onChanged(ChangedEvent event) {
     try {
       String groupName = event.getSchemaName() + "_" + event.getModelName();
-      String projectId = sessionContext.getProjectId();
+      Project project = projectRepository.findProjectByDatabaseName(event.getSchemaName());
+      String projectId = project.getId();
       // 最多支持触发100个事件
       List<Trigger> triggers = triggerRepository.find(projectId,
         trigger.jobGroup.eq(groupName)
@@ -107,15 +111,15 @@ public class TriggerDataChangedEventListener implements EventListener {
           for (String mutationType : mutationTypes) {
             String eventType = afterMutationTypeMap.get(mutationType);
             if (eventType.equals(event.getEventType())) {
-              log.info("触发后置定时任务: triggerId={}, eventType={}, schemaName={}, modelName={}",
+              log.info("触发后置任务: triggerId={}, eventType={}, schemaName={}, modelName={}",
                 trigger.getId(), eventType, event.getSchemaName(), event.getModelName());
 
               // 记录事件触发日志
-              String logId = recordEventTriggerLog(trigger, event, "POST_CHANGE", mutationType);
+              String logId = recordEventTriggerLog(projectId, trigger, event, "POST_CHANGE", mutationType);
 
               @SuppressWarnings("unchecked")
               Map<String, Object> variables = JsonUtils.convertValue(event.getNewData(), Map.class);
-              dispatchEventTrigger(trigger, variables, logId);
+              dispatchEventTrigger(projectId, trigger, variables, logId);
             }
           }
         }
@@ -133,8 +137,7 @@ public class TriggerDataChangedEventListener implements EventListener {
   /**
    * 根据触发器任务类型分派执行（流程或云函数）
    */
-  private void dispatchEventTrigger(Trigger trigger, Object eventData, String logId) {
-    String projectId = sessionContext.getProjectId();
+  private void dispatchEventTrigger(String projectId, Trigger trigger, Object eventData, String logId) {
     if ("FUNCTION".equals(trigger.getJobType())) {
       functionService.invoke(projectId, trigger.getJobId(), Map.of(
         "triggerId", trigger.getId(),
@@ -144,7 +147,13 @@ public class TriggerDataChangedEventListener implements EventListener {
     } else {
       StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
       startProcessParam.setProjectId(projectId);
-      startProcessParam.setUserId(sessionContext.getUserId());
+      try {
+        SessionContext sessionContext = CDI.current().select(SessionContext.class).get();
+        startProcessParam.setUserId(sessionContext.getUserId());
+      } catch (Exception e) {
+        startProcessParam.setUserId("admin");
+      }
+
       startProcessParam.setFlowModuleId(trigger.getJobId());
       @SuppressWarnings("unchecked")
       Map<String, Object> variables = JsonUtils.convertValue(eventData, Map.class);
@@ -159,7 +168,7 @@ public class TriggerDataChangedEventListener implements EventListener {
   /**
    * 记录事件触发日志
    */
-  private String recordEventTriggerLog(Trigger trigger, Object event, String triggerPhase, String mutationType) {
+  private String recordEventTriggerLog(String projectId, Trigger trigger, Object event, String triggerPhase, String mutationType) {
     try {
       // 构建输入数据
       Map<String, Object> inputData = Map.of(
@@ -183,7 +192,7 @@ public class TriggerDataChangedEventListener implements EventListener {
         System.currentTimeMillis(),
         System.currentTimeMillis(),
         inputData,
-        sessionContext.getProjectId()
+        projectId
       );
 
       log.debug("已记录事件触发日志: triggerId={}, phase={}, mutationType={}",

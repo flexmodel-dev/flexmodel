@@ -1,13 +1,13 @@
 package dev.flexmodel.scheduling.job;
 
+import dev.flexmodel.codegen.entity.JobExecutionLog;
+import dev.flexmodel.scheduling.JobExecutionLogService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.JobListener;
-import dev.flexmodel.codegen.entity.JobExecutionLog;
-import dev.flexmodel.scheduling.JobExecutionLogService;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -63,6 +63,7 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       );
 
       // 将执行日志ID存储到上下文中，供后续使用
+      context.put("projectId", projectId);
       context.put(EXECUTION_LOG_ID_KEY, executionLog.getId());
 
       log.info("已记录作业开始执行: triggerId={}, jobId={}, logId={}",
@@ -79,9 +80,11 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       log.warn("作业执行被否决: {}", context.getJobDetail().getKey());
 
       String logId = (String) context.get(EXECUTION_LOG_ID_KEY);
+      String projectId = context.get("projectId").toString();
       if (logId != null) {
         // 记录作业被否决
         jobExecutionLogService.recordJobFailure(
+          projectId,
           logId,
           "作业执行被否决",
           Map.of("reason", "Job execution vetoed", "vetoTime", LocalDateTime.now()),
@@ -97,6 +100,7 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
   public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
     try {
       String logId = (String) context.get(EXECUTION_LOG_ID_KEY);
+      String projectId = context.get("projectId").toString();
       if (logId == null) {
         log.warn("未找到执行日志ID，无法记录作业执行结果: {}", context.getJobDetail().getKey());
         return;
@@ -111,7 +115,7 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
         // 获取输出数据
         Object outputData = extractOutputData(context);
 
-        jobExecutionLogService.recordJobSuccess(logId, outputData, executionDuration);
+        jobExecutionLogService.recordJobSuccess(projectId, logId, outputData, executionDuration);
       } else {
         // 作业执行失败
         log.error("作业执行失败: {}, 耗时: {}ms", context.getJobDetail().getKey(), executionDuration, jobException);
@@ -124,7 +128,7 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
           "stackTrace", getStackTrace(jobException)
         );
 
-        jobExecutionLogService.recordJobFailure(logId, errorMessage, errorStackTrace, executionDuration);
+        jobExecutionLogService.recordJobFailure(projectId, logId, errorMessage, errorStackTrace, executionDuration);
       }
     } catch (Exception e) {
       log.error("记录作业执行结果失败", e);

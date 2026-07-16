@@ -48,16 +48,6 @@ public class JobExecutionLogService {
   }
 
   /**
-   * 根据ID查找作业执行日志
-   *
-   * @param id 日志ID
-   * @return 作业执行日志
-   */
-  public JobExecutionLog findById(String id) {
-    return jobExecutionLogRepository.findById(id);
-  }
-
-  /**
    * 更新作业执行日志
    *
    * @param jobExecutionLog 作业执行日志
@@ -137,15 +127,15 @@ public class JobExecutionLogService {
    * @param outputData        输出数据
    * @param executionDuration 执行时长（毫秒）
    */
-  public void recordJobSuccess(String logId, Object outputData, Long executionDuration) {
-    JobExecutionLog log = findById(logId);
+  public void recordJobSuccess(String projectId, String logId, Object outputData, Long executionDuration) {
+    JobExecutionLog log = jobExecutionLogRepository.findById(projectId, logId);
     if (log != null) {
       log.setExecutionStatus("SUCCESS");
       log.setIsSuccess(true);
       log.setEndTime(LocalDateTime.now());
       log.setExecutionDuration(executionDuration);
       log.setOutputData(outputData);
-      update(sessionContext.getProjectId(), log);
+      update(projectId, log);
     }
   }
 
@@ -157,8 +147,8 @@ public class JobExecutionLogService {
    * @param errorStackTrace   错误堆栈
    * @param executionDuration 执行时长（毫秒）
    */
-  public void recordJobFailure(String logId, String errorMessage, Object errorStackTrace, Long executionDuration) {
-    JobExecutionLog log = findById(logId);
+  public void recordJobFailure(String projectId, String logId, String errorMessage, Object errorStackTrace, Long executionDuration) {
+    JobExecutionLog log = jobExecutionLogRepository.findById(projectId, logId);
     if (log != null) {
       log.setExecutionStatus("FAILED");
       log.setIsSuccess(false);
@@ -166,7 +156,7 @@ public class JobExecutionLogService {
       log.setExecutionDuration(executionDuration);
       log.setErrorMessage(errorMessage);
       log.setErrorStackTrace(errorStackTrace);
-      update(sessionContext.getProjectId(), log);
+      update(projectId, log);
     }
   }
 

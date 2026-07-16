@@ -18,7 +18,7 @@ public interface JobExecutionLogRepository {
      * @param id 日志ID
      * @return 作业执行日志
      */
-    JobExecutionLog findById(String id);
+    JobExecutionLog findById(String projectId, String id);
 
     /**
      * 保存作业执行日志

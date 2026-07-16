@@ -36,11 +36,11 @@ public class TriggerFlowEventConsumer {
       log.info("flow.start.||startProcessParam={}||result={}", param, result);
     } catch (Exception e) {
       if (param.getEventId() != null) {
-        jobExecutionLogService.recordJobFailure(param.getEventId(), e.getMessage(), e.getStackTrace(), System.currentTimeMillis() - param.getStartTime());
+        jobExecutionLogService.recordJobFailure(param.getProjectId(), param.getEventId(), e.getMessage(), e.getStackTrace(), System.currentTimeMillis() - param.getStartTime());
       }
     } finally {
       if (param.getEventId() != null) {
-        jobExecutionLogService.recordJobSuccess(param.getEventId(), result, System.currentTimeMillis() - param.getStartTime());
+        jobExecutionLogService.recordJobSuccess(param.getProjectId(), param.getEventId(), result, System.currentTimeMillis() - param.getStartTime());
       }
       // 清理会话上下文，避免状态泄漏到同一线程的下一次消息处理
       sessionContext.setProjectId(null);

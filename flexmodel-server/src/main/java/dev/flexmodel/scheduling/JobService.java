@@ -47,14 +47,4 @@ public class JobService {
     return new PageDTO<>(logs, total);
   }
 
-  /**
-   * 根据ID查询作业执行日志
-   *
-   * @param id 日志ID
-   * @return 作业执行日志
-   */
-  public JobExecutionLog findLogById(String id) {
-    return jobExecutionLogService.findById(id);
-  }
-
 }

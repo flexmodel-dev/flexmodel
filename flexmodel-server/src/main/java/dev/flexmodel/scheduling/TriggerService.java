@@ -223,11 +223,11 @@ public class TriggerService {
         try {
           jakarta.ws.rs.core.Response response = functionService.invoke(projectId2, trigger.getJobId(), invokeBody);
           Object result = response.readEntity(Object.class);
-          jobExecutionLogService.recordJobSuccess(jobExecutionLog.getId(), result,
+          jobExecutionLogService.recordJobSuccess(projectId, jobExecutionLog.getId(), result,
             System.currentTimeMillis() - startTime);
         } catch (Exception e) {
           log.error("云函数执行失败: {}", trigger.getJobId(), e);
-          jobExecutionLogService.recordJobFailure(jobExecutionLog.getId(), e.getMessage(),
+          jobExecutionLogService.recordJobFailure(projectId, jobExecutionLog.getId(), e.getMessage(),
             e.getClass().getSimpleName(), System.currentTimeMillis() - startTime);
         }
       } else {
@@ -272,7 +272,7 @@ public class TriggerService {
     // 创建 JobDetail
     JobDetail jobDetail = JobBuilder.newJob(jobClass)
       .withIdentity(jobKey)
-      .withDescription(trigger.getDescription())
+      .withDescription(trigger.getName())
       .usingJobData("triggerId", trigger.getId())
       .usingJobData("jobGroup", trigger.getJobGroup())
       .usingJobData("jobType", trigger.getJobType())

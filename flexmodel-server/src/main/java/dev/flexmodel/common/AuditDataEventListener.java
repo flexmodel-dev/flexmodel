@@ -41,8 +41,8 @@ public class AuditDataEventListener implements EventListener {
       if (newData == null) {
         return;
       }
-    } catch (Exception e) {
-      log.warn("AuditDataEventListener get userId error: {}", e.getMessage());
+    } catch (Exception _) {
+
     }
 
     SessionFactory sf = event.getSource();

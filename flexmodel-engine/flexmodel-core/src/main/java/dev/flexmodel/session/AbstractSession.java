@@ -1,11 +1,12 @@
 package dev.flexmodel.session;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import dev.flexmodel.query.DSL;
 import dev.flexmodel.service.DataService;
+import dev.flexmodel.service.EventAwareDataService;
 import dev.flexmodel.service.SchemaService;
 import dev.flexmodel.type.TypeHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +20,7 @@ import java.util.UUID;
 public abstract class AbstractSession implements Session {
 
   private final AbstractSessionContext sessionContext;
-  private final DataService dataService;
+  protected final DataService dataService;
   private final SchemaService schemaService;
   protected final Logger log = LoggerFactory.getLogger(this.getClass());
   protected final String sessionId;
@@ -61,5 +62,21 @@ public abstract class AbstractSession implements Session {
   @Override
   public DSL dsl() {
     return new DSL(this);
+  }
+
+  /**
+   * 在 Session.close()（连接已归还连接池）后调用，发布缓冲的后置事件。
+   * 如果 dataService 是 EventAwareDataService，则 flush 其 pending 列表；
+   * 否则（如 MongoDataService）为空操作。
+   * 自身吞掉异常，避免覆盖 close 的原始异常。
+   */
+  protected final void flushEvents() {
+    if (dataService instanceof EventAwareDataService eads) {
+      try {
+        eads.flushPendingEvents();
+      } catch (Exception e) {
+        log.error("Error flushing pending events for session {}", sessionId, e);
+      }
+    }
   }
 }

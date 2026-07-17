@@ -1,15 +1,17 @@
 package dev.flexmodel.service;
 
-import dev.flexmodel.event.impl.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventPublisher;
+import dev.flexmodel.event.impl.*;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.SessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,12 +31,49 @@ public class EventAwareDataService implements DataService {
   private final String sessionId;
   private final SessionFactory source;
 
+  /**
+   * 缓冲的后置事件列表。写操作完成后不再立即发布 ChangedEvent，
+   * 而是先缓冲到此列表，等 Session.close()（连接已归还连接池）后由 flushPendingEvents() 统一发布，
+   * 避免监听器在业务线程仍持有连接时重入取连接导致池耗尽/死锁。
+   */
+  private final List<ChangedEvent> pendingEvents = new ArrayList<>();
+
   public EventAwareDataService(DataService delegate, EventPublisher eventPublisher, String schemaName, String sessionId, SessionFactory source) {
     this.delegate = delegate;
     this.eventPublisher = eventPublisher;
     this.schemaName = schemaName;
     this.sessionId = sessionId;
     this.source = source;
+  }
+
+  /**
+   * 将后置事件缓冲到 pending 列表，而非立即发布。
+   * 事件将在 Session.close()（连接已归还连接池）后由 {@link #flushPendingEvents()} 统一发布。
+   */
+  public void addPendingChangedEvent(ChangedEvent event) {
+    this.pendingEvents.add(event);
+  }
+
+  /**
+   * 在 Session.close() 后调用，按顺序发布所有缓冲的后置事件。
+   * 先快照再清空：避免监听器里经由同一逻辑再 add 时并发修改；
+   * 新事件进入空列表，由各自的 Session close 继续处理（嵌套 Session 自带独立 pendingEvents）。
+   * 单个事件发布失败不影响其他事件（与 SimpleEventPublisher 吞监听器异常的语义一致）。
+   */
+  public void flushPendingEvents() {
+    if (pendingEvents.isEmpty()) {
+      return;
+    }
+    List<ChangedEvent> snapshot = new ArrayList<>(pendingEvents);
+    pendingEvents.clear();
+    for (ChangedEvent event : snapshot) {
+      try {
+        eventPublisher.publishChangedEvent(event);
+      } catch (Exception e) {
+        log.error("Error publishing deferred changed event: model={}, type={}",
+          event.getModelName(), event.getEventType(), e);
+      }
+    }
   }
 
   @Override
@@ -66,7 +105,7 @@ public class EventAwareDataService implements DataService {
         modelName, schemaName, finalRecord, record, extractId(modelName, finalRecord),
         affectedRows, success, exception, sessionId, source
       );
-      eventPublisher.publishChangedEvent(changedEvent);
+      addPendingChangedEvent(changedEvent);
     }
 
     return affectedRows;
@@ -101,7 +140,7 @@ public class EventAwareDataService implements DataService {
           modelName, schemaName, record, record, extractId(modelName, record),
           affectedRows, success, exception, sessionId, source
         );
-        eventPublisher.publishChangedEvent(changedEvent);
+        addPendingChangedEvent(changedEvent);
       }
     }
 
@@ -140,7 +179,7 @@ public class EventAwareDataService implements DataService {
         modelName, schemaName, oldData, finalRecord, id,
         affectedRows, success, exception, sessionId, source
       );
-      eventPublisher.publishChangedEvent(changedEvent);
+      addPendingChangedEvent(changedEvent);
     }
 
     return affectedRows;
@@ -175,7 +214,7 @@ public class EventAwareDataService implements DataService {
         modelName, schemaName, oldData, null, id,
         affectedRows, success, exception, sessionId, source
       );
-      eventPublisher.publishChangedEvent(changedEvent);
+      addPendingChangedEvent(changedEvent);
     }
 
     return affectedRows;
@@ -216,7 +255,7 @@ public class EventAwareDataService implements DataService {
         modelName, schemaName, null, finalRecord, null,
         affectedRows, success, exception, sessionId, source
       );
-      eventPublisher.publishChangedEvent(changedEvent);
+      addPendingChangedEvent(changedEvent);
     }
 
     return affectedRows;
@@ -256,7 +295,7 @@ public class EventAwareDataService implements DataService {
         modelName, schemaName, null, null, null,
         affectedRows, success, exception, sessionId, source
       );
-      eventPublisher.publishChangedEvent(changedEvent);
+      addPendingChangedEvent(changedEvent);
     }
 
     return affectedRows;
@@ -285,7 +324,7 @@ public class EventAwareDataService implements DataService {
         modelName, schemaName, null, null, null,
         affectedRows, success, exception, sessionId, source
       );
-      eventPublisher.publishChangedEvent(changedEvent);
+      addPendingChangedEvent(changedEvent);
     }
 
     return affectedRows;

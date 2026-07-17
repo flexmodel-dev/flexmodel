@@ -38,6 +38,7 @@ public class MongoSession extends AbstractSession {
     // MongoDB连接关闭（如果需要的话）
     LazyLoadInterceptor.clear();
     log.debug("Close Session {}", sessionId);
+    flushEvents();   // 统一收口；实际 MongoSession 不包 EventAwareDataService，通常空操作
   }
 
   @Override

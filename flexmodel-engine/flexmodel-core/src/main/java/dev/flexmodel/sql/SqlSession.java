@@ -71,6 +71,8 @@ public class SqlSession extends AbstractSession {
     } finally {
       LazyLoadInterceptor.clear();
       log.debug("Closed Session {}", sessionId);
+      // 必须在 connection.close() 之后：监听器取连接时原连接已归还连接池
+      flushEvents();
     }
   }
 

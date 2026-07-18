@@ -18,6 +18,7 @@ import dev.flexmodel.sql.JdbcSchemaManager;
 import dev.flexmodel.sql.SchemaManager;
 import dev.flexmodel.storage.BucketRepository;
 import io.quarkus.cache.CacheInvalidateAll;
+import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +66,12 @@ public class ProjectService {
   GraphQLEventConsumer graphQLEventConsumer;
   @Inject
   AuthProviderConfigService authProviderConfigService;
+
+  /**
+   * Vert.x EventBus，用于发布 {@code project.deleted} 事件，触发 Quartz 等独立持久化资源的清理。
+   */
+  @Inject
+  EventBus eventBus;
 
   private final SchemaManager schemaManager = new JdbcSchemaManager();
 
@@ -224,6 +231,7 @@ public class ProjectService {
       }
       graphQLEventConsumer.removeProject(bp.getId());
       projectRepository.delete(bp.getId());
+      eventBus.publish("project.deleted", new ProjectDeletedEvent(bp.getId()));
     }
 
     // 1. 删除所有分支记录和取消注册 SchemaProvider（幂等清理物理 Schema）
@@ -257,6 +265,9 @@ public class ProjectService {
 
     // 5. 删除 f_project 记录
     projectRepository.delete(projectId);
+
+    // 6. 发布 project.deleted 事件，清理 Quartz 中残留的调度作业（f_qrtz_* 位于系统 Schema，需显式删除）
+    eventBus.publish("project.deleted", new ProjectDeletedEvent(projectId));
   }
 
   /**

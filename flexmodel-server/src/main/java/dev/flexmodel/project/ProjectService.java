@@ -18,7 +18,6 @@ import dev.flexmodel.sql.JdbcSchemaManager;
 import dev.flexmodel.sql.SchemaManager;
 import dev.flexmodel.storage.BucketRepository;
 import io.quarkus.cache.CacheInvalidateAll;
-import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -103,7 +102,6 @@ public class ProjectService {
       ).toList();
   }
 
-  @CacheResult(cacheName = "project-cache")
   public Project findProject(String projectId) {
     return projectRepository.findProject(projectId);
   }

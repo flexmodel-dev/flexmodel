@@ -22,6 +22,22 @@ function generateWrapperCode(): string {
 
 import { flexmodelClient } from "@flexmodel/sdk";
 
+// ---- 捕获原生 console（仅一次，模块加载时）----
+// 关键：必须在任何覆写之前捕获。warm Worker 被复用时本模块不会重新加载，
+// 若在每个 invoke 内才捕获 __originalConsole，会捕获到"上一轮已被覆写的 console"，
+// 形成 console.log → 旧 __writeLog → 更旧 __writeLog → ... 的递归调用链，
+// 且每一层都持有各自的 __logBuffer 永不释放，堆内存随复用次数二次增长直至 OOM。
+const __nativeConsole = {
+  log: console.log.bind(console),
+  warn: console.warn.bind(console),
+  error: console.error.bind(console),
+};
+const __restoreConsole = () => {
+  console.log = __nativeConsole.log;
+  console.warn = __nativeConsole.warn;
+  console.error = __nativeConsole.error;
+};
+
 self.addEventListener("message", async (e) => {
   const { type } = e.data;
 
@@ -43,12 +59,14 @@ self.addEventListener("message", async (e) => {
     const { body, authToken, projectId, invokeId, functionName, forwardedHeaders } = e.data;
 
     // ---- console 拦截：日志缓冲，统一通过 SDK 批量接口写入 f_function_log ----
+    // 关键：__nativeConsole 已在模块加载时捕获（见顶部），始终指向真正的原生 console。
+    // 复用 Worker 时本 handler 不会重新加载，因此绝不能再 console.log.bind(console) 重新捕获——
+    // 那会在复用场景把"上一轮的拦截函数"当作原生 console，形成 console.log → 旧 __writeLog →
+    // 更旧 __writeLog → ... 的递归链，各层闭包互持 __logBuffer 永不释放，堆内存随复用次数
+    // 二次增长，最终 Fatal JavaScript out of memory。
+    // 每次 invoke 进入前先复位 console（防御上一轮残留），退出前再复位（保持干净）。
+    __restoreConsole();
     const __logBuffer = [];
-    const __originalConsole = {
-      log: console.log.bind(console),
-      warn: console.warn.bind(console),
-      error: console.error.bind(console),
-    };
     const __serialize = (args) => args.map((a) => {
       if (typeof a === "string") return a;
       try { return JSON.stringify(a); } catch { return String(a); }
@@ -63,7 +81,7 @@ self.addEventListener("message", async (e) => {
         "." + p(d.getMilliseconds(), 3);
     };
     const __writeLog = (level, args) => {
-      __originalConsole[level](...args);
+      __nativeConsole[level](...args);
       if (!invokeId) return;
       // 记录日志实际产生时间，避免批量入库时 created_at 全部相同
       __logBuffer.push({
@@ -90,7 +108,6 @@ self.addEventListener("message", async (e) => {
       // Inject auth token + projectId into the SDK singleton before user code runs
       if (authToken) flexmodelClient.setAuthToken(authToken);
       if (projectId) flexmodelClient.setProjectId(projectId);
-
       const __t0 = performance.now();
       const mod = await import("./index.ts");
       const __tImport = performance.now();
@@ -140,12 +157,17 @@ self.addEventListener("message", async (e) => {
 
       // 成功路径：fire-and-forget 刷日志，不阻塞 result 返回
       // 错误路径（下方 catch）仍 await 确保错误日志落库
-      __originalConsole.log("[perf] import=" + Math.round(__tImport - __t0) + "ms handler=" + Math.round(__tHandler - __tBeforeHandler) + "ms total=" + Math.round(__tHandler - __t0) + "ms");
+      __nativeConsole.log("[perf] import=" + Math.round(__tImport - __t0) + "ms handler=" + Math.round(__tHandler - __tBeforeHandler) + "ms total=" + Math.round(__tHandler - __t0) + "ms");
       __flushLogs();
       self.postMessage({ type: "result", data: { status, headers: resultHeaders, body: resultBody } });
     } catch (err) {
       __flushLogs();
       self.postMessage({ type: "error", data: { message: err instanceof Error ? err.message : String(err) } });
+    } finally {
+      // 复位 console，确保本轮的 __writeLog 闭包/__logBuffer 可被 GC 回收，
+      // 下一轮 invoke 进入时再重新安装拦截。虽然是 fire-and-forget，
+      // __flushLogs 已通过 splice 同步取走 buffer，复位不影响未完成的异步写入。
+      __restoreConsole();
     }
   }
 });

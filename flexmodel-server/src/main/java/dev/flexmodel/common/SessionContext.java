@@ -4,6 +4,8 @@ import jakarta.enterprise.context.RequestScoped;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Set;
+
 /**
  * 请求级别的会话上下文
  * <p>
@@ -22,5 +24,12 @@ public class SessionContext {
   private String projectId;
   private String projectDatabaseName;
   private String userId;
+
+  /**
+   * 当前调用方被授予的权限串集合，由认证环节（如项目级 OIDC/Function Provider）
+   * 在认证成功后填充。为 null 或空表示未配置权限范围（按"全部范围"处理），
+   * 交由后续鉴权逻辑决定放行策略。
+   */
+  private Set<String> permissions;
 
 }

@@ -261,6 +261,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     sessionContext.setProjectId(projectId);
     sessionContext.setProjectDatabaseName(project.getDatabaseName());
     sessionContext.setUserId(result.getUserId());
+    sessionContext.setPermissions(result.getPermissions());
     requestContext.setProperty("projectId", projectId);
   }
 

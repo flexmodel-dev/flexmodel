@@ -1,7 +1,6 @@
 package dev.flexmodel.common.utils;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author cjbi
@@ -19,6 +18,23 @@ public class CollectionUtils {
     return (collection == null || collection.isEmpty());
   }
 
+
+  @SafeVarargs
+  public static <E> Set<E> asSet(E... elements) {
+    if (elements == null || elements.length == 0) {
+      return Collections.emptySet();
+    }
+
+    if (elements.length == 1) {
+      return Collections.singleton(elements[0]);
+    }
+
+    LinkedHashSet<E> set = new LinkedHashSet<E>(elements.length * 4 / 3 + 1);
+    Collections.addAll(set, elements);
+    return set;
+  }
+
+
   /**
    * Return {@code true} if the supplied Map is {@code null} or empty.
    * Otherwise, return {@code false}.
@@ -29,5 +45,16 @@ public class CollectionUtils {
   public static boolean isEmpty(Map<?, ?> map) {
     return (map == null || map.isEmpty());
   }
+
+  @SafeVarargs
+  public static <E> List<E> asList(E... elements) {
+    if (elements == null || elements.length == 0) {
+      return Collections.emptyList();
+    }
+
+    // Integer overflow does not occur when a large array is passed in because the list array already exists
+    return Arrays.asList(elements);
+  }
+
 }
 

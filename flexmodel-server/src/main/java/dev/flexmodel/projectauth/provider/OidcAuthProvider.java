@@ -12,10 +12,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -30,6 +27,14 @@ public class OidcAuthProvider implements AuthProvider {
   private String issuer;
   private String clientId;
   private String clientSecret;
+
+  /**
+   * 权限范围配置：该 Provider 认证通过后授予调用方的权限串集合。
+   * <p>
+   * 为 {@code null} 或空表示"全部范围"，授予 {@code ["*"]} 通配权限；
+   * 非空时仅授予其中列出的权限串，交给后续 {@code @RequiresPermissions} 鉴权。
+   */
+  private Set<String> permissionScope;
 
   @Override
   public String getType() {
@@ -48,6 +53,22 @@ public class OidcAuthProvider implements AuthProvider {
       log.error("OIDC introspection error: {}", e.getMessage(), e);
       return AuthResult.fail("OIDC introspection failed: " + e.getMessage());
     }
+  }
+
+  /**
+   * 根据权限范围配置解析最终授予的权限串集合：未配置 → 全部范围（["*"]）。
+   */
+  private Set<String> resolvePermissions() {
+    if (permissionScope == null || permissionScope.isEmpty()) {
+      return Set.of("*");
+    }
+    Set<String> perms = new HashSet<>();
+    for (String p : permissionScope) {
+      if (p != null && !p.isBlank()) {
+        perms.add(p.trim());
+      }
+    }
+    return perms.isEmpty() ? Set.of("*") : perms;
   }
 
   @SuppressWarnings("all")
@@ -87,7 +108,9 @@ public class OidcAuthProvider implements AuthProvider {
     String sub = Objects.toString(result.get("sub"), "oidc-user");
     Set<String> scopes = parseScopes(result.get("scope"));
     log.info("OIDC introspect sub: {}, scopes: {}", sub, scopes);
-    return AuthResult.ok(sub);
+    AuthResult authResult = AuthResult.ok(sub);
+    authResult.setPermissions(resolvePermissions());
+    return authResult;
   }
 
   private Set<String> parseScopes(Object scopeObj) {

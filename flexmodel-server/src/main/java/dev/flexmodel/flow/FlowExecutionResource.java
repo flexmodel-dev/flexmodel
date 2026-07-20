@@ -1,7 +1,13 @@
 package dev.flexmodel.flow;
 
-import dev.flexmodel.flow.dto.param.*;
+import dev.flexmodel.common.authz.RequiresPermissions;
+import dev.flexmodel.flow.dto.bo.ElementInstance;
+import dev.flexmodel.flow.dto.bo.NodeInstance;
+import dev.flexmodel.flow.dto.param.CommitTaskParam;
+import dev.flexmodel.flow.dto.param.RollbackTaskParam;
+import dev.flexmodel.flow.dto.param.StartProcessParam;
 import dev.flexmodel.flow.dto.result.*;
+import dev.flexmodel.flow.service.FlowExecutionService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -15,10 +21,6 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.flow.service.FlowExecutionService;
-import dev.flexmodel.flow.dto.bo.ElementInstance;
-import dev.flexmodel.flow.dto.bo.NodeInstance;
-import dev.flexmodel.flow.dto.result.InstanceDataListResult;
 
 import java.util.List;
 
@@ -58,6 +60,7 @@ public class FlowExecutionResource {
         implementation = StartProcessResultSchema.class
       )
     )})
+  @RequiresPermissions("flow:execute")
   public StartProcessResult startProcess(@PathParam("projectId") String projectId, StartProcessParam startProcessParam) {
     startProcessParam.setProjectId(projectId);
     return flowExecutionService.startProcess(startProcessParam);
@@ -65,6 +68,7 @@ public class FlowExecutionResource {
 
   @Operation(summary = "提交任务")
   @POST
+  @RequiresPermissions("flow:execute")
   @Path("/instances/{flowInstanceId}/commit")
   @RequestBody(
     name = "请求体",
@@ -97,6 +101,7 @@ public class FlowExecutionResource {
 
   @Operation(summary = "回滚任务")
   @POST
+  @RequiresPermissions("flow:execute")
   @Path("/instances/{flowInstanceId}/rollback")
   @RequestBody(
     name = "请求体",
@@ -140,6 +145,7 @@ public class FlowExecutionResource {
       )
     )})
   @GET
+  @RequiresPermissions("flow:view")
   @Path("/instances/{flowInstanceId}/user-tasks")
   public List<NodeInstance> getHistoryUserTaskList(
     @PathParam("projectId") String projectId,
@@ -163,6 +169,7 @@ public class FlowExecutionResource {
       )
     )})
   @GET
+  @RequiresPermissions("flow:view")
   @Path("/instances/{flowInstanceId}/elements")
   public List<ElementInstance> getHistoryElementList(
     @PathParam("projectId") String projectId,
@@ -173,6 +180,7 @@ public class FlowExecutionResource {
 
   @Operation(summary = "获取流程实例元素实例数据")
   @GET
+  @RequiresPermissions("flow:view")
   @Path("/instances/{flowInstanceId}/data/{instanceDataId}")
   public InstanceDataListResult getElementInstanceData(@PathParam("projectId") String projectId,
                                                     @PathParam("flowInstanceId") String flowInstanceId,

@@ -8,7 +8,9 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 云函数认证提供商。
@@ -22,6 +24,11 @@ import java.util.Map;
 public class FunctionAuthProvider implements AuthProvider {
 
   private String functionName;
+
+  /**
+   * 权限范围配置：同 OidcAuthProvider，为 {@code null} 或空表示"全部范围"。
+   */
+  private Set<String> permissions = Set.of("*");
 
   @Override
   public String getType() {
@@ -38,7 +45,9 @@ public class FunctionAuthProvider implements AuthProvider {
 
       if (status == 200) {
         String userId = extractUserId(response);
-        return AuthResult.ok(userId);
+        AuthResult authResult = AuthResult.ok(userId);
+        authResult.setPermissions(resolvePermissions());
+        return authResult;
       } else {
         return AuthResult.fail("Function auth failed with status: " + status);
       }
@@ -46,6 +55,16 @@ public class FunctionAuthProvider implements AuthProvider {
       log.error("Function auth error: {}", e.getMessage(), e);
       return AuthResult.fail("Function error: " + e.getMessage());
     }
+  }
+
+  private Set<String> resolvePermissions() {
+    Set<String> perms = new HashSet<>();
+    for (String p : permissions) {
+      if (p != null && !p.isBlank()) {
+        perms.add(p.trim());
+      }
+    }
+    return perms.isEmpty() ? Set.of("*") : perms;
   }
 
   /**

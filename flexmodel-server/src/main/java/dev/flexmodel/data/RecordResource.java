@@ -1,5 +1,8 @@
 package dev.flexmodel.data;
 
+import dev.flexmodel.common.SessionContext;
+import dev.flexmodel.common.authz.PermissionHelper;
+import dev.flexmodel.common.dto.PageDTO;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -14,10 +17,11 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.common.dto.PageDTO;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author cjbi
@@ -32,6 +36,19 @@ public class RecordResource {
 
   @Inject
   DataService dataService;
+
+  @Inject
+  SessionContext sessionContext;
+
+  private void requirePermission(String permission) {
+    Set<String> permissions = sessionContext.getPermissions();
+    if (permissions == null) {
+      return;
+    }
+    if (!PermissionHelper.hasPermission(permissions, permission)) {
+      throw new ForbiddenException("Permission denied: " + permission);
+    }
+  }
 
   @APIResponse(
     name = "200",
@@ -70,6 +87,7 @@ public class RecordResource {
     @QueryParam("expand") List<String> expand,
     @QueryParam("sort") String sort
   ) {
+    requirePermission("data:" + modelName + ":view");
     return dataService.findPagingRecords(projectId, modelName, page, size, filter, sort, expand);
   }
 
@@ -83,6 +101,7 @@ public class RecordResource {
     @PathParam("id") String id,
     @QueryParam("expand") List<String> expand
   ) {
+    requirePermission("data:" + modelName + ":view");
     return dataService.findOneRecord(projectId, modelName, id, expand);
   }
 
@@ -128,6 +147,7 @@ public class RecordResource {
     @PathParam("modelName") String modelName,
     Map<String, Object> record
   ) {
+    requirePermission("data:" + modelName + ":create");
     return dataService.createRecord(projectId, modelName, record);
   }
 
@@ -176,6 +196,7 @@ public class RecordResource {
     @PathParam("id") String id,
     Map<String, Object> record
   ) {
+    requirePermission("data:" + modelName + ":update");
     return dataService.updateRecord(projectId, modelName, id, record);
   }
 
@@ -223,6 +244,7 @@ public class RecordResource {
     @PathParam("id") String id,
     Map<String, Object> record
   ) {
+    requirePermission("data:" + modelName + ":update");
     return dataService.updateRecordIgnoreNull(projectId, modelName, id, record);
   }
 
@@ -235,6 +257,7 @@ public class RecordResource {
     @PathParam("modelName") String modelName,
     @PathParam("id") String id
   ) {
+    requirePermission("data:" + modelName + ":delete");
     dataService.deleteRecord(projectId, modelName, id);
   }
 
@@ -261,6 +284,7 @@ public class RecordResource {
     List<Map<String, Object>> records
   ) {
     validateBatchSize(records);
+    requirePermission("data:" + modelName + ":create");
     return dataService.createRecords(projectId, modelName, records);
   }
 
@@ -287,6 +311,7 @@ public class RecordResource {
     List<Map<String, Object>> records
   ) {
     validateBatchSize(records);
+    requirePermission("data:" + modelName + ":update");
     return dataService.updateRecords(projectId, modelName, records);
   }
 
@@ -310,6 +335,7 @@ public class RecordResource {
     List<String> ids
   ) {
     validateBatchSize(ids);
+    requirePermission("data:" + modelName + ":delete");
     return dataService.deleteRecords(projectId, modelName, new ArrayList<>(ids));
   }
 

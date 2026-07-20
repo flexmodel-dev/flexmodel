@@ -1,5 +1,6 @@
 package dev.flexmodel.functions;
 
+import dev.flexmodel.common.authz.RequiresPermissions;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.functions.dto.FunctionDeployRequest;
 import dev.flexmodel.functions.dto.FunctionPageRequest;
@@ -26,6 +27,7 @@ public class FunctionResource {
     FunctionService functionService;
 
     @GET
+    @RequiresPermissions("function:view")
     public PageDTO<FunctionResponse> list(@PathParam("projectId") String projectId,
                                            @QueryParam("name") String name,
                                            @QueryParam("page") @DefaultValue("1") int page,
@@ -39,6 +41,7 @@ public class FunctionResource {
 
     @GET
     @Path("/{name}")
+    @RequiresPermissions("function:view")
     public FunctionResponse get(@PathParam("projectId") String projectId,
                                  @PathParam("name") String name) {
         return functionService.findByName(projectId, name);
@@ -46,6 +49,7 @@ public class FunctionResource {
 
     @DELETE
     @Path("/{name}")
+    @RequiresPermissions("function:execute")
     public void delete(@PathParam("projectId") String projectId,
                        @PathParam("name") String name) {
         functionService.delete(projectId, name);
@@ -53,6 +57,7 @@ public class FunctionResource {
 
     @POST
     @Path("/{name}/deploy")
+    @RequiresPermissions("function:execute")
     public FunctionResponse deploy(@PathParam("projectId") String projectId,
                                     @PathParam("name") String name,
                                     @Valid FunctionDeployRequest request) {
@@ -61,6 +66,7 @@ public class FunctionResource {
 
   @POST
   @Path("/{name}/invoke")
+  @RequiresPermissions("function:execute")
   public Response invoke(@PathParam("projectId") String projectId,
                          @PathParam("name") String name,
                          Object request) {

@@ -1,11 +1,12 @@
 package dev.flexmodel.scheduling;
 
+import dev.flexmodel.codegen.entity.JobExecutionLog;
+import dev.flexmodel.common.authz.RequiresPermissions;
+import dev.flexmodel.common.dto.PageDTO;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.codegen.entity.JobExecutionLog;
 
 import java.time.LocalDateTime;
 
@@ -21,6 +22,7 @@ public class JobResource {
   JobService jobService;
 
   @GET
+  @RequiresPermissions("scheduling:view")
   @Path("/logs")
   public PageDTO<JobExecutionLog> findLogPage(@PathParam("projectId") String projectId,
                                               @QueryParam("triggerId") String triggerId,

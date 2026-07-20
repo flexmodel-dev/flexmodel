@@ -1,5 +1,10 @@
 package dev.flexmodel.modeling;
 
+import dev.flexmodel.common.SessionContext;
+import dev.flexmodel.common.authz.PermissionHelper;
+import dev.flexmodel.common.authz.RequiresPermissions;
+import dev.flexmodel.model.*;
+import dev.flexmodel.model.field.TypedField;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -13,10 +18,9 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.model.*;
-import dev.flexmodel.model.field.TypedField;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author cjbi
@@ -29,6 +33,23 @@ public class ModelingResource {
 
   @Inject
   ModelingService modelingService;
+
+  @Inject
+  SessionContext sessionContext;
+
+  /**
+   * 检查当前调用方是否持有指定权限串。
+   * 权限集为 {@code null}（系统 JWT / API Key）时视为无限制，直接放行。
+   */
+  private void requirePermission(String permission) {
+    Set<String> permissions = sessionContext.getPermissions();
+    if (permissions == null) {
+      return;
+    }
+    if (!PermissionHelper.hasPermission(permissions, permission)) {
+      throw new ForbiddenException("Permission denied: " + permission);
+    }
+  }
 
   @Operation(summary = "获取模型列表")
   @APIResponse(
@@ -68,6 +89,7 @@ public class ModelingResource {
       )
     })
   @GET
+  @RequiresPermissions("modeling:view")
   public List<SchemaObject> findModels(@PathParam("projectId") String projectId) {
     return modelingService.findModels(projectId);
   }
@@ -112,6 +134,7 @@ public class ModelingResource {
   @GET
   @Path("/{modelName}")
   public SchemaObject findModel(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName) {
+    requirePermission("modeling:" + modelName + ":view");
     return modelingService.findModel(projectId, modelName);
   }
 
@@ -186,12 +209,14 @@ public class ModelingResource {
     })
   @Operation(summary = "创建模型")
   @POST
+  @RequiresPermissions("modeling:create")
   public SchemaObject createModel(@PathParam("projectId") String projectId, SchemaObject model) {
     return modelingService.createModel(projectId, model);
   }
 
   @POST
   @Path("/fml/execute")
+  @RequiresPermissions("modeling:create")
   public Boolean executeFml(@PathParam("projectId") String projectId, FmlRequest request) {
     try {
       return modelingService.executeFml(projectId, request.fml());
@@ -274,6 +299,7 @@ public class ModelingResource {
   @PUT
   @Path("/{modelName}")
   public SchemaObject modifyModel(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName, SchemaObject model) {
+    requirePermission("modeling:" + modelName + ":update");
     return modelingService.modifyModel(projectId, modelName, model);
   }
 
@@ -283,6 +309,7 @@ public class ModelingResource {
   @DELETE
   @Path("/{modelName}")
   public void dropModel(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName) {
+    requirePermission("modeling:" + modelName + ":delete");
     modelingService.dropModel(projectId, modelName);
   }
 
@@ -308,6 +335,7 @@ public class ModelingResource {
   @POST
   @Path("/{modelName}/fields")
   public TypedField<?, ?> createField(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName, TypedField<?, ?> field) {
+    requirePermission("modeling:" + modelName + ":update");
     field.setModelName(modelName);
     return modelingService.createField(projectId, field);
   }
@@ -335,6 +363,7 @@ public class ModelingResource {
   @PUT
   @Path("/{modelName}/fields/{fieldName}")
   public TypedField<?, ?> modifyField(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName, @PathParam("fieldName") String fieldName, TypedField<?, ?> field) {
+    requirePermission("modeling:" + modelName + ":update");
     field.setModelName(modelName);
     field.setName(fieldName);
     return modelingService.modifyField(projectId, field);
@@ -346,6 +375,7 @@ public class ModelingResource {
   @DELETE
   @Path("/{modelName}/fields/{fieldName}")
   public void dropField(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName, @PathParam("fieldName") String fieldName) {
+    requirePermission("modeling:" + modelName + ":update");
     modelingService.dropField(projectId, modelName, fieldName);
   }
 
@@ -381,6 +411,7 @@ public class ModelingResource {
   @POST
   @Path("/{modelName}/indexes")
   public IndexDefinition createIndex(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName, IndexDefinition index) {
+    requirePermission("modeling:" + modelName + ":update");
     index.setModelName(modelName);
     return modelingService.createIndex(projectId, index);
   }
@@ -418,6 +449,7 @@ public class ModelingResource {
   @PUT
   @Path("/{modelName}/indexes/{indexName}")
   public IndexDefinition modifyIndex(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName, @PathParam("indexName") String indexName, IndexDefinition index) {
+    requirePermission("modeling:" + modelName + ":update");
     index.setModelName(modelName);
     index.setName(indexName);
     return modelingService.modifyIndex(projectId, index);
@@ -429,6 +461,7 @@ public class ModelingResource {
   @DELETE
   @Path("/{modelName}/indexes/{indexName}")
   public void dropIndex(@PathParam("projectId") String projectId, @PathParam("modelName") String modelName, @PathParam("indexName") String indexName) {
+    requirePermission("modeling:" + modelName + ":update");
     modelingService.dropIndex(projectId, modelName, indexName);
   }
 

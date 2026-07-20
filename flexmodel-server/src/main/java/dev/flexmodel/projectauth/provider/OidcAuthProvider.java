@@ -34,7 +34,7 @@ public class OidcAuthProvider implements AuthProvider {
    * 为 {@code null} 或空表示"全部范围"，授予 {@code ["*"]} 通配权限；
    * 非空时仅授予其中列出的权限串，交给后续 {@code @RequiresPermissions} 鉴权。
    */
-  private Set<String> permissionScope;
+  private Set<String> permissions;
 
   @Override
   public String getType() {
@@ -59,11 +59,8 @@ public class OidcAuthProvider implements AuthProvider {
    * 根据权限范围配置解析最终授予的权限串集合：未配置 → 全部范围（["*"]）。
    */
   private Set<String> resolvePermissions() {
-    if (permissionScope == null || permissionScope.isEmpty()) {
-      return Set.of("*");
-    }
     Set<String> perms = new HashSet<>();
-    for (String p : permissionScope) {
+    for (String p : permissions) {
       if (p != null && !p.isBlank()) {
         perms.add(p.trim());
       }

@@ -1,10 +1,18 @@
 package dev.flexmodel.flow;
 
+import dev.flexmodel.common.authz.RequiresPermissions;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.flow.dto.FlowModuleListRequest;
 import dev.flexmodel.flow.dto.FlowModuleResponse;
-import dev.flexmodel.flow.dto.param.*;
-import dev.flexmodel.flow.dto.result.*;
+import dev.flexmodel.flow.dto.param.CreateFlowParam;
+import dev.flexmodel.flow.dto.param.DeployFlowParam;
+import dev.flexmodel.flow.dto.param.GetFlowModuleParam;
+import dev.flexmodel.flow.dto.param.UpdateFlowParam;
+import dev.flexmodel.flow.dto.result.CreateFlowResult;
+import dev.flexmodel.flow.dto.result.DeployFlowResult;
+import dev.flexmodel.flow.dto.result.FlowModuleResult;
+import dev.flexmodel.flow.dto.result.UpdateFlowResult;
+import dev.flexmodel.flow.service.FlowDefinitionService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -20,7 +28,6 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.flow.service.FlowDefinitionService;
 
 /**
  * 流程定义管理
@@ -37,6 +44,7 @@ public class FlowDefinitionResource {
   FlowDefinitionService flowDefinitionService;
 
   @Operation(summary = "获取流程列表")
+  @RequiresPermissions("flow:view")
   @APIResponse(
     name = "200",
     responseCode = "200",
@@ -70,6 +78,7 @@ public class FlowDefinitionResource {
   }
 
   @Operation(summary = "创建流程")
+  @RequiresPermissions("flow:execute")
   @POST
   @RequestBody(
     name = "请求体",
@@ -98,6 +107,7 @@ public class FlowDefinitionResource {
   }
 
   @Operation(summary = "更新流程")
+  @RequiresPermissions("flow:execute")
   @PUT
   @Path("/{flowModuleId}")
   @RequestBody(
@@ -133,6 +143,7 @@ public class FlowDefinitionResource {
 
   @DELETE
   @Path("/{flowModuleId}")
+  @RequiresPermissions("flow:execute")
   public void deleteFlow(@PathParam("projectId") String projectId, @Parameter(name = "flowModuleId", description = "流程模块ID", in = ParameterIn.PATH)
   @PathParam("flowModuleId") String flowModuleId) {
     flowDefinitionService.deleteFlow(projectId, flowModuleId);
@@ -151,6 +162,7 @@ public class FlowDefinitionResource {
     )})
   @GET
   @Path("/{flowModuleId}")
+  @RequiresPermissions("flow:view")
   public FlowModuleResult getFlowModule(
     @PathParam("projectId") String projectId,
     @Parameter(name = "flowModuleId", description = "流程模块ID", in = ParameterIn.PATH)

@@ -1,9 +1,13 @@
 package dev.flexmodel.flow;
 
+import dev.flexmodel.codegen.entity.FlowInstance;
+import dev.flexmodel.common.authz.RequiresPermissions;
 import dev.flexmodel.common.dto.PageDTO;
+import dev.flexmodel.flow.common.ErrorEnum;
 import dev.flexmodel.flow.dto.FlowInstanceListRequest;
 import dev.flexmodel.flow.dto.FlowInstanceResponse;
-import dev.flexmodel.flow.dto.result.*;
+import dev.flexmodel.flow.dto.result.TerminateResult;
+import dev.flexmodel.flow.service.FlowInstanceService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -18,9 +22,6 @@ import org.eclipse.microprofile.openapi.annotations.media.SchemaProperty;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.flow.service.FlowInstanceService;
-import dev.flexmodel.codegen.entity.FlowInstance;
-import dev.flexmodel.flow.common.ErrorEnum;
 
 /**
  * 流程实例管理
@@ -48,6 +49,7 @@ public class FlowInstanceResource {
       )
     )})
   @GET
+  @RequiresPermissions("flow:view")
   @Path("/instances")
   public PageDTO<FlowInstanceResponse> findFlowInstanceList(
     @PathParam("projectId") String projectId,
@@ -89,6 +91,7 @@ public class FlowInstanceResource {
       )
     )})
   @GET
+  @RequiresPermissions("flow:view")
   @Path("/instances/{flowInstanceId}")
   public FlowInstance getFlowInstance(
     @PathParam("projectId") String projectId,
@@ -99,6 +102,7 @@ public class FlowInstanceResource {
 
   @Operation(summary = "终止流程实例")
   @POST
+  @RequiresPermissions("flow:execute")
   @Path("/instances/{flowInstanceId}/terminate")
   @APIResponse(
     name = "200",

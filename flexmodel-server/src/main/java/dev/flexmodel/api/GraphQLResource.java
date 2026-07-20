@@ -1,5 +1,6 @@
 package dev.flexmodel.api;
 
+import dev.flexmodel.common.authz.RequiresPermissions;
 import graphql.ExecutionResult;
 import jakarta.inject.Inject;
 import jakarta.websocket.server.PathParam;
@@ -23,6 +24,7 @@ public class GraphQLResource {
 
   @Operation(summary = "执行GraphQL查询")
   @POST
+  @RequiresPermissions("graphql:execute")
   public ExecutionResult execute(@PathParam("projectId") String projectId, GraphQLRequest request) {
     return graphQLApplicationService.execute(projectId, request.operationName(), request.query(), request.variables());
   }

@@ -1,7 +1,7 @@
 package dev.flexmodel.common.authz;
 
+import dev.flexmodel.codegen.StringUtils;
 import dev.flexmodel.common.utils.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;

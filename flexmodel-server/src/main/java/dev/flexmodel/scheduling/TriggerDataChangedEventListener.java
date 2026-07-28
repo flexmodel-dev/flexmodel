@@ -135,7 +135,7 @@ public class TriggerDataChangedEventListener implements EventListener {
   }
 
   /**
-   * 根据触发器任务类型分派执行（流程或云函数）
+   * 根据触发器任务类型分派执行（流程或边缘函数）
    */
   private void dispatchEventTrigger(String projectId, Trigger trigger, Object eventData, String logId) {
     if ("FUNCTION".equals(trigger.getJobType())) {

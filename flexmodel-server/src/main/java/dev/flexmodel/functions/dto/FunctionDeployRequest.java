@@ -7,7 +7,7 @@ import lombok.Data;
 import java.util.Map;
 
 /**
- * Deploy (upsert) request for Cloud Functions.
+ * Deploy (upsert) request for Edge Functions.
  *
  * @author cjbi
  */

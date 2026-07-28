@@ -73,13 +73,13 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
     try {
       Object result;
-      // CRUD 操作和云函数调用不需要 script 参数
+      // CRUD 操作和边缘函数调用不需要 script 参数
       if (subType.equalsIgnoreCase("insert_record") ||
           subType.equalsIgnoreCase("update_record") ||
           subType.equalsIgnoreCase("delete_record") ||
           subType.equalsIgnoreCase("query_record") ||
           subType.equalsIgnoreCase("function")) {
-        // 执行 CRUD 操作或云函数调用
+        // 执行 CRUD 操作或边缘函数调用
         result = executeAction(subType, null, nodeInstance, runtimeContext);
       } else {
         // 获取脚本内容（用于 js、sql 等脚本类型）
@@ -173,9 +173,9 @@ public class ServiceTaskExecutor extends ElementExecutor {
         return executeQueryRecord(nodeInstance, contextData);
       }
       case "function" -> {
-        LOGGER.debug("executeCloudFunction: invoking cloud function.||functionName={}",
+        LOGGER.debug("executeFunction: invoking Edge Function.||functionName={}",
           nodeInstance.get("functionName"));
-        return executeCloudFunction(nodeInstance, contextData, runtimeContext.getProjectId());
+        return executeFunction(nodeInstance, contextData, runtimeContext.getProjectId());
       }
       default -> {
         LOGGER.error("executeScript: unsupported subType.||subType={}", subType);
@@ -563,12 +563,12 @@ public class ServiceTaskExecutor extends ElementExecutor {
   }
 
   /**
-   * 执行云函数调用
+   * 执行边缘函数调用
    */
-  private Object executeCloudFunction(NodeInstanceBO nodeInstance, Map<String, Object> contextData, String projectId) {
+  private Object executeFunction(NodeInstanceBO nodeInstance, Map<String, Object> contextData, String projectId) {
     String functionName = getRequiredProperty(nodeInstance, "functionName");
 
-    LOGGER.info("executeCloudFunction: invoking cloud function.||functionName={}||projectId={}",
+    LOGGER.info("executeFunction: invoking Edge Function.||functionName={}||projectId={}",
       functionName, projectId);
 
     // 构建函数输入
@@ -586,15 +586,15 @@ public class ServiceTaskExecutor extends ElementExecutor {
     try {
       if (response.getStatus() >= 200 && response.getStatus() < 300) {
         Object result = response.readEntity(Object.class);
-        LOGGER.info("executeCloudFunction: cloud function completed successfully.||functionName={}||status={}",
+        LOGGER.info("executeFunction: Edge Function completed successfully.||functionName={}||status={}",
           functionName, response.getStatus());
         return result;
       } else {
         String errorBody = response.hasEntity() ? response.readEntity(String.class) : "no response body";
-        LOGGER.error("executeCloudFunction: cloud function returned error.||functionName={}||status={}||body={}",
+        LOGGER.error("executeFunction: Edge Function returned error.||functionName={}||status={}||body={}",
           functionName, response.getStatus(), errorBody);
         throw new ProcessException(ErrorEnum.SERVICE_TASK_EXECUTION_FAILED,
-          "云函数执行失败 [" + functionName + "]: HTTP " + response.getStatus() + " - " + errorBody);
+          "边缘函数执行失败 [" + functionName + "]: HTTP " + response.getStatus() + " - " + errorBody);
       }
     } finally {
       response.close();

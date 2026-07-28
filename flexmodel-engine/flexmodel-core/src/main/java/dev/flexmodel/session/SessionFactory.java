@@ -110,7 +110,7 @@ public class SessionFactory {
           try {
             session.dsl().mergeInto(d.getModelName()).values(record).execute();
           } catch (Exception e) {
-            log.error("Failed to insert record: {}", e.getMessage(), e);
+            log.warn("Failed to insert record: {}", e.getMessage());
           }
         }
       });

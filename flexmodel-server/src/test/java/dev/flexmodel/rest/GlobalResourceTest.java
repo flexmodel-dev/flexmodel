@@ -93,4 +93,56 @@ public class GlobalResourceTest {
       .statusCode(200)
       .body("settings.appName", notNullValue());
   }
+
+  /**
+   * 测试系统配置中包含 projectBaseDomain
+   */
+  @Test
+  void testProfileContainsProjectBaseDomain() {
+    given()
+      .when()
+      .get(BASE_PATH + "/profile")
+      .then()
+      .statusCode(200)
+      .body("projectBaseDomain", notNullValue());
+  }
+
+  /**
+   * 测试系统配置中包含 routingMode
+   */
+  @Test
+  void testProfileContainsRoutingMode() {
+    given()
+      .when()
+      .get(BASE_PATH + "/profile")
+      .then()
+      .statusCode(200)
+      .body("routingMode", equalTo("path"));
+  }
+
+  /**
+   * 测试 path 模式下 edgeUrlTemplate 为相对路径
+   */
+  @Test
+  void testPathModeEdgeUrlTemplate() {
+    given()
+      .when()
+      .get(BASE_PATH + "/profile")
+      .then()
+      .statusCode(200)
+      .body("edgeUrlTemplate", equalTo("/functions/{{projectId}}/{{name}}"));
+  }
+
+  /**
+   * 测试 path 模式下 pagesUrlTemplate 为相对路径
+   */
+  @Test
+  void testPathModePagesUrlTemplate() {
+    given()
+      .when()
+      .get(BASE_PATH + "/profile")
+      .then()
+      .statusCode(200)
+      .body("pagesUrlTemplate", equalTo("/pages/{{projectId}}"));
+  }
 }

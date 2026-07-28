@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * MCP 工具：云函数
+ * MCP 工具：边缘函数
  * 提供函数模板列表、函数 CRUD、部署和调用能力
  */
 public class FunctionTools {
@@ -47,7 +47,7 @@ public class FunctionTools {
   }
 
   @Tool(description = """
-    List cloud functions in a project with pagination. \
+    List Edge Functions in a project with pagination. \
     Returns a paginated result with total count and function list. \
     Each function includes: id, name, sourceFiles, timeout, createdAt, updatedAt.\
     """)
@@ -72,7 +72,7 @@ public class FunctionTools {
   }
 
   @Tool(description = """
-    Get detailed information of a specific cloud function, \
+    Get detailed information of a specific Edge Function, \
     including its source code files (sourceFiles: filename→content map), timeout, and metadata. \
     Use this to inspect a function's code before modifying or invoking it.\
     """)
@@ -91,7 +91,7 @@ public class FunctionTools {
   }
 
   @Tool(description = """
-    Deploy (create or update) a cloud function to a project and deploy it to the Deno Functions Runtime. \
+    Deploy (create or update) a Edge Function to a project and deploy it to the Deno Functions Runtime. \
     If a function with the given name already exists, it will be updated (upsert behavior). \
     \
     The sourceFiles parameter must be a JSON object mapping filenames to their TypeScript source code content. \
@@ -133,7 +133,7 @@ public class FunctionTools {
   }
 
   @Tool(description = """
-    Invoke (execute) a deployed cloud function and return its output. \
+    Invoke (execute) a deployed Edge Function and return its output. \
     The function receives the input data as a standard Request object, \
     processes it in an isolated Deno Worker, and returns the result. \
     \
@@ -181,7 +181,7 @@ public class FunctionTools {
   }
 
   @Tool(description = """
-    Delete a cloud function from a project. \
+    Delete a Edge Function from a project. \
     This removes the function definition from the database AND deletes it from the Deno Functions Runtime. \
     Use with caution as this operation is irreversible.\
     """)

@@ -18,7 +18,7 @@ Flexmodel 旨在为开发者提供一个开源、灵活且高度可定制的后�
 - 📂 **对象存储 (Storage)** - 抽象化的对象存储接口，支持 S3、OSS 及本地存储。
 - 🔐 **身份认证 (Auth)** - 完整的 RBAC 权限体系、多租户支持及 JWT 安全验证。
 - 🤖 **AI 工具集成 (MCP)** - 基于 MCP 协议开放核心工具，让 AI 客户端直接管理数据。
-- ☁️ **云函数 (Functions)** - Deno Functions Runtime 隔离执行的云函数能力（实验性）。
+- ☁️ **边缘函数 (Functions)** - Deno Functions Runtime 隔离执行的边缘函数能力（实验性）。
 
 ## 🏗️ 项目结构
 
@@ -28,13 +28,14 @@ Flexmodel 旨在为开发者提供一个开源、灵活且高度可定制的后�
 - **[flexmodel-server](./flexmodel-server)**: 基于 Quarkus 的服务端实现。提供 REST/GraphQL/MCP API、流程编排及任务调度。
 - **[flexmodel-ui](./flexmodel-ui)**: 基于 React + Ant Design v6 的前端管理后台。负责模型可视化设计、数据管理及系统配置。
 - **[flexmodel-website](./flexmodel-website)**: 项目官方文档网站。基于 Docusaurus 构建，提供完整的技术文档和快速上手指南。
-- **[flexmodel-functions-runtime](./flexmodel-functions-runtime)**: 云函数运行时。基于 Deno + Hono.js，提供 Worker 隔离执行环境。
+- **[flexmodel-functions-runtime](./flexmodel-functions-runtime)**: 边缘函数运行时。基于 Deno + Hono.js，提供 Worker
+  隔离执行环境。
 
 ## 🛠️ 技术栈
 
 - **后端**: Java 25, Quarkus 3, Maven, QuickJS, Agroal.
 - **前端**: React, TypeScript, Ant Design v6, Tailwind CSS, Vite, @xyflow/react, ECharts, Monaco Editor.
-- **云函数**: Deno, Hono.js.
+- **边缘函数**: Deno, Hono.js.
 - **协议**: REST API, GraphQL, MCP, WebSocket, SSE.
 
 ## 📖 快速开始

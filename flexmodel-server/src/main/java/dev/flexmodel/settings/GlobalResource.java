@@ -1,5 +1,7 @@
 package dev.flexmodel.settings;
 
+import dev.flexmodel.common.FlexmodelConfig;
+import dev.flexmodel.storage.config.StorageProvider;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -14,9 +16,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.media.SchemaProperty;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.settings.SettingsService;
-import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.storage.config.StorageProvider;
 
 import java.util.Map;
 
@@ -47,11 +46,13 @@ public class GlobalResource {
       mediaType = "application/json",
       schema = @Schema(
         properties = {
-          @SchemaProperty(name = "env", description = "环境变量"),
-          @SchemaProperty(name = "properties", description = "配置属性"),
-          @SchemaProperty(name = "application", description = "应用程序配置"),
           @SchemaProperty(name = "settings", description = "系统设置"),
+          @SchemaProperty(name = "apiRootPath", description = "API 根路径"),
           @SchemaProperty(name = "storageProvider", description = "存储后端信息"),
+          @SchemaProperty(name = "projectBaseDomain", description = "项目基础域名，用于 CORS 和 URL 拼接"),
+          @SchemaProperty(name = "routingMode", description = "路由模式：path 为路径模式，subdomain 为子域名模式"),
+          @SchemaProperty(name = "edgeUrlTemplate", description = "边缘函数调用 URL，由 routingMode + projectBaseDomain 自动推导"),
+          @SchemaProperty(name = "pagesUrlTemplate", description = "Pages 站点 URL，由 routingMode + projectBaseDomain 自动推导"),
         }
       )
     )
@@ -61,9 +62,14 @@ public class GlobalResource {
   @Path("/profile")
   @PermitAll
   public Map<String, Object> getProfile() {
-    return Map.of("settings", settingsService.getSettings(),
-    "apiRootPath", config.apiRootPath(),
-    "storageProvider", storageProvider.getProviderInfo()
+    return Map.of(
+      "settings", settingsService.getSettings(),
+      "apiRootPath", config.apiRootPath(),
+      "storageProvider", storageProvider.getProviderInfo(),
+      "projectBaseDomain", config.projectBaseDomain(),
+      "routingMode", config.projectRoutingMode(),
+      "edgeUrlTemplate", config.edgeUrlTemplate(),
+      "pagesUrlTemplate", config.pagesUrlTemplate()
     );
   }
 

@@ -13,8 +13,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 云函数认证提供商。
- * 调用配置的云函数进行自定义认证。
+ * 边缘函数认证提供商。
+ * 调用配置的边缘函数进行自定义认证。
  * 函数返回 HTTP 200 即认证成功，从 response body 中提取 userId；
  * 其他状态码视为认证失败。
  */
@@ -68,7 +68,7 @@ public class FunctionAuthProvider implements AuthProvider {
   }
 
   /**
-   * 从云函数 response body 中提取 userId。
+   * 从边缘函数 response body 中提取 userId。
    * 约定函数返回 JSON 格式：{ "userId": "xxx", ... }
    * 若 body 中无 userId 字段，则 fallback 为 "function-user"。
    */

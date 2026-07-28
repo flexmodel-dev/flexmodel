@@ -13,8 +13,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 云函数执行任务
- * 用于 Quartz 定时调度执行云函数
+ * 边缘函数执行任务
+ * 用于 Quartz 定时调度执行边缘函数
  *
  * @author cjbi
  */
@@ -36,23 +36,23 @@ public class ScheduledFunctionExecutionJob implements Job {
       String projectId = context.getJobDetail().getJobDataMap().getString("projectId");
 
       if (functionName == null) {
-        log.error("云函数执行任务缺少必要参数: functionName=null");
-        throw new JobExecutionException("云函数执行任务缺少必要参数");
+        log.error("边缘函数执行任务缺少必要参数: functionName=null");
+        throw new JobExecutionException("边缘函数执行任务缺少必要参数");
       }
 
-      log.info("开始执行定时云函数任务: triggerId={}, functionName={}", triggerId, functionName);
+      log.info("开始执行定时边缘函数任务: triggerId={}, functionName={}", triggerId, functionName);
 
       Response response = functionService.invoke(
         projectId, functionName, Map.of("triggerId", triggerId, "triggerTime", System.currentTimeMillis()));
 
       int status = response.getStatus();
-      // 读取云函数返回内容作为出参
+      // 读取边缘函数返回内容作为出参
       Object responseBody = response.hasEntity() ? response.readEntity(Object.class) : null;
       response.close();
 
       // 判断 HTTP 状态是否成功（2xx），失败则抛异常记录失败信息
       if (status < 200 || status >= 300) {
-        throw new JobExecutionException("云函数执行失败 [" + functionName + "]: HTTP " + status
+        throw new JobExecutionException("边缘函数执行失败 [" + functionName + "]: HTTP " + status
           + " - " + (responseBody != null ? responseBody : "no response body"));
       }
 
@@ -66,7 +66,7 @@ public class ScheduledFunctionExecutionJob implements Job {
       context.setResult(result);
 
     } catch (Exception e) {
-      log.error("执行定时云函数任务失败", e);
+      log.error("执行定时边缘函数任务失败", e);
 
       context.setResult(Map.of(
         "success", false,
@@ -78,7 +78,7 @@ public class ScheduledFunctionExecutionJob implements Job {
       if (e instanceof JobExecutionException) {
         throw (JobExecutionException) e;
       }
-      throw new JobExecutionException("执行定时云函数任务失败", e);
+      throw new JobExecutionException("执行定时边缘函数任务失败", e);
     }
   }
 }

@@ -11,6 +11,7 @@ import dev.flexmodel.common.config.AgroalDataSourceFactory;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.flow.service.FlowDeploymentService;
+import dev.flexmodel.pages.PageService;
 import dev.flexmodel.project.dto.ProjectListRequest;
 import dev.flexmodel.project.dto.ProjectResponse;
 import dev.flexmodel.projectauth.AuthProviderConfigService;
@@ -66,6 +67,9 @@ public class ProjectService {
   GraphQLEventConsumer graphQLEventConsumer;
   @Inject
   AuthProviderConfigService authProviderConfigService;
+
+  @Inject
+  PageService pageService;
 
   /**
    * Vert.x EventBus，用于发布 {@code project.deleted} 事件，触发 Quartz 等独立持久化资源的清理。
@@ -185,6 +189,13 @@ public class ProjectService {
 
     // 6. 为新项目生成 GraphQL Schema
     graphQLEventConsumer.refreshProject(saved);
+
+    // 7. 初始化 Pages 站点配置和默认欢迎页
+    try {
+      pageService.initPageSite(saved.getId());
+    } catch (Exception e) {
+      log.warn("Failed to initialize page site for project {}: {}", saved.getId(), e.getMessage());
+    }
 
     return saved;
   }

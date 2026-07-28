@@ -3,7 +3,6 @@ package dev.flexmodel.pages;
 import dev.flexmodel.codegen.entity.PageSite;
 import dev.flexmodel.codegen.enumeration.PageDeploymentStatus;
 import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.pages.config.PagesConfig;
 import dev.flexmodel.pages.dto.PageSiteResponse;
 import dev.flexmodel.pages.dto.PageSiteUpdateRequest;
 import dev.flexmodel.common.SessionContext;
@@ -38,7 +37,7 @@ public class PageService {
   PageAliasManager pageAliasManager;
 
   @Inject
-  PagesConfig pagesConfig;
+  FlexmodelConfig.PagesConfig pagesConfig;
 
   @Inject
   FlexmodelConfig config;

@@ -1,6 +1,6 @@
 package dev.flexmodel.pages;
 
-import dev.flexmodel.pages.config.PagesConfig;
+import dev.flexmodel.common.FlexmodelConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +27,7 @@ import java.util.zip.ZipInputStream;
 public class PageDeployer {
 
   @Inject
-  PagesConfig pagesConfig;
+  FlexmodelConfig.PagesConfig pagesConfig;
 
   /**
    * 解包 zip 到文件树，返回部署信息。
@@ -42,7 +42,7 @@ public class PageDeployer {
     Path projectDir = root.resolve(projectId);
     Path deploymentDir = projectDir.resolve(deploymentId);
 
-    // 先将 InputStream 完全复制到临时文件，避免与 RESTEasy multipart 清理竞争
+        // 先将 InputStream 完全复制到临时文件，避免与 RESTEasy multipart 清理竞争
     Path tempZip = null;
     try {
       Files.createDirectories(deploymentDir);

@@ -73,6 +73,16 @@ public interface FlexmodelConfig extends Serializable {
   @WithName("jwt")
   JwtConfig jwt();
 
+  @WithName("pages")
+  PagesConfig pages();
+
+  interface PagesConfig {
+
+    @WithName("root-path")
+    @WithDefault("./pages")
+    String rootPath();
+  }
+
   interface DatasourceConfig {
 
     @WithName("db-kind")

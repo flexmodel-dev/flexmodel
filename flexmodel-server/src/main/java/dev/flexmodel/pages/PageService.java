@@ -37,7 +37,7 @@ public class PageService {
   PageAliasManager pageAliasManager;
 
   @Inject
-  FlexmodelConfig.PagesConfig pagesConfig;
+  FlexmodelConfig flexmodelConfig;
 
   @Inject
   FlexmodelConfig config;
@@ -160,7 +160,7 @@ public class PageService {
       throw new PageException("Page site not found for project: " + projectId);
     }
 
-    Path root = Paths.get(pagesConfig.rootPath()).normalize();
+    Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
     Path deploymentDir = root.resolve(projectId).resolve(deploymentId);
     if (!Files.exists(deploymentDir)) {
       throw new PageException("Deployment not found: " + deploymentId);

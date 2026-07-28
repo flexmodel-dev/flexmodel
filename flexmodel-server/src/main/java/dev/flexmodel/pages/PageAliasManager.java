@@ -19,7 +19,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 public class PageAliasManager {
 
   @Inject
-  FlexmodelConfig.PagesConfig pagesConfig;
+  FlexmodelConfig flexmodelConfig;
 
   /**
    * 创建或原子切换别名软链：{root}/{projectId}/{alias} → {deploymentId}
@@ -28,7 +28,7 @@ public class PageAliasManager {
    * Windows fallback：软链不可用时用硬链或目录 copy。
    */
   public void createAlias(String projectId, String alias, String deploymentId) {
-    Path root = Paths.get(pagesConfig.rootPath()).normalize();
+    Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
     Path projectDir = root.resolve(projectId);
     Path target = projectDir.resolve(alias);
     Path deploymentDir = projectDir.resolve(deploymentId);
@@ -80,7 +80,7 @@ public class PageAliasManager {
    * 删除别名（软链或目录）
    */
   public void removeAlias(String projectId, String alias) {
-    Path root = Paths.get(pagesConfig.rootPath()).normalize();
+    Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
     Path target = root.resolve(projectId).resolve(alias);
 
     if (!Files.exists(target)) {
@@ -103,7 +103,7 @@ public class PageAliasManager {
    * 获取别名指向的实际部署目录名
    */
   public String resolveAlias(String projectId, String alias) {
-    Path root = Paths.get(pagesConfig.rootPath()).normalize();
+    Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
     Path aliasPath = root.resolve(projectId).resolve(alias);
 
     if (!Files.exists(aliasPath)) {

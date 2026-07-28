@@ -27,7 +27,7 @@ import java.util.zip.ZipInputStream;
 public class PageDeployer {
 
   @Inject
-  FlexmodelConfig.PagesConfig pagesConfig;
+  FlexmodelConfig flexmodelConfig;
 
   /**
    * 解包 zip 到文件树，返回部署信息。
@@ -38,7 +38,7 @@ public class PageDeployer {
    */
   public DeployResult deploy(String projectId, InputStream zipStream) {
     String deploymentId = "dep_" + UUID.randomUUID().toString().substring(0, 8);
-    Path root = Paths.get(pagesConfig.rootPath()).normalize();
+    Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
     Path projectDir = root.resolve(projectId);
     Path deploymentDir = projectDir.resolve(deploymentId);
 
@@ -121,7 +121,7 @@ public class PageDeployer {
    * 写单个文件到部署目录（用于默认欢迎页等场景）
    */
   public DeployResult writeSingleFile(String projectId, String deploymentId, String relativePath, String content) {
-    Path root = Paths.get(pagesConfig.rootPath()).normalize();
+    Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
     Path projectDir = root.resolve(projectId);
     Path deploymentDir = projectDir.resolve(deploymentId);
     Path filePath = deploymentDir.resolve(relativePath);

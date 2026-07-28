@@ -37,9 +37,6 @@ public class PageService {
   PageAliasManager pageAliasManager;
 
   @Inject
-  FlexmodelConfig flexmodelConfig;
-
-  @Inject
   FlexmodelConfig config;
 
   @Inject
@@ -160,7 +157,7 @@ public class PageService {
       throw new PageException("Page site not found for project: " + projectId);
     }
 
-    Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
+    Path root = Paths.get(config.pages().rootPath()).normalize();
     Path deploymentDir = root.resolve(projectId).resolve(deploymentId);
     if (!Files.exists(deploymentDir)) {
       throw new PageException("Deployment not found: " + deploymentId);
@@ -168,23 +165,18 @@ public class PageService {
 
     pageAliasManager.createAlias(projectId, "production", deploymentId);
 
-    // 重新统计文件信息
+    // 重新统计文件信息（单次遍历）
     int fileCount = 0;
     long sizeBytes = 0;
     try {
-      fileCount = (int) Files.walk(deploymentDir)
-        .filter(Files::isRegularFile)
-        .count();
-      sizeBytes = Files.walk(deploymentDir)
-        .filter(Files::isRegularFile)
-        .mapToLong(p -> {
-          try {
-            return Files.size(p);
-          } catch (IOException e) {
-            return 0;
-          }
-        })
-        .sum();
+      for (Path p : Files.walk(deploymentDir).filter(Files::isRegularFile).toList()) {
+        fileCount++;
+        try {
+          sizeBytes += Files.size(p);
+        } catch (IOException ignored) {
+          // skip files whose size can't be read
+        }
+      }
     } catch (IOException e) {
       log.warn("Failed to count files: {}", e.getMessage());
     }

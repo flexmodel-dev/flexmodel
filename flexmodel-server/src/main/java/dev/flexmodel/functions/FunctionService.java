@@ -249,7 +249,7 @@ public class FunctionService {
 
   /**
    * Build a FunctionRuntimeDeployRequest for the given function.
-   * Used by the source endpoint (Deno auto-deploy) and internal deploy.
+   * Used by internal deploy.
    */
   public FunctionRuntimeDeployRequest getRuntimeDeployRequest(String projectId, String name) {
     Function fn = functionRepository.findByName(projectId, name);

@@ -59,9 +59,22 @@ public class PageDeployer {
         while ((entry = zis.getNextEntry()) != null) {
           String name = entry.getName();
 
-          // 安全检查：拒绝路径穿越
-          if (name.contains("..") || name.startsWith("/") || name.startsWith("\\")) {
-            log.warn("Skipping dangerous zip entry: {}", name);
+          // 安全检查：拒绝绝对路径和路径段穿越
+          if (name.startsWith("/") || name.startsWith("\\")) {
+            log.warn("Skipping absolute-path zip entry: {}", name);
+            zis.closeEntry();
+            continue;
+          }
+          // 检查每个路径段是否恰好为 ".."（而非误拒包含 ".." 的合法文件名）
+          boolean hasTraversal = false;
+          for (String segment : name.split("[/\\\\]")) {
+            if (segment.equals("..")) {
+              hasTraversal = true;
+              break;
+            }
+          }
+          if (hasTraversal) {
+            log.warn("Skipping path-traversal zip entry: {}", name);
             zis.closeEntry();
             continue;
           }

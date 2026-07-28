@@ -2,12 +2,13 @@
 // Auto-Deploy Middleware for Edge Routes
 //
 // When a function is not registered in the runtime (404),
-// automatically fetches the source code from the Java server
+// automatically fetches the function metadata from the Java server
 // and deploys it, then retries the invocation.
 //
 // Uses the authToken from the already-validated edge auth context
 // (set by edgeAuthMiddleware) to authenticate with the Java server.
-// No need for local JWT signing — Java handles all token operations.
+// Calls GET /api/projects/{projectId}/functions/{name} to get
+// FunctionResponse, then constructs a DeployRequest from it.
 // ============================================================
 
 import type {Context} from "hono";
@@ -19,7 +20,7 @@ const JAVA_HOST = Deno.env.get("FLEXMODEL_JAVA_HOST") ?? "localhost";
 const JAVA_PORT = Deno.env.get("FLEXMODEL_JAVA_PORT") ?? "8080";
 
 /**
- * Fetch function source code from Java server and deploy to runtime.
+ * Fetch function metadata from Java server and deploy to runtime.
  * Uses the authToken from edge auth context for authorization.
  */
 async function fetchAndDeploy(
@@ -29,7 +30,7 @@ async function fetchAndDeploy(
 ): Promise<boolean> {
     try {
         const response = await fetch(
-            `http://${JAVA_HOST}:${JAVA_PORT}/api/projects/${projectId}/functions/${name}/source`,
+            `http://${JAVA_HOST}:${JAVA_PORT}/api/projects/${projectId}/functions/${name}`,
             {
                 headers: {
                     "Authorization": `Bearer ${authToken}`,
@@ -38,17 +39,25 @@ async function fetchAndDeploy(
         );
 
         if (!response.ok) {
-            console.error(`[auto-deploy] Failed to fetch source: HTTP ${response.status}`);
+            console.error(`[auto-deploy] Failed to fetch function: HTTP ${response.status}`);
             return false;
         }
 
-        const deployRequest: DeployRequest = await response.json();
+        const fnResponse = await response.json();
 
-        if (!deployRequest.projectId || !deployRequest.name ||
-            !deployRequest.functionId || !deployRequest.sourceFiles) {
-            console.error("[auto-deploy] Invalid deploy request from Java server");
+        if (!fnResponse.id || !fnResponse.name || !fnResponse.sourceFiles) {
+            console.error("[auto-deploy] Invalid function response from Java server");
             return false;
         }
+
+        // Construct DeployRequest from FunctionResponse
+        const deployRequest: DeployRequest = {
+            projectId: projectId,
+            functionId: fnResponse.id,
+            name: fnResponse.name,
+            sourceFiles: fnResponse.sourceFiles,
+            timeout: fnResponse.timeout ?? 30,
+        };
 
         await registry.deploy(deployRequest);
         console.log(`[auto-deploy] Deployed: ${projectId}:${name}`);

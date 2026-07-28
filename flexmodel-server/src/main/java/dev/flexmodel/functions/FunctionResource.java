@@ -1,10 +1,8 @@
 package dev.flexmodel.functions;
 
 import dev.flexmodel.common.authz.RequiresPermissions;
-import dev.flexmodel.common.config.web.jwt.JwtService;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.functions.dto.*;
-import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -25,9 +23,6 @@ public class FunctionResource {
 
     @Inject
     FunctionService functionService;
-
-  @Inject
-  JwtService jwtService;
 
     @GET
     @RequiresPermissions("function:view")
@@ -105,35 +100,5 @@ public class FunctionResource {
   public InvokeTokenResponse invokeToken(@PathParam("projectId") String projectId,
                                          @PathParam("name") String name) {
     return functionService.signInvokeToken(projectId, name);
-  }
-
-  /**
-   * Get function source code for auto-deploy by the Deno runtime.
-   *
-   * <p>Only accessible with an internal token (account = "svc:runtime").
-   * Used by the Deno runtime when a function is not registered (404) to
-   * pull the source code and deploy on-demand.
-   *
-   * @param projectId project ID
-   * @param name      function name
-   * @return FunctionRuntimeDeployRequest containing source files and metadata
-   */
-  @GET
-  @Path("/{name}/source")
-  @PermitAll
-  public FunctionRuntimeDeployRequest source(@PathParam("projectId") String projectId,
-                                             @PathParam("name") String name,
-                                             @HeaderParam("Authorization") String authHeader) {
-    // Verify internal token — only svc:runtime is allowed
-    String token = authHeader != null ? authHeader.replaceFirst("Bearer ", "").trim() : "";
-    if (token.isEmpty() || !jwtService.verify(token)) {
-      throw new FunctionException("Invalid internal token");
-    }
-    String account = jwtService.getAccount(token);
-    if (!"svc:runtime".equals(account)) {
-      throw new FunctionException("Access denied: only svc:runtime token is allowed");
-    }
-
-    return functionService.getRuntimeDeployRequest(projectId, name);
   }
 }

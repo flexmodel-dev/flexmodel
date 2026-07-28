@@ -22,6 +22,28 @@ public class PageAliasManager {
   FlexmodelConfig flexmodelConfig;
 
   /**
+   * 校验路径组件不包含穿越序列，且规范化路径不越出 pages root。
+   */
+  private void validatePathComponent(Path root, String projectId, String component) {
+    if (projectId == null || projectId.isBlank()) {
+      throw new PageException("projectId must not be blank");
+    }
+    if (component == null || component.isBlank()) {
+      throw new PageException("Path component must not be blank");
+    }
+    // 拒绝包含路径分隔符或 ".." 路径段的组件
+    if (component.contains("/") || component.contains("\\")
+      || component.equals("..") || component.startsWith("..")) {
+      throw new PageException("Invalid path component: '" + component + "' — must not contain separators or '..'");
+    }
+    // 规范化路径校验：确保最终路径仍在 root 下
+    Path resolved = root.resolve(projectId).resolve(component).normalize();
+    if (!resolved.startsWith(root.normalize())) {
+      throw new PageException("Path component '" + component + "' escapes pages root");
+    }
+  }
+
+  /**
    * 创建或原子切换别名软链：{root}/{projectId}/{alias} → {deploymentId}
    * <p>
    * 策略：先创建临时软链 → Files.move(ATOMIC_MOVE) 原子覆盖目标。
@@ -29,6 +51,9 @@ public class PageAliasManager {
    */
   public void createAlias(String projectId, String alias, String deploymentId) {
     Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
+    validatePathComponent(root, projectId, alias);
+    validatePathComponent(root, projectId, deploymentId);
+
     Path projectDir = root.resolve(projectId);
     Path target = projectDir.resolve(alias);
     Path deploymentDir = projectDir.resolve(deploymentId);
@@ -81,6 +106,8 @@ public class PageAliasManager {
    */
   public void removeAlias(String projectId, String alias) {
     Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
+    validatePathComponent(root, projectId, alias);
+
     Path target = root.resolve(projectId).resolve(alias);
 
     if (!Files.exists(target)) {
@@ -104,6 +131,8 @@ public class PageAliasManager {
    */
   public String resolveAlias(String projectId, String alias) {
     Path root = Paths.get(flexmodelConfig.pages().rootPath()).normalize();
+    validatePathComponent(root, projectId, alias);
+
     Path aliasPath = root.resolve(projectId).resolve(alias);
 
     if (!Files.exists(aliasPath)) {

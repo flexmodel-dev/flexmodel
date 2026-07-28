@@ -34,6 +34,7 @@ public class FlexmodelNativeProcessor {
         "dev.flexmodel.test.codegen.entity.**",
         "dev.flexmodel.test.codegen.enumeration.**"
       )
+      .constructors()
       .methods()
       .fields()
       .build();
@@ -98,7 +99,8 @@ public class FlexmodelNativeProcessor {
         "dev.flexmodel.flow.dto.**",
         "dev.flexmodel.common.dto.**",
         "dev.flexmodel.metrics.dto.**",
-        "dev.flexmodel.storage.dto.**"
+        "dev.flexmodel.storage.dto.**",
+        "dev.flexmodel.pages.dto.**"
       )
       .methods()
       .fields()

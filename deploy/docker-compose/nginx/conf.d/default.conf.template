@@ -72,6 +72,12 @@ server {
     }
 }
 
+# Build subpath segment for pages — avoids "//" when alias is empty
+map $alias $alias_path {
+    ""      "";
+    default "/$alias";
+}
+
 # ============================================================
 # Wildcard subdomain → Pages + Edge Functions
 # {projectId}.{domain}                     → pages (production)
@@ -85,6 +91,7 @@ server {
                  ~^(?<projectId>[^.]+)\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$;
 
     root /data/pages;
+    index index.html;
     client_max_body_size 1024m;
 
     # Edge function invocation → Deno Runtime
@@ -97,18 +104,25 @@ server {
         proxy_http_version 1.1;
     }
 
+    # Set pages_base at server level so all locations can use it
+    set $pages_base $projectId$alias_path;
+
     # Static assets — long cache (hash filenames)
     location ~* \.(js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|ico|mjs)$ {
-        set $file_base $projectId/${alias};
+        set $file_base $projectId$alias_path;
         try_files /$file_base$uri /$projectId/production$uri =404;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
 
-    # Pages — SPA fallback
+    # Root → serve index.html directly (avoids directory match → 403)
+    location = / {
+        try_files /$pages_base/index.html /$projectId/production/index.html =404;
+    }
+
+    # Pages — SPA fallback (for non-root paths)
     location / {
-        set $pages_base $projectId/${alias};
-        try_files /$pages_base$uri /$pages_base$uri/ /$pages_base/index.html /$projectId/production$uri /$projectId/production/index.html =404;
+        try_files /$pages_base$uri /$pages_base/index.html /$projectId/production$uri /$projectId/production/index.html =404;
         types {
             application/javascript js mjs;
             text/css css;

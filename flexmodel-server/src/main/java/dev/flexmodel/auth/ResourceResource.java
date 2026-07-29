@@ -1,7 +1,8 @@
 package dev.flexmodel.auth;
 
 import dev.flexmodel.auth.dto.ResourceTreeResponse;
-import dev.flexmodel.auth.service.AuthService;
+import dev.flexmodel.auth.service.ResourceService;
+import dev.flexmodel.common.authz.RequiresPermissions;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -22,7 +23,7 @@ import java.util.List;
 public class ResourceResource {
 
   @Inject
-  AuthService authService;
+  ResourceService resourceService;
 
   @APIResponse(
     name = "200",
@@ -36,10 +37,11 @@ public class ResourceResource {
       )
     )
     })
+  @RequiresPermissions("resource:list")
   @Operation(summary = "获取资源列表")
   @GET
   public List<ResourceResponse> findAllResources() {
-    return authService.findAllResources();
+    return resourceService.findAllResources();
   }
 
   @APIResponse(
@@ -54,11 +56,12 @@ public class ResourceResource {
       )
     )
     })
+  @RequiresPermissions("resource:list")
   @Operation(summary = "获取资源树")
   @GET
   @Path("/tree")
   public List<ResourceTreeResponse> findResourceTree() {
-    return authService.findResourceTree();
+    return resourceService.findResourceTree();
   }
 
 

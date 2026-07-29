@@ -1,6 +1,7 @@
 package dev.flexmodel.storage;
 
 import dev.flexmodel.codegen.entity.Bucket;
+import dev.flexmodel.common.NotFoundException;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -210,6 +211,6 @@ public class BucketResource {
 
   private Bucket resolveBucket(String projectId, String bucketName) {
     return bucketService.getBucket(OWNER_TYPE, projectId, bucketName)
-      .orElseThrow(() -> new RuntimeException("Bucket not found: " + bucketName));
+      .orElseThrow(() -> new NotFoundException("Bucket not found: " + bucketName));
   }
 }

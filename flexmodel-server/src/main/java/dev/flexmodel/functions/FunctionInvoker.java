@@ -33,13 +33,13 @@ public class FunctionInvoker {
             } else {
                 String body = response.readEntity(String.class);
                 log.error("Deploy failed: HTTP {} body: {}", response.getStatus(), body);
-                throw new RuntimeException("Deploy failed: HTTP " + response.getStatus());
+                throw new FunctionException("Deploy failed: HTTP " + response.getStatus());
             }
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
             log.error("Failed to deploy function to runtime: {}:{}", req.getProjectId(), req.getName(), e);
-            throw new RuntimeException("Failed to deploy function to Deno runtime: " + e.getMessage(), e);
+            throw new FunctionException("Failed to deploy function to Deno runtime: " + e.getMessage(), e);
         }
     }
 
@@ -55,7 +55,7 @@ public class FunctionInvoker {
             return e.getResponse();
         } catch (Exception e) {
             log.error("Failed to invoke function: {}:{}", projectId, name, e);
-            throw new RuntimeException("Failed to invoke function: " + e.getMessage(), e);
+            throw new FunctionException("Failed to invoke function: " + e.getMessage(), e);
         }
     }
 

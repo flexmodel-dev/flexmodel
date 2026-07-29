@@ -38,6 +38,8 @@ public class FunctionAuthProvider implements AuthProvider {
   @Override
   public AuthResult authenticate(AuthContext context) {
     try {
+      // CDI.current() is required here: FunctionAuthProvider is not a CDI-managed bean
+      // (instantiated manually by auth configuration), so @Inject cannot be used.
       FunctionService functionService = CDI.current().select(FunctionService.class).get();
 
       Response response = functionService.invoke(context.getProjectId(), functionName, context);

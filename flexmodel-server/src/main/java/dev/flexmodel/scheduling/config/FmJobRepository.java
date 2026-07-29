@@ -4,7 +4,7 @@ import dev.flexmodel.codegen.entity.*;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.spi.CDI;
+import jakarta.inject.Inject;
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;
 import org.quartz.Trigger;
@@ -18,10 +18,10 @@ import static dev.flexmodel.common.FlexmodelConfig.DEFAULT_SCHEMA_NAME;
 @ApplicationScoped
 public class FmJobRepository {
 
+  @Inject
   SessionFactory sessionFactory;
 
   public FmJobRepository() {
-    this.sessionFactory = CDI.current().select(SessionFactory.class).get();
   }
 
   public QrtzJobDetail findJobDetail(String schedName, String jobName, String jobGroup) {

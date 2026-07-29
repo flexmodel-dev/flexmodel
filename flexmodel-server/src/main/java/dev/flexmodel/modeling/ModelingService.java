@@ -1,6 +1,9 @@
 package dev.flexmodel.modeling;
 
 import dev.flexmodel.api.dto.GraphQLRefreshEvent;
+import dev.flexmodel.common.NotFoundException;
+import dev.flexmodel.common.SessionContext;
+import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.project.ProjectService;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -25,68 +28,76 @@ public class ModelingService {
   ProjectService projectService;
 
   @Inject
+  SessionContext sessionContext;
+
+  @Inject
   EventBus eventBus;
 
+  private String resolveDatabaseName(String projectId) {
+    String databaseName = sessionContext.getProjectDatabaseName();
+    return databaseName != null ? databaseName : projectService.resolveDatabaseName(projectId);
+  }
+
   public List<SchemaObject> findModels(String projectId) {
-    return modelService.findAll(projectId, projectService.resolveDatabaseName(projectId))
+    return modelService.findAll(projectId, resolveDatabaseName(projectId))
       .stream()
       .filter(m -> !m.isSystem())
       .toList();
   }
 
   public SchemaObject createModel(String projectId, SchemaObject model) {
-    SchemaObject created = modelService.createModel(projectId, projectService.resolveDatabaseName(projectId), model);
+    SchemaObject created = modelService.createModel(projectId, resolveDatabaseName(projectId), model);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
     return created;
   }
 
   public void dropModel(String projectId, String modelName) {
-    modelService.dropModel(projectId, projectService.resolveDatabaseName(projectId), modelName);
+    modelService.dropModel(projectId, resolveDatabaseName(projectId), modelName);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
   public TypedField<?, ?> createField(String projectId, TypedField<?, ?> field) {
-    TypedField<?, ?> created = modelService.createField(projectId, projectService.resolveDatabaseName(projectId), field);
+    TypedField<?, ?> created = modelService.createField(projectId, resolveDatabaseName(projectId), field);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
     return created;
   }
 
   public TypedField<?, ?> modifyField(String projectId, TypedField<?, ?> field) {
-    TypedField<?, ?> modified = modelService.modifyField(projectId, projectService.resolveDatabaseName(projectId), field);
+    TypedField<?, ?> modified = modelService.modifyField(projectId, resolveDatabaseName(projectId), field);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
     return modified;
   }
 
   public void dropField(String projectId, String modelName, String fieldName) {
-    modelService.dropField(projectId, projectService.resolveDatabaseName(projectId), modelName, fieldName);
+    modelService.dropField(projectId, resolveDatabaseName(projectId), modelName, fieldName);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
   public IndexDefinition createIndex(String projectId, IndexDefinition index) {
-    IndexDefinition created = modelService.createIndex(projectId, projectService.resolveDatabaseName(projectId), index);
+    IndexDefinition created = modelService.createIndex(projectId, resolveDatabaseName(projectId), index);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
     return created;
   }
 
   public IndexDefinition modifyIndex(String projectId, IndexDefinition index) {
-    IndexDefinition modified = modelService.modifyIndex(projectId, projectService.resolveDatabaseName(projectId), index);
+    IndexDefinition modified = modelService.modifyIndex(projectId, resolveDatabaseName(projectId), index);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
     return modified;
   }
 
   public void dropIndex(String projectId, String modelName, String indexName) {
-    modelService.dropIndex(projectId, projectService.resolveDatabaseName(projectId), modelName, indexName);
+    modelService.dropIndex(projectId, resolveDatabaseName(projectId), modelName, indexName);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
   public List<SchemaObject> syncModels(String projectId, Set<String> models) {
-    return modelService.syncModels(projectId, projectService.resolveDatabaseName(projectId), models);
+    return modelService.syncModels(projectId, resolveDatabaseName(projectId), models);
   }
 
   public SchemaObject modifyModel(String projectId, String modelName, SchemaObject model) {
-    String databaseName = projectService.resolveDatabaseName(projectId);
+    String databaseName = resolveDatabaseName(projectId);
     if (model instanceof EntityDefinition) {
-      throw new RuntimeException("Unsupported model type");
+      throw new ValidationException("Unsupported model type");
     }
     if (model instanceof NativeQueryDefinition nativeQueryModel) {
       nativeQueryModel.setName(modelName);
@@ -101,11 +112,11 @@ public class ModelingService {
   }
 
   public SchemaObject findModel(String projectId, String modelName) {
-    return modelService.findModel(projectId, projectService.resolveDatabaseName(projectId), modelName).orElseThrow(() -> new RuntimeException("Model not found"));
+    return modelService.findModel(projectId, resolveDatabaseName(projectId), modelName).orElseThrow(() -> new NotFoundException("Model not found"));
   }
 
   public Boolean executeFml(String projectId, String fml) throws ParseException {
-    Boolean result = modelService.executeFml(projectId, projectService.resolveDatabaseName(projectId), fml);
+    Boolean result = modelService.executeFml(projectId, resolveDatabaseName(projectId), fml);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
     return result;
   }

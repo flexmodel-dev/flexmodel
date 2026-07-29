@@ -1,7 +1,6 @@
 package dev.flexmodel.common.config.web.filter;
 
 import io.vertx.mutiny.core.eventbus.EventBus;
-import jakarta.enterprise.inject.spi.CDI;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
@@ -31,6 +30,9 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
   @Inject
   SettingsService settingsService;
 
+  @Inject
+  EventBus eventBus;
+
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
     requestContext.setProperty("startTime", System.currentTimeMillis());
@@ -43,7 +45,7 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
       requestContext.setEntityStream(new ByteArrayInputStream(bytes));
       //This is your POST Body as String
     } catch (IOException e) {
-      e.printStackTrace();
+      log.error("Failed to read request body", e);
     }
   }
 
@@ -91,6 +93,6 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     Map<String, Object> payload = new HashMap<>();
     payload.put("projectId", projectId);
     payload.put("log", apiLog);
-    CDI.current().select(EventBus.class).get().send("request.logging", payload);
+    eventBus.send("request.logging", payload);
   }
 }

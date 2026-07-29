@@ -24,6 +24,8 @@ public class ScheduledFunctionExecutionJob implements Job {
   private final FunctionService functionService;
 
   public ScheduledFunctionExecutionJob() {
+    // CDI.current() is required here: Quartz instantiates Job instances via its own factory,
+    // so this class is not CDI-managed and @Inject cannot be used.
     functionService = CDI.current().select(FunctionService.class).get();
   }
 

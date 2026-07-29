@@ -1,10 +1,11 @@
 package dev.flexmodel.flow.exception;
 
+import dev.flexmodel.common.BusinessException;
 import dev.flexmodel.flow.common.ErrorEnum;
 
 import java.text.MessageFormat;
 
-public class TurboException extends RuntimeException {
+public class TurboException extends BusinessException {
 
   private static final String ERROR_MSG_FORMAT = "{0}({1})";
 

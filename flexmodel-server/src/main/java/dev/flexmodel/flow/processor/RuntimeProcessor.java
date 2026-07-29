@@ -1,5 +1,7 @@
 package dev.flexmodel.flow.processor;
 
+import dev.flexmodel.common.NotFoundException;
+import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.flow.common.*;
 import dev.flexmodel.flow.dto.result.*;
 import jakarta.inject.Inject;
@@ -616,11 +618,11 @@ public class RuntimeProcessor {
     FlowInstance flowInstancePO = processInstanceRepository.selectByFlowInstanceId(projectId, flowInstanceId);
     if (flowInstancePO == null) {
       LOGGER.warn("checkIsSubFlowInstance failed: cannot find flowInstancePO from db.||flowInstanceId={}", flowInstanceId);
-      throw new RuntimeException(ErrorEnum.GET_FLOW_INSTANCE_FAILED.getErrMsg());
+      throw new NotFoundException(ErrorEnum.GET_FLOW_INSTANCE_FAILED.getErrMsg());
     }
     if (StringUtils.isNotBlank(flowInstancePO.getParentFlowInstanceId())) {
       LOGGER.error("checkIsSubFlowInstance failed: don't receive sub-processes.||flowInstanceId={}", flowInstanceId);
-      throw new RuntimeException(ErrorEnum.NO_RECEIVE_SUB_FLOW_INSTANCE.getErrMsg());
+      throw new ValidationException(ErrorEnum.NO_RECEIVE_SUB_FLOW_INSTANCE.getErrMsg());
     }
   }
 }

@@ -1,5 +1,6 @@
 package dev.flexmodel.storage.config;
 
+import dev.flexmodel.common.InternalServerException;
 import dev.flexmodel.storage.StorageOperations;
 
 import java.io.IOException;
@@ -42,7 +43,7 @@ public class LocalBackend implements StorageBackend {
         Files.createDirectories(containerPath);
       }
     } catch (IOException e) {
-      throw new RuntimeException("Failed to create local container: " + prefix, e);
+      throw new InternalServerException("Failed to create local container: " + prefix, e);
     }
   }
 
@@ -70,7 +71,7 @@ public class LocalBackend implements StorageBackend {
         }
       });
     } catch (IOException e) {
-      throw new RuntimeException("Failed to delete local container: " + prefix, e);
+      throw new InternalServerException("Failed to delete local container: " + prefix, e);
     }
   }
 
@@ -87,14 +88,14 @@ public class LocalBackend implements StorageBackend {
         if (!readOnly) {
           Files.createDirectories(basePath);
         } else {
-          throw new RuntimeException("Local storage base path does not exist and cannot be created in read-only mode: " + basePath);
+          throw new InternalServerException("Local storage base path does not exist and cannot be created in read-only mode: " + basePath);
         }
       }
       if (!Files.isDirectory(basePath)) {
-        throw new RuntimeException("Local storage base path is not a directory: " + basePath);
+        throw new InternalServerException("Local storage base path is not a directory: " + basePath);
       }
     } catch (IOException e) {
-      throw new RuntimeException("Failed to validate local storage base path: " + basePath, e);
+      throw new InternalServerException("Failed to validate local storage base path: " + basePath, e);
     }
   }
 

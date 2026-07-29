@@ -1,7 +1,9 @@
 package dev.flexmodel.scheduling.config;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.common.InternalServerException;
 import dev.flexmodel.codegen.entity.*;
+import jakarta.enterprise.inject.spi.CDI;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
 import org.quartz.Calendar;
@@ -47,7 +49,7 @@ public class FmJobStore implements JobStore {
   public void initialize(ClassLoadHelper loadHelper, SchedulerSignaler signaler) throws SchedulerConfigException {
     this.loadHelper = loadHelper;
     this.signaler = signaler;
-    this.jobRepository = new FmJobRepository();
+    this.jobRepository = CDI.current().select(FmJobRepository.class).get();
     log.info("FmJobStore initialized with FmJobRepository");
   }
 
@@ -699,7 +701,7 @@ public class FmJobStore implements JobStore {
     try {
       jobRepository.updateTriggerState(instanceName, trigger.getKey().getName(), trigger.getKey().getGroup(), Trigger.TriggerState.NORMAL.name());
     } catch (Exception e) {
-      throw new RuntimeException(new JobPersistenceException("Failed to release acquired trigger", e));
+      throw new InternalServerException("Failed to release acquired trigger", e);
     }
   }
 
@@ -1003,7 +1005,7 @@ public class FmJobStore implements JobStore {
       out.flush();
       return Base64.getEncoder().encodeToString(bos.toByteArray());
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      throw new InternalServerException("Serialization error", e);
     }
   }
 
@@ -1013,7 +1015,7 @@ public class FmJobStore implements JobStore {
       ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
       return (Calendar) in.readObject();
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      throw new InternalServerException("Deserialization error", e);
     }
   }
 }

@@ -1,5 +1,7 @@
 package dev.flexmodel.storage.config;
 
+import dev.flexmodel.common.InternalServerException;
+import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.storage.FileItem;
 import dev.flexmodel.storage.StorageOperations;
 
@@ -26,7 +28,7 @@ public class LocalStorageOperations implements StorageOperations {
         Files.createDirectories(this.basePath);
       }
     } catch (IOException e) {
-      throw new RuntimeException("Failed to create base directory: " + basePath, e);
+      throw new InternalServerException("Failed to create base directory: " + basePath, e);
     }
   }
 
@@ -52,11 +54,11 @@ public class LocalStorageOperations implements StorageOperations {
             .path(relativePath)
             .build());
         } catch (IOException e) {
-          throw new RuntimeException("Failed to read file attributes: " + p, e);
+          throw new InternalServerException("Failed to read file attributes: " + p, e);
         }
       });
     } catch (IOException e) {
-      throw new RuntimeException("Failed to list files: " + path, e);
+      throw new InternalServerException("Failed to list files: " + path, e);
     }
 
     return items;
@@ -81,7 +83,7 @@ public class LocalStorageOperations implements StorageOperations {
         .path(relativePath)
         .build();
     } catch (IOException e) {
-      throw new RuntimeException("Failed to get file info: " + path, e);
+      throw new InternalServerException("Failed to get file info: " + path, e);
     }
   }
 
@@ -94,7 +96,7 @@ public class LocalStorageOperations implements StorageOperations {
       try {
         Files.createDirectories(targetPath);
       } catch (IOException e) {
-        throw new RuntimeException("Failed to create folder marker: " + path, e);
+        throw new InternalServerException("Failed to create folder marker: " + path, e);
       }
       return;
     }
@@ -107,7 +109,7 @@ public class LocalStorageOperations implements StorageOperations {
 
       Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to upload file: " + path, e);
+      throw new InternalServerException("Failed to upload file: " + path, e);
     }
   }
 
@@ -134,7 +136,7 @@ public class LocalStorageOperations implements StorageOperations {
         Files.deleteIfExists(targetPath);
       }
     } catch (IOException e) {
-      throw new RuntimeException("Failed to delete file: " + path, e);
+      throw new InternalServerException("Failed to delete file: " + path, e);
     }
   }
 
@@ -143,11 +145,11 @@ public class LocalStorageOperations implements StorageOperations {
     Path targetPath = resolvePath(path);
     try {
       if (!Files.exists(targetPath) || Files.isDirectory(targetPath)) {
-        throw new RuntimeException("File not found or is a directory: " + path);
+        throw new NotFoundException("File not found or is a directory: " + path);
       }
       return Files.newInputStream(targetPath);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to open file for download: " + path, e);
+      throw new InternalServerException("Failed to open file for download: " + path, e);
     }
   }
 

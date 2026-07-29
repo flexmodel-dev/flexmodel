@@ -1,5 +1,6 @@
 package dev.flexmodel.flow.common.util;
 
+import dev.flexmodel.common.InternalServerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.flexmodel.flow.exception.ProcessException;
@@ -23,14 +24,14 @@ public class JavaScriptUtil {
     try {
       ScriptEngine engine = SCRIPT_ENGINE_MANAGER.getEngineByName("quickjs4j");
       if (engine == null) {
-        throw new RuntimeException("quickjs4j JavaScript engine not found on classpath");
+        throw new InternalServerException("quickjs4j JavaScript engine not found on classpath");
       }
 
       LOGGER.info("quickjs4j JavaScript ScriptEngine initialized successfully");
       return engine;
     } catch (Exception e) {
       LOGGER.error("Failed to initialize quickjs4j JavaScript ScriptEngine", e);
-      throw new RuntimeException("Failed to initialize JavaScript engine", e);
+      throw new InternalServerException("Failed to initialize JavaScript engine", e);
     }
   });
 

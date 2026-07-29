@@ -3,6 +3,7 @@ package dev.flexmodel.scheduling.config;
 import dev.flexmodel.codegen.entity.*;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
+import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.quartz.JobDataMap;
@@ -15,6 +16,7 @@ import java.util.List;
 import static dev.flexmodel.codegen.System.*;
 import static dev.flexmodel.common.FlexmodelConfig.DEFAULT_SCHEMA_NAME;
 
+@Unremovable
 @ApplicationScoped
 public class FmJobRepository {
 

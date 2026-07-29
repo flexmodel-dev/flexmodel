@@ -43,7 +43,14 @@ public class BusinessExceptionMapper implements ExceptionMapper<BusinessExceptio
       return buildResponse(Response.Status.NOT_FOUND, 404, e.getMessage());
     }
     if (e instanceof TurboException te) {
-      return buildResponse(Response.Status.BAD_REQUEST, te.getErrNo(), te.getErrMsg());
+      int errNo = te.getErrNo();
+      if (errNo >= 5000) {
+        return buildResponse(Response.Status.INTERNAL_SERVER_ERROR, errNo, te.getErrMsg());
+      }
+      if (errNo == 3101 || errNo == 4008 || errNo == 4009 || errNo == 4010 || errNo == 4011) {
+        return buildResponse(Response.Status.NOT_FOUND, errNo, te.getErrMsg());
+      }
+      return buildResponse(Response.Status.BAD_REQUEST, errNo, te.getErrMsg());
     }
     if (e instanceof InternalServerException) {
       return buildResponse(Response.Status.INTERNAL_SERVER_ERROR, 500, e.getMessage());

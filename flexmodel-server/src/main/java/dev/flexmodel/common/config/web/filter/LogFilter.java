@@ -31,7 +31,7 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
   SettingsService settingsService;
 
   @Inject
-  EventBus eventBus;
+  jakarta.inject.Provider<EventBus> eventBusProvider;
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
@@ -93,6 +93,6 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     Map<String, Object> payload = new HashMap<>();
     payload.put("projectId", projectId);
     payload.put("log", apiLog);
-    eventBus.send("request.logging", payload);
+    eventBusProvider.get().send("request.logging", payload);
   }
 }

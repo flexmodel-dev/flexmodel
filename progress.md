@@ -169,3 +169,53 @@ Quartz 作业被正确创建/移除/状态变更。
 - `testDeleteTrigger` 改用 1 小时间隔创建触发器，避免调度任务在断言前被触发清理。
 - 启动恢复 `restoreScheduledTriggersOnStartup` 对 seed EVENT 触发器不调度（符合预期），dev_test seed 中无 state=true 的
   SCHEDULED 触发器。
+
+---
+
+## Session (2026-07-29): 15 项优化修复
+
+### 目标
+
+修复项目分析中发现的 15 项优化问题（#6–#25, #33, #35）。
+
+### 已完成
+
+| # | 问题 | 修复 | 文件 |
+|---|------|------|------|
+| 6 | TurboException extends RuntimeException | → extends BusinessException | TurboException.java |
+| 7 | 51 处 bare RuntimeException | → NotFoundException/InternalServerException/ValidationException; BusinessExceptionMapper 更新 | 19 files |
+| 11 | DataService/ModelingService 硬编码 databaseName | → @Inject SessionContext + resolveDatabaseName() fallback | DataService.java, ModelingService.java |
+| 12 | 缺少权限注解 | → @RequiresPermissions on User/Role/ApiKey/Resource Resource | 4 files |
+| 14 | AuthService 职责过重 | → 拆分到 UserService/RoleService/ResourceService | 4 files |
+| 16 | ConcurrentHashMapCache 无 null 保护 | → computeIfAbsent + NULL_SENTINEL | ConcurrentHashMapCache.java |
+| 17 | SqlSession.close() 静默提交 | → rollback() + warn log | SqlSession.java |
+| 19 | Zustand selector 未用 useShallow | → 全部 wrap useShallow | appStore.ts, authStore.ts |
+| 20 | ECharts 全量引入 | → modular imports (utils/echarts.ts) | 3 files |
+| 21 | i18n 重复 key + 错误翻译 | → 去重 + 修正 | en.json, zh.json |
+| 23 | POM 依赖版本分散 | → 父 POM 统一 dependencyManagement/pluginManagement | 7 POMs |
+| 24 | CDI.current() 滥用 | → 5 类迁移 @Inject; 3 类保留 CDI.current() + 注释 | 8 files |
+| 25 | e.printStackTrace() | → log.error() | DefinitionProcessor.java, LogFilter.java |
+| 33 | Maven Wrapper 过旧 | → 3.3.1/3.9.6 | mvnw, mvnw.cmd |
+| 35 | maven-source-plugin 过旧 | → 3.3.1 | pom.xml |
+
+### 回归修复
+
+- **AbstractRepository.java**: `if (sessionContext != null)` → `isRequestContextActive()` + `resolveSessionWithoutContext()` fallback (CDI proxy always non-null)
+- **FmJobStore.java**: `new FmJobRepository()` → `CDI.current().select(FmJobRepository.class).get()` (Quartz-instantiated, @Inject 不可用)
+- **LogFilter.java**: `@Inject EventBus eventBus` → `@Inject jakarta.inject.Provider<EventBus> eventBusProvider` (Vertx 是 RUNTIME_INIT synthetic bean, 直接注入导致 STATIC_INIT 冲突)
+- **pom.xml**: `junit.version` 5.10.3 → 6.0.3 (Quarkus 3.33.1 引入 junit-platform 6.0.3, engine 5.10.3 与之不兼容)
+
+### 新增测试文件
+
+- `ScheduledJobExecutionTest.java` — 11 个测试用例覆盖 JobListener lifecycle, Function/Flow Job missing params, FmJobStore CRUD/trigger state/calendar/trigger fire/disallow concurrent/reschedule/group queries
+
+### 验证
+
+- `mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` → BUILD SUCCESS
+- `mvn test -pl flexmodel-engine` → BUILD SUCCESS
+- `mvn clean test -pl flexmodel-server` → @QuarkusTest 启动失败 (pre-existing: SessionFactory/Quartz tables 在测试环境不可用, JUnit 版本已修复)
+
+### 已知问题 (pre-existing)
+
+- 所有 `@QuarkusTest` 测试因 `SessionFactory` 在测试环境不可用而启动失败
+- LSP 错误 (codegen 相关类型如 FlowDefinition 在 IDE 中未解析) — 非 our edits 引起

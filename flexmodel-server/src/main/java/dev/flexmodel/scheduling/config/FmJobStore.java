@@ -27,8 +27,8 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class FmJobStore implements JobStore {
-  FmJobRepository jobRepository;
 
+  FmJobRepository jobRepository;
   private String instanceId;
   private String instanceName = "flexmodel-scheduler";
   private int threadPoolSize = 10;
@@ -103,8 +103,10 @@ public class FmJobStore implements JobStore {
         throw new ObjectAlreadyExistsException(newJob);
       }
 
-      // 创建或更新任务详情
       QrtzJobDetail jobDetail = new QrtzJobDetail();
+      if (existingJob != null) {
+        jobDetail.setId(existingJob.getId());
+      }
       jobDetail.setSchedName(instanceName);
       jobDetail.setJobName(newJob.getKey().getName());
       jobDetail.setJobGroup(newJob.getKey().getGroup());
@@ -224,8 +226,10 @@ public class FmJobStore implements JobStore {
         newTrigger.computeFirstFireTime(cal);
       }
 
-      // 创建或更新触发器
       QrtzTrigger trigger = new QrtzTrigger();
+      if (existingTrigger != null) {
+        trigger.setId(existingTrigger.getId());
+      }
       trigger.setSchedName(instanceName);
       trigger.setTriggerName(newTrigger.getKey().getName());
       trigger.setTriggerGroup(newTrigger.getKey().getGroup());

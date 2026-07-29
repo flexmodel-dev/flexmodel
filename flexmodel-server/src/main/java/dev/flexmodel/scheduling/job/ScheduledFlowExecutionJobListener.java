@@ -80,7 +80,8 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       log.warn("作业执行被否决: {}", context.getJobDetail().getKey());
 
       String logId = (String) context.get(EXECUTION_LOG_ID_KEY);
-      String projectId = context.get("projectId").toString();
+      Object projectIdObj = context.get("projectId");
+      String projectId = projectIdObj != null ? projectIdObj.toString() : null;
       if (logId != null) {
         // 记录作业被否决
         jobExecutionLogService.recordJobFailure(
@@ -100,7 +101,8 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
   public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
     try {
       String logId = (String) context.get(EXECUTION_LOG_ID_KEY);
-      String projectId = context.get("projectId").toString();
+      Object projectIdObj = context.get("projectId");
+      String projectId = projectIdObj != null ? projectIdObj.toString() : null;
       if (logId == null) {
         log.warn("未找到执行日志ID，无法记录作业执行结果: {}", context.getJobDetail().getKey());
         return;

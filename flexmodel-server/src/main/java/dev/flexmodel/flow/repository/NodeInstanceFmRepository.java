@@ -13,8 +13,8 @@ import java.util.List;
 public class NodeInstanceFmRepository extends AbstractRepository implements NodeInstanceRepository {
 
   @Override
-  public boolean insertOrUpdateList(List<NodeInstance> nodeInstanceList) {
-    try (Session session = sessionFactory.createSession()) {
+  public boolean insertOrUpdateList(String projectId, List<NodeInstance> nodeInstanceList) {
+    try (Session session = getProjectSession(projectId)) {
       boolean ok = true;
       for (NodeInstance ni : nodeInstanceList) {
         if (ni.getId() == null) {

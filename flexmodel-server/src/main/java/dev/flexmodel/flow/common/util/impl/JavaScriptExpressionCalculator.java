@@ -9,6 +9,7 @@ import dev.flexmodel.flow.common.util.JavaScriptUtil;
 import dev.flexmodel.JsonUtils;
 
 import java.text.MessageFormat;
+import java.util.HashMap;
 import java.util.Map;
 
 public class JavaScriptExpressionCalculator implements ExpressionCalculator {
@@ -22,7 +23,7 @@ public class JavaScriptExpressionCalculator implements ExpressionCalculator {
     }
     Object result = null;
     try {
-      result = JavaScriptUtil.execute(expression, dataMap);
+      result = JavaScriptUtil.execute(expression, new HashMap<>(dataMap));
       if (result instanceof Boolean) {
         return (Boolean) result;
       } else {

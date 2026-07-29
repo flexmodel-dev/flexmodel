@@ -9,6 +9,6 @@ import java.util.List;
  */
 public interface NodeInstanceLogRepository {
 
-  boolean insertList(List<NodeInstanceLog> nodeInstanceLogList);
+  boolean insertList(String projectId, List<NodeInstanceLog> nodeInstanceLogList);
 
 }

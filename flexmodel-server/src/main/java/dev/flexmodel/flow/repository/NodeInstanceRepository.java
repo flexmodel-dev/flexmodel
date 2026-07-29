@@ -9,7 +9,7 @@ import java.util.List;
  */
 public interface NodeInstanceRepository {
 
-  boolean insertOrUpdateList(List<NodeInstance> nodeInstanceList);
+  boolean insertOrUpdateList(String projectId, List<NodeInstance> nodeInstanceList);
 
   NodeInstance selectByNodeInstanceId(String projectId, String flowInstanceId, String nodeInstanceId);
 

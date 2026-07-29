@@ -26,7 +26,6 @@ public class JavaScriptUtil {
       if (engine == null) {
         throw new InternalServerException("quickjs4j JavaScript engine not found on classpath");
       }
-
       LOGGER.info("quickjs4j JavaScript ScriptEngine initialized successfully");
       return engine;
     } catch (Exception e) {

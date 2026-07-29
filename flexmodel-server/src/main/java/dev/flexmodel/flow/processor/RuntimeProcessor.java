@@ -77,6 +77,7 @@ public class RuntimeProcessor {
       ParamValidator.validate(startProcessParam);
       FlowInfo flowInfo = getFlowInfo(startProcessParam);
       runtimeContext = buildStartProcessContext(flowInfo, startProcessParam.getVariables(), startProcessParam.getRuntimeContext());
+      runtimeContext.setProjectId(startProcessParam.getProjectId());
       flowExecutor.execute(runtimeContext);
       return buildStartProcessResult(runtimeContext);
     } catch (TurboException e) {
@@ -129,6 +130,7 @@ public class RuntimeProcessor {
       String flowDeployId = flowInstanceBO.getFlowDeployId();
       FlowInfo flowInfo = getFlowInfoByFlowDeployId(projectId, flowDeployId);
       runtimeContext = buildCommitContext(projectId, commitTaskParam, flowInfo, flowInstanceBO.getStatus());
+      runtimeContext.setProjectId(projectId);
       flowExecutor.commit(runtimeContext);
       return buildCommitTaskResult(runtimeContext);
     } catch (TurboException e) {
@@ -189,6 +191,7 @@ public class RuntimeProcessor {
       String flowDeployId = flowInstanceBO.getFlowDeployId();
       FlowInfo flowInfo = getFlowInfoByFlowDeployId(projectId, flowDeployId);
       runtimeContext = buildRollbackContext(projectId, rollbackTaskParam, flowInfo, flowInstanceBO.getStatus());
+      runtimeContext.setProjectId(projectId);
       flowExecutor.rollback(runtimeContext);
       return buildRollbackTaskResult(runtimeContext);
     } catch (TurboException e) {
@@ -574,6 +577,7 @@ public class RuntimeProcessor {
     runtimeResult.setErrCode(errNo);
     runtimeResult.setErrMsg(errMsg);
     if (runtimeContext != null) {
+      runtimeResult.setProjectId(runtimeContext.getProjectId());
       runtimeResult.setFlowInstanceId(runtimeContext.getFlowInstanceId());
       runtimeResult.setStatus(runtimeContext.getFlowInstanceStatus());
       List<RuntimeResult.NodeExecuteResult> nodeExecuteResults = new ArrayList<>();

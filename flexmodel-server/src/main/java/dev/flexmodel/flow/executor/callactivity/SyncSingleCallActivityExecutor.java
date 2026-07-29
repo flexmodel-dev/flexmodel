@@ -69,7 +69,16 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
   @Override
   protected void preCommit(RuntimeContext runtimeContext) throws ProcessException {
     NodeInstanceBO suspendNodeInstance = runtimeContext.getSuspendNodeInstance();
-    NodeInstanceBO currentNodeInstance = JsonUtils.convertValue(suspendNodeInstance, NodeInstanceBO.class);
+    NodeInstanceBO currentNodeInstance = new NodeInstanceBO();
+    currentNodeInstance.setNodeInstanceId(suspendNodeInstance.getNodeInstanceId());
+    currentNodeInstance.setNodeKey(suspendNodeInstance.getNodeKey());
+    currentNodeInstance.setSourceNodeInstanceId(suspendNodeInstance.getSourceNodeInstanceId());
+    currentNodeInstance.setSourceNodeKey(suspendNodeInstance.getSourceNodeKey());
+    currentNodeInstance.setInstanceDataId(suspendNodeInstance.getInstanceDataId());
+    currentNodeInstance.setStatus(suspendNodeInstance.getStatus());
+    currentNodeInstance.setNodeType(suspendNodeInstance.getNodeType());
+    currentNodeInstance.setProperties(suspendNodeInstance.getProperties());
+    currentNodeInstance.setId(suspendNodeInstance.getId());
     runtimeContext.setCurrentNodeInstance(currentNodeInstance);
   }
 
@@ -260,19 +269,26 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
     currentNodeInstance.setStatus(NodeInstanceStatus.DISABLED);
     runtimeContext.getNodeInstanceList().add(currentNodeInstance);
 
-    NodeInstanceBO newNodeInstanceBO = JsonUtils.convertValue(currentNodeInstance, NodeInstanceBO.class);
-    newNodeInstanceBO.setId(null);
-    String newNodeInstanceId = genId();
-    newNodeInstanceBO.setNodeInstanceId(newNodeInstanceId);
+    NodeInstanceBO newNodeInstanceBO = new NodeInstanceBO();
+    newNodeInstanceBO.setNodeInstanceId(genId());
+    newNodeInstanceBO.setNodeKey(currentNodeInstance.getNodeKey());
+    newNodeInstanceBO.setSourceNodeInstanceId(currentNodeInstance.getSourceNodeInstanceId());
+    newNodeInstanceBO.setSourceNodeKey(currentNodeInstance.getSourceNodeKey());
+    newNodeInstanceBO.setInstanceDataId(currentNodeInstance.getInstanceDataId());
     newNodeInstanceBO.setStatus(NodeInstanceStatus.ACTIVE);
+    newNodeInstanceBO.setNodeType(currentNodeInstance.getNodeType());
+    newNodeInstanceBO.setProperties(currentNodeInstance.getProperties());
     runtimeContext.setCurrentNodeInstance(newNodeInstanceBO);
 
     FlowInstanceMapping oldFlowInstanceMappingPO = flowInstanceMappingRepository.selectFlowInstanceMapping(runtimeContext.getProjectId(), runtimeContext.getFlowInstanceId(), currentNodeInstance.getNodeInstanceId());
     flowInstanceMappingRepository.updateType(runtimeContext.getProjectId(), oldFlowInstanceMappingPO.getFlowInstanceId(), oldFlowInstanceMappingPO.getNodeInstanceId(), FlowInstanceMappingType.TERMINATED);
 
-    FlowInstanceMapping newFlowInstanceMappingPO = JsonUtils.convertValue(oldFlowInstanceMappingPO, FlowInstanceMapping.class);
-    newFlowInstanceMappingPO.setId(null);
-    newFlowInstanceMappingPO.setNodeInstanceId(newNodeInstanceId);
+    FlowInstanceMapping newFlowInstanceMappingPO = new FlowInstanceMapping();
+    newFlowInstanceMappingPO.setFlowInstanceId(oldFlowInstanceMappingPO.getFlowInstanceId());
+    newFlowInstanceMappingPO.setSubFlowInstanceId(oldFlowInstanceMappingPO.getSubFlowInstanceId());
+    newFlowInstanceMappingPO.setNodeInstanceId(newNodeInstanceBO.getNodeInstanceId());
+    newFlowInstanceMappingPO.setNodeKey(oldFlowInstanceMappingPO.getNodeKey());
+    newFlowInstanceMappingPO.setType(oldFlowInstanceMappingPO.getType());
     newFlowInstanceMappingPO.setCreateTime(LocalDateTime.now());
     newFlowInstanceMappingPO.setModifyTime(LocalDateTime.now());
     flowInstanceMappingRepository.insert(runtimeContext.getProjectId(), newFlowInstanceMappingPO);
@@ -324,7 +340,7 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
     // 2.save data
     String instanceDataId = genId();
     dev.flexmodel.codegen.entity.InstanceData instanceDataPO = buildCallActivityEndInstanceData(instanceDataId, runtimeContext);
-    instanceDataRepository.insert(instanceDataPO);
+    instanceDataRepository.insert(runtimeContext.getProjectId(), instanceDataPO);
     runtimeContext.setInstanceDataId(instanceDataId);
     // 3.set currentNode completed
     currentNodeInstance.setInstanceDataId(runtimeContext.getInstanceDataId());

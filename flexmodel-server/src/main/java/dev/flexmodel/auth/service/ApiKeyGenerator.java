@@ -1,5 +1,6 @@
 package dev.flexmodel.auth.service;
 
+import dev.flexmodel.common.InternalServerException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -46,7 +47,7 @@ public class ApiKeyGenerator {
       byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
       return HexFormat.of().formatHex(digest);
     } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("SHA-256 not available", e);
+      throw new InternalServerException("SHA-256 not available", e);
     }
   }
 }

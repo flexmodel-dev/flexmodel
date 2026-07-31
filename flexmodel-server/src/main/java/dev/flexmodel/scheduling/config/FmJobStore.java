@@ -1,7 +1,9 @@
 package dev.flexmodel.scheduling.config;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.common.InternalServerException;
 import dev.flexmodel.codegen.entity.*;
+import jakarta.enterprise.inject.spi.CDI;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
 import org.quartz.Calendar;
@@ -25,8 +27,8 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class FmJobStore implements JobStore {
-  FmJobRepository jobRepository;
 
+  FmJobRepository jobRepository;
   private String instanceId;
   private String instanceName = "flexmodel-scheduler";
   private int threadPoolSize = 10;
@@ -47,7 +49,7 @@ public class FmJobStore implements JobStore {
   public void initialize(ClassLoadHelper loadHelper, SchedulerSignaler signaler) throws SchedulerConfigException {
     this.loadHelper = loadHelper;
     this.signaler = signaler;
-    this.jobRepository = new FmJobRepository();
+    this.jobRepository = CDI.current().select(FmJobRepository.class).get();
     log.info("FmJobStore initialized with FmJobRepository");
   }
 
@@ -101,8 +103,10 @@ public class FmJobStore implements JobStore {
         throw new ObjectAlreadyExistsException(newJob);
       }
 
-      // 创建或更新任务详情
       QrtzJobDetail jobDetail = new QrtzJobDetail();
+      if (existingJob != null) {
+        jobDetail.setId(existingJob.getId());
+      }
       jobDetail.setSchedName(instanceName);
       jobDetail.setJobName(newJob.getKey().getName());
       jobDetail.setJobGroup(newJob.getKey().getGroup());
@@ -222,8 +226,10 @@ public class FmJobStore implements JobStore {
         newTrigger.computeFirstFireTime(cal);
       }
 
-      // 创建或更新触发器
       QrtzTrigger trigger = new QrtzTrigger();
+      if (existingTrigger != null) {
+        trigger.setId(existingTrigger.getId());
+      }
       trigger.setSchedName(instanceName);
       trigger.setTriggerName(newTrigger.getKey().getName());
       trigger.setTriggerGroup(newTrigger.getKey().getGroup());
@@ -699,7 +705,7 @@ public class FmJobStore implements JobStore {
     try {
       jobRepository.updateTriggerState(instanceName, trigger.getKey().getName(), trigger.getKey().getGroup(), Trigger.TriggerState.NORMAL.name());
     } catch (Exception e) {
-      throw new RuntimeException(new JobPersistenceException("Failed to release acquired trigger", e));
+      throw new InternalServerException("Failed to release acquired trigger", e);
     }
   }
 
@@ -1003,7 +1009,7 @@ public class FmJobStore implements JobStore {
       out.flush();
       return Base64.getEncoder().encodeToString(bos.toByteArray());
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      throw new InternalServerException("Serialization error", e);
     }
   }
 
@@ -1013,7 +1019,7 @@ public class FmJobStore implements JobStore {
       ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
       return (Calendar) in.readObject();
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      throw new InternalServerException("Deserialization error", e);
     }
   }
 }

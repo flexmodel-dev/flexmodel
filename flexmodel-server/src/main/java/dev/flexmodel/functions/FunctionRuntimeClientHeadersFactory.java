@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * Propagates all incoming JAX-RS request headers to the outgoing
- * Deno Functions Runtime REST client call, so that cloud functions
+ * Deno Functions Runtime REST client call, so that Edge Functions
  * can access the original client headers via their Request object.
  *
  * <p>Also injects runtime-internal headers (x-flexmodel-auth-token,

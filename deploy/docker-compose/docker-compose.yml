@@ -40,16 +40,20 @@ services:
     image: nginx:1.25.3
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/conf.d/default.conf.template:/etc/nginx/conf.d/default.conf.template
+      - ./flexmodel-server/pages:/data/pages
     restart: always
     ports:
       - ${NGINX_HTTP_PORT:-80}:80
       - ${NGINX_HTTPS_PORT:-443}:443
     environment:
       - TZ=GMT+08
-    depends_on:
-      flexmodel-server:
-        condition: service_started
+      - FLEXMODEL_PROJECT_BASE_DOMAIN=${FLEXMODEL_PROJECT_BASE_DOMAIN:-localhost}
+    command: >
+      /bin/sh -c "export FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED=$$(echo $$FLEXMODEL_PROJECT_BASE_DOMAIN | sed 's/\\./\\\\./g') && envsubst '$$FLEXMODEL_PROJECT_BASE_DOMAIN $$FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+        depends_on:
+          flexmodel-server:
+            condition: service_started
     networks:
       - flexmodel
   flexmodel-server:
@@ -60,6 +64,7 @@ services:
       - ./flexmodel-server/storage:/deployments/storage
       - ./flexmodel-server/database:/deployments/database
       - ./flexmodel-server/logs:/deployments/logs
+      - ./flexmodel-server/pages:/deployments/pages
     env_file: .env
     environment:
       - TZ=GMT+08
@@ -70,6 +75,10 @@ services:
       - FLEXMODEL_PROJECT_URL_TEMPLATE=jdbc:mysql://mysql:3306/{{databaseName}}
       - QUARKUS_REST_CLIENT_FUNCTION_RUNTIME_URL=http://flexmodel-functions-runtime:9999
       - QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=100M
+      - FLEXMODEL_PAGES_ROOT=/data/pages
+      - FLEXMODEL_PROJECT_ROUTING_MODE=${FLEXMODEL_PROJECT_ROUTING_MODE:-path}
+      - FLEXMODEL_PAGES_URL_TEMPLATE=${FLEXMODEL_PAGES_URL_TEMPLATE:-https://{{projectId}}.example.com}
+      - FLEXMODEL_EDGE_URL_TEMPLATE=${FLEXMODEL_EDGE_URL_TEMPLATE:-https://{{projectId}}.example.com/functions/{{name}}}
 
     networks:
       - flexmodel

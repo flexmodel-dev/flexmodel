@@ -53,7 +53,16 @@ public class UserTaskExecutor extends ElementExecutor {
     String nodeName = FlowModelUtil.getElementName(flowElement);
     String nodeKey = flowElement.getKey();
 
-    NodeInstanceBO currentNodeInstance = JsonUtils.convertValue(suspendNodeInstance, NodeInstanceBO.class);
+    NodeInstanceBO currentNodeInstance = new NodeInstanceBO();
+    currentNodeInstance.setNodeInstanceId(suspendNodeInstance.getNodeInstanceId());
+    currentNodeInstance.setNodeKey(suspendNodeInstance.getNodeKey());
+    currentNodeInstance.setSourceNodeInstanceId(suspendNodeInstance.getSourceNodeInstanceId());
+    currentNodeInstance.setSourceNodeKey(suspendNodeInstance.getSourceNodeKey());
+    currentNodeInstance.setInstanceDataId(suspendNodeInstance.getInstanceDataId());
+    currentNodeInstance.setStatus(suspendNodeInstance.getStatus());
+    currentNodeInstance.setNodeType(suspendNodeInstance.getNodeType());
+    currentNodeInstance.setProperties(suspendNodeInstance.getProperties());
+    currentNodeInstance.setId(suspendNodeInstance.getId());
     runtimeContext.setCurrentNodeInstance(currentNodeInstance);
 
     //invalid commit node
@@ -103,12 +112,15 @@ public class UserTaskExecutor extends ElementExecutor {
     currentNodeInstance.setStatus(NodeInstanceStatus.DISABLED);
     runtimeContext.getNodeInstanceList().add(currentNodeInstance);
     if (currentStatus == NodeInstanceStatus.COMPLETED) {
-      NodeInstanceBO newNodeInstanceBO = JsonUtils.convertValue(currentNodeInstance, NodeInstanceBO.class);
-      // TODO: 2019/12/31 to insert new record
-      newNodeInstanceBO.setId(null);
-      String newNodeInstanceId = genId();
-      newNodeInstanceBO.setNodeInstanceId(newNodeInstanceId);
+      NodeInstanceBO newNodeInstanceBO = new NodeInstanceBO();
+      newNodeInstanceBO.setNodeInstanceId(genId());
+      newNodeInstanceBO.setNodeKey(currentNodeInstance.getNodeKey());
+      newNodeInstanceBO.setSourceNodeInstanceId(currentNodeInstance.getSourceNodeInstanceId());
+      newNodeInstanceBO.setSourceNodeKey(currentNodeInstance.getSourceNodeKey());
+      newNodeInstanceBO.setInstanceDataId(currentNodeInstance.getInstanceDataId());
       newNodeInstanceBO.setStatus(NodeInstanceStatus.ACTIVE);
+      newNodeInstanceBO.setNodeType(currentNodeInstance.getNodeType());
+      newNodeInstanceBO.setProperties(currentNodeInstance.getProperties());
       runtimeContext.setCurrentNodeInstance(newNodeInstanceBO);
       runtimeContext.getNodeInstanceList().add(newNodeInstanceBO);
       throw new SuspendException(ErrorEnum.ROLLBACK_SUSPEND, MessageFormat.format(Constants.NODE_INSTANCE_FORMAT,

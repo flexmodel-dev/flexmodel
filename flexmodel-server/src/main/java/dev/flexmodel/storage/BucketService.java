@@ -1,6 +1,8 @@
 package dev.flexmodel.storage;
 
 import dev.flexmodel.codegen.entity.Bucket;
+import dev.flexmodel.common.NotFoundException;
+import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.storage.config.StorageProvider;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -36,7 +38,7 @@ public class BucketService {
     // 检查同名
     Optional<Bucket> existing = bucketRepository.findOne(ownerType, ownerId, bucket.getName());
     if (existing.isPresent()) {
-      throw new RuntimeException("Bucket name '" + bucket.getName() + "' already exists");
+      throw new ValidationException("Bucket name '" + bucket.getName() + "' already exists");
     }
 
     // 设置归属
@@ -67,7 +69,8 @@ public class BucketService {
   public Bucket updateBucket(String ownerType, String ownerId, String bucketName, Bucket bucket) {
     Optional<Bucket> existing = bucketRepository.findOne(ownerType, ownerId, bucketName);
     if (existing.isEmpty()) {
-      throw new RuntimeException("Bucket not found: " + bucketName);
+      throw new NotFoundException("Bucket not found: " + bucketName)
+;
     }
     Bucket old = existing.get();
     // 保留不可变字段

@@ -6,7 +6,7 @@ import dev.flexmodel.data.DataService;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.inject.Inject;
-import org.jboss.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 
@@ -14,9 +14,8 @@ import java.util.Map;
  * MCP 工具：数据操作
  * 提供记录的分页查询、单条查询、创建、更新和删除能力
  */
+@Slf4j
 public class DataTools {
-
-  private static final Logger log = Logger.getLogger(DataTools.class);
 
   @Inject
   DataService dataService;
@@ -54,7 +53,7 @@ public class DataTools {
       Example: [{"field":"id","sort":"DESC"}]. Pass empty string or null for no sort.\
       """) String sort
   ) {
-    log.infof("query_records called, projectId=%s, modelName=%s, page=%d, size=%d, filter=%s, sort=%s",
+    log.info("query_records called, projectId={}, modelName={}, page={}, size={}, filter={}, sort={}",
       projectId, modelName, page, size, filter, sort);
     try {
       String filterParam = (filter == null || filter.isBlank()) ? null : filter;
@@ -64,7 +63,7 @@ public class DataTools {
       );
       return JsonUtils.toJsonString(result);
     } catch (Exception e) {
-      log.errorf(e, "query_records failed, projectId=%s, modelName=%s", projectId, modelName);
+      log.error("query_records failed, projectId={}, modelName={}", projectId, modelName, e);
       return "Error: query_records failed - " + e.getMessage();
     }
   }
@@ -78,7 +77,7 @@ public class DataTools {
     @ToolArg(description = "The model (entity) name, e.g. 'Student'") String modelName,
     @ToolArg(description = "The primary key ID of the record to retrieve") String recordId
   ) {
-    log.infof("get_record called, projectId=%s, modelName=%s, recordId=%s", projectId, modelName, recordId);
+    log.info("get_record called, projectId={}, modelName={}, recordId={}", projectId, modelName, recordId);
     try {
       Map<String, Object> record = dataService.findOneRecord(projectId, modelName, recordId, null);
       if (record == null) {
@@ -86,7 +85,7 @@ public class DataTools {
       }
       return JsonUtils.toJsonString(record);
     } catch (Exception e) {
-      log.errorf(e, "get_record failed, projectId=%s, modelName=%s, recordId=%s", projectId, modelName, recordId);
+      log.error("get_record failed, projectId={}, modelName={}, recordId={}", projectId, modelName, recordId, e);
       return "Error: get_record failed - " + e.getMessage();
     }
   }
@@ -107,13 +106,13 @@ public class DataTools {
       Field names and value types must match the entity's field definitions.\
       """) String recordJson
   ) {
-    log.infof("create_record called, projectId=%s, modelName=%s, recordJson=%s", projectId, modelName, recordJson);
+    log.info("create_record called, projectId={}, modelName={}, recordJson={}", projectId, modelName, recordJson);
     try {
       Map<String, Object> data = JsonUtils.parseToObject(recordJson, Map.class);
       Map<String, Object> created = dataService.createRecord(projectId, modelName, data);
       return "Record created: " + JsonUtils.toJsonString(created);
     } catch (Exception e) {
-      log.errorf(e, "create_record failed, projectId=%s, modelName=%s, recordJson=%s", projectId, modelName, recordJson);
+      log.error("create_record failed, projectId={}, modelName={}, recordJson={}", projectId, modelName, recordJson, e);
       return "Error: create_record failed - " + e.getMessage();
     }
   }
@@ -132,14 +131,14 @@ public class DataTools {
       Only included fields are updated.\
       """) String recordJson
   ) {
-    log.infof("update_record called, projectId=%s, modelName=%s, recordId=%s, recordJson=%s",
+    log.info("update_record called, projectId={}, modelName={}, recordId={}, recordJson={}",
       projectId, modelName, recordId, recordJson);
     try {
       Map<String, Object> data = JsonUtils.parseToObject(recordJson, Map.class);
       Map<String, Object> updated = dataService.updateRecord(projectId, modelName, recordId, data);
       return "Record updated: " + JsonUtils.toJsonString(updated);
     } catch (Exception e) {
-      log.errorf(e, "update_record failed, projectId=%s, modelName=%s, recordId=%s", projectId, modelName, recordId);
+      log.error("update_record failed, projectId={}, modelName={}, recordId={}", projectId, modelName, recordId, e);
       return "Error: update_record failed - " + e.getMessage();
     }
   }
@@ -150,12 +149,12 @@ public class DataTools {
     @ToolArg(description = "The model (entity) name, e.g. 'Student'") String modelName,
     @ToolArg(description = "The primary key ID of the record to delete") String recordId
   ) {
-    log.infof("delete_record called, projectId=%s, modelName=%s, recordId=%s", projectId, modelName, recordId);
+    log.info("delete_record called, projectId={}, modelName={}, recordId={}", projectId, modelName, recordId);
     try {
       dataService.deleteRecord(projectId, modelName, recordId);
       return "Record deleted: " + recordId;
     } catch (Exception e) {
-      log.errorf(e, "delete_record failed, projectId=%s, modelName=%s, recordId=%s", projectId, modelName, recordId);
+      log.error("delete_record failed, projectId={}, modelName={}, recordId={}", projectId, modelName, recordId, e);
       return "Error: delete_record failed - " + e.getMessage();
     }
   }

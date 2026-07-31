@@ -8,7 +8,7 @@ import dev.flexmodel.project.dto.ProjectResponse;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.inject.Inject;
-import org.jboss.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
@@ -16,9 +16,8 @@ import java.util.List;
  * MCP 工具：项目管理
  * 提供项目列表、详情、创建和删除能力
  */
+@Slf4j
 public class ProjectTools {
-
-  private static final Logger log = Logger.getLogger(ProjectTools.class);
 
   @Inject
   ProjectService projectService;
@@ -48,7 +47,7 @@ public class ProjectTools {
   public String get_project(
     @ToolArg(description = "The unique project identifier, e.g. 'dev_test', 'default'") String projectId
   ) {
-    log.infof("get_project called, projectId=%s", projectId);
+    log.info("get_project called, projectId={}", projectId);
     try {
       ProjectResponse project = projectService.findProjectResponse(projectId);
       if (project == null) {
@@ -56,7 +55,7 @@ public class ProjectTools {
       }
       return JsonUtils.toJsonString(project);
     } catch (Exception e) {
-      log.errorf(e, "get_project failed, projectId=%s", projectId);
+      log.error("get_project failed, projectId={}", projectId, e);
       return "Error: get_project failed - " + e.getMessage();
     }
   }
@@ -75,7 +74,7 @@ public class ProjectTools {
     @ToolArg(description = "Human-readable project name, e.g. 'My Application'") String projectName,
     @ToolArg(description = "Project description (optional)") String description
   ) {
-    log.infof("create_project called, projectId=%s, projectName=%s, description=%s", projectId, projectName, description);
+    log.info("create_project called, projectId={}, projectName={}, description={}", projectId, projectName, description);
     try {
       Project project = new Project();
       project.setId(projectId);
@@ -84,7 +83,7 @@ public class ProjectTools {
       Project created = projectService.createProject(project);
       return "Project created successfully: " + JsonUtils.toJsonString(created);
     } catch (Exception e) {
-      log.errorf(e, "create_project failed, projectId=%s", projectId);
+      log.error("create_project failed, projectId={}", projectId, e);
       return "Error: create_project failed - " + e.getMessage();
     }
   }
@@ -96,7 +95,7 @@ public class ProjectTools {
   public String delete_project(
     @ToolArg(description = "The project ID to delete, e.g. 'test_project'. Cannot be 'default'.") String projectId
   ) {
-    log.infof("delete_project called, projectId=%s", projectId);
+    log.info("delete_project called, projectId={}", projectId);
     try {
       if ("default".equals(projectId)) {
         return "Error: The default project cannot be deleted.";
@@ -104,7 +103,7 @@ public class ProjectTools {
       projectService.deleteProject(projectId);
       return "Project deleted successfully: " + projectId;
     } catch (Exception e) {
-      log.errorf(e, "delete_project failed, projectId=%s", projectId);
+      log.error("delete_project failed, projectId={}", projectId, e);
       return "Error: delete_project failed - " + e.getMessage();
     }
   }

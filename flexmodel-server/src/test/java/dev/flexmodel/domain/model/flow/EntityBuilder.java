@@ -990,7 +990,7 @@ public class EntityBuilder {
 
       Map<String, Object> properties = new HashMap<>();
       properties.put("defaultConditions", "");
-      properties.put("conditionsequenceflow", "orderStatus.equals(\"1\")");
+      properties.put("conditionsequenceflow", "orderStatus===\"1\"");
       sequenceFlow1.setProperties(properties);
 
       flowElementList.add(sequenceFlow1);
@@ -1009,7 +1009,7 @@ public class EntityBuilder {
 
       Map<String, Object> properties = new HashMap<>();
       properties.put("defaultConditions", "");
-      properties.put("conditionsequenceflow", "orderStatus.equals(\"2\")");
+      properties.put("conditionsequenceflow", "orderStatus===\"2\"");
       sequenceFlow1.setProperties(properties);
 
       flowElementList.add(sequenceFlow1);
@@ -1063,7 +1063,7 @@ public class EntityBuilder {
 
       Map<String, Object> properties = new HashMap<>();
       properties.put("defaultConditions", "false");
-      properties.put("conditionsequenceflow", "orderId.equals(\"123\")");
+      properties.put("conditionsequenceflow", "orderId===\"123\"");
       sequenceFlow1.setProperties(properties);
 
       flowElementList.add(sequenceFlow1);
@@ -1117,7 +1117,7 @@ public class EntityBuilder {
 
       Map<String, Object> properties = new HashMap<>();
       properties.put("defaultConditions", "false");
-      properties.put("conditionsequenceflow", "orderId.equals(\"456\")");
+      properties.put("conditionsequenceflow", "orderId===\"456\"");
       sequenceFlow1.setProperties(properties);
 
       flowElementList.add(sequenceFlow1);

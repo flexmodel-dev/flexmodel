@@ -1,5 +1,7 @@
 package dev.flexmodel.flow.processor;
 
+import dev.flexmodel.common.NotFoundException;
+import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.flow.common.*;
 import dev.flexmodel.flow.dto.result.*;
 import jakarta.inject.Inject;
@@ -75,6 +77,7 @@ public class RuntimeProcessor {
       ParamValidator.validate(startProcessParam);
       FlowInfo flowInfo = getFlowInfo(startProcessParam);
       runtimeContext = buildStartProcessContext(flowInfo, startProcessParam.getVariables(), startProcessParam.getRuntimeContext());
+      runtimeContext.setProjectId(startProcessParam.getProjectId());
       flowExecutor.execute(runtimeContext);
       return buildStartProcessResult(runtimeContext);
     } catch (TurboException e) {
@@ -127,6 +130,7 @@ public class RuntimeProcessor {
       String flowDeployId = flowInstanceBO.getFlowDeployId();
       FlowInfo flowInfo = getFlowInfoByFlowDeployId(projectId, flowDeployId);
       runtimeContext = buildCommitContext(projectId, commitTaskParam, flowInfo, flowInstanceBO.getStatus());
+      runtimeContext.setProjectId(projectId);
       flowExecutor.commit(runtimeContext);
       return buildCommitTaskResult(runtimeContext);
     } catch (TurboException e) {
@@ -187,6 +191,7 @@ public class RuntimeProcessor {
       String flowDeployId = flowInstanceBO.getFlowDeployId();
       FlowInfo flowInfo = getFlowInfoByFlowDeployId(projectId, flowDeployId);
       runtimeContext = buildRollbackContext(projectId, rollbackTaskParam, flowInfo, flowInstanceBO.getStatus());
+      runtimeContext.setProjectId(projectId);
       flowExecutor.rollback(runtimeContext);
       return buildRollbackTaskResult(runtimeContext);
     } catch (TurboException e) {
@@ -572,6 +577,7 @@ public class RuntimeProcessor {
     runtimeResult.setErrCode(errNo);
     runtimeResult.setErrMsg(errMsg);
     if (runtimeContext != null) {
+      runtimeResult.setProjectId(runtimeContext.getProjectId());
       runtimeResult.setFlowInstanceId(runtimeContext.getFlowInstanceId());
       runtimeResult.setStatus(runtimeContext.getFlowInstanceStatus());
       List<RuntimeResult.NodeExecuteResult> nodeExecuteResults = new ArrayList<>();
@@ -616,11 +622,11 @@ public class RuntimeProcessor {
     FlowInstance flowInstancePO = processInstanceRepository.selectByFlowInstanceId(projectId, flowInstanceId);
     if (flowInstancePO == null) {
       LOGGER.warn("checkIsSubFlowInstance failed: cannot find flowInstancePO from db.||flowInstanceId={}", flowInstanceId);
-      throw new RuntimeException(ErrorEnum.GET_FLOW_INSTANCE_FAILED.getErrMsg());
+      throw new NotFoundException(ErrorEnum.GET_FLOW_INSTANCE_FAILED.getErrMsg());
     }
     if (StringUtils.isNotBlank(flowInstancePO.getParentFlowInstanceId())) {
       LOGGER.error("checkIsSubFlowInstance failed: don't receive sub-processes.||flowInstanceId={}", flowInstanceId);
-      throw new RuntimeException(ErrorEnum.NO_RECEIVE_SUB_FLOW_INSTANCE.getErrMsg());
+      throw new ValidationException(ErrorEnum.NO_RECEIVE_SUB_FLOW_INSTANCE.getErrMsg());
     }
   }
 }

@@ -407,7 +407,7 @@ class PermissionFilterTest {
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .header("X-Test-Permissions", "scheduling:execute")
       .contentType(ContentType.JSON)
-      .body("{\"name\":\"TestTrigger\"}")
+      .body("{\"name\":\"TestTrigger\",\"type\":\"SCHEDULED\"}")
       .when()
       .post(Resources.ROOT_PATH + "/projects/dev_test/triggers")
       .then()

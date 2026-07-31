@@ -269,7 +269,7 @@ model f_function {
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
   @system,
-  @comment("云函数(项目级资源)")
+  @comment("边缘函数(项目级资源)")
 }
 
 model f_function_log {
@@ -280,7 +280,7 @@ model f_function_log {
   message : String @comment("日志消息"),
   created_at? : DateTime @default(now()) @comment("记录时间"),
   @system,
-  @comment("云函数执行日志")
+  @comment("边缘函数执行日志")
 }
 
 enum TriggerType {
@@ -307,3 +307,18 @@ enum BucketVisibility {
   PUBLIC,
   @system
 }
+
+model f_page_site {
+  id : String @id @default(uuid()),
+  custom_domains : JSON @comment("自定义域名列表"),
+  production_deployment_id? : String @comment("当前生产部署ID(UI镜像,真相=软链)"),
+  status : PageDeploymentStatus @default("READY") @comment("当前部署状态"),
+  file_count : Int @default(0) @comment("当前部署文件数"),
+  size_bytes : Long @default(0) @comment("当前部署总大小(字节)"),
+  error_message? : String @length("2000") @comment("部署错误信息"),
+  created_by? : String, updated_by? : String,
+  created_at? : DateTime @default(now()), updated_at? : DateTime @default(now()),
+  @system, @comment("Pages 站点(项目级,每项目自动生成,含当前部署状态)")
+}
+
+enum PageDeploymentStatus { READY, FAILED, @system }

@@ -10,30 +10,8 @@
   </parent>
   <artifactId>flexmodel-server</artifactId>
   <properties>
-    <compiler-plugin.version>3.15.0</compiler-plugin.version>
-    <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-    <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-    <quarkus.platform.version>3.33.1</quarkus.platform.version>
     <skipITs>true</skipITs>
   </properties>
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>${quarkus.platform.group-id}</groupId>
-        <artifactId>${quarkus.platform.artifact-id}</artifactId>
-        <version>${quarkus.platform.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>${quarkus.platform.group-id}</groupId>
-        <artifactId>quarkus-amazon-services-bom</artifactId>
-        <version>${quarkus.platform.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>org.quartz-scheduler</groupId>
@@ -42,7 +20,6 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>4.4.0</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -68,7 +45,6 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <version>1.18.44</version>
       <scope>provided</scope>
     </dependency>
     <!-- Quarkus JDBC 扩展 — MySQL 官方扩展内置 native-image 元数据 -->
@@ -80,7 +56,6 @@
     <dependency>
       <groupId>io.quarkiverse.jdbc</groupId>
       <artifactId>quarkus-jdbc-sqlite</artifactId>
-      <version>3.0.11</version>
     </dependency>
     <dependency>
       <groupId>io.agroal</groupId>
@@ -149,18 +124,15 @@
     <dependency>
       <groupId>io.quarkiverse.mcp</groupId>
       <artifactId>quarkus-mcp-server-http</artifactId>
-      <version>1.12.0</version>
     </dependency>
     <!-- quickjs4j JSR-223 ScriptEngine (javax.script integration) -->
     <dependency>
       <groupId>io.roastedroot</groupId>
       <artifactId>quickjs4j</artifactId>
-      <version>0.1.0</version>
     </dependency>
     <dependency>
       <groupId>io.roastedroot</groupId>
       <artifactId>quickjs4j-scripting-experimental</artifactId>
-      <version>0.1.0</version>
     </dependency>
   </dependencies>
   <build>
@@ -203,7 +175,6 @@
       <plugin>
         <groupId>${quarkus.platform.group-id}</groupId>
         <artifactId>quarkus-maven-plugin</artifactId>
-        <version>${quarkus.platform.version}</version>
         <extensions>true</extensions>
         <executions>
           <execution>
@@ -218,21 +189,19 @@
       </plugin>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>${compiler-plugin.version}</version>
         <configuration>
           <parameters>true</parameters>
           <annotationProcessorPaths>
             <path>
               <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-              <version>1.18.44</version>
+               <artifactId>lombok</artifactId>
+               <version>${lombok.version}</version>
             </path>
           </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>${surefire-plugin.version}</version>
         <configuration>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
@@ -243,7 +212,6 @@
       </plugin>
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>${surefire-plugin.version}</version>
         <executions>
           <execution>
             <goals>
@@ -264,7 +232,6 @@
       <plugin>
         <groupId>io.smallrye</groupId>
         <artifactId>jandex-maven-plugin</artifactId>
-        <version>3.2.3</version>
         <executions>
           <execution>
             <id>make-index</id>
@@ -277,7 +244,6 @@
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.8.15</version>
         <executions>
           <!-- 准备代理以收集覆盖率 -->
           <execution>

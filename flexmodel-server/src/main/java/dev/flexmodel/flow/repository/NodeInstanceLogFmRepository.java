@@ -1,22 +1,18 @@
 package dev.flexmodel.flow.repository;
 
+import dev.flexmodel.common.AbstractRepository;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import dev.flexmodel.codegen.entity.NodeInstanceLog;
 import dev.flexmodel.session.Session;
-import dev.flexmodel.session.SessionFactory;
 
 import java.util.List;
 
 @ApplicationScoped
-public class NodeInstanceLogFmRepository implements NodeInstanceLogRepository {
-
-  @Inject
-  SessionFactory sessionFactory;
+public class NodeInstanceLogFmRepository extends AbstractRepository implements NodeInstanceLogRepository {
 
   @Override
-  public boolean insertList(List<NodeInstanceLog> nodeInstanceLogList) {
-    try (Session session = sessionFactory.createSession()) {
+  public boolean insertList(String projectId, List<NodeInstanceLog> nodeInstanceLogList) {
+    try (Session session = getProjectSession(projectId)) {
       boolean ok = true;
       for (NodeInstanceLog log : nodeInstanceLogList) {
         int r = session.dsl().insertInto(NodeInstanceLog.class).values(log).execute();
@@ -26,5 +22,3 @@ public class NodeInstanceLogFmRepository implements NodeInstanceLogRepository {
     }
   }
 }
-
-

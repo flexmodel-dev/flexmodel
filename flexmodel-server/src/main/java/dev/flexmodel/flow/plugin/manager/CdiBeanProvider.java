@@ -13,6 +13,8 @@ import java.util.List;
 @ApplicationScoped
 public class CdiBeanProvider {
 
+  // CDI.current() is required here: this utility performs dynamic type lookups at runtime,
+  // so the bean type cannot be known at compile time for @Inject.
   public <T> List<T> getBeansForType(Class<T> type) {
     Instance<T> instance = CDI.current().select(type);
     List<T> result = new ArrayList<>();
@@ -23,6 +25,7 @@ public class CdiBeanProvider {
   }
 
   @SuppressWarnings("unchecked")
+  // CDI.current() is required here: bean class name is resolved dynamically at runtime.
   public <T> T getBeanByClassName(String className) {
     try {
       Class<?> clazz = Class.forName(className);

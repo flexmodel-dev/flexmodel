@@ -35,9 +35,19 @@ build/
 ### Qoder ###
 .qoder/
 
+### Codebuddy ###
+.codebuddy/
+
+### Claude ###
+.claude/
+
 ### Project ###
 
 *.db
 /logs/
 /storage/
 /database/
+/pages/
+
+### Codex ###
+.codex/

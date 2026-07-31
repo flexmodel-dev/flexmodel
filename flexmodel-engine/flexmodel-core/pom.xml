@@ -10,9 +10,8 @@
   <artifactId>flexmodel-core</artifactId>
   <dependencies>
     <dependency>
-      <groupId>net.bytebuddy</groupId>
-      <artifactId>byte-buddy</artifactId>
-      <version>1.17.1</version>
+       <groupId>net.bytebuddy</groupId>
+       <artifactId>byte-buddy</artifactId>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -51,8 +50,7 @@
     <plugins>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
-        <artifactId>javacc-maven-plugin</artifactId>
-        <version>3.1.1</version>
+         <artifactId>javacc-maven-plugin</artifactId>
         <executions>
           <execution>
             <id>javacc</id>

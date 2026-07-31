@@ -21,6 +21,8 @@ ENV FLEXMODEL_JAVA_HOST=flexmodel
 ENV FLEXMODEL_JAVA_PORT=8080
 ENV FLEXMODEL_PORT=9999
 ENV FLEXMODEL_HOST=0.0.0.0
+# Note: JWT_SECRET is no longer needed here — all auth is delegated to Java.
+# The runtime calls POST /api/edge/validate for token verification.
 
 # --allow-net without restriction; network isolation handled at container level.
 # --allow-env needed for Deno.env access.

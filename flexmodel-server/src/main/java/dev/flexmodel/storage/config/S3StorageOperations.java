@@ -1,5 +1,6 @@
 package dev.flexmodel.storage.config;
 
+import dev.flexmodel.common.InternalServerException;
 import dev.flexmodel.storage.FileItem;
 import dev.flexmodel.storage.StorageOperations;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -88,7 +89,7 @@ public class S3StorageOperations implements StorageOperations {
           .build());
       }
     } catch (S3Exception e) {
-      throw new RuntimeException("Failed to list files in S3: " + path, e);
+      throw new InternalServerException("Failed to list files in S3: " + path, e);
     }
 
     return items;
@@ -110,7 +111,7 @@ public class S3StorageOperations implements StorageOperations {
       // Check if it's a folder
       return tryGetFolder(path, key);
     } catch (S3Exception e) {
-      throw new RuntimeException("Failed to get file info from S3: " + path, e);
+      throw new InternalServerException("Failed to get file info from S3: " + path, e);
     }
   }
 
@@ -147,7 +148,7 @@ public class S3StorageOperations implements StorageOperations {
         RequestBody.fromInputStream(inputStream, size)
       );
     } catch (S3Exception e) {
-      throw new RuntimeException("Failed to upload file to S3: " + path, e);
+      throw new InternalServerException("Failed to upload file to S3: " + path, e);
     }
   }
 
@@ -201,7 +202,7 @@ public class S3StorageOperations implements StorageOperations {
       // Also delete the object itself (in case it's a file, not a folder)
       s3Client.deleteObject(b -> b.bucket(bucket).key(key));
     } catch (S3Exception e) {
-      throw new RuntimeException("Failed to delete file from S3: " + path, e);
+      throw new InternalServerException("Failed to delete file from S3: " + path, e);
     }
   }
 
@@ -211,7 +212,7 @@ public class S3StorageOperations implements StorageOperations {
     try {
       return s3Client.getObject(b -> b.bucket(bucket).key(key));
     } catch (S3Exception e) {
-      throw new RuntimeException("Failed to download file from S3: " + path, e);
+      throw new InternalServerException("Failed to download file from S3: " + path, e);
     }
   }
 

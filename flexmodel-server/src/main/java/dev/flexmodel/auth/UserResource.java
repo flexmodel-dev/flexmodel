@@ -1,6 +1,6 @@
 package dev.flexmodel.auth;
 
-import dev.flexmodel.auth.service.AuthService;
+import dev.flexmodel.auth.service.UserService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -29,7 +29,7 @@ import java.util.List;
 public class UserResource {
 
   @Inject
-  AuthService authService;
+  UserService userService;
 
   @APIResponse(
     name = "200",
@@ -46,7 +46,7 @@ public class UserResource {
   @Operation(summary = "获取用户列表")
   @GET
   public List<UserResponse> findAll() {
-    return authService.findAllUsers();
+    return userService.findAllUsers();
   }
 
   @Parameter(name = "userId", description = "用户ID", in = ParameterIn.PATH)
@@ -54,7 +54,7 @@ public class UserResource {
   @GET
   @Path("/{userId}")
   public UserResponse findById(@PathParam("userId") String userId) {
-    return authService.findUserById(userId);
+    return userService.findUserById(userId);
   }
 
   @RequestBody(
@@ -80,7 +80,7 @@ public class UserResource {
   @Operation(summary = "创建用户")
   @POST
   public UserResponse createUser(UserRequest request) {
-    return authService.createUser(request);
+    return userService.createUser(request);
   }
 
   @RequestBody(
@@ -109,7 +109,7 @@ public class UserResource {
   @Path("/{userId}")
   public UserResponse updateUser(@PathParam("userId") String userId, UserRequest request) {
     request.setId(userId);
-    return authService.updateUser(request);
+    return userService.updateUser(request);
   }
 
   @Parameter(name = "userId", description = "用户ID", in = ParameterIn.PATH)
@@ -117,7 +117,7 @@ public class UserResource {
   @DELETE
   @Path("/{userId}")
   public void deleteUser(@PathParam("userId") String userId) {
-    authService.deleteUser(userId);
+    userService.deleteUser(userId);
   }
 
   @Schema(

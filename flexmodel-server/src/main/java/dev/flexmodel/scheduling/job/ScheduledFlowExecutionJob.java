@@ -26,9 +26,6 @@ public class ScheduledFlowExecutionJob implements Job {
   @Inject
   EventBus eventBus;
 
-  @Inject
-  SessionContext sessionContext;
-
   @Override
   @ActivateRequestContext
   public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -37,6 +34,7 @@ public class ScheduledFlowExecutionJob implements Job {
       String flowModuleId = context.getJobDetail().getJobDataMap().getString("jobId");
       String triggerId = context.getJobDetail().getJobDataMap().getString("triggerId");
       String projectId = context.getJobDetail().getJobDataMap().getString("projectId");
+      String userId = context.getJobDetail().getJobDataMap().getString("userId");
 
       if (flowModuleId == null) {
         log.error("流程执行任务缺少必要参数: flowModuleId=null");
@@ -46,16 +44,12 @@ public class ScheduledFlowExecutionJob implements Job {
       log.info("开始执行定时流程任务: triggerId={}, flowModuleId={}",
         triggerId, flowModuleId);
 
-      // 设置会话上下文（定时任务无用户上下文，使用 system）
-      sessionContext.setProjectId(projectId);
-      sessionContext.setUserId("admin");
-
       // 构建启动流程参数
       StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
       startProcessParam.setFlowModuleId(flowModuleId);
       startProcessParam.setVariables(Map.of());
       startProcessParam.setProjectId(projectId);
-      startProcessParam.setUserId("admin");
+      startProcessParam.setUserId(userId);
 
       // 启动流程实例
       eventBus.send("flow.start", startProcessParam);

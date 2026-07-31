@@ -6,7 +6,7 @@ import dev.flexmodel.modeling.ModelingService;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.inject.Inject;
-import org.jboss.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
@@ -14,9 +14,8 @@ import java.util.List;
  * MCP 工具：数据建模
  * 提供模型列表、详情、创建实体/枚举、删除模型、执行FML
  */
+@Slf4j
 public class ModelingTools {
-
-  private static final Logger log = Logger.getLogger(ModelingTools.class);
 
   @Inject
   ModelingService modelingService;
@@ -31,12 +30,12 @@ public class ModelingTools {
   public String list_models(
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId
   ) {
-    log.infof("list_models called, projectId=%s", projectId);
+    log.info("list_models called, projectId={}", projectId);
     try {
       List<SchemaObject> models = modelingService.findModels(projectId);
       return JsonUtils.toJsonString(models);
     } catch (Exception e) {
-      log.errorf(e, "list_models failed, projectId=%s", projectId);
+      log.error("list_models failed, projectId={}", projectId, e);
       return "Error: list_models failed - " + e.getMessage();
     }
   }
@@ -50,12 +49,12 @@ public class ModelingTools {
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
     @ToolArg(description = "The model name to retrieve, e.g. 'Student', 'UserGender'") String modelName
   ) {
-    log.infof("get_model called, projectId=%s, modelName=%s", projectId, modelName);
+    log.info("get_model called, projectId={}, modelName={}", projectId, modelName);
     try {
       SchemaObject model = modelingService.findModel(projectId, modelName);
       return JsonUtils.toJsonString(model);
     } catch (Exception e) {
-      log.errorf(e, "get_model failed, projectId=%s, modelName=%s", projectId, modelName);
+      log.error("get_model failed, projectId={}, modelName={}", projectId, modelName, e);
       return "Error: get_model failed - " + e.getMessage();
     }
   }
@@ -85,13 +84,13 @@ public class ModelingTools {
       Each field must have name, type, and modelName. See tool description for supported types and properties.\
       """) String entityJson
   ) {
-    log.infof("create_entity_model called, projectId=%s, entityJson=%s", projectId, entityJson);
+    log.info("create_entity_model called, projectId={}, entityJson={}", projectId, entityJson);
     try {
       SchemaObject model = JsonUtils.parseToObject(entityJson, SchemaObject.class);
       SchemaObject created = modelingService.createModel(projectId, model);
       return "Entity model created: " + JsonUtils.toJsonString(created);
     } catch (Exception e) {
-      log.errorf(e, "create_entity_model failed, projectId=%s, entityJson=%s", projectId, entityJson);
+      log.error("create_entity_model failed, projectId={}, entityJson={}", projectId, entityJson, e);
       return "Error: create_entity_model failed - " + e.getMessage();
     }
   }
@@ -108,13 +107,13 @@ public class ModelingTools {
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
     @ToolArg(description = "Enum definition as JSON string: must contain name, type='enum', and elements (string array)") String enumJson
   ) {
-    log.infof("create_enum_model called, projectId=%s, enumJson=%s", projectId, enumJson);
+    log.info("create_enum_model called, projectId={}, enumJson={}", projectId, enumJson);
     try {
       SchemaObject model = JsonUtils.parseToObject(enumJson, SchemaObject.class);
       SchemaObject created = modelingService.createModel(projectId, model);
       return "Enum model created: " + JsonUtils.toJsonString(created);
     } catch (Exception e) {
-      log.errorf(e, "create_enum_model failed, projectId=%s, enumJson=%s", projectId, enumJson);
+      log.error("create_enum_model failed, projectId={}, enumJson={}", projectId, enumJson, e);
       return "Error: create_enum_model failed - " + e.getMessage();
     }
   }
@@ -128,12 +127,12 @@ public class ModelingTools {
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
     @ToolArg(description = "The model name to delete, e.g. 'Student', 'UserGender'") String modelName
   ) {
-    log.infof("delete_model called, projectId=%s, modelName=%s", projectId, modelName);
+    log.info("delete_model called, projectId={}, modelName={}", projectId, modelName);
     try {
       modelingService.dropModel(projectId, modelName);
       return "Model deleted: " + modelName;
     } catch (Exception e) {
-      log.errorf(e, "delete_model failed, projectId=%s, modelName=%s", projectId, modelName);
+      log.error("delete_model failed, projectId={}, modelName={}", projectId, modelName, e);
       return "Error: delete_model failed - " + e.getMessage();
     }
   }
@@ -202,12 +201,12 @@ public class ModelingTools {
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
     @ToolArg(description = "The FML string to execute. Can define multiple models, enums, and relations in one call.") String fml
   ) {
-    log.infof("execute_fml called, projectId=%s, fml=%s", projectId, fml);
+    log.info("execute_fml called, projectId={}, fml={}", projectId, fml);
     try {
       modelingService.executeFml(projectId, fml);
       return "FML executed successfully.";
     } catch (Exception e) {
-      log.errorf(e, "execute_fml failed, projectId=%s", projectId);
+      log.error("execute_fml failed, projectId={}", projectId, e);
       return "Error: execute_fml failed - " + e.getMessage();
     }
   }

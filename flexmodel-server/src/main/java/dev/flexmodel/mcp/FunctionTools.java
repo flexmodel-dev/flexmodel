@@ -11,18 +11,17 @@ import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
-import org.jboss.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * MCP 工具：云函数
+ * MCP 工具：边缘函数
  * 提供函数模板列表、函数 CRUD、部署和调用能力
  */
+@Slf4j
 public class FunctionTools {
-
-  private static final Logger log = Logger.getLogger(FunctionTools.class);
 
   @Inject
   FunctionService functionService;
@@ -47,7 +46,7 @@ public class FunctionTools {
   }
 
   @Tool(description = """
-    List cloud functions in a project with pagination. \
+    List Edge Functions in a project with pagination. \
     Returns a paginated result with total count and function list. \
     Each function includes: id, name, sourceFiles, timeout, createdAt, updatedAt.\
     """)
@@ -57,7 +56,7 @@ public class FunctionTools {
     @ToolArg(description = "Page number, starting from 1") int page,
     @ToolArg(description = "Number of functions per page, e.g. 10, 20") int size
   ) {
-    log.infof("list_functions called, projectId=%s, name=%s, page=%d, size=%d", projectId, name, page, size);
+    log.info("list_functions called, projectId={}, name={}, page={}, size={}", projectId, name, page, size);
     try {
       FunctionPageRequest request = new FunctionPageRequest();
       request.setName((name == null || name.isBlank()) ? null : name);
@@ -66,13 +65,13 @@ public class FunctionTools {
       PageDTO<FunctionResponse> result = functionService.findPage(projectId, request);
       return JsonUtils.toJsonString(result);
     } catch (Exception e) {
-      log.errorf(e, "list_functions failed, projectId=%s", projectId);
+      log.error("list_functions failed, projectId={}", projectId, e);
       return "Error: list_functions failed - " + e.getMessage();
     }
   }
 
   @Tool(description = """
-    Get detailed information of a specific cloud function, \
+    Get detailed information of a specific Edge Function, \
     including its source code files (sourceFiles: filename→content map), timeout, and metadata. \
     Use this to inspect a function's code before modifying or invoking it.\
     """)
@@ -80,18 +79,18 @@ public class FunctionTools {
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
     @ToolArg(description = "The function name, e.g. 'hello-world', 'my-query-fn'") String name
   ) {
-    log.infof("get_function called, projectId=%s, name=%s", projectId, name);
+    log.info("get_function called, projectId={}, name={}", projectId, name);
     try {
       FunctionResponse fn = functionService.findByName(projectId, name);
       return JsonUtils.toJsonString(fn);
     } catch (Exception e) {
-      log.errorf(e, "get_function failed, projectId=%s, name=%s", projectId, name);
+      log.error("get_function failed, projectId={}, name={}", projectId, name, e);
       return "Error: get_function failed - " + e.getMessage();
     }
   }
 
   @Tool(description = """
-    Deploy (create or update) a cloud function to a project and deploy it to the Deno Functions Runtime. \
+    Deploy (create or update) a Edge Function to a project and deploy it to the Deno Functions Runtime. \
     If a function with the given name already exists, it will be updated (upsert behavior). \
     \
     The sourceFiles parameter must be a JSON object mapping filenames to their TypeScript source code content. \
@@ -117,7 +116,7 @@ public class FunctionTools {
       """) String sourceFilesJson,
     @ToolArg(description = "Function timeout in seconds (default 30). Max recommended: 300.") int timeout
   ) {
-    log.infof("deploy_function called, projectId=%s, name=%s, timeout=%d", projectId, name, timeout);
+    log.info("deploy_function called, projectId={}, name={}, timeout={}", projectId, name, timeout);
     try {
       Map<String, String> sourceFiles = JsonUtils.parseToObject(sourceFilesJson, Map.class);
       FunctionDeployRequest request = new FunctionDeployRequest();
@@ -127,13 +126,13 @@ public class FunctionTools {
       FunctionResponse result = functionService.deploy(projectId, name, request);
       return "Function deployed: " + JsonUtils.toJsonString(result);
     } catch (Exception e) {
-      log.errorf(e, "deploy_function failed, projectId=%s, name=%s", projectId, name);
+      log.error("deploy_function failed, projectId={}, name={}", projectId, name, e);
       return "Error: deploy_function failed - " + e.getMessage();
     }
   }
 
   @Tool(description = """
-    Invoke (execute) a deployed cloud function and return its output. \
+    Invoke (execute) a deployed Edge Function and return its output. \
     The function receives the input data as a standard Request object, \
     processes it in an isolated Deno Worker, and returns the result. \
     \
@@ -157,7 +156,7 @@ public class FunctionTools {
       Pass empty string or null for no input.\
       """) String inputJson
   ) {
-    log.infof("invoke_function called, projectId=%s, name=%s", projectId, name);
+    log.info("invoke_function called, projectId={}, name={}", projectId, name);
     try {
       Object input = null;
       if (inputJson != null && !inputJson.isBlank()) {
@@ -175,13 +174,13 @@ public class FunctionTools {
       }
       return sb.toString();
     } catch (Exception e) {
-      log.errorf(e, "invoke_function failed, projectId=%s, name=%s", projectId, name);
+      log.error("invoke_function failed, projectId={}, name={}", projectId, name, e);
       return "Error: invoke_function failed - " + e.getMessage();
     }
   }
 
   @Tool(description = """
-    Delete a cloud function from a project. \
+    Delete a Edge Function from a project. \
     This removes the function definition from the database AND deletes it from the Deno Functions Runtime. \
     Use with caution as this operation is irreversible.\
     """)
@@ -189,12 +188,12 @@ public class FunctionTools {
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
     @ToolArg(description = "The function name to delete, e.g. 'hello-world', 'my-query-fn'") String name
   ) {
-    log.infof("delete_function called, projectId=%s, name=%s", projectId, name);
+    log.info("delete_function called, projectId={}, name={}", projectId, name);
     try {
       functionService.delete(projectId, name);
       return "Function deleted: " + name;
     } catch (Exception e) {
-      log.errorf(e, "delete_function failed, projectId=%s, name=%s", projectId, name);
+      log.error("delete_function failed, projectId={}, name={}", projectId, name, e);
       return "Error: delete_function failed - " + e.getMessage();
     }
   }

@@ -3,8 +3,9 @@ package dev.flexmodel.scheduling.config;
 import dev.flexmodel.codegen.entity.*;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
+import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.spi.CDI;
+import jakarta.inject.Inject;
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;
 import org.quartz.Trigger;
@@ -15,13 +16,14 @@ import java.util.List;
 import static dev.flexmodel.codegen.System.*;
 import static dev.flexmodel.common.FlexmodelConfig.DEFAULT_SCHEMA_NAME;
 
+@Unremovable
 @ApplicationScoped
 public class FmJobRepository {
 
+  @Inject
   SessionFactory sessionFactory;
 
   public FmJobRepository() {
-    this.sessionFactory = CDI.current().select(SessionFactory.class).get();
   }
 
   public QrtzJobDetail findJobDetail(String schedName, String jobName, String jobGroup) {

@@ -63,7 +63,8 @@ public class SqlSession extends AbstractSession {
   public void close() {
     try {
       if (!connection.getAutoCommit()) {
-        connection.commit();
+        connection.rollback();
+        log.warn("Session {} closed with uncommitted transaction, rolled back", sessionId);
       }
       connection.close();
     } catch (SQLException e) {
@@ -71,7 +72,6 @@ public class SqlSession extends AbstractSession {
     } finally {
       LazyLoadInterceptor.clear();
       log.debug("Closed Session {}", sessionId);
-      // 必须在 connection.close() 之后：监听器取连接时原连接已归还连接池
       flushEvents();
     }
   }

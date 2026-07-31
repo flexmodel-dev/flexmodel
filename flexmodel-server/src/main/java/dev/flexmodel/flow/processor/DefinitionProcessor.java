@@ -101,7 +101,7 @@ public class DefinitionProcessor {
       }
       fillCommonResult(updateFlowResult, ErrorEnum.SUCCESS);
     } catch (TurboException te) {
-      te.printStackTrace();
+      LOGGER.error("Flow definition update failed: {}", te.getErrMsg(), te);
       fillCommonResult(updateFlowResult, te);
     }
     return updateFlowResult;

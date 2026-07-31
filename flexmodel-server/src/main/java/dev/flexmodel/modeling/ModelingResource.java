@@ -3,6 +3,7 @@ package dev.flexmodel.modeling;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.authz.PermissionHelper;
 import dev.flexmodel.common.authz.RequiresPermissions;
+import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.model.*;
 import dev.flexmodel.model.field.TypedField;
 import jakarta.inject.Inject;
@@ -221,7 +222,7 @@ public class ModelingResource {
     try {
       return modelingService.executeFml(projectId, request.fml());
     } catch (Exception e) {
-      throw new RuntimeException("FML格式有误: " + e.getMessage());
+      throw new ValidationException("FML格式有误: " + e.getMessage());
     }
   }
 

@@ -18,15 +18,14 @@ public class ConcurrentHashMapCache implements Cache {
 
   @Override
   public Object retrieve(String key, Supplier<Object> supplier) {
-    Object value = get(key);
-    if (value == null) {
-      value = supplier.get();
-      if (value != null) {
-        put(key, value);
-      }
-    }
-    return value;
+    Object result = store.computeIfAbsent(key, k -> {
+      Object value = supplier.get();
+      return value != null ? value : NULL_SENTINEL;
+    });
+    return result == NULL_SENTINEL ? null : result;
   }
+
+  private static final Object NULL_SENTINEL = new Object();
 
   @Override
   public void put(String key, Object value) {

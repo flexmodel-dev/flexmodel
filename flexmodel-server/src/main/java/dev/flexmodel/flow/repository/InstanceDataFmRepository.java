@@ -31,8 +31,8 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
   }
 
   @Override
-  public int insert(InstanceData instanceData) {
-    try (Session session = sessionFactory.createSession()) {
+  public int insert(String projectId, InstanceData instanceData) {
+    try (Session session = getProjectSession(projectId)) {
       return session.dsl().insertInto(InstanceData.class).values(instanceData).execute();
     }
   }
@@ -52,6 +52,6 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
     if (mergeEntity.getId() != null) {
       return updateData(projectId, mergeEntity);
     }
-    return insert(mergeEntity);
+    return insert(projectId, mergeEntity);
   }
 }

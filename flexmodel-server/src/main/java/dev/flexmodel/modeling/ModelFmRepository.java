@@ -1,5 +1,6 @@
 package dev.flexmodel.modeling;
 
+import dev.flexmodel.common.ValidationException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.model.*;
@@ -52,7 +53,7 @@ public class ModelFmRepository implements ModelRepository {
         return session.schema().createEnum(anEnumDefinition);
       }
     }
-    throw new RuntimeException("Unsupported model type");
+    throw new ValidationException("Unsupported model type");
   }
 
   @Override

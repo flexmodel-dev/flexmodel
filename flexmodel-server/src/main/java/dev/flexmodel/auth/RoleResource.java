@@ -1,6 +1,6 @@
 package dev.flexmodel.auth;
 
-import dev.flexmodel.auth.service.AuthService;
+import dev.flexmodel.auth.service.RoleService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -26,7 +26,7 @@ import java.util.List;
 public class RoleResource {
 
   @Inject
-  AuthService authService;
+  RoleService roleService;
 
   @APIResponse(
     name = "200",
@@ -43,7 +43,7 @@ public class RoleResource {
   @Operation(summary = "获取角色列表")
   @GET
   public List<RoleResponse> findAll() {
-    return authService.findAllRoles();
+    return roleService.findAllRoles();
   }
 
   @Parameter(name = "roleId", description = "角色ID", in = ParameterIn.PATH)
@@ -51,7 +51,7 @@ public class RoleResource {
   @GET
   @Path("/{roleId}")
   public RoleResponse findById(@PathParam("roleId") String roleId) {
-    return authService.findRoleById(roleId);
+    return roleService.findRoleById(roleId);
   }
 
   @RequestBody(
@@ -77,7 +77,7 @@ public class RoleResource {
   @Operation(summary = "创建角色")
   @POST
   public RoleResponse createRole(RoleRequest request) {
-    return authService.createRole(request);
+    return roleService.createRole(request);
   }
 
   @RequestBody(
@@ -106,7 +106,7 @@ public class RoleResource {
   @Path("/{roleId}")
   public RoleResponse updateRole(@PathParam("roleId") String roleId, RoleRequest request) {
     request.setId(roleId);
-    return authService.updateRole(request);
+    return roleService.updateRole(request);
   }
 
   @Parameter(name = "roleId", description = "角色ID", in = ParameterIn.PATH)
@@ -114,7 +114,7 @@ public class RoleResource {
   @DELETE
   @Path("/{roleId}")
   public void deleteRole(@PathParam("roleId") String roleId) {
-    authService.deleteRole(roleId);
+    roleService.deleteRole(roleId);
   }
 
   @Schema(

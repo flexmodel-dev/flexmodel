@@ -1,5 +1,6 @@
 package dev.flexmodel.storage.config;
 
+import dev.flexmodel.common.InternalServerException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -76,7 +77,7 @@ public class StorageProvider {
 
   private S3Backend createS3Backend(StorageProviderConfig config) {
     String bucket = config.s3Bucket()
-      .orElseThrow(() -> new RuntimeException("S3 storage requires 'flexmodel.storage.s3-bucket'"));
+      .orElseThrow(() -> new InternalServerException("S3 storage requires 'flexmodel.storage.s3-bucket'"));
     String endpoint = config.s3Endpoint().orElse(null);
 
     return new S3Backend(s3Client, bucket, endpoint, config.readOnly());

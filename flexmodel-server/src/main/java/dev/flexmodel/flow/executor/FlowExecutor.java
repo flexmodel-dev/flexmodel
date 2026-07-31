@@ -70,7 +70,7 @@ public class FlowExecutor extends RuntimeExecutor {
     FlowInstance flowInstancePO = saveFlowInstance(runtimeContext);
 
     //2.save InstanceDataPO into db
-    String instanceDataId = saveInstanceData(flowInstancePO, runtimeContext.getInstanceDataMap());
+    String instanceDataId = saveInstanceData(runtimeContext.getProjectId(), flowInstancePO, runtimeContext.getInstanceDataMap());
 
     //3.update runtimeContext
     fillExecuteContext(runtimeContext, flowInstancePO.getFlowInstanceId(), instanceDataId);
@@ -101,13 +101,13 @@ public class FlowExecutor extends RuntimeExecutor {
     return flowInstance;
   }
 
-  private String saveInstanceData(FlowInstance flowInstancePO, Map<String, Object> instanceDataMap) throws ProcessException {
+  private String saveInstanceData(String projectId, FlowInstance flowInstancePO, Map<String, Object> instanceDataMap) throws ProcessException {
     if (instanceDataMap == null || instanceDataMap.isEmpty()) {
       return "";
     }
 
     InstanceData instanceDataPO = buildInstanceDataPO(flowInstancePO, instanceDataMap);
-    int result = instanceDataRepository.insert(instanceDataPO);
+    int result = instanceDataRepository.insert(projectId, instanceDataPO);
     if (result == 1) {
       return instanceDataPO.getInstanceDataId();
     }
@@ -275,7 +275,7 @@ public class FlowExecutor extends RuntimeExecutor {
 
       InstanceData commitInstanceDataPO = buildCommitInstanceData(runtimeContext, nodeInstanceId,
         nodeInstancePO.getNodeKey(), instanceDataId, instanceDataMap);
-      instanceDataRepository.insert(commitInstanceDataPO);
+      instanceDataRepository.insert(runtimeContext.getProjectId(), commitInstanceDataPO);
     }
 
     //3.update runtimeContext
@@ -585,8 +585,8 @@ public class FlowExecutor extends RuntimeExecutor {
         nodeInstanceLogList.add(nodeInstanceLogPO);
       }
     });
-    nodeInstanceRepository.insertOrUpdateList(nodeInstanceList);
-    nodeInstanceLogRepository.insertList(nodeInstanceLogList);
+    nodeInstanceRepository.insertOrUpdateList(runtimeContext.getProjectId(), nodeInstanceList);
+    nodeInstanceLogRepository.insertList(runtimeContext.getProjectId(), nodeInstanceLogList);
   }
 
   private NodeInstance buildNodeInstance(RuntimeContext runtimeContext, NodeInstanceBO nodeInstanceBO) {

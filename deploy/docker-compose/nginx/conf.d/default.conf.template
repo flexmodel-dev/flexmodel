@@ -1,0 +1,144 @@
+# ============================================================
+# Main domain → Java API + UI
+# ============================================================
+server {
+    listen       80;
+    server_name  localhost ${FLEXMODEL_PROJECT_BASE_DOMAIN};
+
+    client_max_body_size 1024m;
+
+    # API reverse proxy
+    location /api/ {
+        proxy_pass http://flexmodel-server:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header REMOTE-HOST $remote_addr;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_http_version 1.1;
+        add_header Cache-Control no-cache;
+    }
+
+    # Pages path-based routing (dev / path mode)
+    # /pages/{projectId}/         → production alias
+    # /pages/{projectId}/{alias}/ → preview / short alias
+    location ~ ^/pages/(?<projectId>[^/]+)(/(?<alias>[^/]+))?/(?<subpath>.*)$ {
+        root /data/pages;
+
+        set $pages_path $projectId/production/$subpath;
+        if ($alias) {
+            set $pages_path $projectId/$alias/$subpath;
+        }
+
+        try_files /$pages_path /$projectId/production/$subpath /$pages_path/index.html /$projectId/production/index.html =404;
+
+        types {
+            application/javascript js mjs;
+            text/css css;
+            text/html html;
+            application/json json;
+            image/svg+xml svg;
+            image/png png;
+            image/jpeg jpg jpeg;
+            image/gif gif;
+            image/x-icon ico;
+            font/woff woff;
+            font/woff2 woff2;
+            font/ttf ttf;
+            application/manifest+json webmanifest;
+        }
+    }
+
+    location ~ ^/pages/(?<projectId>[^/]+)/?$ {
+        root /data/pages;
+        try_files /$projectId/production/index.html =404;
+    }
+
+    # UI reverse proxy
+    location / {
+        proxy_pass http://flexmodel-ui:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_http_version 1.1;
+    }
+
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
+
+# Build subpath segment for pages — avoids "//" when alias is empty
+map $alias $alias_path {
+    ""      "";
+    default "/$alias";
+}
+
+# ============================================================
+# Wildcard subdomain → Pages + Edge Functions
+# {projectId}.{domain}                     → pages (production)
+# {alias}.{projectId}.{domain}             → pages (alias)
+# /functions/                              → Deno Runtime
+# ============================================================
+server {
+    listen       80;
+    server_name  *.localhost
+                 ~^(?<alias>[^.]+)\.(?<projectId>[^.]+)\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$
+                 ~^(?<projectId>[^.]+)\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$;
+
+    root /data/pages;
+    index index.html;
+    client_max_body_size 1024m;
+
+    # Edge function invocation → Deno Runtime
+    location /functions/ {
+        proxy_pass http://flexmodel-functions-runtime:9999;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+    }
+
+    # Set pages_base at server level so all locations can use it
+    set $pages_base $projectId$alias_path;
+
+    # Static assets — long cache (hash filenames)
+    location ~* \.(js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|ico|mjs)$ {
+        set $file_base $projectId$alias_path;
+        try_files /$file_base$uri /$projectId/production$uri =404;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Root → serve index.html directly (avoids directory match → 403)
+    location = / {
+        try_files /$pages_base/index.html /$projectId/production/index.html =404;
+    }
+
+    # Pages — SPA fallback (for non-root paths)
+    location / {
+        try_files /$pages_base$uri /$pages_base/index.html /$projectId/production$uri /$projectId/production/index.html =404;
+        types {
+            application/javascript js mjs;
+            text/css css;
+            text/html html;
+            application/json json;
+            image/svg+xml svg;
+            image/png png;
+            image/jpeg jpg jpeg;
+            image/gif gif;
+            image/x-icon ico;
+            font/woff woff;
+            font/woff2 woff2;
+            font/ttf ttf;
+            application/manifest+json webmanifest;
+        }
+    }
+
+    error_page 404 /404.html;
+}

@@ -1,5 +1,7 @@
 package dev.flexmodel.flow.plugin.manager;
 
+import dev.flexmodel.common.InternalServerException;
+import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.flow.plugin.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;
@@ -51,7 +53,7 @@ public class DefaultPluginManager extends AbstractPluginManager {
         }
       } catch (Exception e) {
         LOGGER.warn("An error occurred while initializing plugin: {}. Error: {}", plugin.getClass().getName(), e.getMessage());
-        throw new RuntimeException(e);
+        throw new InternalServerException("Failed to initialize plugin", e);
       }
     });
     LOGGER.info("load {} plugin end. count:{}", pluginInterface.getSimpleName(), pluginList.size());
@@ -71,7 +73,7 @@ public class DefaultPluginManager extends AbstractPluginManager {
     plugins.removeIf(plugin -> {
       // 检查插件名称是否重复
       if (!pluginNames.add(plugin.getName())) {
-        throw new RuntimeException("plugin name duplicate: " + plugin.getName());
+        throw new ValidationException("plugin name duplicate: " + plugin.getName());
       }
 
       // 检查插件是否开启
@@ -84,7 +86,7 @@ public class DefaultPluginManager extends AbstractPluginManager {
       if (plugin instanceof ElementPlugin) {
         int flowElementType = ((ElementPlugin) plugin).getFlowElementType();
         if (pluginTypeMap.containsKey(flowElementType)) {
-          throw new RuntimeException("plugin type duplicate: " + plugin.getName());
+          throw new ValidationException("plugin type duplicate: " + plugin.getName());
         }
         pluginTypeMap.put(flowElementType, plugin);
       }

@@ -1,5 +1,6 @@
 package dev.flexmodel.storage.config;
 
+import dev.flexmodel.common.InternalServerException;
 import dev.flexmodel.storage.StorageOperations;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -56,7 +57,7 @@ public class S3Backend implements StorageBackend {
         RequestBody.empty()
       );
     } catch (S3Exception e) {
-      throw new RuntimeException("Failed to create S3 container prefix: " + prefix, e);
+      throw new InternalServerException("Failed to create S3 container prefix: " + prefix, e);
     }
   }
 
@@ -69,7 +70,7 @@ public class S3Backend implements StorageBackend {
     try {
       deleteAllWithPrefix(s3Prefix);
     } catch (S3Exception e) {
-      throw new RuntimeException("Failed to delete S3 container: " + prefix, e);
+      throw new InternalServerException("Failed to delete S3 container: " + prefix, e);
     }
   }
 
@@ -94,7 +95,7 @@ public class S3Backend implements StorageBackend {
     try {
       s3Client.headBucket(b -> b.bucket(bucket));
     } catch (S3Exception e) {
-      throw new RuntimeException("Failed to validate S3 bucket '" + bucket + "': " + e.getMessage(), e);
+      throw new InternalServerException("Failed to validate S3 bucket '" + bucket + "': " + e.getMessage(), e);
     }
   }
 

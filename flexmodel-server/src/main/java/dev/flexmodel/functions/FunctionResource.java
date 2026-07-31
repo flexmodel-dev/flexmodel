@@ -1,9 +1,7 @@
 package dev.flexmodel.functions;
 
 import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.functions.dto.FunctionDeployRequest;
-import dev.flexmodel.functions.dto.FunctionPageRequest;
-import dev.flexmodel.functions.dto.FunctionResponse;
+import dev.flexmodel.functions.dto.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -12,7 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 /**
- * REST API for Cloud Function management.
+ * REST API for Edge Function management.
  *
  * @author cjbi
  */
@@ -78,5 +76,23 @@ public class FunctionResource {
     }
 
     return builder.build();
+  }
+
+  /**
+   * Sign an invoke-token for edge function direct invocation.
+   *
+   * <p>The frontend uses this token to directly call the Deno Runtime at the URL
+   * defined by {@code flexmodel.edge-url-template}, bypassing the Java server.
+   *
+   * @param projectId project ID
+   * @param name      function name
+   * @return InvokeTokenResponse containing invoke-token and runtime URL
+   */
+  @POST
+  @Path("/{name}/invoke-token")
+  @RequiresPermissions("function:execute")
+  public InvokeTokenResponse invokeToken(@PathParam("projectId") String projectId,
+                                         @PathParam("name") String name) {
+    return functionService.signInvokeToken(projectId, name);
   }
 }

@@ -90,7 +90,6 @@ public class FunctionResource {
    */
   @POST
   @Path("/{name}/invoke-token")
-  @RequiresPermissions("function:execute")
   public InvokeTokenResponse invokeToken(@PathParam("projectId") String projectId,
                                          @PathParam("name") String name) {
     return functionService.signInvokeToken(projectId, name);

@@ -11,8 +11,6 @@ import type {Context} from "hono";
 import {cors} from "hono/cors";
 
 const PROJECT_BASE_DOMAIN = Deno.env.get("PROJECT_BASE_DOMAIN") ?? Deno.env.get("EDGE_DOMAIN") ?? "localhost";
-const EXTRA_ALLOWED_ORIGINS = (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "")
-    .split(",").map((s) => s.trim()).filter(Boolean);
 
 /**
  * CORS middleware for edge routes.
@@ -32,10 +30,6 @@ export const edgeCorsMiddleware = cors({
         // Allow all subdomains of the project base domain
         if (origin.endsWith(`.${PROJECT_BASE_DOMAIN}`) || origin === `https://${PROJECT_BASE_DOMAIN}` ||
             origin === `http://${PROJECT_BASE_DOMAIN}`) {
-            return origin;
-        }
-        // Allow extra origins configured via CORS_ALLOWED_ORIGINS (comma-separated)
-        if (EXTRA_ALLOWED_ORIGINS.includes(origin)) {
             return origin;
         }
         // Deny other origins

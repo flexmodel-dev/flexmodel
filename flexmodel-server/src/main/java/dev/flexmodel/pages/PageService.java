@@ -66,10 +66,6 @@ public class PageService {
       site.setSizeBytes(0L);
     }
 
-    if (request.getCustomDomains() != null) {
-      site.setCustomDomains(request.getCustomDomains());
-    }
-
     site.setUpdatedBy(sessionContext.getUserId());
     site.setUpdatedAt(LocalDateTime.now());
 

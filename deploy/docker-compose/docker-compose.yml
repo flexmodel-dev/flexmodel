@@ -51,9 +51,9 @@ services:
       - FLEXMODEL_PROJECT_BASE_DOMAIN=${FLEXMODEL_PROJECT_BASE_DOMAIN:-localhost}
     command: >
       /bin/sh -c "export FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED=$$(echo $$FLEXMODEL_PROJECT_BASE_DOMAIN | sed 's/\\./\\\\./g') && envsubst '$$FLEXMODEL_PROJECT_BASE_DOMAIN $$FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
-        depends_on:
-          flexmodel-server:
-            condition: service_started
+    depends_on:
+      flexmodel-server:
+        condition: service_started
     networks:
       - flexmodel
   flexmodel-server:

@@ -1,14 +1,28 @@
 package dev.flexmodel.common.config.nativeimage;
 
 import io.quarkus.deployment.annotations.BuildStep;
+import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
+import io.quarkus.deployment.builditem.IndexDependencyBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ServiceProviderBuildItem;
+import org.jboss.jandex.ClassInfo;
+import org.jboss.jandex.IndexView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Flexmodel 原生镜像反射配置处理器。
  * <p>
- * 替代传统的 reachability-metadata.json，通过 Quarkus BuildStep
- * 在构建时自动注册所需类的反射信息，无需维护庞大的 JSON 文件。
+ * 通过 Quarkus BuildStep 在构建时自动注册所需类的反射信息，无需维护庞大的 JSON 文件。
+ * <p>
+ * <b>重要</b>：{@link ReflectiveClassBuildItem#builder(String...)} 与 GraalVM 的 reflect-config.json
+ * 均只接受精确全限定类名，不支持 {@code **} 通配符。本处理器借助构建期 Jandex 索引
+ * （{@link CombinedIndexBuildItem}）将 {@code pkg.**} 模式展开为该包及其所有子包下的具体类名，
+ * 从而实现 codegen 动态生成类的自动注册。
  * <p>
  * 分类策略：
  * <ul>
@@ -22,18 +36,69 @@ import io.quarkus.deployment.builditem.nativeimage.ServiceProviderBuildItem;
  */
 public class FlexmodelNativeProcessor {
 
+  private static final Logger log = LoggerFactory.getLogger(FlexmodelNativeProcessor.class);
+
+  /**
+   * 将反射注册模式展开为具体类名。
+   * <p>
+   * 以 {@code .**} 结尾的模式视为包通配符，通过 Jandex 索引匹配该包及其所有子包下的类；
+   * 其余模式按精确类名原样保留（含内部类 {@code Outer$Inner} 形式）。
+   *
+   * @param index    构建期 Jandex 索引
+   * @param patterns 反射注册模式（精确类名或 {@code pkg.**}）
+   * @return 展开去重后的具体类名数组
+   */
+  private static String[] expandGlob(IndexView index, String... patterns) {
+    Set<String> result = new LinkedHashSet<>();
+    for (String pattern : patterns) {
+      if (pattern.endsWith(".**")) {
+        String pkgPrefix = pattern.substring(0, pattern.length() - 3);
+        boolean found = false;
+        for (ClassInfo ci : index.getKnownClasses()) {
+          String pkg = ci.name().packagePrefix();
+          if (pkg != null && (pkg.equals(pkgPrefix) || pkg.startsWith(pkgPrefix + "."))) {
+            result.add(ci.name().toString());
+            found = true;
+          }
+        }
+        if (!found) {
+          log.warn("No classes found for reflective glob pattern '{}'; the package may not be indexed", pattern);
+        }
+      } else {
+        result.add(pattern);
+      }
+    }
+    return result.toArray(new String[0]);
+  }
+
+  /**
+   * 声明需要纳入 Jandex 组合索引的引擎依赖。
+   * <p>
+   * {@code flexmodel-core} 不含 beans.xml / jandex.idx 等标记文件，默认不会被 Quarkus
+   * 索引，导致其下的 {@code dev.flexmodel.model.**}、{@code dev.flexmodel.event.**}、
+   * {@code dev.flexmodel.query.**}、{@code dev.flexmodel.sql.**} 等包无法被
+   * {@link #expandGlob} 展开。通过 {@link IndexDependencyBuildItem} 显式声明后，
+   * 这些包的类会出现在组合索引中，反射 glob 才能正确展开。
+   */
+  @BuildStep
+  List<IndexDependencyBuildItem> indexEngineDependencies() {
+    return List.of(
+      new IndexDependencyBuildItem("dev.flexmodel", "flexmodel-core")
+    );
+  }
+
   /**
    * 注册 Codegen 生成的实体和枚举。
    * 这些类在运行时被 Flexmodel 数据引擎通过反射进行属性映射。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerCodegenEntities() {
+  ReflectiveClassBuildItem registerCodegenEntities(CombinedIndexBuildItem combinedIndex) {
     return ReflectiveClassBuildItem.builder(
-        "dev.flexmodel.codegen.entity.**",
-        "dev.flexmodel.codegen.enumeration.**",
-        "dev.flexmodel.test.codegen.entity.**",
-        "dev.flexmodel.test.codegen.enumeration.**"
-      )
+        expandGlob(combinedIndex.getIndex(),
+          "dev.flexmodel.codegen.entity.**",
+          "dev.flexmodel.codegen.enumeration.**",
+          "dev.flexmodel.test.codegen.entity.**",
+          "dev.flexmodel.test.codegen.enumeration.**"))
       .constructors()
       .methods()
       .fields()
@@ -89,19 +154,19 @@ public class FlexmodelNativeProcessor {
    * DTO 用于 REST 端点，Jackson 序列化/反序列化需要反射访问。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerDtos() {
+  ReflectiveClassBuildItem registerDtos(CombinedIndexBuildItem combinedIndex) {
     return ReflectiveClassBuildItem.builder(
-        "dev.flexmodel.auth.dto.**",
-        "dev.flexmodel.project.dto.**",
-        "dev.flexmodel.scheduling.dto.**",
-        "dev.flexmodel.functions.dto.**",
-        "dev.flexmodel.api.dto.**",
-        "dev.flexmodel.flow.dto.**",
-        "dev.flexmodel.common.dto.**",
-        "dev.flexmodel.metrics.dto.**",
-        "dev.flexmodel.storage.dto.**",
-        "dev.flexmodel.pages.dto.**"
-      )
+        expandGlob(combinedIndex.getIndex(),
+          "dev.flexmodel.auth.dto.**",
+          "dev.flexmodel.project.dto.**",
+          "dev.flexmodel.scheduling.dto.**",
+          "dev.flexmodel.functions.dto.**",
+          "dev.flexmodel.api.dto.**",
+          "dev.flexmodel.flow.dto.**",
+          "dev.flexmodel.common.dto.**",
+          "dev.flexmodel.metrics.dto.**",
+          "dev.flexmodel.storage.dto.**",
+          "dev.flexmodel.pages.dto.**"))
       .methods()
       .fields()
       .build();
@@ -116,16 +181,16 @@ public class FlexmodelNativeProcessor {
    * 需要通过反射调用无参构造函数来实例化模型对象。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerModelDefinitions() {
+  ReflectiveClassBuildItem registerModelDefinitions(CombinedIndexBuildItem combinedIndex) {
     return ReflectiveClassBuildItem.builder(
-        "dev.flexmodel.model.**",
-        "dev.flexmodel.model.field.**",
-        "dev.flexmodel.condition.**",
-        "dev.flexmodel.event.**",
-        "dev.flexmodel.event.impl.**",
-        "dev.flexmodel.ModelImportBundle",
-        "dev.flexmodel.ModelImportBundle$ImportData"
-      )
+        expandGlob(combinedIndex.getIndex(),
+          "dev.flexmodel.model.**",
+          "dev.flexmodel.model.field.**",
+          "dev.flexmodel.condition.**",
+          "dev.flexmodel.event.**",
+          "dev.flexmodel.event.impl.**",
+          "dev.flexmodel.ModelImportBundle",
+          "dev.flexmodel.ModelImportBundle$ImportData"))
       .constructors()
       .methods()
       .fields()
@@ -137,12 +202,12 @@ public class FlexmodelNativeProcessor {
    * 包含 TypedFieldMixIn、ModelMixIn、IndexMixIn 等类型映射配置。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerJacksonSupport() {
+  ReflectiveClassBuildItem registerJacksonSupport(CombinedIndexBuildItem combinedIndex) {
     return ReflectiveClassBuildItem.builder(
-        "dev.flexmodel.supports.jackson.**",
-        "dev.flexmodel.common.config.web.json.jackson.**",
-        "dev.flexmodel.common.config.web.json.jackson.mixin.**"
-      )
+        expandGlob(combinedIndex.getIndex(),
+          "dev.flexmodel.supports.jackson.**",
+          "dev.flexmodel.common.config.web.json.jackson.**",
+          "dev.flexmodel.common.config.web.json.jackson.mixin.**"))
       .methods()
       .fields()
       .build();
@@ -153,16 +218,16 @@ public class FlexmodelNativeProcessor {
    * 包含执行器、验证器、服务类等运行时通过 CDI/反射实例化的组件。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerFlowEngineClasses() {
+  ReflectiveClassBuildItem registerFlowEngineClasses(CombinedIndexBuildItem combinedIndex) {
     return ReflectiveClassBuildItem.builder(
-        "dev.flexmodel.flow.executor.**",
-        "dev.flexmodel.flow.validator.**",
-        "dev.flexmodel.flow.service.**",
-        "dev.flexmodel.flow.common.**",
-        "dev.flexmodel.flow.config.**",
-        "dev.flexmodel.flow.plugin.**",
-        "dev.flexmodel.flow.processor.**"
-      )
+        expandGlob(combinedIndex.getIndex(),
+          "dev.flexmodel.flow.executor.**",
+          "dev.flexmodel.flow.validator.**",
+          "dev.flexmodel.flow.service.**",
+          "dev.flexmodel.flow.common.**",
+          "dev.flexmodel.flow.config.**",
+          "dev.flexmodel.flow.plugin.**",
+          "dev.flexmodel.flow.processor.**"))
       .methods()
       .fields()
       .build();
@@ -173,14 +238,14 @@ public class FlexmodelNativeProcessor {
    * 包含调度配置、认证提供者等含 @JsonSubTypes 多态类型的类。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerBusinessComponents() {
+  ReflectiveClassBuildItem registerBusinessComponents(CombinedIndexBuildItem combinedIndex) {
     return ReflectiveClassBuildItem.builder(
-        "dev.flexmodel.scheduling.config.**",
-        "dev.flexmodel.scheduling.job.**",
-        "dev.flexmodel.projectauth.provider.**",
-        "dev.flexmodel.storage.config.**",
-        "dev.flexmodel.sql.dialect.**"
-      )
+        expandGlob(combinedIndex.getIndex(),
+          "dev.flexmodel.scheduling.config.**",
+          "dev.flexmodel.scheduling.job.**",
+          "dev.flexmodel.projectauth.provider.**",
+          "dev.flexmodel.storage.config.**",
+          "dev.flexmodel.sql.dialect.**"))
       .methods()
       .fields()
       .build();
@@ -191,25 +256,25 @@ public class FlexmodelNativeProcessor {
    * Repository、Service、Resource 等运行时组件。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerDataAndServiceClasses() {
+  ReflectiveClassBuildItem registerDataAndServiceClasses(CombinedIndexBuildItem combinedIndex) {
     return ReflectiveClassBuildItem.builder(
-        "dev.flexmodel.auth.repository.**",
-        "dev.flexmodel.auth.service.**",
-        "dev.flexmodel.flow.repository.**",
-        "dev.flexmodel.data.**",
-        "dev.flexmodel.scheduling.**",
-        "dev.flexmodel.functions.**",
-        "dev.flexmodel.settings.**",
-        "dev.flexmodel.storage.**",
-        "dev.flexmodel.modeling.**",
-        "dev.flexmodel.api.**",
-        "dev.flexmodel.project.**",
-        "dev.flexmodel.projectauth.**",
-        "dev.flexmodel.mcp.**",
-        "dev.flexmodel.metrics.**",
-        "dev.flexmodel.realtime.**",
-        "dev.flexmodel.audit.**"
-      )
+        expandGlob(combinedIndex.getIndex(),
+          "dev.flexmodel.auth.repository.**",
+          "dev.flexmodel.auth.service.**",
+          "dev.flexmodel.flow.repository.**",
+          "dev.flexmodel.data.**",
+          "dev.flexmodel.scheduling.**",
+          "dev.flexmodel.functions.**",
+          "dev.flexmodel.settings.**",
+          "dev.flexmodel.storage.**",
+          "dev.flexmodel.modeling.**",
+          "dev.flexmodel.api.**",
+          "dev.flexmodel.project.**",
+          "dev.flexmodel.projectauth.**",
+          "dev.flexmodel.mcp.**",
+          "dev.flexmodel.metrics.**",
+          "dev.flexmodel.realtime.**",
+          "dev.flexmodel.audit.**"))
       .methods()
       .fields()
       .build();
@@ -247,20 +312,20 @@ public class FlexmodelNativeProcessor {
    * 包含缓存、通用工具、配置、过滤器、Session、SQL、MongoDB、查询、解析器等。
    */
   @BuildStep
-  ReflectiveClassBuildItem registerCoreInfrastructure() {
+  ReflectiveClassBuildItem registerCoreInfrastructure(CombinedIndexBuildItem combinedIndex) {
     return ReflectiveClassBuildItem.builder(
-        "dev.flexmodel.cache.**",
-        "dev.flexmodel.common.**",
-        "dev.flexmodel.mongodb.**",
-        "dev.flexmodel.parser.**",
-        "dev.flexmodel.query.**",
-        "dev.flexmodel.session.**",
-        "dev.flexmodel.sql.**",
-        "dev.flexmodel.ModelImportBundle",
-        "dev.flexmodel.ModelImportBundle$ImportData",
-        "dev.flexmodel.ModelRegistry",
-        "dev.flexmodel.SchemaProvider"
-      )
+        expandGlob(combinedIndex.getIndex(),
+          "dev.flexmodel.cache.**",
+          "dev.flexmodel.common.**",
+          "dev.flexmodel.mongodb.**",
+          "dev.flexmodel.parser.**",
+          "dev.flexmodel.query.**",
+          "dev.flexmodel.session.**",
+          "dev.flexmodel.sql.**",
+          "dev.flexmodel.ModelImportBundle",
+          "dev.flexmodel.ModelImportBundle$ImportData",
+          "dev.flexmodel.ModelRegistry",
+          "dev.flexmodel.SchemaProvider"))
       .constructors()
       .methods()
       .fields()

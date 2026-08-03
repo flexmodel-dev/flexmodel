@@ -49,6 +49,9 @@ public class SchemaRegistry {
   @Inject
   ProjectService projectService;
 
+  @Inject
+  SchemaInitializer schemaInitializer;
+
   @SuppressWarnings("all")
   public Map<String, Object> getSystemVariables() {
     Map all = new HashMap<>();
@@ -123,6 +126,16 @@ public class SchemaRegistry {
       }
     } catch (Exception e) {
       log.error("Session dataSource create error: {}", e.getMessage(), e);
+      return;
+    }
+    // 注册成功后，对项目级 Schema 执行 project.fml，将 project.fml 变更同步到项目数据库
+    // applyFML 是幂等的：会比较已有模型与 FML 定义，跳过未变更项，仅对变更项执行 DDL
+    if (!EngineConfig.SYSTEM_DS_KEY.equals(schemaName)) {
+      try {
+        schemaInitializer.init(schemaName);
+      } catch (Exception e) {
+        log.warn("Failed to apply project.fml for schema '{}': {}", schemaName, e.getMessage(), e);
+      }
     }
   }
 

@@ -310,7 +310,6 @@ enum BucketVisibility {
 
 model f_page_site {
   id : String @id @default(uuid()),
-  custom_domains : JSON @comment("自定义域名列表"),
   production_deployment_id? : String @comment("当前生产部署ID(UI镜像,真相=软链)"),
   status : PageDeploymentStatus @default("READY") @comment("当前部署状态"),
   file_count : Int @default(0) @comment("当前部署文件数"),

@@ -41,7 +41,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/conf.d/default.conf.template:/etc/nginx/conf.d/default.conf.template
-      - ./flexmodel-server/pages:/data/pages
+      - ./flexmodel/pages:/data/pages
     restart: always
     ports:
       - ${NGINX_HTTP_PORT:-80}:80
@@ -61,10 +61,10 @@ services:
     image: ${FLEXMODEL_SERVER_IMAGE:-cjbi/flexmodel-server-native:latest}
     restart: always
     volumes:
-      - ./flexmodel-server/storage:/deployments/storage
-      - ./flexmodel-server/database:/deployments/database
-      - ./flexmodel-server/logs:/deployments/logs
-      - ./flexmodel-server/pages:/deployments/pages
+      - ./flexmodel/storage:/deployments/storage
+      - ./flexmodel/database:/deployments/database
+      - ./flexmodel/logs:/deployments/logs
+      - ./flexmodel/pages:/deployments/pages
     env_file: .env
     environment:
       - TZ=GMT+08

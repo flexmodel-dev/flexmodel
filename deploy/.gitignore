@@ -1,5 +1,5 @@
 /docker-compose/mysql/data/
-/docker-compose/flexmodel-server/storage/
-/docker-compose/flexmodel-server/pages/
-/docker-compose/flexmodel-server/logs/
-/docker-compose/flexmodel-server/database/
+/docker-compose/flexmodel/storage/
+/docker-compose/flexmodel/pages/
+/docker-compose/flexmodel/logs/
+/docker-compose/flexmodel/database/

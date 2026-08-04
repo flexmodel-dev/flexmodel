@@ -316,7 +316,6 @@ public class FlexmodelNativeProcessor {
     return ReflectiveClassBuildItem.builder(
         expandGlob(combinedIndex.getIndex(),
           "dev.flexmodel.cache.**",
-          "dev.flexmodel.common.**",
           "dev.flexmodel.mongodb.**",
           "dev.flexmodel.parser.**",
           "dev.flexmodel.query.**",

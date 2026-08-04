@@ -2,8 +2,34 @@
 
 ## Current State
 
-**Last Updated:** 2026-06-09 23:30 **Session ID:** cloud-functions-implementation **Active Feature:** feat-011 -
-Functions - 边缘函数 (Flexmodel Functions)
+**Last Updated:** 2026-08-04 **Session ID:** pages-deploy-eventloop-block **Active Feature:** 修复部署 pages 报错（事件循环被
+JDBC 阻塞）
+
+## Bug Fix: 部署 pages 报错（2026-08-04）
+
+**症状:** 上传 zip 部署 pages 时报错；日志显示 `LogEventConsumer` 在 `vert.x-eventloop-thread-0` 上被 MySQL SSL socket
+读阻塞 4176ms+（blocked-thread-checker 警告）。
+
+**根因（两个叠加问题）:**
+
+1. `LogEventConsumer.consume` 无 `@Blocking`，阻塞 JDBC 写入直接跑在 Vert.x 事件循环线程上。
+2. 生产 JDBC URL（docker-compose）无 `connectTimeout`/`readTimeout`（Connector/J 默认无限等待）。MySQL
+   容器重启后池中残留旧连接读到已死对端 → 无限阻塞 → 事件循环冻结 → 部署请求超时报错。
+
+**修复:**
+
+- [x] 全部 5 个 `@ConsumeEvent` 消费者统一改为 `@ConsumeEvent(value=..., blocking = true)`（工作线程/虚拟线程执行，不再阻塞事件循环）：
+  - `LogEventConsumer`（JDBC 写入，本次故障元凶）
+  - `ProjectDeletedSchedulingConsumer`（Quartz 操作走 JDBC f_qrtz_*）
+  - `TriggerFlowEventConsumer`（流程执行含 DB + HTTP 函数调用）
+  - `SettingsEventConsumer` / `GraphQLEventConsumer`（纯内存/日志，顺带统一）
+- [x] `docker-compose.yml` JDBC URL 添加 `connectTimeout=5000&readTimeout=15000`（Connector/J 9.x 命名）
+- [x] `PageResource.java` 类级 `@Blocking`（zip 解包 + DB 写入均阻塞）
+
+**验证:** `mvn compile -pl flexmodel-server -am -q -o` 通过。
+
+**遗留风险:** JAX-RS 端点默认仍在事件循环上运行（本仓库无全局 `@Blocking` 约定），仅 pages 特性包已处理；其他含 DB 访问的
+Resource 若遇 DB 挂死同样会冻结事件循环，建议后续按特性包逐个加 `@Blocking`。
 
 ## Status
 

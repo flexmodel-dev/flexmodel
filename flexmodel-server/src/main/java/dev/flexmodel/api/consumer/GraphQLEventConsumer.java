@@ -29,7 +29,7 @@ public class GraphQLEventConsumer {
   @Inject
   BranchService branchService;
 
-  @ConsumeEvent("graphql.refresh")
+  @ConsumeEvent(value = "graphql.refresh", blocking = true)
   public void consume(GraphQLRefreshEvent event) {
     log.info("Received graphql refresh event, clearing cache for lazy reload");
     graphQLManger.clearAll();

@@ -40,7 +40,8 @@ public class ProjectDeletedSchedulingConsumer {
   @Inject
   Scheduler scheduler;
 
-  @ConsumeEvent("project.deleted")
+  // blocking = true: Quartz 操作走 JDBC（f_qrtz_* 表），必须在工作线程上执行
+  @ConsumeEvent(value = "project.deleted", blocking = true)
   public void consume(ProjectDeletedEvent event) {
     String projectId = event.getProjectId();
     List<JobKey> jobKeys = findProjectJobKeys(projectId);

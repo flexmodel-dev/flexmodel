@@ -3,6 +3,7 @@ package dev.flexmodel.pages;
 import dev.flexmodel.common.authz.RequiresPermissions;
 import dev.flexmodel.pages.dto.PageSiteResponse;
 import dev.flexmodel.pages.dto.PageSiteUpdateRequest;
+import io.smallrye.common.annotation.Blocking;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -17,9 +18,13 @@ import java.io.InputStream;
 /**
  * Pages 站点管理 REST API（每项目一个站点）。
  *
+ * <p>本资源含 zip 解包（文件 I/O）与数据库写入等阻塞操作，必须跑在工作线程上，
+ * 否则数据库连接挂死时会冻结整个 Vert.x 事件循环。
+ *
  * @author cjbi
  */
 @Tag(name = "Pages", description = "静态站点托管")
+@Blocking
 @ApplicationScoped
 @Path("/projects/{projectId}/page")
 @Produces(MediaType.APPLICATION_JSON)

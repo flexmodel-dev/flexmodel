@@ -26,7 +26,8 @@ public class TriggerFlowEventConsumer {
   @Inject
   SessionContext sessionContext;
 
-  @ConsumeEvent("flow.start") // 监听特定地址的事件
+  // blocking = true: 流程执行含 DB 读写与函数调用（HTTP），必须在工作线程上执行
+  @ConsumeEvent(value = "flow.start", blocking = true) // 监听特定地址的事件
   public void consume(StartProcessParamEvent param) {
     sessionContext.setProjectId(param.getProjectId());
     sessionContext.setUserId(param.getUserId());

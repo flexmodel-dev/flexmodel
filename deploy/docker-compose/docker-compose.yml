@@ -69,10 +69,11 @@ services:
     environment:
       - TZ=GMT+08
       - FLEXMODEL_DATASOURCE_DB_KIND=mysql
-      - FLEXMODEL_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
+      # readTimeout: MySQL 容器重启后池中残留连接会读到已死对端，无超时会无限阻塞（曾导致事件循环冻结）
+      - FLEXMODEL_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?connectTimeout=5000&readTimeout=15000
       - FLEXMODEL_DATASOURCE_USERNAME=root
       - FLEXMODEL_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - FLEXMODEL_PROJECT_URL_TEMPLATE=jdbc:mysql://mysql:3306/{{databaseName}}
+      - FLEXMODEL_PROJECT_URL_TEMPLATE=jdbc:mysql://mysql:3306/{{databaseName}}?connectTimeout=5000&readTimeout=15000
       - QUARKUS_REST_CLIENT_FUNCTION_RUNTIME_URL=http://flexmodel-functions-runtime:9999
       - QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=100M
       - FLEXMODEL_PAGES_ROOT=/data/pages

@@ -4,6 +4,9 @@ import dev.flexmodel.api.ApiRequestLogService;
 import dev.flexmodel.flow.service.FlowDefinitionService;
 import dev.flexmodel.flow.service.FlowInstanceService;
 import dev.flexmodel.metrics.dto.FmMetricsResponse;
+import dev.flexmodel.model.EntityDefinition;
+import dev.flexmodel.model.NativeQueryDefinition;
+import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.modeling.ModelService;
 import dev.flexmodel.project.BranchService;
 import dev.flexmodel.project.ProjectService;
@@ -44,7 +47,7 @@ public class MetricsService {
   public FmMetricsResponse getFmMetrics(String projectId) {
     try {
       long modelCount = modelService.findAll(projectId, projectService.resolveDatabaseName(projectId)).stream()
-        .filter(model -> !model.isSystem()).count();
+        .filter(s -> !ModelService.isSystemModel(s)).count();
       int branchCount = branchService.listBranches(projectId).size();
       long reqLogCount = apiLogService.count(projectId, TRUE);
       long flowDefCount = flowDefService.count(projectId, flowDefinition.isDeleted.eq(false));

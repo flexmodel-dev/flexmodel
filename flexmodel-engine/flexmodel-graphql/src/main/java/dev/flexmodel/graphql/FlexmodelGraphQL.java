@@ -1,5 +1,6 @@
 package dev.flexmodel.graphql;
 
+import dev.flexmodel.model.NativeQueryDefinition;
 import graphql.GraphQL;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.DataFetcher;
@@ -33,6 +34,15 @@ public class FlexmodelGraphQL {
 
   private final Logger log = LoggerFactory.getLogger(FlexmodelGraphQL.class);
 
+  private boolean isSystemModel(SchemaObject s) {
+    if (s instanceof EnumDefinition e) {
+      return e.getAdditionalProperties().containsKey("system");
+    } else if (s instanceof EntityDefinition n) {
+      return n.getAdditionalProperties().containsKey("system");
+    }
+    return false;
+  }
+
   public GraphQL generateGraphQLWithSchemaObject(SessionFactory sf, String schemaName) {
     GraphQLSchemaGenerator generator = new GraphQLSchemaGenerator();
     GenerationContext context = new GenerationContext();
@@ -50,7 +60,7 @@ public class FlexmodelGraphQL {
     log.debug("Generate graphQL schema: {}", schemaName);
     List<SchemaObject> models = sf.getModels(schemaName);
     for (SchemaObject model : models) {
-      if (model.isSystem()) {
+      if (isSystemModel(model)) {
         continue;
       }
       if (model instanceof EntityDefinition entity) {

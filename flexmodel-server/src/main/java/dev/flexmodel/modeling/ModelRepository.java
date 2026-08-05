@@ -36,6 +36,4 @@ public interface ModelRepository {
 
   Boolean executeFml(String projectId, String datasourceName, String fml) throws ParseException;
 
-  Integer count(String projectId);
-
 }

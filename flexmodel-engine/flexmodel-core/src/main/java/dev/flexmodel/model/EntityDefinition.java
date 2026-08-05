@@ -12,7 +12,6 @@ import java.util.function.UnaryOperator;
 public class EntityDefinition extends AbstractModelDefinition<EntityDefinition> {
 
   private String comment;
-  private boolean system = false;
   private List<TypedField<?, ?>> fields = new ArrayList<>();
   private List<IndexDefinition> indexes = new ArrayList<>();
 
@@ -31,15 +30,6 @@ public class EntityDefinition extends AbstractModelDefinition<EntityDefinition> 
 
   public EntityDefinition setComment(String comment) {
     this.comment = comment;
-    return this;
-  }
-
-  public boolean isSystem() {
-    return system;
-  }
-
-  public EntityDefinition setSystem(boolean system) {
-    this.system = system;
     return this;
   }
 
@@ -142,7 +132,7 @@ public class EntityDefinition extends AbstractModelDefinition<EntityDefinition> 
   public EntityDefinition clone() {
     EntityDefinition entity = new EntityDefinition(name);
     entity.setComment(comment);
-    entity.setSystem(system);
+    entity.mergeAdditionalProperty(additionalProperties);
     fields.forEach(entity::addField);
     indexes.forEach(entity::addIndex);
     return entity;

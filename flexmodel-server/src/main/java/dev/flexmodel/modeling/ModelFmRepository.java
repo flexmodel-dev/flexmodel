@@ -115,8 +115,4 @@ public class ModelFmRepository implements ModelRepository {
     }
   }
 
-  @Override
-  public Integer count(String projectId) {
-    return Math.toIntExact(findAll(projectId, projectId).stream().filter(m -> !m.isSystem()).count());
-  }
 }

@@ -32,10 +32,4 @@ public interface SchemaObject extends Serializable {
     return astNode.toString();
   }
 
-  /**
-   * 是否为系统预置模型/枚举
-   */
-  default boolean isSystem() {
-    return false;
-  }
 }

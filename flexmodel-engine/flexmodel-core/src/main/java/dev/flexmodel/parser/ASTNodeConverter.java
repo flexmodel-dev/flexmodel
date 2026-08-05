@@ -44,34 +44,33 @@ public class ASTNodeConverter {
     }
     // 处理模型级别的注解
     for (ModelParser.Annotation mAnno : idlModel.annotations) {
-      if (mAnno.name.equals("comment")) {
-        entity.setComment((String) mAnno.parameters.get("value"));
-      }
-      if (mAnno.name.equals("system")) {
-        entity.setSystem(true);
-      }
-      // 处理索引语法
-      if (mAnno.name.equals("index")) {
-        IndexDefinition index = new IndexDefinition(entity.getName());
-        index.setName((String) mAnno.parameters.get("name"));
-        if (mAnno.parameters.containsKey("unique")) {
-          boolean unique = Boolean.parseBoolean((String) mAnno.parameters.get("unique"));
-          index.setUnique(unique);
-        }
-        List fields = (List) mAnno.parameters.get("fields");
-        for (Object field : fields) {
-          if (field instanceof String fieldName) {
-            index.addField(fieldName);
-          } else if (field instanceof Map<?, ?> fieldMap) {
-            Set<? extends Map.Entry<?, ?>> entries = fieldMap.entrySet();
-            for (Map.Entry<?, ?> entry : entries) {
-              String fieldName = (String) entry.getKey();
-              Map value = (Map) entry.getValue();
-              index.addField(fieldName, Direction.fromString((String) value.get("sort")));
+      // 已知注解显式处理，未识别的放入扩展属性
+      switch (mAnno.name) {
+        case "comment" -> entity.setComment((String) mAnno.parameters.get("value"));
+        case "index" -> {
+          IndexDefinition index = new IndexDefinition(entity.getName());
+          index.setName((String) mAnno.parameters.get("name"));
+          if (mAnno.parameters.containsKey("unique")) {
+            boolean unique = Boolean.parseBoolean((String) mAnno.parameters.get("unique"));
+            index.setUnique(unique);
+          }
+          List fields = (List) mAnno.parameters.get("fields");
+          for (Object field : fields) {
+            if (field instanceof String fieldName) {
+              index.addField(fieldName);
+            } else if (field instanceof Map<?, ?> fieldMap) {
+              Set<? extends Map.Entry<?, ?>> entries = fieldMap.entrySet();
+              for (Map.Entry<?, ?> entry : entries) {
+                String fieldName = (String) entry.getKey();
+                Map value = (Map) entry.getValue();
+                index.addField(fieldName, Direction.fromString((String) value.get("sort")));
+              }
             }
           }
+          entity.addIndex(index);
         }
-        entity.addIndex(index);
+        default -> entity.addAdditionalProperty(mAnno.name,
+          mAnno.parameters.isEmpty() ? true : mAnno.parameters);
       }
     }
     return entity;
@@ -169,11 +168,11 @@ public class ASTNodeConverter {
     anEnum.setElements(idlEnum.elements);
     // 处理枚举级别的注解
     for (ModelParser.Annotation mAnno : idlEnum.annotations) {
-      if (mAnno.name.equals("comment")) {
-        anEnum.setComment((String) mAnno.parameters.get("value"));
-      }
-      if (mAnno.name.equals("system")) {
-        anEnum.setSystem(true);
+      // 已知注解显式处理，未识别的放入扩展属性
+      switch (mAnno.name) {
+        case "comment" -> anEnum.setComment((String) mAnno.parameters.get("value"));
+        default -> anEnum.addAdditionalProperty(mAnno.name,
+          mAnno.parameters.isEmpty() ? true : mAnno.parameters);
       }
     }
     return anEnum;
@@ -226,7 +225,7 @@ public class ASTNodeConverter {
     }
 
     // 处理 system 标识
-    if (entity.isSystem()) {
+    if (entity.getAdditionalProperties().containsKey("system")) {
       model.annotations.add(new ModelParser.Annotation("system"));
     }
 
@@ -307,7 +306,7 @@ public class ASTNodeConverter {
       commentAnno.parameters.put("value", schemaEnum.getComment());
       enumeration.annotations.add(commentAnno);
     }
-    if (schemaEnum.isSystem()) {
+    if (schemaEnum.getAdditionalProperties().containsKey("system")) {
       enumeration.annotations.add(new ModelParser.Annotation("system"));
     }
     return enumeration;

@@ -41,7 +41,7 @@ public class ModelingService {
   public List<SchemaObject> findModels(String projectId) {
     return modelService.findAll(projectId, resolveDatabaseName(projectId))
       .stream()
-      .filter(m -> !m.isSystem())
+      .filter(s -> !ModelService.isSystemModel(s))
       .toList();
   }
 

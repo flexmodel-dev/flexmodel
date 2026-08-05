@@ -12,7 +12,6 @@ public class EnumDefinition implements SchemaObject {
 
     private String name;
     private String comment;
-    private boolean system = false;
     private List<String> elements = new ArrayList<>();
     protected Map<String, Object> additionalProperties = new HashMap<>();
 
@@ -55,15 +54,6 @@ public class EnumDefinition implements SchemaObject {
 
     public EnumDefinition setComment(String comment) {
         this.comment = comment;
-        return this;
-    }
-
-    public boolean isSystem() {
-        return system;
-    }
-
-    public EnumDefinition setSystem(boolean system) {
-        this.system = system;
         return this;
     }
 

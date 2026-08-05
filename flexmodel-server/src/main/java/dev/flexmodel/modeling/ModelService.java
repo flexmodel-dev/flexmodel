@@ -1,5 +1,7 @@
 package dev.flexmodel.modeling;
 
+import dev.flexmodel.model.EntityDefinition;
+import dev.flexmodel.model.EnumDefinition;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import dev.flexmodel.model.IndexDefinition;
@@ -69,4 +71,15 @@ public class ModelService {
   public Boolean executeFml(String projectId, String datasourceName, String fml) throws ParseException {
     return modelRepository.executeFml(projectId, datasourceName, fml);
   }
+
+
+  public static boolean isSystemModel(SchemaObject s) {
+    if (s instanceof EnumDefinition e) {
+      return e.getAdditionalProperties().containsKey("system");
+    } else if (s instanceof EntityDefinition n) {
+      return n.getAdditionalProperties().containsKey("system");
+    }
+    return false;
+  }
+
 }

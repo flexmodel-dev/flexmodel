@@ -4,7 +4,9 @@ import dev.flexmodel.auth.exception.AuthException;
 import dev.flexmodel.auth.service.ApiKeyService;
 import dev.flexmodel.codegen.entity.AuthApiKey;
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
+import dev.flexmodel.codegen.entity.Bucket;
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.codegen.enumeration.BucketVisibility;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.config.web.jwt.JwtService;
 import dev.flexmodel.project.ProjectService;
@@ -12,6 +14,7 @@ import dev.flexmodel.projectauth.AuthProviderConfigService;
 import dev.flexmodel.projectauth.provider.AuthContext;
 import dev.flexmodel.projectauth.provider.AuthProvider;
 import dev.flexmodel.projectauth.provider.AuthResult;
+import dev.flexmodel.storage.BucketService;
 import jakarta.annotation.Priority;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
@@ -49,6 +52,8 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   JwtService jwtService;
   @Inject
   SessionContext sessionContext;
+  @Inject
+  BucketService bucketService;
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
@@ -68,6 +73,10 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     String accessToken = Objects.toString(requestContext.getHeaderString("Authorization"), "")
         .replaceFirst("Bearer ", "").trim();
     if (accessToken.isEmpty()) {
+      // 公开 Bucket 的匿名读访问（GET/HEAD 下载/预览/元数据），支持"复制访问链接"在浏览器中直接打开
+      if (isAnonymousPublicBucketRead(requestContext)) {
+        return;
+      }
       throw new AuthException("Token is missing");
     }
 
@@ -236,6 +245,38 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     sessionContext.setUserId(result.getUserId());
     sessionContext.setPermissions(result.getPermissions());
     requestContext.setProperty("projectId", projectId);
+  }
+
+  /**
+   * 判断匿名请求是否可访问公开 Bucket 的对象读接口（GET/HEAD）。
+   * <p>
+   * 仅当目标 Bucket 的 visibility 为 PUBLIC 时放行，用于支持"复制访问链接"在浏览器中直接打开；
+   * 仅放行指向具体对象（下载/HEAD/元数据）的 GET/HEAD；目录列表（/objects 无对象路径）不公开。
+   * PRIVATE / AUTHENTICATED 及写操作（PUT/DELETE）始终要求认证。
+   */
+  private boolean isAnonymousPublicBucketRead(ContainerRequestContext requestContext) {
+    String method = requestContext.getMethod();
+    if (!"GET".equals(method) && !"HEAD".equals(method)) {
+      return false;
+    }
+    String path = requestContext.getUriInfo().getPath();
+    if (path == null || !path.matches("(?i)^/?projects/[^/]+/buckets/[^/]+/objects/.+")) {
+      return false;
+    }
+    String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
+    String bucketName = requestContext.getUriInfo().getPathParameters().getFirst("bucketName");
+    if (projectId == null || bucketName == null) {
+      return false;
+    }
+    try {
+      return bucketService.getBucket("PROJECT", projectId, bucketName)
+        .map(Bucket::getVisibility)
+        .filter(BucketVisibility.PUBLIC::equals)
+        .isPresent();
+    } catch (Exception e) {
+      // Bucket / 项目不存在或解析失败时按非公开处理，回退到标准认证流程
+      return false;
+    }
   }
 
   @Override

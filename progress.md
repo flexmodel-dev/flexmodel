@@ -1,5 +1,39 @@
 # Session Progress Log
 
+## Bug Fix: Storage 复制访问链接不能访问（2026-08-06）
+
+**症状:** Storage 页面点击「复制链接」后，把链接粘贴到浏览器地址栏无法访问（401 / 路径异常）。
+
+**根因（两个叠加问题）:**
+
+1. 下载接口（`BucketResource.downloadObject` / `headObject`）始终要求 Bearer token，浏览器地址栏不带
+   `Authorization` 头 → `AuthFilter` 抛 `Token is missing` 401。`BucketVisibility.PUBLIC`（公开 Bucket）的匿名读
+   语义虽在模型中定义，却从未被认证层实现。
+2. `LocalStorageOperations` 用 `basePath.relativize(p).toString()` 返回相对路径，分隔符为 OS 相关；Windows 下
+   为反斜杠，导致子目录文件的复制链接、面包屑与目录导航失效（S3 实现用正斜杠，无此问题）。
+
+**修复:**
+
+- `flexmodel-server/.../storage/config/LocalStorageOperations.java`：新增 `toPosixPath(Path)`，`listFiles` 与
+  `getFile` 返回的 `path` 统一为 POSIX 正斜杠，跨平台一致。
+- `flexmodel-server/.../common/config/web/filter/AuthFilter.java`：注入 `BucketService`，新增
+  `isAnonymousPublicBucketRead`。无 Bearer token 时，对 `GET/HEAD` 命中
+  `projects/{projectId}/buckets/{bucketName}/objects(/.*)?` 的请求解析 Bucket；visibility 为 `PUBLIC` 时放行匿名读
+  （下载/HEAD/元数据/列表），`PRIVATE`/`AUTHENTICATED` 及写操作仍要求认证。解析失败回退标准认证流程。
+- `flexmodel-ui/.../Storage/components/FileBrowser.tsx`：新增 `visibility` 入参；`handleCopyLink` 对 `path`
+  做反斜杠→正斜杠兜底归一；非 PUBLIC Bucket 复制时给出 warning 提示需设为公开。
+- `flexmodel-ui/.../Storage/index.tsx`：向 `FileBrowser` 传入 `activeBucket.visibility`。
+- i18n 新增 `copy_link_not_public`（zh/en）。
+
+**验证:**
+
+- `mvn compile -pl flexmodel-server -am` → BUILD SUCCESS。
+- `mvn test -pl flexmodel-server -Dtest=LocalStorageOperationsTest` → Tests run: 14, Failures: 0, Errors: 0。
+- IDE inspections（FileBrowser.tsx / index.tsx / AuthFilter.java / LocalStorageOperations.java）无 error。
+
+**行为说明:** 公开 Bucket 的复制链接现在可在浏览器直接打开下载；非公开 Bucket 的链接仍需认证（符合可见性 设计），前端复制时会提示用户将
+Bucket 设为「公开」以获得匿名访问。
+
 ## Current State
 
 **Last Updated:** 2026-08-04 **Session ID:** pages-deploy-eventloop-block **Active Feature:** 修复部署 pages 报错（事件循环被

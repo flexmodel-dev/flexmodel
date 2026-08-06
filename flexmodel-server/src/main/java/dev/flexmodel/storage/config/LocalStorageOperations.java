@@ -45,7 +45,7 @@ public class LocalStorageOperations implements StorageOperations {
       stream.forEach(p -> {
         try {
           BasicFileAttributes attrs = Files.readAttributes(p, BasicFileAttributes.class);
-          String relativePath = basePath.relativize(p).toString();
+          String relativePath = toPosixPath(basePath.relativize(p));
           items.add(FileItem.builder()
             .name(p.getFileName().toString())
             .type(attrs.isDirectory() ? FileItem.FileType.folder : FileItem.FileType.file)
@@ -74,7 +74,7 @@ public class LocalStorageOperations implements StorageOperations {
 
     try {
       BasicFileAttributes attrs = Files.readAttributes(targetPath, BasicFileAttributes.class);
-      String relativePath = basePath.relativize(targetPath).toString();
+      String relativePath = toPosixPath(basePath.relativize(targetPath));
       return FileItem.builder()
         .name(targetPath.getFileName().toString())
         .type(attrs.isDirectory() ? FileItem.FileType.folder : FileItem.FileType.file)
@@ -160,5 +160,12 @@ public class LocalStorageOperations implements StorageOperations {
       throw new SecurityException("Attempted to access path outside base directory: " + path);
     }
     return resolved;
+  }
+
+  /**
+   * 将相对路径统一为 POSIX 风格（正斜杠），避免 Windows 下反斜杠破坏 URL、面包屑与对象键。
+   */
+  private static String toPosixPath(Path relative) {
+    return relative.toString().replace('\\', '/');
   }
 }

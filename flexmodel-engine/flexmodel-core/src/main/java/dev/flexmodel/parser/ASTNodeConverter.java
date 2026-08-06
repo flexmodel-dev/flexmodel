@@ -224,9 +224,11 @@ public class ASTNodeConverter {
       model.annotations.add(indexAnno);
     }
 
-    // 处理 system 标识
-    if (entity.getAdditionalProperties().containsKey("system")) {
-      model.annotations.add(new ModelParser.Annotation("system"));
+    // 处理扩展属性（含 system 等未识别注解，均回写为注解）
+    for (Map.Entry<String, Object> entry : entity.getAdditionalProperties().entrySet()) {
+      ModelParser.Annotation anno = new ModelParser.Annotation(entry.getKey());
+      appendAdditionalValue(anno, entry.getValue());
+      model.annotations.add(anno);
     }
 
     return model;
@@ -306,8 +308,11 @@ public class ASTNodeConverter {
       commentAnno.parameters.put("value", schemaEnum.getComment());
       enumeration.annotations.add(commentAnno);
     }
-    if (schemaEnum.getAdditionalProperties().containsKey("system")) {
-      enumeration.annotations.add(new ModelParser.Annotation("system"));
+    // 处理扩展属性（含 system 等未识别注解，均回写为注解）
+    for (Map.Entry<String, Object> entry : schemaEnum.getAdditionalProperties().entrySet()) {
+      ModelParser.Annotation anno = new ModelParser.Annotation(entry.getKey());
+      appendAdditionalValue(anno, entry.getValue());
+      enumeration.annotations.add(anno);
     }
     return enumeration;
   }
@@ -320,6 +325,28 @@ public class ASTNodeConverter {
       return enumField.isMultiple() ? enumField.getFrom() + "[]" : enumField.getFrom();
     } else {
       return field.getType();
+    }
+  }
+
+  /**
+   * 将扩展属性值回填到注解参数中：
+   * - 布尔/字符串/数字等标量且注解无参数时，作为 @name 形式的标记注解（不写入参数）；
+   * - Map 形式时，合并其键值对为注解参数；
+   * - 其他对象，统一以 "value" 为键写入。
+   */
+  @SuppressWarnings("unchecked")
+  private static void appendAdditionalValue(ModelParser.Annotation anno, Object value) {
+    if (value == null) {
+      return;
+    }
+    if (value instanceof Map<?, ?> map) {
+      for (Map.Entry<?, ?> e : map.entrySet()) {
+        anno.parameters.put(String.valueOf(e.getKey()), e.getValue());
+      }
+    } else if (value instanceof Boolean b && b) {
+      // @system 等无参标记注解，保持空参数
+    } else {
+      anno.parameters.put("value", value);
     }
   }
 

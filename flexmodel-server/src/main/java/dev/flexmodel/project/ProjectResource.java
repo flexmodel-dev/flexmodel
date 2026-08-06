@@ -139,6 +139,9 @@ public class ProjectResource {
     if (project.getDescription() != null) {
       existingProject.setDescription(project.getDescription());
     }
+    if (project.getMetadata() != null) {
+      existingProject.setMetadata(project.getMetadata());
+    }
     return projectService.updateProject(existingProject);
   }
 

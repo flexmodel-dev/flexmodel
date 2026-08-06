@@ -29,6 +29,7 @@ public class ProjectResponse extends Project {
     response.setUpdatedBy(project.getUpdatedBy());
     response.setCreatedAt(project.getCreatedAt());
     response.setDatabaseName(project.getDatabaseName());
+    response.setMetadata(project.getMetadata());
     return response;
   }
 

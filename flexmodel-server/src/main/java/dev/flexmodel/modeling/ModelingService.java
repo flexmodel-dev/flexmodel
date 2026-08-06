@@ -4,6 +4,7 @@ import dev.flexmodel.api.dto.GraphQLRefreshEvent;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
+import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.project.ProjectService;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -12,6 +13,7 @@ import dev.flexmodel.model.*;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.parser.impl.ParseException;
 
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
@@ -39,10 +41,36 @@ public class ModelingService {
   }
 
   public List<SchemaObject> findModels(String projectId) {
+    boolean showSystemModels = isShowSystemModels(projectId);
     return modelService.findAll(projectId, resolveDatabaseName(projectId))
       .stream()
-      .filter(s -> !ModelService.isSystemModel(s))
+      .filter(s -> showSystemModels || !ModelService.isSystemModel(s))
       .toList();
+  }
+
+  /**
+   * 读取项目元数据中的 {@code showSystemModels} 标志，默认关闭（不展示系统模型）。
+   */
+  private boolean isShowSystemModels(String projectId) {
+    Project project = projectService.findProject(projectId);
+    if (project == null || project.getMetadata() == null) {
+      return false;
+    }
+    Object metadata = project.getMetadata();
+    Object value = null;
+    if (metadata instanceof Map<?, ?> map) {
+      value = map.get("showSystemModels");
+    } else {
+      try {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = dev.flexmodel.JsonUtils.convertValue(metadata, Map.class);
+        if (map != null) {
+          value = map.get("showSystemModels");
+        }
+      } catch (Exception ignored) {
+      }
+    }
+    return Boolean.TRUE.equals(value);
   }
 
   public SchemaObject createModel(String projectId, SchemaObject model) {

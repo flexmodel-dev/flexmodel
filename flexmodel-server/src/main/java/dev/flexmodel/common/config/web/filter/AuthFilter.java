@@ -359,7 +359,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       return false;
     }
     String path = requestContext.getUriInfo().getPath();
-    if (path == null || !path.matches("(?i)^/?projects/[^/]+/buckets/[^/]+/objects/.+")) {
+    if (path == null || !path.matches("(?i)^/?(?:projects|open)/[^/]+/buckets/[^/]+/objects/.+")) {
       return false;
     }
     String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");

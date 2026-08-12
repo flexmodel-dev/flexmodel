@@ -188,7 +188,8 @@ Deno.test("invokeFunction runs user code that calls SDK directly", async () => {
     const mockServer = Deno.serve({port: 0}, (req) => {
         const url = new URL(req.url);
         // SDK calls /api/projects/:pid/models/:model/records
-        if (url.pathname.includes("/api/projects/wk-p6/models/User/records")) {
+        // SDK open client calls /api/open/:pid/models/:model/records
+        if (url.pathname.includes("/api/open/wk-p6/models/User/records")) {
             return new Response(
                 JSON.stringify({list: [{id: "u1"}], total: 1}),
                 {headers: {"content-type": "application/json"}},

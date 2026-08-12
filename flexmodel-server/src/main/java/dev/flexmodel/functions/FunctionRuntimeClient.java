@@ -28,6 +28,7 @@ public interface FunctionRuntimeClient {
 
     @POST
     @Path("/{projectId}/{name}/invoke")
+    @Consumes(MediaType.WILDCARD)
     Response invoke(@PathParam("projectId") String projectId,
                     @PathParam("name") String name,
                     @HeaderParam("x-flexmodel-auth-token") String authToken,

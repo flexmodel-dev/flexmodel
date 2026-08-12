@@ -64,17 +64,10 @@ public class FunctionResource {
                          Object request) {
     Response runtimeResponse = functionService.invoke(projectId, name, request);
 
-    // Pass through function result directly as HTTP response.
-    // Read body as raw bytes to bypass Jackson JSON parsing — edge functions
-    // may return arbitrary content types (text, binary, malformed JSON).
-    byte[] body = runtimeResponse.readEntity(byte[].class);
+    // Pass through function result directly as HTTP response
     Response.ResponseBuilder builder = Response
       .status(runtimeResponse.getStatus())
-      .entity(body);
-    String contentType = runtimeResponse.getHeaderString("Content-Type");
-    if (contentType != null) {
-      builder.header("Content-Type", contentType);
-    }
+      .entity(runtimeResponse.readEntity(Object.class));
 
     // Forward x-function-meta header for observability
     String meta = runtimeResponse.getHeaderString("x-function-meta");

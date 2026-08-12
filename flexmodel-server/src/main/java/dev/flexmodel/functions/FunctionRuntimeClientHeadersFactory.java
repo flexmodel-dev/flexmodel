@@ -24,7 +24,11 @@ import java.util.List;
 public class FunctionRuntimeClientHeadersFactory implements ClientHeadersFactory {
 
   private static final List<String> EXCLUDED_HEADERS = List.of(
-    "host", "content-length", "transfer-encoding", "connection"
+    "host", "content-length", "transfer-encoding", "connection",
+    // accept-encoding 是传输协商头，透传会导致 Deno serve 自动 gzip/br 压缩响应，
+    // 进而触发 Quarkus REST 客户端 @Consumes 严格匹配失败（content-type mismatch）。
+    // Java↔Deno 是内部链路，不需要压缩；浏览器侧的压缩由上层服务处理。
+    "accept-encoding"
   );
 
   @Override

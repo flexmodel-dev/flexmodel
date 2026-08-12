@@ -179,7 +179,7 @@ self.addEventListener("message", async (e) => {
 function generateFunctionDenoJson(): string {
   return JSON.stringify({
     imports: {
-      "@flexmodel/sdk": "file:///C:/Users/cjbi/git-repository/flexmodel/flexmodel-sdks/typescript/dist/index.js",
+      "@flexmodel/sdk": "npm:@flexmodel/sdk@0.0.7",
     },
   }, null, 2);
 }

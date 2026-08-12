@@ -7,8 +7,8 @@
 //   POST   /functions/:projectId/:name/invoke   — invoke (Java-proxied)
 //
 // External route (Frontend → Deno, auth required):
-//   POST   /functions/:projectId/:name          — invoke (direct, with invoke-token/API-Key)
-//   OPTIONS /functions/:projectId/:name         — CORS preflight
+//   POST   /open/:projectId/functions/:name          — invoke (direct, with invoke-token/API-Key)
+//   OPTIONS /open/:projectId/functions/:name         — CORS preflight
 // ============================================================
 
 import {Hono} from "hono";
@@ -129,19 +129,20 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
 
 // ============================================================
 // External route (Frontend → Deno, auth required)
-// POST /functions/:projectId/:name — direct invoke with invoke-token/API-Key
-// No /invoke suffix — this is how we distinguish external vs internal calls.
+// POST /open/:projectId/functions/:name — direct invoke with invoke-token/API-Key
+// Separate path prefix (/open/) distinguishes external vs internal calls.
 // ============================================================
 
-// ---- OPTIONS /functions/:projectId/:name — CORS preflight ----
-router.options("/functions/:projectId/:name", edgeCorsMiddleware);
+// ---- OPTIONS /open/:projectId/functions/:name — CORS preflight ----
+router.options("/open/:projectId/functions/:name", edgeCorsMiddleware);
 
-// ---- POST /functions/:projectId/:name ----
+// ---- POST /open/:projectId/functions/:name ----
+// Open API external invoke: POST /open/:projectId/functions/:name
 // External invoke: frontend calls this directly with invoke-token or API Key.
 // Auth: invoke-token JWT (Bearer) or API Key (fm_ak_ prefix)
 // Auto-deploy: if function not registered, fetch from Java and deploy
 router.post(
-    "/functions/:projectId/:name",
+    "/open/:projectId/functions/:name",
     edgeCorsMiddleware,
     edgeAuthMiddleware,
     autoDeployMiddleware,

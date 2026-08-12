@@ -28,14 +28,14 @@ public class ApiKeyService {
    * 创建 API Key，返回包含明文 key 的响应（仅此一次）。
    */
   public ApiKeyResponse create(CreateApiKeyRequest request) {
-    String keyType = request.keyType() != null ? request.keyType() : "custom";
-    ApiKeyGenerator.GeneratedKey generated = ApiKeyGenerator.generate(keyType);
+    String scope = request.scope() != null ? request.scope() : "open";
+    ApiKeyGenerator.GeneratedKey generated = ApiKeyGenerator.generate(scope);
 
     AuthApiKey entity = new AuthApiKey();
     entity.setName(request.name());
     entity.setKeyHash(generated.hash());
     entity.setKeyPrefix(generated.prefix());
-    entity.setKeyType(keyType);
+    entity.setScope(scope);
     entity.setProjectIds(request.projectIds());
     entity.setReadOnly(request.readOnly());
 
@@ -54,7 +54,7 @@ public class ApiKeyService {
     if (existing == null) {
       throw new IllegalArgumentException("API Key not found: " + id);
     }
-    ApiKeyGenerator.GeneratedKey generated = ApiKeyGenerator.generate(existing.getKeyType());
+    ApiKeyGenerator.GeneratedKey generated = ApiKeyGenerator.generate(existing.getScope());
     existing.setKeyHash(generated.hash());
     existing.setKeyPrefix(generated.prefix());
     apiKeyRepository.save(existing);

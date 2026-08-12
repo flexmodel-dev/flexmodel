@@ -41,14 +41,14 @@ public interface FlexmodelConfig extends Serializable {
 
   /**
    * Derive the edge function URL based on routing mode and project base domain.
-   * - path mode: /functions/{{projectId}}/{{name}}
+   * - path mode: /open/{{projectId}}/functions/{{name}}
    * - subdomain mode: https://{{projectId}}.{projectBaseDomain}/functions/{{name}}
    */
   default String edgeUrlTemplate() {
     if ("subdomain".equals(projectRoutingMode())) {
       return "https://{{projectId}}." + projectBaseDomain() + "/functions/{{name}}";
     }
-    return "/functions/{{projectId}}/{{name}}";
+    return "/open/{{projectId}}/functions/{{name}}";
   }
 
   /**

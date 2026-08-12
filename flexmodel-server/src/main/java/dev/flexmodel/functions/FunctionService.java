@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.flexmodel.auth.service.InternalTokenService;
 import dev.flexmodel.codegen.entity.Function;
 import dev.flexmodel.codegen.entity.FunctionTemplate;
-import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.common.config.web.jwt.JwtService;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.functions.dto.*;
 import dev.flexmodel.query.Expressions;
@@ -16,7 +14,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -43,13 +40,7 @@ public class FunctionService {
   FunctionInvoker functionInvoker;
 
   @Inject
-  JwtService jwtService;
-
-  @Inject
   InternalTokenService internalTokenService;
-
-  @Inject
-  FlexmodelConfig config;
 
   @Inject
   ObjectMapper objectMapper;
@@ -189,58 +180,6 @@ public class FunctionService {
 
     log.info("Function {} invoked, status={}", name, response.getStatus());
     return response;
-  }
-
-  // ============================================================
-  // Edge Function — Invoke Token
-  // ============================================================
-
-  /**
-   * Sign an invoke-token for edge function direct invocation.
-   *
-   * <p>The invoke-token is a JWT signed with "svc:invoke" + jwtSecret (5-minute TTL),
-   * containing projectId, functionName, authToken (for SDK callback), and invokeId.
-   * The frontend uses this token to directly call the Deno Runtime at the URL
-   * defined by {@code flexmodel.edge-url-template}.
-   *
-   * @param projectId project ID
-   * @param name      function name
-   * @return InvokeTokenResponse containing the token and runtime URL
-   */
-  public InvokeTokenResponse signInvokeToken(String projectId, String name) {
-    Function fn = functionRepository.findByName(projectId, name);
-    if (fn == null) {
-      throw new FunctionException("Function not found: " + name);
-    }
-
-    // 签发 Runtime 回调专用 JWT（SDK 在 Worker 内回调 Java API 时使用）
-    String authToken = internalTokenService.signToken(projectId);
-    // 生成本次调用的唯一ID
-    String invokeId = UUID.randomUUID().toString();
-
-    // 签发 invoke-token（密钥 = "svc:invoke" + jwtSecret，与系统用户 JWT 和 runtime JWT 不同）
-    String invokeToken = jwtService.sign(
-      "svc:invoke",
-      Map.of(
-        "projectId", projectId,
-        "functionName", name,
-        "authToken", authToken,
-        "invokeId", invokeId
-      ),
-      Duration.ofMinutes(5)
-    );
-
-    // 构造边缘函数 URL（使用模板替换）
-    String runtimeUrl = config.edgeUrlTemplate()
-      .replace("{{projectId}}", projectId)
-      .replace("{{name}}", name);
-
-    log.info("Invoke-token signed for {}:{}", projectId, name);
-
-    return InvokeTokenResponse.builder()
-      .invokeToken(invokeToken)
-      .runtimeUrl(runtimeUrl)
-      .build();
   }
 
   // ============================================================

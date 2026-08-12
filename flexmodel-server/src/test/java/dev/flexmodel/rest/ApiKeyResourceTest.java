@@ -49,7 +49,7 @@ public class ApiKeyResourceTest {
       .body("""
         {
           "name": "E2E测试API Key",
-          "keyType": "user",
+          "scope": "open",
           "projectIds": "dev_test",
           "readOnly": false
         }
@@ -85,7 +85,7 @@ public class ApiKeyResourceTest {
       .body("""
         {
           "name": "E2E只读Key",
-          "keyType": "user",
+          "scope": "open",
           "projectIds": "dev_test",
           "readOnly": true
         }
@@ -120,7 +120,7 @@ public class ApiKeyResourceTest {
       .body("""
         {
           "name": "E2E重新生成Key",
-          "keyType": "user",
+          "scope": "open",
           "projectIds": "dev_test",
           "readOnly": false
         }
@@ -168,7 +168,7 @@ public class ApiKeyResourceTest {
       .body("""
         {
           "name": "E2E待删除Key",
-          "keyType": "user",
+          "scope": "open",
           "projectIds": "dev_test",
           "readOnly": false
         }
@@ -211,7 +211,7 @@ public class ApiKeyResourceTest {
       .body("""
         {
           "name": "E2E CRUD Key",
-          "keyType": "user",
+          "scope": "open",
           "projectIds": "dev_test",
           "readOnly": false
         }

@@ -64,10 +64,17 @@ public class FunctionResource {
                          Object request) {
     Response runtimeResponse = functionService.invoke(projectId, name, request);
 
-    // Pass through function result directly as HTTP response
+    // Pass through function result directly as HTTP response.
+    // Read body as raw bytes to bypass Jackson JSON parsing — edge functions
+    // may return arbitrary content types (text, binary, malformed JSON).
+    byte[] body = runtimeResponse.readEntity(byte[].class);
     Response.ResponseBuilder builder = Response
       .status(runtimeResponse.getStatus())
-      .entity(runtimeResponse.readEntity(Object.class));
+      .entity(body);
+    String contentType = runtimeResponse.getHeaderString("Content-Type");
+    if (contentType != null) {
+      builder.header("Content-Type", contentType);
+    }
 
     // Forward x-function-meta header for observability
     String meta = runtimeResponse.getHeaderString("x-function-meta");
@@ -76,22 +83,5 @@ public class FunctionResource {
     }
 
     return builder.build();
-  }
-
-  /**
-   * Sign an invoke-token for edge function direct invocation.
-   *
-   * <p>The frontend uses this token to directly call the Deno Runtime at the URL
-   * defined by {@code flexmodel.edge-url-template}, bypassing the Java server.
-   *
-   * @param projectId project ID
-   * @param name      function name
-   * @return InvokeTokenResponse containing invoke-token and runtime URL
-   */
-  @POST
-  @Path("/{name}/invoke-token")
-  public InvokeTokenResponse invokeToken(@PathParam("projectId") String projectId,
-                                         @PathParam("name") String name) {
-    return functionService.signInvokeToken(projectId, name);
   }
 }

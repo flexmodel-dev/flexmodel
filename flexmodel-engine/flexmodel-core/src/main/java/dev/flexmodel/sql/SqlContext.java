@@ -6,7 +6,6 @@ import dev.flexmodel.session.AbstractSessionContext;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.sql.dialect.SqlDialect;
 import dev.flexmodel.sql.type.*;
-import dev.flexmodel.sql.type.*;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -60,7 +59,7 @@ public class SqlContext extends AbstractSessionContext {
       this.typeHandlerMap.put(ScalarType.TIME.getType(), new LegacyTimeSqlTypeHandler());
     }
     this.typeHandlerMap.put(ScalarType.JSON.getType(), new JsonSqlTypeHandler());
-    this.typeHandlerMap.put(ScalarType.ENUM.getType(), new EnumSqlTypeHandler());
+    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumSqlTypeHandler());
   }
 
   @Override

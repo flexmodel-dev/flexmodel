@@ -7,7 +7,6 @@ import dev.flexmodel.model.field.ScalarType;
 import dev.flexmodel.session.AbstractSessionContext;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.type.*;
-import dev.flexmodel.type.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,7 +34,7 @@ public class MongoContext extends AbstractSessionContext {
     this.typeHandlerMap.put(ScalarType.DATE.getType(), new DateTypeHandler());
     this.typeHandlerMap.put(ScalarType.TIME.getType(), new TimeTypeHandler());
     this.typeHandlerMap.put(ScalarType.JSON.getType(), new JsonTypeHandler());
-    this.typeHandlerMap.put(ScalarType.ENUM.getType(), new EnumTypeHandler());
+    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumTypeHandler());
   }
 
   public MongoDatabase getMongoDatabase() {

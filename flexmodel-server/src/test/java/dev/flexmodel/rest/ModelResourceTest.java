@@ -60,7 +60,7 @@ class ModelResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "type": "entity",
+          "type": "Entity",
           "name": "testCreateModelStudent",
           "fields": [
             {
@@ -112,7 +112,7 @@ class ModelResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "type": "entity",
+          "type": "Entity",
           "name": "testDropModelStudent",
           "fields": [
             {
@@ -181,7 +181,7 @@ class ModelResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "type": "entity",
+          "type": "Entity",
           "name": "testCreateFieldStudent",
           "fields": [
             {
@@ -260,7 +260,7 @@ class ModelResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "type": "entity",
+          "type": "Entity",
           "name": "testModifyFieldStudent",
           "fields": [
             {
@@ -340,7 +340,7 @@ class ModelResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "type": "entity",
+          "type": "Entity",
           "name": "testDropFieldStudent",
           "fields": [
             {
@@ -411,7 +411,7 @@ class ModelResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "type": "entity",
+          "type": "Entity",
           "name": "testCreateIndexStudent",
           "fields": [
             {
@@ -494,7 +494,7 @@ class ModelResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "type": "entity",
+          "type": "Entity",
           "name": "testModifyIndexStudent",
           "fields": [
             {
@@ -589,7 +589,7 @@ class ModelResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "type": "entity",
+          "type": "Entity",
           "name": "testDropIndexStudent",
           "fields": [
             {

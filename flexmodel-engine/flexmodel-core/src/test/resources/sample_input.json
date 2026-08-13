@@ -1,7 +1,7 @@
 [
   {
     "name": "fs_datasource",
-    "type": "entity",
+    "type": "Entity",
     "fields": [
       {
         "name": "name",
@@ -66,7 +66,7 @@
   },
   {
     "name": "fs_api_definition",
-    "type": "entity",
+    "type": "Entity",
     "fields": [
       {
         "name": "id",
@@ -171,7 +171,7 @@
   },
   {
     "name": "fs_api_log",
-    "type": "entity",
+    "type": "Entity",
     "fields": [
       {
         "name": "id",
@@ -237,7 +237,7 @@
   },
   {
     "name": "fs_identity_provider",
-    "type": "entity",
+    "type": "Entity",
     "fields": [
       {
         "name": "name",
@@ -282,7 +282,7 @@
   {
     "name": "fs_config",
     "comment": "配置",
-    "type": "entity",
+    "type": "Entity",
     "fields": [
       {
         "name": "id",
@@ -350,7 +350,7 @@
     ]
   },
   {
-    "type": "entity",
+    "type": "Entity",
     "name": "Teacher",
     "fields": [
       {
@@ -381,7 +381,7 @@
     "indexes": []
   },
   {
-    "type": "entity",
+    "type": "Entity",
     "name": "Student",
     "fields": [
       {
@@ -433,7 +433,7 @@
         "nullable": true
       },
       {
-        "type": "Relation",
+        "type": "ModelRef",
         "name": "studentClass",
         "comment": "班级",
         "modelName": "Student",
@@ -445,7 +445,7 @@
       },
       {
         "name": "studentDetail",
-        "type": "Relation",
+        "type": "ModelRef",
         "modelName": "Student",
         "unique": false,
         "nullable": true,
@@ -482,7 +482,7 @@
     ]
   },
   {
-    "type": "entity",
+    "type": "Entity",
     "name": "StudentDetail",
     "fields": [
       {
@@ -505,7 +505,7 @@
         "nullable": true
       },
       {
-        "type": "Relation",
+        "type": "ModelRef",
         "name": "student",
         "comment": "学生",
         "modelName": "StudentDetail",
@@ -527,7 +527,7 @@
     "indexes": []
   },
   {
-    "type": "entity",
+    "type": "Entity",
     "name": "Classes",
     "fields": [
       {
@@ -555,7 +555,7 @@
         "length": 255
       },
       {
-        "type": "Relation",
+        "type": "ModelRef",
         "name": "students",
         "modelName": "Classes",
         "unique": false,
@@ -569,7 +569,7 @@
     ]
   },
   {
-    "type": "entity",
+    "type": "Entity",
     "name": "Course",
     "fields": [
       {
@@ -605,7 +605,7 @@
   },
   {
     "name": "ApiType",
-    "type": "enum",
+    "type": "Enum",
     "elements": [
       "FOLDER",
       "API"
@@ -614,7 +614,7 @@
   },
   {
     "name": "DatasourceType",
-    "type": "enum",
+    "type": "Enum",
     "elements": [
       "SYSTEM",
       "USER"
@@ -623,7 +623,7 @@
   },
   {
     "name": "UserGender",
-    "type": "enum",
+    "type": "Enum",
     "elements": [
       "UNKNOWN",
       "MALE",
@@ -633,7 +633,7 @@
   },
   {
     "name": "user_interest",
-    "type": "enum",
+    "type": "Enum",
     "elements": [
       "chang",
       "tiao",
@@ -644,7 +644,7 @@
   },
   {
     "name": "LogLevel",
-    "type": "enum",
+    "type": "Enum",
     "elements": [
       "DEBUG",
       "INFO",

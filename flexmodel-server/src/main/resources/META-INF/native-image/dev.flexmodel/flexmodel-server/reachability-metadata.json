@@ -5366,7 +5366,7 @@
       ]
     },
     {
-      "type": "dev.flexmodel.model.field.RelationField",
+      "type": "dev.flexmodel.model.field.ModelRefField",
       "serializable": true,
       "methods": [
         {

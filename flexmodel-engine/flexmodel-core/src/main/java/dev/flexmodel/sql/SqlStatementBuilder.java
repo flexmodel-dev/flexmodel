@@ -3,7 +3,7 @@ package dev.flexmodel.sql;
 import dev.flexmodel.ExpressionCalculatorException;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.ModelDefinition;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.ScalarType;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Query;
@@ -123,7 +123,7 @@ public class SqlStatementBuilder extends BaseService {
         }
         String localField = joiner.getLocalField();
         String foreignField = joiner.getForeignField();
-        RelationField relationField;
+        ModelRefField relationField;
         if (model instanceof EntityDefinition entity && (relationField = entity.findRelationByModelName(joiner.getFrom()).orElse(null)) != null) {
           foreignField = relationField.getForeignField();
           joinCause.append(joinTableName).append(" \n on \n").append(toFullColumnQuoteString(modelName, localField)).append("=").append(toFullColumnQuoteString(joiner.getAs(), foreignField));
@@ -157,7 +157,7 @@ public class SqlStatementBuilder extends BaseService {
   private void appendProjection(String modelName, Query query, ModelDefinition model, Map<String, String> projectionMap, StringBuilder sqlBuilder) {
     SqlDialect sqlDialect = sqlContext.getSqlDialect();
     Query.Projection projection = query.getProjection();
-    Map<String, RelationField> relationFields = findRelationFields(model, query);
+    Map<String, ModelRefField> relationFields = findRelationFields(model, query);
     StringJoiner columns = new StringJoiner(", ");
     if (projection != null && !projection.getFields().isEmpty()) {
       projection.getFields().forEach((key, value) -> {

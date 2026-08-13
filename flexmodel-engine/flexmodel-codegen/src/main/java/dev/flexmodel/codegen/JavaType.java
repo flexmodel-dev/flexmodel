@@ -9,7 +9,7 @@ import static dev.flexmodel.model.field.ScalarType.*;
  */
 public enum JavaType {
 
-  RELATION(ScalarType.RELATION_TYPE, null, null, null),
+  MODEL_REF(ScalarType.MODEL_REF_TYPE, null, null, null),
   STRING(STRING_TYPE, null, "String", "String"),
   FLOAT(FLOAT_TYPE, null, "Double", "Double"),
   INT(INT_TYPE, null, "Integer", "Integer"),

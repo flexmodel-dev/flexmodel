@@ -2,7 +2,7 @@
   "objects": [
     {
       "name": "Datasource",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "name",
@@ -59,7 +59,7 @@
     {
       "name": "ApiInfo",
       "comment": "接口信息",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "id",
@@ -144,7 +144,7 @@
     },
     {
       "name": "ApiLog",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "id",
@@ -204,7 +204,7 @@
     },
     {
       "name": "IdentityProvider",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "name",
@@ -241,7 +241,7 @@
     {
       "name": "Config",
       "comment": "配置",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "id",
@@ -302,7 +302,7 @@
       ]
     },
     {
-      "type": "entity",
+      "type": "Entity",
       "name": "Teacher",
       "fields": [
         {
@@ -337,7 +337,7 @@
       "indexes": []
     },
     {
-      "type": "entity",
+      "type": "Entity",
       "name": "Student",
       "fields": [
         {
@@ -394,7 +394,7 @@
         },
         {
           "name": "studentDetail",
-          "type": "Relation",
+          "type": "ModelRef",
           "modelName": "Student",
           "unique": false,
           "nullable": true,
@@ -407,7 +407,7 @@
       "indexes": []
     },
     {
-      "type": "entity",
+      "type": "Entity",
       "name": "StudentDetail",
       "fields": [
         {
@@ -440,7 +440,7 @@
       "indexes": []
     },
     {
-      "type": "entity",
+      "type": "Entity",
       "name": "Classes",
       "fields": [
         {
@@ -468,7 +468,7 @@
           "length": 255
         },
         {
-          "type": "Relation",
+          "type": "ModelRef",
           "name": "students",
           "modelName": "Classes",
           "unique": false,
@@ -482,7 +482,7 @@
       "indexes": []
     },
     {
-      "type": "entity",
+      "type": "Entity",
       "name": "Course",
       "fields": [
         {
@@ -502,7 +502,7 @@
         },
         {
           "name": "students",
-          "type": "Relation",
+          "type": "ModelRef",
           "modelName": "Course",
           "unique": false,
           "nullable": true,
@@ -528,7 +528,7 @@
     },
     {
       "name": "UserGender",
-      "type": "enum",
+      "type": "Enum",
       "elements": [
         "UNKNOWN",
         "MALE",
@@ -538,7 +538,7 @@
     },
     {
       "name": "User_interest",
-      "type": "enum",
+      "type": "Enum",
       "elements": [
         "Chang",
         "Tiao",

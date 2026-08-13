@@ -2,7 +2,7 @@ package dev.flexmodel.entity;
 
 import dev.flexmodel.annotation.ModelClass;
 import dev.flexmodel.annotation.ModelField;
-import dev.flexmodel.annotation.ModelRelation;
+import dev.flexmodel.annotation.ModelRef;
 
 import java.util.List;
 
@@ -12,7 +12,7 @@ import java.util.List;
 @ModelClass("Classes")
 public class Classes {
 
-  @ModelRelation
+  @ModelRef
   @ModelField("students")
   private List<Student> students;
 

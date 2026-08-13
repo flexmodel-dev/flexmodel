@@ -18,7 +18,7 @@ public class ModelField {
   private String fullTypeName;
   private boolean identity;
   private boolean basicField;
-  private boolean relationField;
+  private boolean modelRefField;
   private boolean enumField;
   private Field original;
 
@@ -103,8 +103,8 @@ public class ModelField {
     return this;
   }
 
-  public boolean isRelationField() {
-    return relationField;
+  public boolean isModelRefField() {
+    return modelRefField;
   }
 
   public boolean isEnumField() {
@@ -116,8 +116,8 @@ public class ModelField {
     return this;
   }
 
-  public ModelField setRelationField(boolean relationField) {
-    this.relationField = relationField;
+  public ModelField setModelRefField(boolean relationField) {
+    this.modelRefField = relationField;
     return this;
   }
 

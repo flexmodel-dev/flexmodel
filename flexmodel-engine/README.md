@@ -85,7 +85,7 @@ try (Session session = sessionFactory.createSession("mySchema")) {
 {
   "objects": [
     {
-      "type": "entity",
+      "type": "Entity",
       "name": "User",
       "comment": "用户表",
       "fields": [

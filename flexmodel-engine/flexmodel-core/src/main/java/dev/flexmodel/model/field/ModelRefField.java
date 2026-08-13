@@ -5,7 +5,7 @@ import java.util.Objects;
 /**
  * @author cjbi
  */
-public class RelationField extends TypedField<Long, RelationField> {
+public class ModelRefField extends TypedField<Long, ModelRefField> {
 
   /**
    * 多选
@@ -28,15 +28,15 @@ public class RelationField extends TypedField<Long, RelationField> {
    */
   private boolean cascadeDelete;
 
-  public RelationField(String name) {
-    super(name, ScalarType.RELATION.getType());
+  public ModelRefField(String name) {
+    super(name, ScalarType.MODEL_REF.getType());
   }
 
   public boolean isCascadeDelete() {
     return cascadeDelete;
   }
 
-  public RelationField setCascadeDelete(boolean cascadeDelete) {
+  public ModelRefField setCascadeDelete(boolean cascadeDelete) {
     this.cascadeDelete = cascadeDelete;
     return this;
   }
@@ -45,7 +45,7 @@ public class RelationField extends TypedField<Long, RelationField> {
     return from;
   }
 
-  public RelationField setFrom(String from) {
+  public ModelRefField setFrom(String from) {
     this.from = from;
     return this;
   }
@@ -54,7 +54,7 @@ public class RelationField extends TypedField<Long, RelationField> {
     return localField;
   }
 
-  public RelationField setLocalField(String localField) {
+  public ModelRefField setLocalField(String localField) {
     this.localField = localField;
     return this;
   }
@@ -63,7 +63,7 @@ public class RelationField extends TypedField<Long, RelationField> {
     return foreignField;
   }
 
-  public RelationField setForeignField(String foreignField) {
+  public ModelRefField setForeignField(String foreignField) {
     this.foreignField = foreignField;
     return this;
   }
@@ -72,14 +72,14 @@ public class RelationField extends TypedField<Long, RelationField> {
     return multiple;
   }
 
-  public RelationField setMultiple(boolean multiple) {
+  public ModelRefField setMultiple(boolean multiple) {
     this.multiple = multiple;
     return this;
   }
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof RelationField that)) return false;
+    if (!(o instanceof ModelRefField that)) return false;
     if (!super.equals(o)) return false;
     return isMultiple() == that.isMultiple() &&
            isCascadeDelete() == that.isCascadeDelete() &&

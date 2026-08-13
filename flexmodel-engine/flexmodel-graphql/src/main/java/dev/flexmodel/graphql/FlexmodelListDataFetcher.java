@@ -4,7 +4,7 @@ import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.SelectedField;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
@@ -41,7 +41,7 @@ public class FlexmodelListDataFetcher extends FlexmodelAbstractDataFetcher<List<
     List<SelectedField> selectedFields = env.getSelectionSet().getImmediateFields();
     try (Session session = sessionFactory.createSession(schemaName)) {
       EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
-      List<RelationField> relationFields = new ArrayList<>();
+      List<ModelRefField> relationFields = new ArrayList<>();
 
       String whereString = null;
       if (where != null) {
@@ -70,7 +70,7 @@ public class FlexmodelListDataFetcher extends FlexmodelAbstractDataFetcher<List<
             if (flexModelField == null) {
               continue;
             }
-            if (flexModelField instanceof RelationField secondaryRelationField) {
+            if (flexModelField instanceof ModelRefField secondaryRelationField) {
               relationFields.add(secondaryRelationField);
               continue;
             }
@@ -88,7 +88,7 @@ public class FlexmodelListDataFetcher extends FlexmodelAbstractDataFetcher<List<
       for (Map<String, Object> map : list) {
         Map<String, Object> resultData = new HashMap<>(map);
         result.add(resultData);
-        for (RelationField sencondaryRelationField : relationFields) {
+        for (ModelRefField sencondaryRelationField : relationFields) {
           Object secondaryId = map.get(entity.findIdField().map(TypedField::getName).orElseThrow());
           List<Map<String, Object>> relationDataList = findRelationDataList(session, env, null, sencondaryRelationField.getFrom(), sencondaryRelationField, secondaryId);
           resultData.put(sencondaryRelationField.getName(),

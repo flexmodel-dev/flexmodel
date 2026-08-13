@@ -134,11 +134,11 @@
         }
       ],
       "indexes": [],
-      "type": "entity"
+      "type": "Entity"
     },
     {
       "name": "fs_datasource",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "name",
@@ -198,7 +198,7 @@
     },
     {
       "name": "fs_api_log",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "id",
@@ -258,7 +258,7 @@
       ]
     },
     {
-      "type": "entity",
+      "type": "Entity",
       "name": "Student",
       "fields": [
         {
@@ -315,7 +315,7 @@
         },
         {
           "name": "studentDetail",
-          "type": "Relation",
+          "type": "ModelRef",
           "modelName": "Student",
           "unique": false,
           "nullable": true,
@@ -329,7 +329,7 @@
       "indexes": []
     },
     {
-      "type": "entity",
+      "type": "Entity",
       "name": "StudentDetail",
       "fields": [
         {
@@ -363,7 +363,7 @@
     },
     {
       "name": "LogLevel",
-      "type": "enum",
+      "type": "Enum",
       "elements": [
         "DEBUG",
         "INFO",
@@ -374,7 +374,7 @@
     },
     {
       "name": "UserGender",
-      "type": "enum",
+      "type": "Enum",
       "elements": [
         "UNKNOWN",
         "MALE",
@@ -384,7 +384,7 @@
     },
     {
       "name": "User_interest",
-      "type": "enum",
+      "type": "Enum",
       "elements": [
         "chang",
         "tiao",

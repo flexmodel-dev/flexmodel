@@ -45,7 +45,7 @@
     "name": "dev.flexmodel.model.field.EnumRefField"
   },
   {
-    "name": "dev.flexmodel.model.field.RelationField"
+    "name": "dev.flexmodel.model.field.ModelRefField"
   },
   {
     "name": "dev.flexmodel.model.field.TypedField"

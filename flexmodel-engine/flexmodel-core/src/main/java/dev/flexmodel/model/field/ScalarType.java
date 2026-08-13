@@ -13,8 +13,8 @@ public enum ScalarType {
   DATE(ScalarType.DATE_TYPE),
   TIME(ScalarType.TIME_TYPE),
   JSON(ScalarType.JSON_TYPE),
-  ENUM(ScalarType.ENUM_TYPE),
-  RELATION(ScalarType.RELATION_TYPE);
+  ENUM_REF(ScalarType.ENUM_REF_TYPE),
+  MODEL_REF(ScalarType.MODEL_REF_TYPE);
 
   private final String type;
 
@@ -27,8 +27,8 @@ public enum ScalarType {
   public static final String DATE_TYPE = "Date";
   public static final String TIME_TYPE = "Time";
   public static final String JSON_TYPE = "JSON";
-  public static final String ENUM_TYPE = "EnumRef";
-  public static final String RELATION_TYPE = "Relation";
+  public static final String ENUM_REF_TYPE = "EnumRef";
+  public static final String MODEL_REF_TYPE = "ModelRef";
 
   ScalarType(String type) {
     this.type = type;

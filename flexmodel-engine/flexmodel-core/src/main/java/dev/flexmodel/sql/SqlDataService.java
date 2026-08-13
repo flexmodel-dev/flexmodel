@@ -6,7 +6,7 @@ import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.ModelDefinition;
 import dev.flexmodel.model.NativeQueryDefinition;
 import dev.flexmodel.model.field.Field;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.service.BaseService;
@@ -298,7 +298,7 @@ public class SqlDataService extends BaseService implements DataService {
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
     TypedField<?, ?> idField = entity.findIdField().orElseThrow();
     String columnsString = entity.getFields().stream()
-      .filter(f -> !(f instanceof RelationField))
+      .filter(f -> !(f instanceof ModelRefField))
       .map(field -> sqlDialect.quoteIdentifier(field.getName()))
       .collect(Collectors.joining(", "));
 

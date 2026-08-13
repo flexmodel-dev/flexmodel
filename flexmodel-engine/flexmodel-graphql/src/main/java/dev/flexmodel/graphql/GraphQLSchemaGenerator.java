@@ -2,11 +2,10 @@ package dev.flexmodel.graphql;
 
 import dev.flexmodel.codegen.AbstractGenerator;
 import dev.flexmodel.codegen.GenerationContext;
-import dev.flexmodel.codegen.ModelClass;
 import dev.flexmodel.codegen.ModelField;
 import dev.flexmodel.codegen.StringUtils;
 import dev.flexmodel.model.field.EnumRefField;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.ScalarType;
 import dev.flexmodel.model.field.TypedField;
 
@@ -47,8 +46,8 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
     private final I18nUtil i18n = new I18nUtil();
 
     private String toGraphQLType(ModelField itt, GenerationContext context) {
-        if (itt.isRelationField()) {
-            RelationField rf = (RelationField) itt.getOriginal();
+      if (itt.isModelRefField()) {
+        ModelRefField rf = (ModelRefField) itt.getOriginal();
             String typeName = StringUtils.capitalize(StringUtils.snakeToCamel(rf.getFrom()));
             if (rf.isMultiple()) {
                 return "[" + typeName + "]";
@@ -203,7 +202,7 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
             out.println();
             out.println("type " + key + "AvgFields {");
             for (var f : it.getAllFields()) {
-                if (!f.isRelationField()) {
+              if (!f.isModelRefField()) {
                     out.println("  " + f.getName() + ": Float");
                 }
             }
@@ -220,7 +219,7 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
             out.println("  and: [" + key + "BoolExp!]");
             out.println("  or: [" + key + "BoolExp!]");
             for (var f : it.getAllFields()) {
-                if (!f.isRelationField() && !f.isEnumField()) {
+              if (!f.isModelRefField() && !f.isEnumField()) {
                     TypedField<?, ?> tf = (TypedField<?, ?>) f.getOriginal();
                     out.println("  " + f.getName() + ": " + comparisonMapping.getOrDefault(tf.getType(), "StringComparisonExp"));
                 } else if (f.isEnumField() && context.containsEnumClass(((EnumRefField) f.getOriginal()).getFrom())) {
@@ -235,7 +234,7 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
             out.println("\"" + i18n.getString("gql.order_by.comment", key) + "\"");
             out.println("input " + key + "OrderBy {");
             for (var f : it.getAllFields()) {
-                if (!f.isRelationField()) {
+              if (!f.isModelRefField()) {
                     out.println("  " + f.getName() + ": OrderBy");
                 }
             }
@@ -243,7 +242,7 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
             out.println();
             out.println("input " + key + "InsertInput {");
             for (var f : it.getAllFields()) {
-                if (!f.isRelationField()) {
+              if (!f.isModelRefField()) {
                     out.println("  " + f.getName() + ": " + toGraphQLType(f, context));
                 }
             }
@@ -251,7 +250,7 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
             out.println();
             out.println("input " + key + "SetInput {");
             for (var f : it.getAllFields()) {
-                if (!f.isRelationField()) {
+              if (!f.isModelRefField()) {
                     out.println("  " + f.getName() + ": " + toGraphQLType(f, context));
                 }
             }
@@ -264,7 +263,7 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
             out.println();
             out.println("enum " + key + "SelectField {");
             for (var f : it.getAllFields()) {
-                if (!f.isRelationField()) {
+              if (!f.isModelRefField()) {
                     out.println("  " + f.getName());
                 }
             }

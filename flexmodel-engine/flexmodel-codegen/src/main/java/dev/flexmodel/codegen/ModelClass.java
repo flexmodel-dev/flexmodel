@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.ModelDefinition;
 import dev.flexmodel.model.field.EnumRefField;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.TypedField;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public class ModelClass extends AbstractClass<ModelClass> {
   private ModelField idField;
   private final List<ModelField> basicFields = new ArrayList<>();
   private final List<ModelField> enumFields = new ArrayList<>();
-  private final List<ModelField> relationFields = new ArrayList<>();
+  private final List<ModelField> modelRefFields = new ArrayList<>();
   private final List<ModelField> allFields = new ArrayList<>();
   private ModelDefinition original;
 
@@ -56,7 +56,7 @@ public class ModelClass extends AbstractClass<ModelClass> {
         .setComment(field.getComment());
 
       switch (field) {
-        case RelationField relationField -> {
+        case ModelRefField relationField -> {
           String ftName = StringUtils.capitalize(
             StringUtils.snakeToCamel(
               replaceString != null ?
@@ -68,13 +68,13 @@ public class ModelClass extends AbstractClass<ModelClass> {
             modelField.setTypePackage("java.util")
               .setFullTypeName("java.util.List")
               .setShortTypeName("List<" + ftName + ">")
-              .setRelationField(true);
+              .setModelRefField(true);
           } else {
             modelField.setTypePackage(null)
               .setFullTypeName(modelField.getTypePackage() + "." + ftName)
               .setShortTypeName(ftName)
-              .setRelationField(true);
-            modelClass.getRelationFields().add(modelField);
+              .setModelRefField(true);
+            modelClass.getModelRefFields().add(modelField);
           }
 
         }
@@ -150,8 +150,8 @@ public class ModelClass extends AbstractClass<ModelClass> {
     return enumFields;
   }
 
-  public List<ModelField> getRelationFields() {
-    return relationFields;
+  public List<ModelField> getModelRefFields() {
+    return modelRefFields;
   }
 
   public List<ModelField> getAllFields() {

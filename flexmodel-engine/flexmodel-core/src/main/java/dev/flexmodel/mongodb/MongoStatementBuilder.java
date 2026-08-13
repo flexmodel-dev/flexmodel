@@ -5,7 +5,7 @@ import dev.flexmodel.ExpressionCalculator;
 import dev.flexmodel.ExpressionCalculatorException;
 import dev.flexmodel.model.ModelDefinition;
 import dev.flexmodel.model.field.Field;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.service.BaseService;
@@ -82,7 +82,7 @@ class MongoStatementBuilder extends BaseService {
 
   private void addProjectionStage(List<Document> pipeline, ModelDefinition model, Query query) {
     Document project = new Document("_id", false);
-    Map<String, RelationField> relationFields = findRelationFields(model, query);
+    Map<String, ModelRefField> relationFields = findRelationFields(model, query);
     boolean hasAggFunc = false;
 
     Query.Projection projection = query.getProjection();

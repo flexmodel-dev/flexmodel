@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.flexmodel.model.EntityDefinition;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.reflect.ProxyInterface;
 import dev.flexmodel.reflect.ReflectionUtils;
 
@@ -39,7 +39,7 @@ public class LazyObjectSerializer extends StdSerializer<ProxyInterface> {
     Field[] declaredFields = aClass.getDeclaredFields();
     Map<String, Object> data = new HashMap<>();
     for (Field field : declaredFields) {
-      if (entity.getField(field.getName()) instanceof RelationField) {
+      if (entity.getField(field.getName()) instanceof ModelRefField) {
         continue;
       }
       try {

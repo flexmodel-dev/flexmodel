@@ -25,39 +25,40 @@ public interface FlexmodelConfig extends Serializable {
    * Project base domain, used for CORS and URL construction in subdomain routing mode.
    */
   @WithName("project-base-domain")
-  @WithDefault("localhost")
   String projectBaseDomain();
 
   /**
-   * Routing mode: "path" or "subdomain".
-   * In "path" mode, multi-tenant resources are accessed via path segments
-   * (e.g., /pages/{projectId}, /functions/{projectId}/{name}).
-   * In "subdomain" mode, they are accessed via subdomain
-   * (e.g., {projectId}.{projectBaseDomain}, {projectId}.{projectBaseDomain}/functions/{name}).
+   * 路由模式由 {@link #projectBaseDomain()} 自动推断，无需显式配置：
+   * <ul>
+   *   <li>配置了域名（非空）→ subdomain 模式</li>
+   *   <li>未配置（空）→ path 模式</li>
+   * </ul>
    */
-  @WithName("project-routing-mode")
-  @WithDefault("path")
-  String projectRoutingMode();
-
-  /**
-   * Derive the edge function URL based on routing mode and project base domain.
-   * - path mode: /open/{{projectId}}/functions/{{name}}
-   * - subdomain mode: https://{{projectId}}.{projectBaseDomain}/functions/{{name}}
-   */
-  default String edgeUrlTemplate() {
-    if ("subdomain".equals(projectRoutingMode())) {
-      return "https://{{projectId}}." + projectBaseDomain() + "/functions/{{name}}";
-    }
-    return "/open/{{projectId}}/functions/{{name}}";
+  default boolean isSubdomainRouting() {
+    String domain = projectBaseDomain();
+    return domain != null && !domain.isBlank();
   }
 
   /**
-   * Derive the pages URL based on routing mode and project base domain.
-   * - path mode: /pages/{{projectId}}
-   * - subdomain mode: https://{{projectId}}.{projectBaseDomain}
+   * 推导边缘函数调用 URL（统一经 Java 代理端点 /open/{projectId}/functions/{name}/invoke）。
+   * - path 模式: /api/open/{{projectId}}/functions/{{name}}/invoke
+   * - subdomain 模式: https://{{projectId}}.{projectBaseDomain}/api/open/{{projectId}}/functions/{{name}}/invoke
+   */
+  default String edgeUrlTemplate() {
+    if (isSubdomainRouting()) {
+      return "https://{{projectId}}." + projectBaseDomain()
+        + "/api/open/{{projectId}}/functions/{{name}}/invoke";
+    }
+    return "/api/open/{{projectId}}/functions/{{name}}/invoke";
+  }
+
+  /**
+   * 推导 Pages 站点 URL。
+   * - path 模式: /pages/{{projectId}}
+   * - subdomain 模式: https://{{projectId}}.{projectBaseDomain}（子域名根即站点）
    */
   default String pagesUrlTemplate() {
-    if ("subdomain".equals(projectRoutingMode())) {
+    if (isSubdomainRouting()) {
       return "https://{{projectId}}." + projectBaseDomain();
     }
     return "/pages/{{projectId}}";

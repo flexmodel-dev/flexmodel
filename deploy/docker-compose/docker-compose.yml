@@ -77,7 +77,6 @@ services:
       - QUARKUS_REST_CLIENT_FUNCTION_RUNTIME_URL=http://flexmodel-functions-runtime:9999
       - QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=100M
       - FLEXMODEL_PAGES_ROOT=/data/pages
-      - FLEXMODEL_PROJECT_ROUTING_MODE=${FLEXMODEL_PROJECT_ROUTING_MODE:-path}
       - FLEXMODEL_PAGES_URL_TEMPLATE=${FLEXMODEL_PAGES_URL_TEMPLATE:-https://{{projectId}}.example.com}
       - FLEXMODEL_EDGE_URL_TEMPLATE=${FLEXMODEL_EDGE_URL_TEMPLATE:-https://{{projectId}}.example.com/functions/{{name}}}
 

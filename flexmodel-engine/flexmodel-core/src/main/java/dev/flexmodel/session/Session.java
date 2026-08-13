@@ -82,22 +82,7 @@ public interface Session extends Closeable {
           continue;
         }
         if (obj instanceof EntityDefinition newer) {
-          try {
-            schema().createEntity(newer.clone());
-          } catch (Exception e) {
-            if (older instanceof EntityDefinition olderEntity) {
-              for (var field : newer.getFields()) {
-                try {
-                  if (olderEntity.getField(field.getName()) == null) {
-                    schema().createField(field);
-                  } else if (!field.equals(olderEntity.getField(field.getName()))) {
-                    schema().modifyField(field);
-                  }
-                } catch (Exception ignored) {
-                }
-              }
-            }
-          }
+          schema().migrateEntity(newer, older);
         } else if (obj instanceof EnumDefinition newer) {
           try {
             schema().dropModel(newer.getName());

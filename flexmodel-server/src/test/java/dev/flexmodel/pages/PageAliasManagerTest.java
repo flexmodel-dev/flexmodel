@@ -210,8 +210,8 @@ class PageAliasManagerTest {
     public String projectUrlTemplate() { return ""; }
 
     @Override
-    public String projectBaseDomain() {
-      return "";
+    public java.util.Optional<String> projectBaseDomain() {
+      return java.util.Optional.empty();
     }
 
     @Override

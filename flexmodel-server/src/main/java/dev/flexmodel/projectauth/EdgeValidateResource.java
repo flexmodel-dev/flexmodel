@@ -126,8 +126,6 @@ public class EdgeValidateResource {
   private EdgeValidateResponse tryApiKey(String token, String projectId, String functionName) {
     AuthApiKey apiKey = apiKeyService.validate(token);
     if (apiKey == null) return null;
-    // Only open scope keys can directly invoke functions via Deno
-    if (!"open".equals(apiKey.getScope())) return null;
 
     String authToken = internalTokenService.signToken(projectId);
     String invokeId = "ak-" + UUID.randomUUID().toString().substring(0, 8);

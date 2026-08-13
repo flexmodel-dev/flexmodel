@@ -160,15 +160,12 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   }
 
   /**
-   * 尝试 admin scope API Key 验证。
+   * 尝试 API Key 验证（admin 接口面）。
    */
   private boolean tryAdminApiKey(String token, ContainerRequestContext requestContext, String projectId) {
     AuthApiKey apiKey = apiKeyService.validate(token);
     if (apiKey == null) {
       return false;
-    }
-    if (!"admin".equals(apiKey.getScope())) {
-      return false; // open scope key cannot access admin surface
     }
     if (!isProjectAllowed(apiKey, projectId)) {
       return false;
@@ -182,15 +179,12 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   // ============================================================
 
   /**
-   * 尝试 open scope API Key 验证。
+   * 尝试 API Key 验证（open 接口面）。
    */
   private boolean tryOpenApiKey(String token, ContainerRequestContext requestContext, String projectId) {
     AuthApiKey apiKey = apiKeyService.validate(token);
     if (apiKey == null) {
       return false;
-    }
-    if (!"open".equals(apiKey.getScope())) {
-      return false; // admin scope key cannot access open surface
     }
     if (!isProjectAllowed(apiKey, projectId)) {
       return false;

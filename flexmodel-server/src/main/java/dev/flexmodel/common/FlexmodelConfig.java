@@ -23,9 +23,10 @@ public interface FlexmodelConfig extends Serializable {
 
   /**
    * Project base domain, used for CORS and URL construction in subdomain routing mode.
+   * 空表示 path 模式；配置了真实域名则走 subdomain 模式。
    */
   @WithName("project-base-domain")
-  String projectBaseDomain();
+  Optional<String> projectBaseDomain();
 
   /**
    * 路由模式由 {@link #projectBaseDomain()} 自动推断，无需显式配置：
@@ -35,8 +36,7 @@ public interface FlexmodelConfig extends Serializable {
    * </ul>
    */
   default boolean isSubdomainRouting() {
-    String domain = projectBaseDomain();
-    return domain != null && !domain.isBlank();
+    return projectBaseDomain().map(d -> !d.isBlank()).orElse(false);
   }
 
   /**
@@ -46,7 +46,7 @@ public interface FlexmodelConfig extends Serializable {
    */
   default String edgeUrlTemplate() {
     if (isSubdomainRouting()) {
-      return "https://{{projectId}}." + projectBaseDomain()
+      return "https://{{projectId}}." + projectBaseDomain().orElse("")
         + "/api/open/{{projectId}}/functions/{{name}}/invoke";
     }
     return "/api/open/{{projectId}}/functions/{{name}}/invoke";
@@ -59,7 +59,7 @@ public interface FlexmodelConfig extends Serializable {
    */
   default String pagesUrlTemplate() {
     if (isSubdomainRouting()) {
-      return "https://{{projectId}}." + projectBaseDomain();
+      return "https://{{projectId}}." + projectBaseDomain().orElse("");
     }
     return "/pages/{{projectId}}";
   }

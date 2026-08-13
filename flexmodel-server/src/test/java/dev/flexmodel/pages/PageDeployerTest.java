@@ -239,10 +239,9 @@ class PageDeployerTest {
     public String projectUrlTemplate() { return ""; }
 
     @Override
-    public String projectBaseDomain() { return "localhost"; }
-
-    @Override
-    public String projectRoutingMode() { return "path"; }
+    public java.util.Optional<String> projectBaseDomain() {
+      return java.util.Optional.empty();
+    }
 
     @Override
     public java.util.Map<String, DatasourceConfig> datasources() { return java.util.Map.of(); }

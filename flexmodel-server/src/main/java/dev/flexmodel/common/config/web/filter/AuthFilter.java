@@ -28,10 +28,14 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * 认证过滤器。
+ * 认证过滤器 — 控制面/数据面分层鉴权。
  * <p>
- * 认证链：PermitAll -> 临时 Token(svc:runtime) -> 项目 Provider(OIDC/Function) -> API Key(fm_ak_ 前缀) -> 系统 JWT ->
- * 401
+ * 根据请求路径区分 API surface：
+ * <ul>
+ *   <li><b>OPEN surface</b>（路径以 {@code open/} 开头）：允许 open scope API Key + 项目 IdP + 匿名（无 IdP 时）</li>
+ *   <li><b>ADMIN surface</b>（其余路径）：允许系统 JWT + admin scope API Key</li>
+ * </ul>
+ * 认证链在 surface 内短路，跨 surface 的凭证一律拒绝。
  *
  * @author cjbi
  */
@@ -58,10 +62,8 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
     String path = requestContext.getUriInfo().getPath();
-    boolean isFlexmodelPath = path.startsWith("/");
-    if (!isFlexmodelPath) {
-      return;
-    }
+    // Normalize: remove leading slash for consistent prefix matching
+    String normalizedPath = path != null ? path.replaceFirst("^/+", "") : "";
 
     // 1. PermitAll -> 直接放行
     PermitAll permitAll = resourceInfo.getResourceMethod().getAnnotation(PermitAll.class);
@@ -72,30 +74,74 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     // 2. 提取 Bearer token
     String accessToken = Objects.toString(requestContext.getHeaderString("Authorization"), "")
         .replaceFirst("Bearer ", "").trim();
-    if (accessToken.isEmpty()) {
-      // 公开 Bucket 的匿名读访问（GET/HEAD 下载/预览/元数据），支持"复制访问链接"在浏览器中直接打开
-      if (isAnonymousPublicBucketRead(requestContext)) {
-        return;
-      }
-      throw new AuthException("Token is missing");
-    }
+
+    // 3. 根据路径判断 API surface
+    boolean isOpenSurface = normalizedPath.startsWith("open/");
 
     String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
 
-    // 3. 认证链： 系统 JWT  -> API Key -> IdP
-    if (trySystemJwt(accessToken, requestContext, projectId)) {
-      return;
-    }
-    if (accessToken.startsWith("fm_ak_") && tryApiKey(accessToken, requestContext, projectId)) {
-      return;
-    }
-    if (projectId != null && tryProjectProviders(accessToken, requestContext, projectId)) {
-      return;
-    }
+    if (isOpenSurface) {
+      // ---- OPEN surface: API Key (open scope) + system JWT + IdP + anonymous ----
+      if (accessToken.isEmpty()) {
+        // Try IdP first (anonymous allowed if no IdP configured)
+        if (tryProjectProviders(accessToken, requestContext, projectId)) {
+          return;
+        }
+        // Public Bucket anonymous read
+        if (isAnonymousPublicBucketRead(requestContext)) {
+          return;
+        }
+        throw new AuthException("Token is missing");
+      }
 
-    // 4. 全部失败 -> 401
-    throw new AuthException("Invalid token");
+      // API Key (must be open scope)
+      if (accessToken.startsWith("fm_ak_")) {
+        if (tryOpenApiKey(accessToken, requestContext, projectId)) {
+          return;
+        }
+        throw new AuthException("Invalid or unauthorized API key");
+      }
+
+      // System JWT (service accounts, e.g. Deno runtime callback)
+      if (trySystemJwt(accessToken, requestContext, projectId)) {
+        return;
+      }
+
+      // IdP token
+      if (projectId != null && tryProjectProviders(accessToken, requestContext, projectId)) {
+        return;
+      }
+
+      // Public Bucket anonymous read fallback
+      if (isAnonymousPublicBucketRead(requestContext)) {
+        return;
+      }
+      throw new AuthException("Invalid token");
+    } else {
+      // ---- ADMIN surface: system JWT + admin scope API Key ----
+      if (accessToken.isEmpty()) {
+        // Public Bucket anonymous read (admin surface still allows this)
+        if (isAnonymousPublicBucketRead(requestContext)) {
+          return;
+        }
+        throw new AuthException("Token is missing");
+      }
+
+      // System JWT
+      if (trySystemJwt(accessToken, requestContext, projectId)) {
+        return;
+      }
+      // API Key (must be admin scope)
+      if (accessToken.startsWith("fm_ak_") && tryAdminApiKey(accessToken, requestContext, projectId)) {
+        return;
+      }
+      throw new AuthException("Invalid token");
+    }
   }
+
+  // ============================================================
+  // ADMIN surface auth methods
+  // ============================================================
 
   /**
    * 尝试系统 JWT 验证（管理后台用户）。
@@ -114,20 +160,42 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   }
 
   /**
-   * 尝试 API Key 验证（fm_ak_ 前缀）。
+   * 尝试 API Key 验证（admin 接口面）。
    */
-  private boolean tryApiKey(String token, ContainerRequestContext requestContext, String projectId) {
+  private boolean tryAdminApiKey(String token, ContainerRequestContext requestContext, String projectId) {
     AuthApiKey apiKey = apiKeyService.validate(token);
     if (apiKey == null) {
       return false;
     }
-    // 系统级 Key（project_id 为空）：检查 project_ids 白名单
     if (!isProjectAllowed(apiKey, projectId)) {
       return false;
     }
     fillSessionContextForApiKey(requestContext, apiKey, projectId);
     return true;
   }
+
+  // ============================================================
+  // OPEN surface auth methods
+  // ============================================================
+
+  /**
+   * 尝试 API Key 验证（open 接口面）。
+   */
+  private boolean tryOpenApiKey(String token, ContainerRequestContext requestContext, String projectId) {
+    AuthApiKey apiKey = apiKeyService.validate(token);
+    if (apiKey == null) {
+      return false;
+    }
+    if (!isProjectAllowed(apiKey, projectId)) {
+      return false;
+    }
+    fillSessionContextForApiKey(requestContext, apiKey, projectId);
+    return true;
+  }
+
+  // ============================================================
+  // Shared auth methods
+  // ============================================================
 
   /**
    * 检查系统级 API Key 是否允许访问指定项目。
@@ -149,6 +217,15 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   private boolean tryProjectProviders(String token, ContainerRequestContext requestContext, String projectId) {
     List<AuthProviderConfig> configs = authProviderConfigService.listByProject(projectId);
     if (configs == null || configs.isEmpty()) {
+      // No providers configured → anonymous access (open surface only)
+      if (token == null || token.isBlank()) {
+        fillSessionContextForAnonymous(requestContext, projectId);
+        return true;
+      }
+      return false;
+    }
+
+    if (token == null || token.isBlank()) {
       return false;
     }
 
@@ -196,6 +273,10 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
 
     return ctx;
   }
+
+  // ============================================================
+  // Session context fillers
+  // ============================================================
 
   /**
    * 系统 JWT 认证 -> 填充上下文（管理后台用户）。
@@ -248,11 +329,23 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   }
 
   /**
+   * 匿名访问 -> 填充上下文（仅 open surface，无 IdP 配置时）。
+   */
+  private void fillSessionContextForAnonymous(ContainerRequestContext requestContext, String projectId) {
+    if (projectId != null) {
+      Project project = projectService.findProject(projectId);
+      if (project == null) {
+        throw new AuthException("Project not found");
+      }
+      sessionContext.setProjectId(projectId);
+      sessionContext.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
+    }
+    sessionContext.setUserId("anonymous");
+    requestContext.setProperty("projectId", projectId);
+  }
+
+  /**
    * 判断匿名请求是否可访问公开 Bucket 的对象读接口（GET/HEAD）。
-   * <p>
-   * 仅当目标 Bucket 的 visibility 为 PUBLIC 时放行，用于支持"复制访问链接"在浏览器中直接打开；
-   * 仅放行指向具体对象（下载/HEAD/元数据）的 GET/HEAD；目录列表（/objects 无对象路径）不公开。
-   * PRIVATE / AUTHENTICATED 及写操作（PUT/DELETE）始终要求认证。
    */
   private boolean isAnonymousPublicBucketRead(ContainerRequestContext requestContext) {
     String method = requestContext.getMethod();
@@ -260,7 +353,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       return false;
     }
     String path = requestContext.getUriInfo().getPath();
-    if (path == null || !path.matches("(?i)^/?projects/[^/]+/buckets/[^/]+/objects/.+")) {
+    if (path == null || !path.matches("(?i)^/?(?:projects|open)/[^/]+/buckets/[^/]+/objects/.+")) {
       return false;
     }
     String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
@@ -274,7 +367,6 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
         .filter(BucketVisibility.PUBLIC::equals)
         .isPresent();
     } catch (Exception e) {
-      // Bucket / 项目不存在或解析失败时按非公开处理，回退到标准认证流程
       return false;
     }
   }
@@ -283,7 +375,6 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext)
       throws IOException {
     // CDI @RequestScoped 自动管理生命周期，无需手动 clear
-    // SessionContext 在请求结束时由 CDI 自动销毁
   }
 
 }

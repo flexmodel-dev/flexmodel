@@ -1,5 +1,16 @@
 # ============================================================
-# Main domain → Java API + UI
+# Pages alias subpath segment — avoids "//" when alias is empty.
+# Evaluated lazily from $alias captured by the subdomain server_name.
+# ============================================================
+map $alias $alias_path {
+    ""      "";
+    default "/$alias";
+}
+
+# ============================================================
+# Main domain → Admin API + UI
+#   /api/  → Java (admin API: /api/projects/... etc.)
+#   /      → UI (flexmodel-ui)
 # ============================================================
 server {
     listen       80;
@@ -7,7 +18,7 @@ server {
 
     client_max_body_size 1024m;
 
-    # API reverse proxy
+    # Admin API → Java
     location /api/ {
         proxy_pass http://flexmodel-server:8080;
         proxy_set_header Host $host;
@@ -20,49 +31,11 @@ server {
         add_header Cache-Control no-cache;
     }
 
-    # Pages path-based routing (dev / path mode)
-    # /pages/{projectId}/         → production alias
-    # /pages/{projectId}/{alias}/ → preview / short alias
-    location ~ ^/pages/(?<projectId>[^/]+)(/(?<alias>[^/]+))?/(?<subpath>.*)$ {
+    # Pages (path mode) — /pages/{projectId}/... → /data/pages/{projectId}/production/...
+    # 当 project-base-domain 为空时自动走 path 模式。
+    location ~ ^/pages/(?<pproj>[^/]+)(?<prest>.*)$ {
         root /data/pages;
-
-        set $pages_path $projectId/production/$subpath;
-        if ($alias) {
-            set $pages_path $projectId/$alias/$subpath;
-        }
-
-        try_files /$pages_path /$projectId/production/$subpath /$pages_path/index.html /$projectId/production/index.html =404;
-
-        types {
-            application/javascript js mjs;
-            text/css css;
-            text/html html;
-            application/json json;
-            image/svg+xml svg;
-            image/png png;
-            image/jpeg jpg jpeg;
-            image/gif gif;
-            image/x-icon ico;
-            font/woff woff;
-            font/woff2 woff2;
-            font/ttf ttf;
-            application/manifest+json webmanifest;
-        }
-    }
-
-    location ~ ^/pages/(?<projectId>[^/]+)/?$ {
-        root /data/pages;
-        try_files /$projectId/production/index.html =404;
-    }
-
-    # Edge function invocation → Deno Runtime (path mode: /functions/{projectId}/{name})
-    location /functions/ {
-        proxy_pass http://flexmodel-functions-runtime:9999;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_http_version 1.1;
+        try_files /$pproj/production$prest /$pproj/production/index.html =404;
     }
 
     # UI reverse proxy
@@ -82,48 +55,39 @@ server {
     }
 }
 
-# Build subpath segment for pages — avoids "//" when alias is empty
-map $alias $alias_path {
-    ""      "";
-    default "/$alias";
-}
-
 # ============================================================
-# Wildcard subdomain → Pages + Edge Functions
-# {projectId}.{domain}                     → pages (production)
-# {alias}.{projectId}.{domain}             → pages (alias)
-# /functions/                              → Deno Runtime
+# Subdomain → Pages + Open API (data plane)
+#   {projectId}.{domain}                   → pages (production)
+#   {alias}.{projectId}.{domain}           → pages (alias)
+#   /api/open/{projectId}/...               → Java (open API)
 # ============================================================
 server {
     listen       80;
-    server_name  *.localhost
-                 ~^(?<alias>[^.]+)\.(?<projectId>[^.]+)\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$
+    server_name  ~^(?<alias>[^.]+)\.(?<projectId>[^.]+)\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$
                  ~^(?<projectId>[^.]+)\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$;
 
     root /data/pages;
-    index index.html;
     client_max_body_size 1024m;
 
-    # Edge function invocation → Deno Runtime
-    # Subdomain mode: client calls /functions/{name}; runtime expects /functions/{projectId}/{name},
-    # so inject the projectId captured from the server_name regex back into the path.
-    location /functions/ {
-        rewrite ^/functions/([^/]+)$ /functions/$projectId/$1 break;
-        proxy_pass http://flexmodel-functions-runtime:9999;
+    # Open API → Java (SDK sends /api/open/{projectId}/..., no rewrite needed)
+    location /api/ {
+        proxy_pass http://flexmodel-server:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header REMOTE-HOST $remote_addr;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_http_version 1.1;
+        add_header Cache-Control no-cache;
     }
 
-    # Set pages_base at server level so all locations can use it
+    # Pages base path (projectId + optional alias segment)
     set $pages_base $projectId$alias_path;
 
     # Static assets — long cache (hash filenames)
     location ~* \.(js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|ico|mjs)$ {
-        set $file_base $projectId$alias_path;
-        try_files /$file_base$uri /$projectId/production$uri =404;
+        try_files /$pages_base$uri /$projectId/production$uri =404;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
@@ -136,22 +100,6 @@ server {
     # Pages — SPA fallback (for non-root paths)
     location / {
         try_files /$pages_base$uri /$pages_base/index.html /$projectId/production$uri /$projectId/production/index.html =404;
-        types {
-            application/javascript js mjs;
-            text/css css;
-            text/html html;
-            application/json json;
-            image/svg+xml svg;
-            image/png png;
-            image/jpeg jpg jpeg;
-            image/gif gif;
-            image/x-icon ico;
-            font/woff woff;
-            font/woff2 woff2;
-            font/ttf ttf;
-            application/manifest+json webmanifest;
-        }
     }
 
-    error_page 404 /404.html;
 }

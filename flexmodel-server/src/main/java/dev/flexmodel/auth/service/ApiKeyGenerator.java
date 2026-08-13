@@ -9,7 +9,8 @@ import java.util.HexFormat;
 
 /**
  * API Key 生成工具。
- * 生成格式：fm_ak_{type}_{random40chars}
+ * 生成格式：fm_ak_{scope}_{random40chars}
+ * 生成格式：fm_ak_{random40chars}
  * 存储 SHA-256 哈希，不存原文。
  *
  * <p>{@link SecureRandom} 实例为方法内局部变量，
@@ -24,18 +25,16 @@ public class ApiKeyGenerator {
 
   /**
    * 生成一个新的 API Key。
-   *
-   * @param keyType anon / service / custom
    * @return 包含明文、SHA-256 哈希和前缀的 GeneratedKey
    */
-  public static GeneratedKey generate(String keyType) {
+  public static GeneratedKey generate() {
     SecureRandom random = new SecureRandom();
     StringBuilder sb = new StringBuilder(40);
     for (int i = 0; i < 40; i++) {
       sb.append(CHARS.charAt(random.nextInt(CHARS.length())));
     }
     String randomPart = sb.toString();
-    String plainText = "fm_ak_" + keyType + "_" + randomPart;
+    String plainText = "fm_ak_" + randomPart;
     String hash = sha256(plainText);
     String prefix = plainText.substring(0, Math.min(plainText.length(), 16));
     return new GeneratedKey(plainText, hash, prefix);

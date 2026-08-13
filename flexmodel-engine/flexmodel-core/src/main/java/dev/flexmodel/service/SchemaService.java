@@ -53,6 +53,38 @@ public interface SchemaService {
   EntityDefinition createEntity(EntityDefinition entity);
 
   /**
+   * 迁移实体定义到数据库，保证 schema 与模型同步。
+   * <p>
+   * 表不存在时等价于 {@link #createEntity}；表已存在（older 不为 null）时按旧定义做字段级 diff，
+   * 新增字段调用 {@link #createField}，变更字段调用 {@link #modifyField}。
+   * 兼容 failsafe 模式——createTable 失败被吞掉时仍能补列，不依赖 createEntity 抛异常。
+   *
+   * @param newer 新的实体定义
+   * @param older 已存在的旧实体定义（可为 null）
+   */
+  default void migrateEntity(EntityDefinition newer, SchemaObject older) {
+    try {
+      createEntity(newer.clone());
+    } catch (Exception e) {
+      // 表已存在（非 failsafe 模式会抛出），继续做字段级 diff
+    }
+    if (older instanceof EntityDefinition olderEntity) {
+      for (TypedField<?, ?> field : newer.getFields()) {
+        field.setModelName(newer.getName());
+        try {
+          TypedField<?, ?> oldField = olderEntity.getField(field.getName());
+          if (oldField == null) {
+            createField(field);
+          } else if (!field.equals(oldField)) {
+            modifyField(field);
+          }
+        } catch (Exception ignored) {
+        }
+      }
+    }
+  }
+
+  /**
    * 创建本地查询
    *
    * @param nq

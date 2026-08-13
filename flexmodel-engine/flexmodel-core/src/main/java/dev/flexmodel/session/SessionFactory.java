@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author cjbi
@@ -98,9 +99,12 @@ public class SessionFactory {
     }
 
     try (Session session = createFailsafeSession(schemaName)) {
+      // 先快照已注册的旧定义；migrateEntity 会覆盖 registry，必须在迁移前捕获 older 做字段 diff
+      Map<String, SchemaObject> existing = session.schema().listModels().stream()
+        .collect(Collectors.toMap(SchemaObject::getName, m -> m));
       config.getSchema().forEach(obj -> {
         if (obj instanceof EntityDefinition e) {
-          session.schema().createEntity(e);
+          session.schema().migrateEntity(e, existing.get(e.getName()));
         } else if (obj instanceof EnumDefinition e) {
           session.schema().createEnum(e);
         }

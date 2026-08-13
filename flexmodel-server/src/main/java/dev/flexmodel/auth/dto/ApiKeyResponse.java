@@ -11,7 +11,6 @@ public class ApiKeyResponse {
   private String id;
   private String name;
   private String keyPrefix;
-  private String keyType;
   private String projectIds;
   private boolean readOnly;
   private LocalDateTime expiresAt;
@@ -27,7 +26,6 @@ public class ApiKeyResponse {
     resp.setId(entity.getId());
     resp.setName(entity.getName());
     resp.setKeyPrefix(entity.getKeyPrefix());
-    resp.setKeyType(entity.getKeyType());
     resp.setProjectIds(entity.getProjectIds());
     resp.setReadOnly(entity.getReadOnly());
     resp.setExpiresAt(entity.getExpiresAt());

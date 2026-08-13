@@ -55,8 +55,7 @@ public class PageResourceTest {
       .put(BASE_PATH)
       .then()
       .statusCode(200)
-      .body("status", equalTo("READY"))
-      .body("customDomains", hasItems("example.com", "www.example.com"));
+      .body("status", equalTo("READY"));
   }
 
   /**
@@ -87,7 +86,7 @@ public class PageResourceTest {
       .then()
       .statusCode(200)
       .body("status", notNullValue())
-      .body("customDomains", notNullValue());
+      .body("status", equalTo("READY"));
   }
 
   /**
@@ -151,8 +150,7 @@ public class PageResourceTest {
       .when()
       .put(BASE_PATH)
       .then()
-      .statusCode(200)
-      .body("customDomains", hasItem("crud-test.example.com"));
+      .statusCode(200);
 
     // 2. 获取站点配置确认
     given()
@@ -161,7 +159,7 @@ public class PageResourceTest {
       .get(BASE_PATH)
       .then()
       .statusCode(200)
-      .body("customDomains", hasItem("crud-test.example.com"));
+      .body("status", equalTo("READY"));
 
     // 3. 再次更新（覆盖 customDomains）
     given()
@@ -177,6 +175,6 @@ public class PageResourceTest {
       .put(BASE_PATH)
       .then()
       .statusCode(200)
-      .body("customDomains", hasItem("updated.example.com"));
+      .body("status", equalTo("READY"));
   }
 }

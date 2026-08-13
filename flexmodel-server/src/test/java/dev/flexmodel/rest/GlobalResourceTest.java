@@ -121,7 +121,7 @@ public class GlobalResourceTest {
   }
 
   /**
-   * 测试 path 模式下 edgeUrlTemplate 为相对路径
+   * 测试 path 模式（localhost）下 edgeUrlTemplate 为经 Java 代理的相对路径
    */
   @Test
   void testPathModeEdgeUrlTemplate() {
@@ -130,7 +130,7 @@ public class GlobalResourceTest {
       .get(BASE_PATH + "/profile")
       .then()
       .statusCode(200)
-      .body("edgeUrlTemplate", equalTo("/functions/{{projectId}}/{{name}}"));
+      .body("edgeUrlTemplate", equalTo("/api/open/{{projectId}}/functions/{{name}}/invoke"));
   }
 
   /**

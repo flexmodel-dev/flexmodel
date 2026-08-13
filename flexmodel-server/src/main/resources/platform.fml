@@ -36,7 +36,6 @@ model f_auth_api_key {
   name : String @length("255") @comment("Key 名称"),
   key_hash : String @length("64") @comment("SHA-256 哈希"),
   key_prefix : String @length("16") @comment("前缀(fm_ak_xxx)"),
-  key_type : String @length("50") @comment("类型: anon/service/custom"),
   project_ids? : String @length("1000") @comment("可访问的项目ID列表,逗号分隔,空表示全部"),
   read_only : Boolean @default("false") @comment("是否只读"),
   expires_at? : DateTime @comment("过期时间"),

@@ -77,21 +77,4 @@ public class FunctionResource {
 
     return builder.build();
   }
-
-  /**
-   * Sign an invoke-token for edge function direct invocation.
-   *
-   * <p>The frontend uses this token to directly call the Deno Runtime at the URL
-   * defined by {@code flexmodel.edge-url-template}, bypassing the Java server.
-   *
-   * @param projectId project ID
-   * @param name      function name
-   * @return InvokeTokenResponse containing invoke-token and runtime URL
-   */
-  @POST
-  @Path("/{name}/invoke-token")
-  public InvokeTokenResponse invokeToken(@PathParam("projectId") String projectId,
-                                         @PathParam("name") String name) {
-    return functionService.signInvokeToken(projectId, name);
-  }
 }

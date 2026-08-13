@@ -66,8 +66,8 @@ public class GlobalResource {
       "settings", settingsService.getSettings(),
       "apiRootPath", config.apiRootPath(),
       "storageProvider", storageProvider.getProviderInfo(),
-      "projectBaseDomain", config.projectBaseDomain(),
-      "routingMode", config.projectRoutingMode(),
+      "projectBaseDomain", config.projectBaseDomain().orElse(""),
+      "routingMode", config.isSubdomainRouting() ? "subdomain" : "path",
       "edgeUrlTemplate", config.edgeUrlTemplate(),
       "pagesUrlTemplate", config.pagesUrlTemplate()
     );

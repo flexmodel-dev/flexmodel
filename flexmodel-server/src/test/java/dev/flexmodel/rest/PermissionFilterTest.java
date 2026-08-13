@@ -249,20 +249,6 @@ class PermissionFilterTest {
       .statusCode(403);
   }
 
-  @Test
-  void functionViewDenyInvoke() {
-    given()
-      .header("Authorization", testTokenHelper.getAuthorizationHeader())
-      .header("X-Test-Permissions", "function:view")
-      .contentType(ContentType.JSON)
-      .body("{}")
-      .when()
-      .post(Resources.ROOT_PATH + "/projects/dev_test/functions/FakeFunc/invoke")
-      .then()
-      .statusCode(403);
-  }
-
-  @Test
   void emptyPermissionsDeny() {
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())

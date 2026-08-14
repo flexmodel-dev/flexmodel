@@ -27,7 +27,7 @@ class ListApiDefinitionGenerator extends ApiDefinitionGenerator {
     out.println "query MyListQuery( \$where: ${modelName}BoolExp) {"
     out.println "  ${modelName}(where: \$where) {"
     context.getModelClass().getAllFields().each {
-      if (!it.isRelationField()) {
+      if (!it.isModelRefField()) {
         out.println "    ${it.fieldName}"
       }
     }

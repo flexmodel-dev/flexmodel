@@ -656,6 +656,6 @@
   {
     "name": "select_log_count",
     "statement": "select count(*) as total from fs_api_log",
-    "type": "native_query"
+    "type": "NativeQuery"
   }
 ]

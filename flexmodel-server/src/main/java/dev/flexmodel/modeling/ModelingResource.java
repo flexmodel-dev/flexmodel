@@ -83,7 +83,7 @@ public class ModelingResource {
           @ExampleObject(
             name = "本地查询",
             value = """
-              [{ "name": "分组查询", "type": "native_query", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }]
+              [{ "name": "分组查询", "type": "NativeQuery", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }]
               """
           ),
         }
@@ -126,7 +126,7 @@ public class ModelingResource {
           @ExampleObject(
             name = "本地查询",
             value = """
-              { "name": "分组查询", "type": "native_query", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
+              { "name": "分组查询", "type": "NativeQuery", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
               """
           ),
         }
@@ -166,7 +166,7 @@ public class ModelingResource {
         @ExampleObject(
           name = "本地查询",
           value = """
-            { "name": "分组查询", "type": "native_query", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
+            { "name": "分组查询", "type": "NativeQuery", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
             """
         ),
       }
@@ -202,7 +202,7 @@ public class ModelingResource {
           @ExampleObject(
             name = "本地查询",
             value = """
-              { "name": "分组查询", "type": "native_query", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
+              { "name": "分组查询", "type": "NativeQuery", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
               """
           ),
         }
@@ -253,7 +253,7 @@ public class ModelingResource {
         @ExampleObject(
           name = "本地查询",
           value = """
-            { "name": "分组查询", "type": "native_query", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
+            { "name": "分组查询", "type": "NativeQuery", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
             """
         ),
       }
@@ -289,7 +289,7 @@ public class ModelingResource {
           @ExampleObject(
             name = "本地查询",
             value = """
-              { "name": "分组查询", "type": "native_query", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
+              { "name": "分组查询", "type": "NativeQuery", "statement": "select count(id) as total, gender, max(age) as ageSum from Student group by gender" }
               """
           ),
         }
@@ -526,7 +526,7 @@ public class ModelingResource {
     description = "本地查询",
     properties = {
       @SchemaProperty(name = "name", description = "名称"),
-      @SchemaProperty(name = "type", description = "类型, Entity: 实体；native_query: 本地查询；Enum: 枚举"),
+      @SchemaProperty(name = "type", description = "类型, Entity: 实体；NativeQuery: 本地查询；Enum: 枚举"),
       @SchemaProperty(name = "statement", description = "语句"),
       @SchemaProperty(name = "comment", description = "注释"),
       @SchemaProperty(name = "additionalProperties", description = "用户自定义扩展属性"),
@@ -543,7 +543,7 @@ public class ModelingResource {
     description = "实体",
     properties = {
       @SchemaProperty(name = "name", description = "名称"),
-      @SchemaProperty(name = "type", description = "类型, Entity: 实体；native_query: 本地查询；Enum: 枚举"),
+      @SchemaProperty(name = "type", description = "类型, Entity: 实体；NativeQuery: 本地查询；Enum: 枚举"),
       @SchemaProperty(name = "fields", description = "字段列表"),
       @SchemaProperty(name = "indexes", description = "索引列表"),
       @SchemaProperty(name = "comment", description = "注释"),

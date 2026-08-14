@@ -23,7 +23,7 @@ public class ModelingTools {
 
   @Tool(description = """
     List all models (entities, enums, native queries) in a project. \
-    Returns a JSON array of model definitions. Each model has: type (entity/enum/native_query), name, \
+    Returns a JSON array of model definitions. Each model has: type (entity/enum/NativeQuery), name, \
     and type-specific fields. Entities include fields array and indexes array. \
     Enums include elements array. Native queries include statement string.\
     """)

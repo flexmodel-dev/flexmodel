@@ -205,7 +205,7 @@ class PermissionFilterTest {
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .header("X-Test-Permissions", "modeling:Student:view")
       .contentType(ContentType.JSON)
-      .body("{\"type\":\"entity\",\"name\":\"Student\"}")
+            .body("{\"type\":\"Entity\",\"name\":\"Student\"}")
       .when()
       .put(Resources.ROOT_PATH + "/projects/dev_test/models/Student")
       .then()

@@ -11,6 +11,7 @@
   <artifactId>flexmodel-server</artifactId>
   <properties>
     <skipITs>true</skipITs>
+    <flexmodel.version>dev</flexmodel.version>
   </properties>
   <dependencies>
     <dependency>
@@ -137,6 +138,20 @@
   </dependencies>
   <build>
     <plugins>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <configuration>
+          <delimiters>
+            <delimiter>@</delimiter>
+          </delimiters>
+          <resources>
+            <resource>
+              <directory>src/main/resources</directory>
+              <filtering>true</filtering>
+            </resource>
+          </resources>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>dev.flexmodel</groupId>
         <artifactId>flexmodel-maven-plugin</artifactId>

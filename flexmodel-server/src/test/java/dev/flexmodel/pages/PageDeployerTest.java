@@ -250,6 +250,11 @@ class PageDeployerTest {
     public String apiRootPath() { return "/api"; }
 
     @Override
+    public String version() {
+      return "dev";
+    }
+
+    @Override
     public JwtConfig jwt() { return null; }
   }
 }

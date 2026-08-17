@@ -115,10 +115,15 @@ jobs:
           cp .github/settings.xml ~/.m2/settings.xml
       - name: Build and push server image
         run: |
+          echo "BUILD_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "FULL_VERSION=${{ github.run_number }}-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           mvn -B -Dmaven.test.skip=true clean package -pl flexmodel-server -am \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
-            -Dquarkus.container-image.image=cjbi/flexmodel-server:latest \
+            -Dquarkus.container-image.image=cjbi/flexmodel-server \
+            -Dquarkus.container-image.tags=latest \
+            -Dquarkus.container-image.additional-tags=${{ env.FULL_VERSION }},${{ env.BUILD_VERSION }} \
             -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} \
             -Dquarkus.container-image.password=${{ secrets.DOCKER_PASSWORD }}
 
@@ -140,10 +145,15 @@ jobs:
           cache-dependency-path: '**/pom.xml'
       - name: Build and push server native image
         run: |
+          echo "BUILD_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "FULL_VERSION=${{ github.run_number }}-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           mvn -B -Dmaven.test.skip=true clean package -Pnative -pl flexmodel-server -am \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
-            -Dquarkus.container-image.image=cjbi/flexmodel-server-native:latest \
+            -Dquarkus.container-image.image=cjbi/flexmodel-server-native \
+            -Dquarkus.container-image.tags=latest \
+            -Dquarkus.container-image.additional-tags=${{ env.FULL_VERSION }},${{ env.BUILD_VERSION }} \
             -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} \
             -Dquarkus.container-image.password=${{ secrets.DOCKER_PASSWORD }}
 
@@ -165,23 +175,35 @@ jobs:
         with:
           context: flexmodel-functions-runtime
           push: true
-          tags: cjbi/flexmodel-functions-runtime:latest
+          tags: |
+            cjbi/flexmodel-functions-runtime:latest
+            cjbi/flexmodel-functions-runtime:${{ github.run_number }}
+            cjbi/flexmodel-functions-runtime:${{ github.run_number }}-${{ github.sha }}
+            cjbi/flexmodel-functions-runtime:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
 #  deploy:
+#    name: Deploy to production
 #    runs-on: ubuntu-latest
-#    needs: [ push-server-image, push-ui-image, push-functions-runtime-image ]
+#    needs: [ push-server-image, push-functions-runtime-image ]
 #    steps:
 #      - name: Deploy Docker Image
 #        uses: appleboy/ssh-action@master
+#        env:
+#          IMAGE_TAG: ${{ github.run_number }}
 #        with:
 #          host: ${{ secrets.HOST }}
 #          username: ${{ secrets.SSH_USER }}
 #          port: ${{ secrets.SSH_PORT }}
 #          key: ${{ secrets.SSH_KEY }}
+#          envs: IMAGE_TAG
 #          command_timeout: 10m
 #          script: |
 #            cd /opt/flexmodel-quickstarts/docker-compose
-#            docker-compose pull flexmodel-server flexmodel-ui flexmodel-functions-runtime
+#            docker pull cjbi/flexmodel-server:${IMAGE_TAG}
+#            docker pull cjbi/flexmodel-functions-runtime:${IMAGE_TAG}
+#            docker tag cjbi/flexmodel-server:${IMAGE_TAG} cjbi/flexmodel-server:latest
+#            docker tag cjbi/flexmodel-functions-runtime:${IMAGE_TAG} cjbi/flexmodel-functions-runtime:latest
 #            docker-compose up -d
+#            echo "Deployed version ${IMAGE_TAG}"

@@ -74,7 +74,7 @@ public class Models {
     public static void createAssociations(Session session, String classRoomEntityName, String studentEntityName,
                                           String studentDetailEntityName, String courseEntityName, String teacherEntityName) {
         // 班级:学生
-        session.schema().createField(new RelationField("students")
+      session.schema().createField(new ModelRefField("students")
             .setModelName(classRoomEntityName)
             .setFrom(studentEntityName)
             .setForeignField("classId")
@@ -82,7 +82,7 @@ public class Models {
             .setCascadeDelete(true)
         );
         // 学生:学生明细 -> 1:1
-        session.schema().createField(new RelationField("studentDetail")
+      session.schema().createField(new ModelRefField("studentDetail")
             .setModelName(studentEntityName)
             .setFrom(studentDetailEntityName)
             .setForeignField("studentId")

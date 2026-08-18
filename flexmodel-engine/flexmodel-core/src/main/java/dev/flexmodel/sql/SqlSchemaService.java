@@ -6,8 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.ModelRegistry;
-import dev.flexmodel.model.*;
-import dev.flexmodel.model.field.*;
 import dev.flexmodel.service.BaseService;
 import dev.flexmodel.service.SchemaService;
 
@@ -120,7 +118,7 @@ public class SqlSchemaService extends BaseService implements SchemaService {
       entity.addField(field);
       modelRegistry.register(sessionContext.getSchemaName(), entity);
     }
-    if (!(field instanceof RelationField)) {
+    if (!(field instanceof ModelRefField)) {
       createColumn(toSqlColumn(field));
     }
     return field;
@@ -136,7 +134,7 @@ public class SqlSchemaService extends BaseService implements SchemaService {
       modelRegistry.register(sessionContext.getSchemaName(), entity);
     }
     try {
-      if (!(field instanceof RelationField)) {
+      if (!(field instanceof ModelRefField)) {
         modifyColumn(toSqlColumn(field));
       }
     } catch (Exception e) {
@@ -310,7 +308,7 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     SqlPrimaryKey primaryKey = new SqlPrimaryKey(sqlTable);
     for (TypedField<?, ?> field : entity.getFields()) {
       field.setModelName(entity.getName());
-      if (field instanceof RelationField) {
+      if (field instanceof ModelRefField) {
         continue;
       }
       if (sqlTable.getColumn(field.getName()) != null) {
@@ -333,7 +331,7 @@ public class SqlSchemaService extends BaseService implements SchemaService {
   }
 
   private SqlColumn toSqlColumn(TypedField<?, ?> field) {
-    if (field instanceof RelationField relationField) {
+    if (field instanceof ModelRefField relationField) {
       SqlColumn associationColumn = new SqlColumn();
       associationColumn.setName(relationField.getForeignField());
       associationColumn.setTableName(

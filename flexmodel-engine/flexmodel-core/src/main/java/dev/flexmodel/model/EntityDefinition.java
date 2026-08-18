@@ -1,6 +1,6 @@
 package dev.flexmodel.model;
 
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.TypedField;
 
 import java.util.*;
@@ -21,7 +21,7 @@ public class EntityDefinition extends AbstractModelDefinition<EntityDefinition> 
 
   @Override
   public String getType() {
-    return "entity";
+    return "Entity";
   }
 
   public String getComment() {
@@ -58,9 +58,9 @@ public class EntityDefinition extends AbstractModelDefinition<EntityDefinition> 
       .orElse(null);
   }
 
-  public Optional<RelationField> findRelationByModelName(String modelName) {
+  public Optional<ModelRefField> findRelationByModelName(String modelName) {
     for (TypedField<?, ?> field : fields) {
-      if (field instanceof RelationField relationField) {
+      if (field instanceof ModelRefField relationField) {
         if (relationField.getFrom().equals(modelName)) {
           return Optional.of(relationField);
         }

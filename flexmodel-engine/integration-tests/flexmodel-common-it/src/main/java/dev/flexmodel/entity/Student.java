@@ -2,7 +2,7 @@ package dev.flexmodel.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;
-import dev.flexmodel.annotation.ModelRelation;
+import dev.flexmodel.annotation.ModelRef;
 import dev.flexmodel.enumeration.UserGender;
 import dev.flexmodel.enumeration.UserInterest;
 
@@ -14,7 +14,7 @@ import java.util.Set;
 @JsonRootName("Student")
 public class Student {
 
-  @ModelRelation
+  @ModelRef
   @JsonProperty("studentDetail")
   private StudentDetail studentDetail;
 

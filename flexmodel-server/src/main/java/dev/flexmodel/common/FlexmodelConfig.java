@@ -71,6 +71,14 @@ public interface FlexmodelConfig extends Serializable {
   @WithDefault("${quarkus.http.root-path}")
   String apiRootPath();
 
+  /**
+   * 构建版本号，由 CI 在构建时通过 Maven 资源过滤注入（-Dflexmodel.version=...）。
+   * 本地开发未指定时为 "dev"。
+   */
+  @WithName("version")
+  @WithDefault("dev")
+  String version();
+
   @WithName("jwt")
   JwtConfig jwt();
 

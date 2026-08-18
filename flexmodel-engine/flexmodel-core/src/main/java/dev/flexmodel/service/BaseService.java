@@ -191,7 +191,7 @@ public abstract class BaseService {
    */
   private void autoFillRelationFields(Query.Join joinConfig, EntityDefinition entity) {
     try {
-      RelationField relationField = entity.findRelationByModelName(joinConfig.getFrom())
+      ModelRefField relationField = entity.findRelationByModelName(joinConfig.getFrom())
         .orElseThrow(() -> new SqlExecutionException("Relation field not found for model: " + joinConfig.getFrom()));
 
       String localFieldName = relationField.getLocalField() != null ?
@@ -230,11 +230,11 @@ public abstract class BaseService {
    * @param query 查询对象
    * @return 关联字段映射，key为字段别名，value为关联字段定义
    */
-  public Map<String, RelationField> findRelationFields(ModelDefinition model, Query query) {
+  public Map<String, ModelRefField> findRelationFields(ModelDefinition model, Query query) {
     log.debug("Finding relation fields for model: {}, hasProjection: {}, hasExpand: {}",
       model.getName(), hasProjectionFields(query), query != null && query.hasExpand());
 
-    Map<String, RelationField> relationFieldMap = new HashMap<>();
+    Map<String, ModelRefField> relationFieldMap = new HashMap<>();
 
     if (!(model instanceof EntityDefinition entity)) {
       log.debug("Model is not EntityDefinition, returning empty relation field map");
@@ -261,15 +261,15 @@ public abstract class BaseService {
    * @param expand expand 字段列表
    * @param relationFieldMap 关联字段映射
    */
-  private void findRelationFieldsFromExpand(EntityDefinition entity, List<String> expand, Map<String, RelationField> relationFieldMap) {
+  private void findRelationFieldsFromExpand(EntityDefinition entity, List<String> expand, Map<String, ModelRefField> relationFieldMap) {
     log.debug("Finding relation fields from expand list: {}", expand);
 
     for (String expandPath : expand) {
       // 取顶层字段名（classId.teacher -> classId）
       String topField = expandPath.contains(".") ? expandPath.split("\\.")[0] : expandPath;
       entity.getFields().stream()
-        .filter(f -> f.getName().equals(topField) && f instanceof RelationField)
-        .map(f -> (RelationField) f)
+        .filter(f -> f.getName().equals(topField) && f instanceof ModelRefField)
+        .map(f -> (ModelRefField) f)
         .findFirst()
         .ifPresent(relationField -> {
           relationFieldMap.put(topField, relationField);
@@ -319,7 +319,7 @@ public abstract class BaseService {
    * @param query 查询对象
    * @param relationFieldMap 关联字段映射
    */
-  private void findRelationFieldsFromProjection(EntityDefinition entity, Query query, Map<String, RelationField> relationFieldMap) {
+  private void findRelationFieldsFromProjection(EntityDefinition entity, Query query, Map<String, ModelRefField> relationFieldMap) {
     log.debug("Finding relation fields from projection, projection fields count: {}",
       query.getProjection().getFields().size());
 
@@ -331,8 +331,8 @@ public abstract class BaseService {
         log.debug("Checking field: {} (alias: {})", queryField.getName(), fieldAlias);
 
         entity.getFields().stream()
-          .filter(field -> field.getName().equals(queryField.getName()) && field instanceof RelationField)
-          .map(field -> (RelationField) field)
+          .filter(field -> field.getName().equals(queryField.getName()) && field instanceof ModelRefField)
+          .map(field -> (ModelRefField) field)
           .findFirst()
           .ifPresent(relationField -> {
             relationFieldMap.put(fieldAlias, relationField);
@@ -348,11 +348,11 @@ public abstract class BaseService {
    * @param entity 实体定义
    * @param relationFieldMap 关联字段映射
    */
-  private void findAllRelationFields(EntityDefinition entity, Map<String, RelationField> relationFieldMap) {
+  private void findAllRelationFields(EntityDefinition entity, Map<String, ModelRefField> relationFieldMap) {
     log.debug("Finding all relation fields for entity: {}", entity.getName());
 
     for (Field field : entity.getFields()) {
-      if (field instanceof RelationField relationField) {
+      if (field instanceof ModelRefField relationField) {
         relationFieldMap.put(relationField.getName(), relationField);
         log.debug("Found relation field: {}", relationField.getName());
       }
@@ -369,7 +369,7 @@ public abstract class BaseService {
    */
   private List<Map<String, Object>> findRelationDataList(
     BiFunction<String, Query, List<Map<String, Object>>> relationQueryFunction,
-    RelationField relationField,
+    ModelRefField relationField,
     Set<Object> foreignKeyValues) {
 
     log.debug("Finding relation data for field: {}, foreign key values count: {}",
@@ -431,11 +431,11 @@ public abstract class BaseService {
 
     log.debug("Processing nested query for model: {}, remaining depth: {}", model.getName(), remainingDepth.get());
 
-    Map<String, RelationField> relationFieldMap = findRelationFields(model, query);
+    Map<String, ModelRefField> relationFieldMap = findRelationFields(model, query);
 
     relationFieldMap.entrySet().stream().forEach(entry -> {
       String relationFieldAlias = entry.getKey();
-      RelationField relationField = entry.getValue();
+      ModelRefField relationField = entry.getValue();
 
       log.debug("Processing relation field: {} (alias: {})", relationField.getName(), relationFieldAlias);
       processRelationField(parentDataList, relationQueryFunction, model, query,
@@ -460,7 +460,7 @@ public abstract class BaseService {
                                     Query query,
                                     AtomicInteger remainingDepth,
                                     String relationFieldAlias,
-                                    RelationField relationField) {
+                                    ModelRefField relationField) {
     // 收集所有外键值
     Set<Object> foreignKeyValues = parentDataList.stream()
       .map(dataItem -> dataItem.get(relationField.getLocalField()))
@@ -508,7 +508,7 @@ public abstract class BaseService {
    * @param relationModel 关联模型定义
    */
   private void fillRelationDataToParent(Map<String, Object> parentDataItem,
-                                        RelationField relationField,
+                                        ModelRefField relationField,
                                         String relationFieldAlias,
                                         Map<Object, List<Map<String, Object>>> relationDataGroup,
                                         BiFunction<String, Query, List<Map<String, Object>>> relationQueryFunction,
@@ -590,7 +590,7 @@ public abstract class BaseService {
 
     inputData.forEach((fieldName, fieldValue) -> {
       TypedField<?, ?> field = entity.getField(fieldName);
-      if (field != null && !(field instanceof RelationField)) {
+      if (field != null && !(field instanceof ModelRefField)) {
         Object convertedValue = convertParameter(field, fieldValue);
         processedData.put(field.getName(), convertedValue);
         log.debug("Converted field: {} = {} -> {}", fieldName, fieldValue, convertedValue);
@@ -613,7 +613,7 @@ public abstract class BaseService {
     log.debug("Processing default and generated values for {} fields", entityFields.size());
 
     for (TypedField<?, ?> field : entityFields) {
-      if (field instanceof RelationField) {
+      if (field instanceof ModelRefField) {
         continue;
       }
 
@@ -726,7 +726,7 @@ public abstract class BaseService {
     try {
       EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
       relationObject.forEach((fieldName, fieldValue) -> {
-        if (fieldValue != null && entity.getField(fieldName) instanceof RelationField relationField) {
+        if (fieldValue != null && entity.getField(fieldName) instanceof ModelRefField relationField) {
           processRelationFieldInsertion(entity, fieldName, fieldValue, relationObject.get(relationField.getLocalField()));
         }
       });
@@ -748,7 +748,7 @@ public abstract class BaseService {
    */
   @SuppressWarnings({"rawtypes", "unchecked"})
   private void processRelationFieldInsertion(EntityDefinition entity, String fieldName, Object fieldValue, Object parentId) {
-    if (!(entity.getField(fieldName) instanceof RelationField relationField)) {
+    if (!(entity.getField(fieldName) instanceof ModelRefField relationField)) {
       return;
     }
     log.debug("Processing relation field insertion: field={}, relationField={}, parentId={}", fieldName, relationField.getName(), parentId);

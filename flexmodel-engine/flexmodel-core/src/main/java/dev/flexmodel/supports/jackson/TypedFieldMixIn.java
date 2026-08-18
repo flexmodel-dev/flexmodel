@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.flexmodel.model.field.*;
-import dev.flexmodel.model.field.*;
 
 /**
  * @author cjbi
@@ -21,8 +20,8 @@ import dev.flexmodel.model.field.*;
   @JsonSubTypes.Type(value = TimeField.class, name = ScalarType.TIME_TYPE),
   @JsonSubTypes.Type(value = BooleanField.class, name = ScalarType.BOOLEAN_TYPE),
   @JsonSubTypes.Type(value = JSONField.class, name = ScalarType.JSON_TYPE),
-  @JsonSubTypes.Type(value = RelationField.class, name = ScalarType.RELATION_TYPE),
-  @JsonSubTypes.Type(value = EnumRefField.class, name = ScalarType.ENUM_TYPE),
+  @JsonSubTypes.Type(value = ModelRefField.class, name = ScalarType.MODEL_REF_TYPE),
+  @JsonSubTypes.Type(value = EnumRefField.class, name = ScalarType.ENUM_REF_TYPE),
 })
 public abstract class TypedFieldMixIn {
 

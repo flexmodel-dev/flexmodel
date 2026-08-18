@@ -23,7 +23,7 @@ public class ModelingTools {
 
   @Tool(description = """
     List all models (entities, enums, native queries) in a project. \
-    Returns a JSON array of model definitions. Each model has: type (entity/enum/native_query), name, \
+    Returns a JSON array of model definitions. Each model has: type (entity/enum/NativeQuery), name, \
     and type-specific fields. Entities include fields array and indexes array. \
     Enums include elements array. Native queries include statement string.\
     """)
@@ -61,14 +61,14 @@ public class ModelingTools {
 
   @Tool(description = """
     Create a new entity model (maps to a database table) in a project. \
-    The entityJson must be a JSON object with type='entity', name, and fields array. \
+    The entityJson must be a JSON object with type='Entity', name, and fields array. \
     Supported field types: String (with length, default 255), Int, Long, Float (with precision/scale), \
     Boolean, DateTime, Date, Time, JSON, Enum (EnumRef, with 'from' pointing to an enum name, 'multiple' for array), \
     Relation (with 'from', 'localField', 'foreignField', 'cascadeDelete'). \
     Common field properties: name, type, modelName (must match entity name), nullable (default true), \
     unique (default false), identity (for primary key), comment, defaultValue. \
     Optional indexes array at entity level. \
-    Example: {"type":"entity","name":"Student","fields":[\
+    Example: {"type":"Entity","name":"Student","fields":[\
     {"name":"id","type":"Long","identity":true,"modelName":"Student"},\
     {"name":"studentName","type":"String","modelName":"Student","length":255},\
     {"name":"age","type":"Int","modelName":"Student"},\
@@ -80,7 +80,7 @@ public class ModelingTools {
   public String create_entity_model(
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
     @ToolArg(description = """
-      Entity definition as JSON string: must contain type='entity', name, and fields array. \
+      Entity definition as JSON string: must contain type='Entity', name, and fields array. \
       Each field must have name, type, and modelName. See tool description for supported types and properties.\
       """) String entityJson
   ) {
@@ -98,14 +98,14 @@ public class ModelingTools {
   @Tool(description = """
     Create a new enum definition in a project. Enums define a fixed set of string values \
     that can be referenced by entity fields via the EnumRef field type (using 'from' property). \
-    The enumJson must be a JSON object with name, type='enum', and elements (string array). \
+    The enumJson must be a JSON object with name, type='Enum', and elements (string array). \
     Elements should be uppercase or UPPER_SNAKE_CASE by convention. \
     Optional: comment for description, additionalProperties for i18n or extensions. \
-    Example: {"name":"UserGender","type":"enum","elements":["UNKNOWN","MALE","FEMALE"],"comment":"User gender options"}\
+    Example: {"name":"UserGender","type":"Enum","elements":["UNKNOWN","MALE","FEMALE"],"comment":"User gender options"}\
     """)
   public String create_enum_model(
     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "Enum definition as JSON string: must contain name, type='enum', and elements (string array)") String enumJson
+    @ToolArg(description = "Enum definition as JSON string: must contain name, type='Enum', and elements (string array)") String enumJson
   ) {
     log.info("create_enum_model called, projectId={}, enumJson={}", projectId, enumJson);
     try {

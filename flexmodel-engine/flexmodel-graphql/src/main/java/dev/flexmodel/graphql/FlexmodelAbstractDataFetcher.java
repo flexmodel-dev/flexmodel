@@ -7,7 +7,7 @@ import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.SelectedField;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
@@ -51,12 +51,12 @@ public abstract class FlexmodelAbstractDataFetcher<T> implements DataFetcher<T> 
     this.sessionFactory = sessionFactory;
   }
 
-  protected List<Map<String, Object>> findRelationDataList(Session session, DataFetchingEnvironment env, String path, String modelName, RelationField relationField, Object id) {
+  protected List<Map<String, Object>> findRelationDataList(Session session, DataFetchingEnvironment env, String path, String modelName, ModelRefField relationField, Object id) {
     EntityDefinition entity = (EntityDefinition) session.schema().getModel(relationField.getModelName());
     EntityDefinition targetEntity = (EntityDefinition) session.schema().getModel(relationField.getFrom());
     path = path == null ? relationField.getName() : path + "/" + relationField.getName();
     List<SelectedField> selectedFields = env.getSelectionSet().getFields(path + "/*");
-    List<RelationField> relationFields = new ArrayList<>();
+    List<ModelRefField> relationFields = new ArrayList<>();
 
     List<Map<String, Object>> list = session.dsl()
       .select(selector -> {
@@ -67,7 +67,7 @@ public abstract class FlexmodelAbstractDataFetcher<T> implements DataFetcher<T> 
           if (flexModelField == null) {
             continue;
           }
-          if (flexModelField instanceof RelationField secondaryRelationField) {
+          if (flexModelField instanceof ModelRefField secondaryRelationField) {
             relationFields.add(secondaryRelationField);
             continue;
           }
@@ -84,7 +84,7 @@ public abstract class FlexmodelAbstractDataFetcher<T> implements DataFetcher<T> 
     for (Map<String, Object> map : list) {
       Map<String, Object> resultData = new HashMap<>(map);
       result.add(resultData);
-      for (RelationField sencondaryRelationField : relationFields) {
+      for (ModelRefField sencondaryRelationField : relationFields) {
         Object secondaryId = map.get(entity.findIdField().map(TypedField::getName).orElseThrow());
         List<Map<String, Object>> associationDataList = findRelationDataList(session, env, path, sencondaryRelationField.getFrom(), sencondaryRelationField, secondaryId);
         resultData.put(sencondaryRelationField.getName(), sencondaryRelationField.isMultiple() ?

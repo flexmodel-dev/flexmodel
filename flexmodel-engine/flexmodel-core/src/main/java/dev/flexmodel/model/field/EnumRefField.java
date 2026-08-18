@@ -18,7 +18,7 @@ public class EnumRefField extends TypedField<Serializable, EnumRefField> {
   private String from;
 
   public EnumRefField(String name) {
-    super(name, ScalarType.ENUM.getType());
+    super(name, ScalarType.ENUM_REF.getType());
   }
 
   public boolean isMultiple() {

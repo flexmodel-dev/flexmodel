@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.session.AbstractSession;
@@ -101,7 +101,7 @@ public class LazyLoadInterceptor {
     EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
     String fieldName = ReflectionUtils.getFieldNameFromGetter(method);
     TypedField<?, ?> field = entity.getField(fieldName);
-    if (field instanceof RelationField relationField) {
+    if (field instanceof ModelRefField relationField) {
       return handleRelationField(proxy, clazz, method, superCall, fieldName, relationField);
     }
     return superCall.call();
@@ -112,7 +112,7 @@ public class LazyLoadInterceptor {
                                      Method method,
                                      Callable<?> superCall,
                                      String fieldName,
-                                     RelationField relationField) throws Exception {
+                                     ModelRefField relationField) throws Exception {
     Object id = resolveRelationIdentifier(relationField);
     if (id == null) {
       return superCall.call();
@@ -135,7 +135,7 @@ public class LazyLoadInterceptor {
     return loadedValue;
   }
 
-  private RelationLoadResult loadRelationValue(RelationField relationField, Method method, Object identifier) {
+  private RelationLoadResult loadRelationValue(ModelRefField relationField, Method method, Object identifier) {
     Object convertedIdentifier = castValueType(relationField.getFrom(), relationField.getForeignField(), identifier);
     if (relationField.isMultiple()) {
       Class<?> elementType = resolveCollectionElementType(method);
@@ -156,7 +156,7 @@ public class LazyLoadInterceptor {
     return RelationLoadResult.loaded(proxyValue);
   }
 
-  private Object resolveRelationIdentifier(RelationField relationField) {
+  private Object resolveRelationIdentifier(ModelRefField relationField) {
     Object id = dataMap.get(relationField.getLocalField());
     if (id == null) {
       id = dataMap.get(underscoreToCamelCase(relationField.getLocalField()));

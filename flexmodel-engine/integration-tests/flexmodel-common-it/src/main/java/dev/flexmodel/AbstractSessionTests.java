@@ -203,7 +203,7 @@ public abstract class AbstractSessionTests {
                           String studentDetailEntityName, String courseEntityName, String teacherEntityName) {
     // 班级:学生
     session.schema().createField(
-      new RelationField("students")
+      new ModelRefField("students")
         .setModelName(classRoomEntityName)
         .setFrom(studentEntityName)
         .setLocalField("id")
@@ -213,7 +213,7 @@ public abstract class AbstractSessionTests {
     );
     // 学生:学生明细 -> 1:1
     session.schema().createField(
-      new RelationField("studentDetail")
+      new ModelRefField("studentDetail")
         .setModelName(studentEntityName)
         .setFrom(studentDetailEntityName)
         .setLocalField("id")
@@ -222,7 +222,7 @@ public abstract class AbstractSessionTests {
     );
     // 明细:学生 -> 1:1
     session.schema().createField(
-      new RelationField("student")
+      new ModelRefField("student")
         .setModelName(studentDetailEntityName)
         .setFrom(studentEntityName)
         .setLocalField("studentId")
@@ -626,7 +626,7 @@ public abstract class AbstractSessionTests {
       .setComment("教师成绩表")
     );
     session.schema().createField(
-      new RelationField("courses")
+      new ModelRefField("courses")
         .setModelName(teacherEntityName)
         .setMultiple(true)
         .setCascadeDelete(true)

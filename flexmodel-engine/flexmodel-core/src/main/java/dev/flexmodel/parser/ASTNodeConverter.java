@@ -6,7 +6,6 @@ import dev.flexmodel.model.IndexDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.model.field.*;
 import dev.flexmodel.ModelImportBundle;
-import dev.flexmodel.model.field.*;
 import dev.flexmodel.parser.impl.ModelParser;
 import dev.flexmodel.parser.impl.ParseException;
 import dev.flexmodel.query.Direction;
@@ -112,17 +111,17 @@ public class ASTNodeConverter {
         ModelParser.Annotation relationAnno = idlField.annotations.stream()
           .filter(f -> f.name.equals("relation")).findFirst()
           .orElse(null);
-        boolean isRelationField = relationAnno != null;
+        boolean isModelRefField = relationAnno != null;
         String from = idlField.type.replace("[]", "");
         boolean multiple = idlField.type.endsWith("[]");
-        if (isRelationField) {
-          RelationField relationField = new RelationField(idlField.name);
-          relationField.setMultiple(multiple);
-          relationField.setFrom(from);
-          relationField.setLocalField((String) relationAnno.parameters.get("localField"));
-          relationField.setForeignField((String) relationAnno.parameters.get("foreignField"));
-          relationField.setCascadeDelete(Boolean.parseBoolean(Objects.toString(relationAnno.parameters.get("cascadeDelete"))));
-          field = relationField;
+        if (isModelRefField) {
+          ModelRefField modelRefField = new ModelRefField(idlField.name);
+          modelRefField.setMultiple(multiple);
+          modelRefField.setFrom(from);
+          modelRefField.setLocalField((String) relationAnno.parameters.get("localField"));
+          modelRefField.setForeignField((String) relationAnno.parameters.get("foreignField"));
+          modelRefField.setCascadeDelete(Boolean.parseBoolean(Objects.toString(relationAnno.parameters.get("cascadeDelete"))));
+          field = modelRefField;
         } else {
           field = new EnumRefField(idlField.name);
           ((EnumRefField) field).setFrom(from);
@@ -273,7 +272,7 @@ public class ASTNodeConverter {
       case DateField dateField -> addDefaultAnnotation(idlField, dateField.getDefaultValue());
       case TimeField timeField -> addDefaultAnnotation(idlField, timeField.getDefaultValue());
       case JSONField jsonField -> addDefaultAnnotation(idlField, jsonField.getDefaultValue());
-      case RelationField relationField -> {
+      case ModelRefField relationField -> {
         ModelParser.Annotation relationAnno = new ModelParser.Annotation("relation");
         relationAnno.parameters.put("localField", relationField.getLocalField());
         relationAnno.parameters.put("foreignField", relationField.getForeignField());
@@ -319,7 +318,7 @@ public class ASTNodeConverter {
 
   // 辅助方法
   private static String getCorrespondingType(TypedField<?, ?> field) {
-    if (field instanceof RelationField relationField) {
+    if (field instanceof ModelRefField relationField) {
       return relationField.isMultiple() ? relationField.getFrom() + "[]" : relationField.getFrom();
     } else if (field instanceof EnumRefField enumField) {
       return enumField.isMultiple() ? enumField.getFrom() + "[]" : enumField.getFrom();

@@ -2,7 +2,7 @@
   "objects": [
     {
       "name": "Datasource",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "name",
@@ -46,7 +46,7 @@
     },
     {
       "name": "ApiInfo",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "id",
@@ -142,7 +142,7 @@
     },
     {
       "name": "ApiLog",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "id",
@@ -214,7 +214,7 @@
     },
     {
       "name": "IdentityProvider",
-      "type": "entity",
+      "type": "Entity",
       "fields": [
         {
           "name": "createdAt",

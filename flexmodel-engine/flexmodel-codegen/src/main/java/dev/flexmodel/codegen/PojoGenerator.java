@@ -56,9 +56,9 @@ public class PojoGenerator extends AbstractGenerator {
                 out.println("   * " + field.getComment());
                 out.println("   */");
             }
-            if (field.isRelationField()) {
-                out.println("  @ModelRelation");
-            }
+          if (field.isModelRefField()) {
+            out.println("  @ModelRef");
+          }
             out.println("  @ModelField(\"" + field.getOriginal().getName() + "\")");
             out.println("  private " + field.getShortTypeName() + " " + field.getVariableName() + ";");
         }

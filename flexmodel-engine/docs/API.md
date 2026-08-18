@@ -339,31 +339,22 @@ EnumField statusField = new EnumField("status")
     .setDefaultValue("PENDING");
 ```
 
-#### 关系字段
+#### 模型引用字段
 
 ```java
-// 一对一关系
-RelationField profileField = new RelationField("profile")
-    .setType(RelationField.Type.ONE_TO_ONE)
-    .setFrom("User")
-    .setTo("UserProfile")
-    .setForeignField("user_id");
+// 单选引用（一对一）
+ModelRefField profileField = new ModelRefField("profile")
+    .setFrom("UserProfile")
+    .setLocalField("profileId")
+    .setForeignField("id");
 
-// 一对多关系
-RelationField ordersField = new RelationField("orders")
-    .setType(RelationField.Type.ONE_TO_MANY)
-    .setFrom("User")
-    .setTo("Order")
-    .setForeignField("user_id");
+// 多选引用（一对多）
+ModelRefField ordersField = new ModelRefField("orders")
+    .setMultiple(true)
+    .setFrom("Order")
+    .setLocalField("userId")
+    .setForeignField("id");
 
-// 多对多关系
-RelationField rolesField = new RelationField("roles")
-    .setType(RelationField.Type.MANY_TO_MANY)
-    .setFrom("User")
-    .setTo("Role")
-    .setJoinTable("user_roles")
-    .setJoinColumn("user_id")
-    .setInverseJoinColumn("role_id");
 ```
 
 ### 异常处理

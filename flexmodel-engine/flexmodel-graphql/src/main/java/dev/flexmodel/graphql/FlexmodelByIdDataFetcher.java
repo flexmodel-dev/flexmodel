@@ -3,7 +3,7 @@ package dev.flexmodel.graphql;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.SelectedField;
 import dev.flexmodel.model.EntityDefinition;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
@@ -12,8 +12,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.flexmodel.query.Expressions.field;
 
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Query;
@@ -35,7 +33,7 @@ public class FlexmodelByIdDataFetcher extends FlexmodelAbstractDataFetcher<Map<S
       EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
       TypedField<?, ?> idField = entity.findIdField().orElseThrow();
 
-      List<RelationField> relationFields = new ArrayList<>();
+      List<ModelRefField> relationFields = new ArrayList<>();
 
       List<Map<String, Object>> list = session.dsl()
         .select(projection -> {
@@ -45,7 +43,7 @@ public class FlexmodelByIdDataFetcher extends FlexmodelAbstractDataFetcher<Map<S
             if (flexModelField == null) {
               continue;
             }
-            if (flexModelField instanceof RelationField secondaryRelationField) {
+            if (flexModelField instanceof ModelRefField secondaryRelationField) {
               relationFields.add(secondaryRelationField);
               continue;
             }
@@ -62,7 +60,7 @@ public class FlexmodelByIdDataFetcher extends FlexmodelAbstractDataFetcher<Map<S
         return null;
       }
       Map<String, Object> resultData = new HashMap<>(list.stream().findFirst().orElseThrow());
-      for (RelationField secondaryRelationField : relationFields) {
+      for (ModelRefField secondaryRelationField : relationFields) {
         Object secondaryId = resultData.get(idField.getName());
         List<Map<String, Object>> relationDataList = findRelationDataList(session, env, null, secondaryRelationField.getFrom(), secondaryRelationField, secondaryId);
         resultData.put(secondaryRelationField.getName(), secondaryRelationField.isMultiple() ? relationDataList : relationDataList.stream().findFirst().orElse(null));

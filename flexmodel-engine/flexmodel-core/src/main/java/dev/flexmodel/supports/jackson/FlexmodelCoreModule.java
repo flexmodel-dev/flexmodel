@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import dev.flexmodel.model.*;
 import dev.flexmodel.model.field.*;
-import dev.flexmodel.model.*;
-import dev.flexmodel.model.field.*;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -36,7 +34,7 @@ public class FlexmodelCoreModule extends SimpleModule {
     setMixInAnnotation(DateField.class, TypedFieldMixIn.class);
     setMixInAnnotation(TimeField.class, TypedFieldMixIn.class);
     setMixInAnnotation(JSONField.class, TypedFieldMixIn.class);
-    setMixInAnnotation(RelationField.class, TypedFieldMixIn.class);
+    setMixInAnnotation(ModelRefField.class, TypedFieldMixIn.class);
     setMixInAnnotation(EnumRefField.class, TypedFieldMixIn.class);
     // Index
     setMixInAnnotation(IndexDefinition.class, IndexMixIn.class);

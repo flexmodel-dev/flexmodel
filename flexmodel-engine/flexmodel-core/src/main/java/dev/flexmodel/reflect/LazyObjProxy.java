@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
-import dev.flexmodel.model.field.RelationField;
+import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.session.Session;
 
 import java.lang.reflect.Modifier;
@@ -79,7 +79,7 @@ public class LazyObjProxy {
   private static String[] getLazyMethods(EntityDefinition entity) {
     List<String> methodNames = new ArrayList<>();
     entity.getFields().forEach(field -> {
-      if (field instanceof RelationField) {
+      if (field instanceof ModelRefField) {
         methodNames.add("get" + ReflectionUtils.toUpperCamelCase(field.getName()));
       }
     });

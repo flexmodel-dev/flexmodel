@@ -31,7 +31,7 @@ public class EnumDefinition implements SchemaObject {
 
     @Override
     public String getType() {
-        return "enum";
+      return "Enum";
     }
 
     public EnumDefinition setElements(List<String> elements) {

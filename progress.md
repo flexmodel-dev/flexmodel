@@ -1,4 +1,23 @@
-# Session Progress Log
+﻿# Session Progress Log
+
+## Doc Fix: 补全模型引用字段重命名的文档更新（2026-08-15）
+
+**背景:** `feature/model-ref` 分支此前将 `RelationField` 重命名为 `ModelRefField`、`ScalarType.RELATION` → `MODEL_REF`、
+`ScalarType.ENUM` → `ENUM_REF`（commit d3be8f0、d8bb3cb）。源码与测试资源已全部更新且编译通过，但 `flexmodel-engine/docs/` 下
+3 个文档仍残留旧 API 名称。
+
+**修复:**
+
+- `flexmodel-engine/docs/API.md`：将「关系字段」章节标题改为「模型引用字段」；将 `RelationField` 示例重写为 `ModelRefField` 新
+  API（`setFrom`/`setLocalField`/`setForeignField`/`setMultiple`）；删除新 API 已不支持的多对多示例（`setJoinTable` 等方法已移除）。
+- `flexmodel-engine/docs/flexmodel-core.md`：`new RelationField("studentClass")` → `new ModelRefField("studentClass")`。
+- `flexmodel-engine/docs/flexmodel-codegen.md`：`it.isRelationField()` → `it.isModelRefField()`。
+
+**验证:**
+
+- `mvn test -pl flexmodel-engine/flexmodel-core -o` → BUILD SUCCESS，Tests run: 49, Failures: 0, Errors: 0（含
+  `JsonSerializeTest`）。
+- 全仓搜索 `RelationField` / `isRelationField`（docs 目录）→ 0 残留。
 
 ## Bug Fix: Storage 复制访问链接不能访问（2026-08-06）
 

@@ -175,7 +175,9 @@ session.schema().createEntity("Student", entity -> entity
     .addField(new IntField("age"))
     .addField(new FloatField("score").setPrecision(5).setScale(2))
     .addField(new EnumRefField("gender").setFrom("UserGender"))
-    .addField(new RelationField("studentClass")
+  .
+
+addField(new ModelRefField("studentClass")
         .setFrom("Classes")
         .setLocalField("classId")
         .setForeignField("id"))

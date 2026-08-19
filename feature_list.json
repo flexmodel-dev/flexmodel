@@ -81,6 +81,16 @@
       "dependencies": ["feat-001", "feat-002"],
       "status": "in-progress",
       "evidence": "重构完成: 数据模型简化 (去除 f_function_version 表/branch字段/TriggerType.HTTP)，Java 后端简化 (14 files — 删除4个版本/内部资源文件，重写Service/Resource/Invoker/DTO)，Deno Functions Runtime 重写 (file:// 部署模式替代 lazy load)，前端重写 (Supabase-style 多文件编辑器+模板选择+简化API)。Java 424 files + TypeScript 0 errors 编译通过。待: 端到端集成测试 + Deno 运行时验证。"
+    },
+    {
+      "id": "feat-011",
+      "name": "Flow - 生命周期事件（本地 EventBus + 可选 RabbitMQ 桥接）",
+      "description": "在 flow 核心关键生命周期点发布 11 种强类型本地事件（FlowCreated/Updated/Deployed/Deleted、FlowInstanceStarted/Completed/Failed/Terminated、UserTaskSuspended/Committed/RollbackSuspended），经 Vert.x EventBus 广播；新增可选 RabbitMQ 桥接 Bean，默认关闭、未配置不连 broker，本地事件照常发布。核心与 RabbitMQ 解耦，本地事件可被多个内部订阅者复用。",
+      "dependencies": [
+        "feat-003"
+      ],
+      "status": "done",
+      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.flow-events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。"
     }
   ]
 }

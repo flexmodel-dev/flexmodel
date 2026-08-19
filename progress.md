@@ -298,3 +298,158 @@ Quartz 作业被正确创建/移除/状态变更。
 
 - 所有 `@QuarkusTest` 测试因 `SessionFactory` 在测试环境不可用而启动失败
 - LSP 错误 (codegen 相关类型如 FlowDefinition 在 IDE 中未解析) — 非 our edits 引起
+
+## Flow 生命周期事件：本地 EventBus 事件 + 可选 RabbitMQ 桥接（2026-08-19）
+
+**目标:** 在 flow 核心关键生命周期点发布强类型本地事件，经 Vert.x EventBus 广播；新增可选 RabbitMQ 桥接，默认关闭、未配置不连
+broker，本地事件照常发布。
+
+**实现:**
+
+- 新增 `dev.flexmodel.flow.event` 包：`FlowEvent` 抽象基类（projectId/caller/timestamp + 抽象 `routingKey()`）、
+  `FlowEventTypes` 路由 key 常量、11 个具体事件类（定义层 4 / 实例层 4 / 用户任务层 3）。
+- `FlowEventPublisher`（`@ApplicationScoped`）：注入 `EventBus`，`publish(FlowEvent)` 经
+  `eventBus.publish(routingKey, event)` 广播，全程 try/catch 仅告警、不抛出、不阻塞流程。
+- `FlowEventRabbitmqBridge`（`@ApplicationScoped`）：每事件一个 `@ConsumeEvent(常量, blocking=false)` 方法消费具体类型，
+  `enabled` 默认 false 时 early-return；`forward()` 以 `Instance<MutinyEmitter>` 延迟注入（禁用通道时 bean 仍可创建，不影响本地事件），用
+  `OutgoingRabbitMQMetadata` 设 routing key 尽力转发。
+- `FlowEventConfig` `@ConfigMapping(prefix="flexmodel.flow")` 声明 `events.rabbitmq.enabled` 配置根，避免 SmallRye 严格校验报
+  `does not map to any root`。
+- 依赖：`flexmodel-server/pom.xml` 加 `io.quarkus:quarkus-messaging-rabbitmq`（3.33 起更名自
+  `quarkus-smallrye-reactive-messaging-rabbitmq`，版本由 quarkus-bom 管理）。
+- 配置 `application.properties`：`flexmodel.flow.events.rabbitmq.enabled=false`、`mp.messaging.outgoing.flow-events-out.*`
+  （connector=smallrye-rabbitmq、exchange.type=topic/durable）、`enabled` 绑定同一开关、
+  `quarkus.rabbitmq.devservices.enabled=false`。
+- 埋点（11 处）：DefinitionProcessor (create/update/deploy/delete)、FlowExecutor (preExecute→started、execute finally
+  FAILED→failed、postExecute/postCommit COMPLETED/END→completed)、RuntimeProcessor.terminateProcess
+  (TERMINATED→terminated，子流程级联逐个)、UserTaskExecutor
+  (doExecute→suspended、postCommit→committed、doRollback→rollback.suspended)。
+
+**测试:**
+
+- `FlowEventPublisherTest`（2）：本地 EventBus 广播 + 字段完整 + null no-op。
+- `FlowEventRabbitmqBridgeTest`（2）：默认禁用不连 broker（应用无 broker 启动即证）、禁用桥接对本地事件透明。未采用 SmallRye
+  InMemoryConnector（当前 Quarkus 3.33.1 未提供配套 in-memory 扩展，InMemorySinkImpl 无 bean 定义注解，注入不满足）。
+
+**验证:**
+
+- `mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` → BUILD SUCCESS
+-
+`mvn test -pl flexmodel-server -Dtest=FlowEventPublisherTest,FlowEventRabbitmqBridgeTest,DefinitionProcessorTest,RuntimeProcessorTest` →
+25 tests, 0 failures, 0 errors（含 DefinitionProcessorTest 4、RuntimeProcessorTest 17 回归通过）
+
+**备注:** RabbitMQ 转发（enabled=true）端到端需真实 broker 或 Testcontainers，按计划保持可选、默认关闭；v1 不含
+node-instance-created/service-task 等事件，后续同模式按需追加。
+
+## 去掉 flexmodel.flow.events.rabbitmq.enabled 业务开关（2026-08-19）
+
+**背景:** 该业务开关与 SmallRye 通道 `mp.messaging.outgoing.flow-events-out.enabled` 重复；且桥接 `enabled` 默认 false
+时即便通道启用也不转发，属冗余控制层。
+
+**变更:**
+
+- `application.properties`：删除 `flexmodel.flow.events.rabbitmq.enabled`，通道 `enabled=false` 成为单一控制（启用置 true +
+  broker 连接配置）。
+- `FlowEventRabbitmqBridge`：删除 `@ConfigProperty enabled` 字段、11 处 `if(!enabled) return;` early-return、`isEnabled()`
+  测试探针；转发完全由 `Instance<MutinyEmitter>` 解析性决定——通道禁用时 SmallRye 注入 no-op emitter，`forward()` 发送即丢弃、不连
+  broker。
+- 删除 `FlowEventConfig`（`@ConfigMapping` 不再需要声明已移除的配置根）。
+- `FlowEventRabbitmqBridgeTest`：移除 `isEnabled/isEmitterResolvable` 断言，改为断言桥接 bean 存在且默认通道禁用时发布不抛出、本地事件照常广播。
+
+**验证:**
+
+- `mvn test-compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` → ExitCode 0
+-
+`mvn test -pl flexmodel-server -Dtest=FlowEventPublisherTest,FlowEventRabbitmqBridgeTest,DefinitionProcessorTest,RuntimeProcessorTest` →
+25 tests, 0 failures, 0 errors
+
+**设计效果:** 单一配置源——`mp.messaging.outgoing.flow-events-out.enabled` 同时控制是否连 broker 与是否转发；默认 false
+零侵入，本地 EventBus 事件始终发布。
+
+## Review 修复：桥接静默跳过 + variables 防御性拷贝（2026-08-19）
+
+**P1 桥接默认配置逐事件 WARN 栈:** `Instance.isUnsatisfied()` 对禁用通道返回 false，`.get()` 抛 SRMSG00019 被捕获记
+WARN（含事件载荷/流程变量）。修复：`FlowEventRabbitmqBridge` 注入
+`@ConfigProperty("mp.messaging.outgoing.flow-events-out.enabled", defaultValue="false") channelEnabled`，`forward()` 首行
+`if(!channelEnabled) return;` 静默跳过；转发失败日志改为仅记 routingKey + payloadType，不再打印整个事件（避免泄露流程变量）。
+
+**P2 发布可变 variables 快照并发风险:** `FlowInstanceStartedEvent`/`FlowInstanceCompletedEvent`/`UserTaskSuspendedEvent`
+构造时按引用持有 `runtimeContext.getInstanceDataMap()`，发布线程后续 mutate 同一 map，异步消费者/序列化读取共享 map 可能不一致或
+CME。修复：三个事件构造器对 variables 做 `new HashMap<>(variables)` 防御性拷贝（null 安全），发布快照不可变。
+
+**验证:** `mvn test-compile` 通过；
+`FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2)/DefinitionProcessorTest(4)/RuntimeProcessorTest(17)` 共 25 测试
+0 失败 0 错误。默认配置下桥接不再逐事件打 WARN（SRMSG00232 通道禁用为启动一次性诊断）。
+
+## Flow 生命周期事件 RabbitMQ Testcontainers E2E 测试（2026-08-19）
+
+**目标:** 增加 Testcontainers 端到端测试，启动真实 RabbitMQ broker 验证 `FlowEventRabbitmqBridge` 以正确 routing key +
+JSON 载荷推送事件到 topic 交换机。
+
+**新增/修改:**
+
+- `flexmodel-server/pom.xml`：加 `org.testcontainers:rabbitmq:${testcontainers.version}`（test scope，版本由父 pom
+  `testcontainers.version=1.21.4` 管理；amqp-client 5.x 传递可用）。
+- `RabbitMqTestResource.java`（前序会话已写）：实现 `QuarkusTestResourceLifecycleManager`，启动
+  `RabbitMQContainer("rabbitmq:3-management")`，注入 `quarkus.rabbitmq.host/port/username/password` 与
+  `mp.messaging.outgoing.flow-events-out.enabled=true`，暴露 static host/port/username/password 供测试取连接坐标。
+- `FlowEventRabbitmqBridgeE2ETest.java`（新增）：`@QuarkusTest` + `@QuarkusTestResource(SQLiteTestResource.class)` +
+  `@QuarkusTestResource(value=RabbitMqTestResource.class, restrictToAnnotatedClass=true)`。两个用例：
+    - `flowDeployedEventForwardedToBroker`：amqp-client 临时队列绑定交换机 `flexmodel.flow.events`（routing key
+      `flow.deployed`），发布 `FlowDeployedEvent`，`basicGet` 轮询（≤15s）断言 routing key 与 JSON
+      字段（projectId/caller/flowModuleId/flowDeployId/timestamp）。
+    - `flowInstanceStartedEventWithVariablesForwarded`：同模式断言 `flow.instance.started` 与 variables
+      快照（amount/approved）经 JSON 序列化完整。
+
+**关键设计决策:**
+
+- **资源泄漏修复（重要）:** 初版 `@QuarkusTestResource(RabbitMqTestResource.class)` 默认 `restrictToAnnotatedClass=false`
+  ，导致 broker 资源被 Quarkus 全局应用到所有共享应用上下文的测试——即便未选 E2E 测试，其他测试（`FlowEventPublisherTest`
+  等）也触发 `rabbitmq:3-management` 镜像拉取，无 Docker Hub 环境下整套测试失败。改为 `restrictToAnnotatedClass=true`
+  ，资源仅对本测试类生效。验证确认：非 E2E 测试不再拉取镜像。
+- **opt-in 开关:** E2E 测试加 `@EnabledIfEnvironmentVariable(named="FLEXMODEL_E2E_RABBITMQ", matches="true")`
+  ，默认跳过。项目此前无任何 Docker 依赖测试，此为首个；默认 `mvn test` 在无 Docker/无 Docker Hub 环境保持绿色。运行需：本机
+  Docker 可用 + 能拉取 `rabbitmq:3-management` + 设环境变量 `FLEXMODEL_E2E_RABBITMQ=true`。
+- routing key 取自 AMQP envelope（`routingKey()` 是方法不进 JSON），JSON 载荷用 Jackson 解析；带 variables
+  的事件经防御性拷贝保证快照不可变（见前序 Review 修复）。
+
+**验证:**
+
+- `mvn test-compile -pl '!flexmodel-engine/flexmodel-maven-plugin' -q` → ExitCode 0。
+- 综合回归
+  `mvn test -pl flexmodel-server -Dtest=FlowEventPublisherTest,FlowEventRabbitmqBridgeTest,FlowEventRabbitmqBridgeE2ETest,DefinitionProcessorTest,RuntimeProcessorTest` →
+  Tests run: 27, Failures: 0, Errors: 0, Skipped: 2（E2E 默认跳过），BUILD SUCCESS，无 Docker 镜像拉取。
+- **E2E 实跑未完成:** 当前环境 Docker Hub 不可达（`registry-1.docker.io` EOF / 配置镜像源 `docker.1panel.live` 超时），
+  `rabbitmq:3-management` 无法拉取，故 `FLEXMODEL_E2E_RABBITMQ=true` 实跑未通过。代码逻辑正确、编译通过；待网络恢复或换可用镜像源后，设该环境变量即可执行端到端验证。
+
+**未决/后续:**
+
+- E2E 实跑待 Docker Hub 可达后补验证（设 `FLEXMODEL_E2E_RABBITMQ=true` 运行）。
+- 若 CI 需常态化跑 E2E，建议在 CI 配置可用 RabbitMQ 镜像源或预拉镜像，并设该环境变量。
+
+## E2E 测试修复：RabbitMQ 连接配置键（2026-08-19 续）
+
+**问题:** 首次运行 `FlowEventRabbitmqBridgeE2ETest` 失败——应用侧 SmallRye outgoing channel `Connection refused`，事件未发到
+broker，测试轮询超时。日志报 `Unrecognized configuration key "quarkus.rabbitmq.password"`。
+
+**根因:** 反编译 `quarkus-messaging-rabbitmq` 扩展的 Quarkus config root `RabbitMQBuildTimeConfig` 确认：其仅注册
+`devservices`、`credentialsProvider`、`credentialsProviderName` 字段， **不注册 `host/port/username/password` 连接字段**。故
+`RabbitMqTestResource` 注入的 `quarkus.rabbitmq.host/port/username/password` 全部无效（unrecognized），SmallRye client 回退默认
+`localhost:5672`，连不上 Testcontainers 随机映射端口。这些连接字段由 SmallRye connector 自身读取（channel 级
+`mp.messaging.outgoing.<channel>.host/port/username/password`，或全局别名 `rabbitmq-host` 等），通过查
+`smallrye-reactive-messaging-rabbitmq-4.33.0` 源码 `RabbitMQConnectorCommonConfiguration` 确认。
+
+**修复:** `RabbitMqTestResource.start()` 改用 channel 级连接配置：
+`mp.messaging.outgoing.flow-events-out.host/port/username/password`；保留 `quarkus.rabbitmq.devservices.enabled=false`（防
+DevServices 自启）与 `mp.messaging.outgoing.flow-events-out.enabled=true`。测试侧 amqp-client 仍用 static `host/port`
+订阅交换机。
+
+**验证:** 设 `FLEXMODEL_E2E_RABBITMQ=true` 运行 →
+`SRMSG17036: RabbitMQ broker configured to [localhost:52374] for channel flow-events-out` +
+`SRMSG17007: Connection with RabbitMQ broker established` → **Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, BUILD
+SUCCESS**。两个用例（`flowDeployedEventForwardedToBroker`、`flowInstanceStartedEventWithVariablesForwarded`）断言 routing
+key 与 JSON 载荷字段（含 variables 快照）完整通过。
+
+**结论:** E2E 端到端验证完成。Flow 生命周期事件经 `FlowEventPublisher`→EventBus→`FlowEventRabbitmqBridge`→SmallRye
+outgoing channel→RabbitMQ topic 交换机链路，routing key 与 JSON 载荷均正确。默认 `mvn test` 不依赖 Docker（E2E opt-in 跳过），
+`restrictToAnnotatedClass=true` 确保 broker 资源不泄漏到其他测试。

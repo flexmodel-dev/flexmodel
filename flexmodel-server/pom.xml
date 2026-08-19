@@ -135,6 +135,20 @@
       <groupId>io.roastedroot</groupId>
       <artifactId>quickjs4j-scripting-experimental</artifactId>
     </dependency>
+    <!-- Flow 生命周期事件 RabbitMQ 桥接（可选，默认关闭，版本由 quarkus-bom 管理，native 兼容） -->
+    <!-- Quarkus 3.33 起扩展更名为 quarkus-messaging-rabbitmq -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-messaging-rabbitmq</artifactId>
+    </dependency>
+    <!-- Testcontainers：端到端验证 RabbitMQ 事件转发，版本由 quarkus-bom 管理 -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>rabbitmq</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- AMQP 客户端：测试直接订阅 RabbitMQ 验证端到端推送 -->
   </dependencies>
   <build>
     <plugins>

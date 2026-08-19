@@ -15,6 +15,10 @@ import dev.flexmodel.flow.dto.model.FlowElement;
 import dev.flexmodel.flow.exception.ProcessException;
 import dev.flexmodel.flow.exception.ReentrantException;
 import dev.flexmodel.flow.repository.FlowInstanceRepository;
+import dev.flexmodel.flow.event.FlowEventPublisher;
+import dev.flexmodel.flow.event.FlowInstanceCompletedEvent;
+import dev.flexmodel.flow.event.FlowInstanceFailedEvent;
+import dev.flexmodel.flow.event.FlowInstanceStartedEvent;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
 import dev.flexmodel.common.utils.CollectionUtils;
@@ -38,11 +42,15 @@ public class FlowExecutor extends RuntimeExecutor {
   @Inject
   Instance<ExecutorFactory> executorFactoryInstance;
 
+  @Inject
+  FlowEventPublisher flowEventPublisher;
+
   ////////////////////////////////////////execute////////////////////////////////////////
 
   @Override
   public void execute(RuntimeContext runtimeContext) throws ProcessException {
     int processStatus = ProcessStatus.SUCCESS;
+    String errorMessage = null;
     try {
       preExecute(runtimeContext);
       doExecute(runtimeContext);
@@ -50,10 +58,15 @@ public class FlowExecutor extends RuntimeExecutor {
       if (!ErrorEnum.isSuccess(pe.getErrNo())) {
         processStatus = ProcessStatus.FAILED;
       }
+      errorMessage = pe.getMessage();
       throw pe;
     } finally {
       runtimeContext.setProcessStatus(processStatus);
       postExecute(runtimeContext);
+      if (processStatus == ProcessStatus.FAILED) {
+        flowEventPublisher.publish(new FlowInstanceFailedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+          runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(), errorMessage));
+      }
     }
   }
 
@@ -74,6 +87,9 @@ public class FlowExecutor extends RuntimeExecutor {
 
     //3.update runtimeContext
     fillExecuteContext(runtimeContext, flowInstancePO.getFlowInstanceId(), instanceDataId);
+
+    flowEventPublisher.publish(new FlowInstanceStartedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+      runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(), runtimeContext.getInstanceDataMap()));
   }
 
   private FlowInstance saveFlowInstance(RuntimeContext runtimeContext) throws ProcessException {
@@ -190,6 +206,9 @@ public class FlowExecutor extends RuntimeExecutor {
         runtimeContext.setFlowInstanceStatus(FlowInstanceStatus.COMPLETED);
       }
       LOGGER.info("postExecute: flowInstance process completely.||flowInstanceId={}", runtimeContext.getFlowInstanceId());
+
+      flowEventPublisher.publish(new FlowInstanceCompletedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+        runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(), runtimeContext.getInstanceDataMap()));
     }
   }
 
@@ -337,6 +356,9 @@ public class FlowExecutor extends RuntimeExecutor {
       }
 
       LOGGER.info("postCommit: flowInstance process completely.||flowInstanceId={}", runtimeContext.getFlowInstanceId());
+
+      flowEventPublisher.publish(new FlowInstanceCompletedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+        runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(), runtimeContext.getInstanceDataMap()));
     }
   }
 

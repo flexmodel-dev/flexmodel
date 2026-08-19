@@ -453,3 +453,25 @@ key 与 JSON 载荷字段（含 variables 快照）完整通过。
 **结论:** E2E 端到端验证完成。Flow 生命周期事件经 `FlowEventPublisher`→EventBus→`FlowEventRabbitmqBridge`→SmallRye
 outgoing channel→RabbitMQ topic 交换机链路，routing key 与 JSON 载荷均正确。默认 `mvn test` 不依赖 Docker（E2E opt-in 跳过），
 `restrictToAnnotatedClass=true` 确保 broker 资源不泄漏到其他测试。
+
+## UserTask 事件携带 nodeAttributes + 文档补全数据结构（2026-08-19）
+
+**需求:** 订阅者常需解析节点定义里的扩展属性做业务（审批人、表单、阈值等）。外部 RabbitMQ 订阅者访问不到定义仓库，故将节点属性快照随事件携带。
+
+**改动:**
+
+- 事件类：`UserTaskSuspendedEvent`/`UserTaskCommittedEvent`/`UserTaskRollbackSuspendedEvent` 各加 `Map<String, Object> nodeAttributes` 字段，构造器做 `new HashMap<>(nodeAttributes)` 防御性拷贝（与 variables 一致）。
+- `UserTaskExecutor` 三处埋点填充 `nodeAttributes`：`doExecute` 用 `flowElement.getProperties()`；`postCommit` 用 `runtimeContext.getCurrentNodeModel().getProperties()`；`doRollback` 用 `FlowModelUtil.getFlowElement(flowElementMap, nodeKey).getProperties()`。
+- 测试：`FlowEventRabbitmqBridgeE2ETest` 新增 `userTaskSuspendedEventWithNodeAttributesForwarded`，验证 routing key + variables + nodeAttributes 经 broker 转发后 JSON 载荷完整（含中文字段名、boolean）。
+- 文档 `flexmodel-website/docs/tutorial/features/flow.md`：
+  - 修正公共字段表——`routingKey` 不在 JSON 载荷（是方法非字段），改注其随 AMQP envelope 投递；同步修正 Python 订阅示例从 `method.routing_key` 读取。
+  - 事件总览表三个 UserTask 事件加 `nodeAttributes`。
+  - 新增「事件数据结构」小节，按定义层/实例层/用户任务层分组给出每种事件的 JSON 载荷示例。
+
+**验证:**
+
+- `mvn test-compile` → ExitCode 0。
+- E2E（`FLEXMODEL_E2E_RABBITMQ=true`）→ Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, BUILD SUCCESS（含新增 nodeAttributes 用例）。
+- 默认回归 → Tests run: 28, Failures: 0, Errors: 0, Skipped: 3（E2E 默认跳过），BUILD SUCCESS。
+
+**设计要点:** nodeAttributes = 节点定义的 `FlowElement.properties` 快照，事件发生时已确定且不可变；外部订阅者无需回查定义仓库即可读取节点配置，解耦核心与外部系统。

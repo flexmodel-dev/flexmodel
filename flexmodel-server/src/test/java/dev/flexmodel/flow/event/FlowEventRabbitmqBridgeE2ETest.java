@@ -20,6 +20,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -123,6 +124,56 @@ public class FlowEventRabbitmqBridgeE2ETest {
       assertNotNull(vars, "variables snapshot should be present in payload");
       assertEquals(100, vars.get("amount").asInt());
       assertTrue(vars.get("approved").asBoolean(), "approved variable should be true");
+    }
+  }
+
+  /**
+   * 验证 UserTaskSuspendedEvent 经桥接转发后，routing key 正确，且 nodeAttributes（节点定义扩展属性快照）
+   * 与 variables 一样在 JSON 载荷中完整保留，外部订阅者无需回查定义仓库即可读取节点配置。
+   */
+  @Test
+  void userTaskSuspendedEventWithNodeAttributesForwarded() throws Exception {
+    String projectId = "proj-task";
+    String caller = "caller-task";
+    String flowDeployId = "deploy-task";
+    String flowInstanceId = "instance-task";
+    String nodeInstanceId = "nodeinst-task";
+    String nodeKey = "approveNode";
+    Map<String, Object> variables = new HashMap<>();
+    variables.put("amount", 500);
+    Map<String, Object> nodeAttributes = new HashMap<>();
+    nodeAttributes.put("name", "审批");
+    nodeAttributes.put("assignee", "manager");
+    nodeAttributes.put("multiInstance", false);
+
+    try (Connection connection = newConnection();
+         Channel channel = connection.createChannel()) {
+      channel.exchangeDeclare(EXCHANGE, BuiltinExchangeType.TOPIC, true);
+      String queue = channel.queueDeclare().getQueue();
+      channel.queueBind(queue, EXCHANGE, FlowEventTypes.USER_TASK_SUSPENDED);
+
+      flowEventPublisher.publish(new UserTaskSuspendedEvent(projectId, caller, flowDeployId,
+        flowInstanceId, nodeInstanceId, nodeKey, variables, nodeAttributes));
+
+      GetResponse response = pollForMessage(channel, queue, 15000L);
+      assertNotNull(response, "UserTaskSuspendedEvent should be forwarded to broker within timeout");
+
+      assertEquals(FlowEventTypes.USER_TASK_SUSPENDED, response.getEnvelope().getRoutingKey());
+
+      JsonNode body = MAPPER.readTree(response.getBody());
+      assertEquals(projectId, body.get("projectId").asText());
+      assertEquals(flowDeployId, body.get("flowDeployId").asText());
+      assertEquals(flowInstanceId, body.get("flowInstanceId").asText());
+      assertEquals(nodeInstanceId, body.get("nodeInstanceId").asText());
+      assertEquals(nodeKey, body.get("nodeKey").asText());
+      JsonNode vars = body.get("variables");
+      assertNotNull(vars, "variables snapshot should be present");
+      assertEquals(500, vars.get("amount").asInt());
+      JsonNode attrs = body.get("nodeAttributes");
+      assertNotNull(attrs, "nodeAttributes snapshot should be present in payload");
+      assertEquals("审批", attrs.get("name").asText());
+      assertEquals("manager", attrs.get("assignee").asText());
+      assertFalse(attrs.get("multiInstance").asBoolean(), "multiInstance should be false");
     }
   }
 

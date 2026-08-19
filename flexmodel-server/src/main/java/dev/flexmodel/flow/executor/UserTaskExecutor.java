@@ -107,9 +107,11 @@ public class UserTaskExecutor extends ElementExecutor {
     if (currentNodeInstance.getStatus() != NodeInstanceStatus.COMPLETED) {
       currentNodeInstance.setStatus(NodeInstanceStatus.COMPLETED);
       runtimeContext.getNodeInstanceList().add(currentNodeInstance);
+      FlowElement committedElement = runtimeContext.getCurrentNodeModel();
       flowEventPublisher.publish(new UserTaskCommittedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
         runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(),
-        currentNodeInstance.getNodeInstanceId(), currentNodeInstance.getNodeKey()));
+        currentNodeInstance.getNodeInstanceId(), currentNodeInstance.getNodeKey(),
+        committedElement == null ? null : committedElement.getProperties()));
     }
   }
 
@@ -138,9 +140,11 @@ public class UserTaskExecutor extends ElementExecutor {
       newNodeInstanceBO.setProperties(currentNodeInstance.getProperties());
       runtimeContext.setCurrentNodeInstance(newNodeInstanceBO);
       runtimeContext.getNodeInstanceList().add(newNodeInstanceBO);
+      FlowElement rollbackElement = FlowModelUtil.getFlowElement(runtimeContext.getFlowElementMap(), newNodeInstanceBO.getNodeKey());
       flowEventPublisher.publish(new UserTaskRollbackSuspendedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
         runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(),
-        newNodeInstanceBO.getNodeInstanceId(), newNodeInstanceBO.getNodeKey()));
+        newNodeInstanceBO.getNodeInstanceId(), newNodeInstanceBO.getNodeKey(),
+        rollbackElement == null ? null : rollbackElement.getProperties()));
       throw new SuspendException(ErrorEnum.ROLLBACK_SUSPEND, MessageFormat.format(Constants.NODE_INSTANCE_FORMAT,
         newNodeInstanceBO.getNodeKey(),
         FlowModelUtil.getFlowElement(runtimeContext.getFlowElementMap(), newNodeInstanceBO.getNodeKey()),

@@ -1,5 +1,0 @@
-/docker-compose/mysql/data/
-/docker-compose/flexmodel/storage/
-/docker-compose/flexmodel/pages/
-/docker-compose/flexmodel/logs/
-/docker-compose/flexmodel/database/

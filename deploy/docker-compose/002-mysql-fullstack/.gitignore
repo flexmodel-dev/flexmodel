@@ -1,0 +1,6 @@
+/mysql/data/
+/rabbitmq/data/
+/flexmodel/storage/
+/flexmodel/pages/
+/flexmodel/logs/
+/flexmodel/database/

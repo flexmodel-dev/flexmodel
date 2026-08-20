@@ -88,7 +88,7 @@
     environment:
       - TZ=GMT+08
       - FLEXMODEL_DATASOURCE_DB_KIND=mysql
-      # readTimeout: MySQL 鐎圭懓娅掗柌宥呮儙閸氬孩鐫滄稉顓熺暙閻ｆ瑨绻涢幒銉ょ窗鐠囪鍩屽鍙夘劥鐎靛湱顏敍灞炬￥鐡掑懏妞傛导姘￥闂勬劙妯嗘繅鐑囩礄閺囨儳顕遍懛缈犵皑娴犺泛鎯婇悳顖氬枙缂佹搫绱?      - FLEXMODEL_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?connectTimeout=5000&readTimeout=15000
+      # readTimeout: MySQL 容器重启后池中残留连接会读到已死对端，无超时会无限阻塞（曾导致事件循环冻结）
       - FLEXMODEL_DATASOURCE_USERNAME=root
       - FLEXMODEL_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - FLEXMODEL_PROJECT_URL_TEMPLATE=jdbc:mysql://mysql:3306/{{databaseName}}?connectTimeout=5000&readTimeout=15000

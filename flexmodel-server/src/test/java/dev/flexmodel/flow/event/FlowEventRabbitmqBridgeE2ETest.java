@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTestResource(value = RabbitMqTestResource.class, restrictToAnnotatedClass = true)
 public class FlowEventRabbitmqBridgeE2ETest {
 
-  private static final String EXCHANGE = "flexmodel.flow.events";
+  private static final String EXCHANGE = "flexmodel.events";
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Inject
@@ -68,7 +68,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
       // 确保交换机存在（与 SmallRye 声明参数一致：topic、durable），幂等
       channel.exchangeDeclare(EXCHANGE, BuiltinExchangeType.TOPIC, true);
       String queue = channel.queueDeclare().getQueue();
-      channel.queueBind(queue, EXCHANGE, FlowEventTypes.FLOW_DEPLOYED);
+      channel.queueBind(queue, EXCHANGE, "flow.proj-e2e.deployed");
 
       flowEventPublisher.publish(
         new FlowDeployedEvent(projectId, caller, flowModuleId, flowDeployId));
@@ -77,7 +77,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
       assertNotNull(response, "FlowDeployedEvent should be forwarded to broker within timeout");
 
       Envelope envelope = response.getEnvelope();
-      assertEquals(FlowEventTypes.FLOW_DEPLOYED, envelope.getRoutingKey(),
+      assertEquals("flow.proj-e2e.deployed", envelope.getRoutingKey(),
         "AMQP routing key should match event routing key");
 
       JsonNode body = MAPPER.readTree(response.getBody());
@@ -106,7 +106,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
          Channel channel = connection.createChannel()) {
       channel.exchangeDeclare(EXCHANGE, BuiltinExchangeType.TOPIC, true);
       String queue = channel.queueDeclare().getQueue();
-      channel.queueBind(queue, EXCHANGE, FlowEventTypes.FLOW_INSTANCE_STARTED);
+      channel.queueBind(queue, EXCHANGE, "flow.proj-vars.instance.started");
 
       flowEventPublisher.publish(
         new FlowInstanceStartedEvent(projectId, caller, flowDeployId, flowInstanceId, variables));
@@ -114,7 +114,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
       GetResponse response = pollForMessage(channel, queue, 15000L);
       assertNotNull(response, "FlowInstanceStartedEvent should be forwarded to broker within timeout");
 
-      assertEquals(FlowEventTypes.FLOW_INSTANCE_STARTED, response.getEnvelope().getRoutingKey());
+      assertEquals("flow.proj-vars.instance.started", response.getEnvelope().getRoutingKey());
 
       JsonNode body = MAPPER.readTree(response.getBody());
       assertEquals(projectId, body.get("projectId").asText());
@@ -150,7 +150,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
          Channel channel = connection.createChannel()) {
       channel.exchangeDeclare(EXCHANGE, BuiltinExchangeType.TOPIC, true);
       String queue = channel.queueDeclare().getQueue();
-      channel.queueBind(queue, EXCHANGE, FlowEventTypes.USER_TASK_SUSPENDED);
+      channel.queueBind(queue, EXCHANGE, "flow.proj-task.usertask.suspended");
 
       flowEventPublisher.publish(new UserTaskSuspendedEvent(projectId, caller, flowDeployId,
         flowInstanceId, nodeInstanceId, nodeKey, variables, nodeAttributes));
@@ -158,7 +158,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
       GetResponse response = pollForMessage(channel, queue, 15000L);
       assertNotNull(response, "UserTaskSuspendedEvent should be forwarded to broker within timeout");
 
-      assertEquals(FlowEventTypes.USER_TASK_SUSPENDED, response.getEnvelope().getRoutingKey());
+      assertEquals("flow.proj-task.usertask.suspended", response.getEnvelope().getRoutingKey());
 
       JsonNode body = MAPPER.readTree(response.getBody());
       assertEquals(projectId, body.get("projectId").asText());

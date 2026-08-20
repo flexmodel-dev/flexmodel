@@ -236,6 +236,11 @@ class PageDeployerTest {
     }
 
     @Override
+    public EventsConfig events() {
+      return null;
+    }
+
+    @Override
     public String projectUrlTemplate() { return ""; }
 
     @Override

@@ -90,7 +90,7 @@
         "feat-003"
       ],
       "status": "done",
-      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.flow-events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。"
+      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。"
     }
   ]
 }

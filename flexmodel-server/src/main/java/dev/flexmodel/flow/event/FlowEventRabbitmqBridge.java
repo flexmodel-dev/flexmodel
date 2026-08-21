@@ -107,6 +107,8 @@ public class FlowEventRabbitmqBridge {
       MutinyEmitter<FlowEvent> emitter = flowEventEmitterInstance.get();
       OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
         .withRoutingKey(event.rabbitmqRoutingKey())
+        // 持久化投递（delivery_mode=2）：使消息在 broker 重启后仍可恢复，配合 durable 交换机与 durable 队列生效
+        .withDeliveryMode(2)
         .build();
       emitter.sendMessage(Message.of(event, Metadata.of(metadata)))
         .onFailure()

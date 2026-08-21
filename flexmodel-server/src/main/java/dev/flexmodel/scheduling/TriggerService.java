@@ -64,7 +64,7 @@ public class TriggerService {
 
   /**
    * 应用启动时扫描全部启用项目的 f_trigger 表，
-   * 对其中调度触发器（SCHEDULED）按 scheduler.getTrigger(...) 查询 Quartz 中是否已存在对应调度任务，
+   * 对其中调度触发器（SCHEDULE）按 scheduler.getTrigger(...) 查询 Quartz 中是否已存在对应调度任务，
    * 不存在则（重建）调度。用于重启后恢复丢失的调度任务。
    * <p>
    * 为避免早于项目 Schema 注册执行，这里显式为每个可能尚未注册 Schema 的项目调用
@@ -95,7 +95,7 @@ public class TriggerService {
 
   /**
    * 对单个项目同步 f_trigger 中的调度触发器到 Quartz。
-   * 遍历该项目 state=true 且 type=SCHEDULED 的触发器，
+   * 遍历该项目 state=true 且 type=SCHEDULE 的触发器，
    * 若 scheduler.getTrigger(...) 不存在对应调度任务则按配置重建。
    *
    * @return 本次恢复（新建）的调度任务数量
@@ -104,7 +104,7 @@ public class TriggerService {
     String projectId = project.getId();
     // 仅处理调度类型触发器；事件触发器（EVENT）不参与 Quartz 调度
     List<Trigger> triggers = triggerRepository.find(projectId,
-      trigger.state.eq(true).and(trigger.type.eq(TriggerType.SCHEDULED)), 1, Integer.MAX_VALUE);
+      trigger.state.eq(true).and(trigger.type.eq(TriggerType.SCHEDULE)), 1, Integer.MAX_VALUE);
 
     int restored = 0;
     for (Trigger trigger : triggers) {

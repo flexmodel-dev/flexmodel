@@ -64,6 +64,8 @@ public class RealtimeRabbitmqListener implements EventListener {
       MutinyEmitter<DataChangeEvent> emitter = dataEventEmitterInstance.get();
       OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
         .withRoutingKey(routingKey)
+        // 持久化投递（delivery_mode=2）：使消息在 broker 重启后仍可恢复，配合 durable 交换机与 durable 队列生效
+        .withDeliveryMode(2)
         .build();
       // 异步发送，不阻塞引擎写入线程；失败仅告警
       emitter.sendMessage(Message.of(payload, Metadata.of(metadata)))

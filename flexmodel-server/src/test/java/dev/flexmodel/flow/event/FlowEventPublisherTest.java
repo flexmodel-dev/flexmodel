@@ -15,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 楠岃瘉 {@link FlowEventPublisher} 灏嗗己绫诲瀷浜嬩欢缁?Vert.x EventBus 骞挎挱锛?
- * 涓斾簨浠跺瓧娈靛畬鏁翠繚鐣欍€傛湰鍦颁簨浠朵负鏈哄埗鏈韩锛屼笉渚濊禆 RabbitMQ銆?
+ * 验证 {@link FlowEventPublisher} 将强类型事件经 Vert.x EventBus 广播，
+ * 且事件字段完整保留。本地事件为机制本身，不依赖 RabbitMQ。
  *
  * @author cjbi
  */
@@ -61,12 +61,12 @@ public class FlowEventPublisherTest {
 
   @Test
   void publishNullEventIsNoOp() {
-    // 涓嶅簲鎶涘嚭锛屼篃涓嶅簲褰卞搷鍏朵粬娑堣垂鑰?
+    // 不应抛出，也不应影响其他消费者
     flowEventPublisher.publish(null);
   }
 
   /**
-   * 鏈夌晫杞绛夊緟娑堣垂鑰呮崟鑾蜂簨浠讹紝閬垮厤寮曞叆 Awaitility 渚濊禆銆?
+   * 有界轮询等待消费者捕获事件，避免引入 Awaitility 依赖。
    */
   private static <T> T pollFor(AtomicReference<T> ref, long timeoutMs) {
     long deadline = System.currentTimeMillis() + timeoutMs;

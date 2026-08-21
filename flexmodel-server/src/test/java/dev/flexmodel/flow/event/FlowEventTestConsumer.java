@@ -6,9 +6,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 娴嬭瘯鐢?EventBus 娑堣垂鑰咃細鎹曡幏 {@link FlowInstanceStartedEvent}锛岄獙璇佸瓧娈电粡 EventBus 閫忎紶瀹屾暣銆?
+ * 测试用 EventBus 消费者：捕获 {@link FlowInstanceStartedEvent}，验证字段经 EventBus 透传完整。
  * <p>
- * 椤跺眰 {@code @ApplicationScoped} Bean锛岀‘淇?Quarkus 鍙戠幇骞舵敞鍐屽叾 {@code @ConsumeEvent} 娑堣垂鑰呫€?
+ * 顶层 {@code @ApplicationScoped} Bean，确保 Quarkus 发现并注册其 {@code @ConsumeEvent} 消费者。
  *
  * @author cjbi
  */

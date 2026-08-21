@@ -38,7 +38,7 @@ public class EngineConfig {
     long beginTime = System.currentTimeMillis();
     List<Project> projects = projectService.findProjects();
     for (Project project : projects) {
-      // 娉ㄥ唽闈?main 鍒嗘敮鐨勬暟鎹簱 SchemaProvider
+      // 注册非 main 分支的数据库 SchemaProvider
       List<Branch> branches = branchRepository.findByProjectId(project.getId());
       for (Branch branch : branches) {
         schemaRegistry.registerSchema(branch.getDatabaseName());
@@ -75,8 +75,8 @@ public class EngineConfig {
     });
     log.info("Total registered datasources: {}", flexmodelConfig.datasources().keySet());
     SessionFactory sf = builder.build();
-    // 鐩存帴娉ㄥ唽 BuildItem 瀹炰緥锛岀粫杩?SPI ServiceLoader 鏈哄埗
-    // 鍦?GraalVM 鍘熺敓闀滃儚涓?ServiceLoader.load() 鏃犳硶姝ｇ‘鍙戠幇 SPI 瀹炵幇绫?
+    // 直接注册 BuildItem 实例，绕过 SPI ServiceLoader 机制
+    // 在 GraalVM 原生镜像中 ServiceLoader.load() 无法正确发现 SPI 实现类
     sf.registerBuildItem(new dev.flexmodel.codegen.System());
     sf.registerBuildItem(new DevTest());
     sf.getEventPublisher().addListener(triggerDataChangedEventListener);
@@ -87,7 +87,7 @@ public class EngineConfig {
   }
 
   /**
-   * 濡傛灉鏄?SQLite 鏂囦欢鏁版嵁搴擄紝纭繚鐖剁洰褰曞瓨鍦ㄣ€?
+   * 如果是 SQLite 文件数据库，确保父目录存在。
    */
   public static void ensureSqliteParentDir(String jdbcUrl) {
     if (jdbcUrl != null && jdbcUrl.startsWith("jdbc:sqlite:file:")) {

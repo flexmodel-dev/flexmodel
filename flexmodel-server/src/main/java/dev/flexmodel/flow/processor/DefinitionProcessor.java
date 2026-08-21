@@ -27,11 +27,6 @@ import dev.flexmodel.flow.common.util.IdGenerator;
 import dev.flexmodel.flow.common.util.StrongUuidGenerator;
 import dev.flexmodel.flow.validator.ModelValidator;
 import dev.flexmodel.flow.validator.ParamValidator;
-import dev.flexmodel.flow.event.FlowCreatedEvent;
-import dev.flexmodel.flow.event.FlowDeletedEvent;
-import dev.flexmodel.flow.event.FlowDeployedEvent;
-import dev.flexmodel.flow.event.FlowEventPublisher;
-import dev.flexmodel.flow.event.FlowUpdatedEvent;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
@@ -56,9 +51,6 @@ public class DefinitionProcessor {
 
   @Inject
   FlowDeploymentRepository flowDeploymentRepository;
-
-  @Inject
-  FlowEventPublisher flowEventPublisher;
 
   @PostConstruct
   public void init() {
@@ -88,8 +80,6 @@ public class DefinitionProcessor {
 
       createFlowResult = JsonUtils.convertValue(flowDefinitionPO, CreateFlowResult.class);
       fillCommonResult(createFlowResult, ErrorEnum.SUCCESS);
-      flowEventPublisher.publish(new FlowCreatedEvent(createFlowParam.getProjectId(), createFlowParam.getCaller(),
-        flowModuleId, createFlowParam.getFlowKey()));
     } catch (TurboException te) {
       fillCommonResult(createFlowResult, te);
     }
@@ -110,8 +100,6 @@ public class DefinitionProcessor {
         throw new DefinitionException(ErrorEnum.DEFINITION_UPDATE_INVALID);
       }
       fillCommonResult(updateFlowResult, ErrorEnum.SUCCESS);
-      flowEventPublisher.publish(new FlowUpdatedEvent(updateFlowParam.getProjectId(), updateFlowParam.getCaller(),
-        updateFlowParam.getFlowModuleId()));
     } catch (TurboException te) {
       LOGGER.error("Flow definition update failed: {}", te.getErrMsg(), te);
       fillCommonResult(updateFlowResult, te);
@@ -132,7 +120,6 @@ public class DefinitionProcessor {
     flowDefinition.setIsDeleted(true);
     flowDefinition.setModifyTime(LocalDateTime.now());
     flowDefinitionRepository.updateByModuleId(projectId, flowDefinition);
-    flowEventPublisher.publish(new FlowDeletedEvent(projectId, null, flowModuleId));
   }
 
   public DeployFlowResult deploy(DeployFlowParam deployFlowParam) {
@@ -169,8 +156,6 @@ public class DefinitionProcessor {
       }
       deployFlowResult = JsonUtils.convertValue(flowDeploymentPO, DeployFlowResult.class);
       fillCommonResult(deployFlowResult, ErrorEnum.SUCCESS);
-      flowEventPublisher.publish(new FlowDeployedEvent(deployFlowParam.getProjectId(), deployFlowParam.getCaller(),
-        deployFlowParam.getFlowModuleId(), flowDeployId));
     } catch (TurboException te) {
       fillCommonResult(deployFlowResult, te);
     }

@@ -40,8 +40,10 @@ public class FlowEventRabbitmqBridgeTest {
     // 默认通道禁用：桥接 bean 仍存在（零侵入），发布桥接也消费的事件不应抛出，
     // 且不连 broker（应用无 broker 启动即证）
     assertNotNull(bridge, "bridge bean should be present (zero-intrusion)");
-    flowEventPublisher.publish(new FlowDeployedEvent("proj-bridge", "caller-bridge",
-      "module-bridge", "deploy-bridge"));
+    Map<String, Object> variables = new HashMap<>();
+    variables.put("k", "v");
+    flowEventPublisher.publish(new FlowInstanceStartedEvent("proj-bridge", "caller-bridge",
+      "deploy-bridge", "instance-bridge", variables));
   }
 
   @Test

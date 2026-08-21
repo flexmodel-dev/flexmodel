@@ -39,26 +39,6 @@ public class FlowEventRabbitmqBridge {
   @Channel("events-out")
   Instance<MutinyEmitter<FlowEvent>> flowEventEmitterInstance;
 
-  @ConsumeEvent(value = FlowEventTypes.FLOW_CREATED, blocking = false)
-  public void onFlowCreated(FlowCreatedEvent event) {
-    forward(event);
-  }
-
-  @ConsumeEvent(value = FlowEventTypes.FLOW_UPDATED, blocking = false)
-  public void onFlowUpdated(FlowUpdatedEvent event) {
-    forward(event);
-  }
-
-  @ConsumeEvent(value = FlowEventTypes.FLOW_DEPLOYED, blocking = false)
-  public void onFlowDeployed(FlowDeployedEvent event) {
-    forward(event);
-  }
-
-  @ConsumeEvent(value = FlowEventTypes.FLOW_DELETED, blocking = false)
-  public void onFlowDeleted(FlowDeletedEvent event) {
-    forward(event);
-  }
-
   @ConsumeEvent(value = FlowEventTypes.FLOW_INSTANCE_STARTED, blocking = false)
   public void onFlowInstanceStarted(FlowInstanceStartedEvent event) {
     forward(event);

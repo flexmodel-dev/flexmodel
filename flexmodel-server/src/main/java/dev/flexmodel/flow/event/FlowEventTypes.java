@@ -12,12 +12,6 @@ public final class FlowEventTypes {
   private FlowEventTypes() {
   }
 
-  // 定义层
-  public static final String FLOW_CREATED = "flow.created";
-  public static final String FLOW_UPDATED = "flow.updated";
-  public static final String FLOW_DEPLOYED = "flow.deployed";
-  public static final String FLOW_DELETED = "flow.deleted";
-
   // 实例层
   public static final String FLOW_INSTANCE_STARTED = "flow.instance.started";
   public static final String FLOW_INSTANCE_COMPLETED = "flow.instance.completed";

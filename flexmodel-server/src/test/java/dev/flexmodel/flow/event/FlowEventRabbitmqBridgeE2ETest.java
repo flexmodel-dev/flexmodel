@@ -54,42 +54,6 @@ public class FlowEventRabbitmqBridgeE2ETest {
   FlowEventPublisher flowEventPublisher;
 
   /**
-   * 验证 FlowDeployedEvent 经桥接转发后，AMQP routing key 与 JSON 载荷字段正确。
-   */
-  @Test
-  void flowDeployedEventForwardedToBroker() throws Exception {
-    String projectId = "proj-e2e";
-    String caller = "caller-e2e";
-    String flowModuleId = "module-e2e";
-    String flowDeployId = "deploy-e2e";
-
-    try (Connection connection = newConnection();
-         Channel channel = connection.createChannel()) {
-      // 确保交换机存在（与 SmallRye 声明参数一致：topic、durable），幂等
-      channel.exchangeDeclare(EXCHANGE, BuiltinExchangeType.TOPIC, true);
-      String queue = channel.queueDeclare().getQueue();
-      channel.queueBind(queue, EXCHANGE, "flow.proj-e2e.deployed");
-
-      flowEventPublisher.publish(
-        new FlowDeployedEvent(projectId, caller, flowModuleId, flowDeployId));
-
-      GetResponse response = pollForMessage(channel, queue, 15000L);
-      assertNotNull(response, "FlowDeployedEvent should be forwarded to broker within timeout");
-
-      Envelope envelope = response.getEnvelope();
-      assertEquals("flow.proj-e2e.deployed", envelope.getRoutingKey(),
-        "AMQP routing key should match event routing key");
-
-      JsonNode body = MAPPER.readTree(response.getBody());
-      assertEquals(projectId, body.get("projectId").asText());
-      assertEquals(caller, body.get("caller").asText());
-      assertEquals(flowModuleId, body.get("flowModuleId").asText());
-      assertEquals(flowDeployId, body.get("flowDeployId").asText());
-      assertTrue(body.get("timestamp").asLong() > 0, "timestamp should be set");
-    }
-  }
-
-  /**
    * 验证带 variables 快照的 FlowInstanceStartedEvent 经桥接转发后，variables 仍在 JSON 载荷中完整。
    */
   @Test

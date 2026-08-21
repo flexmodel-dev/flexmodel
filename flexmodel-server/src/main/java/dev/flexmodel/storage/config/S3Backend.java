@@ -6,6 +6,8 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
  *
  * @author cjbi
  */
+@Slf4j
 public class S3Backend implements StorageBackend {
 
   public static final String TYPE = "s3";
@@ -94,8 +97,34 @@ public class S3Backend implements StorageBackend {
   public void validate() {
     try {
       s3Client.headBucket(b -> b.bucket(bucket));
+    } catch (NoSuchBucketException e) {
+      autoCreateBucket();
     } catch (S3Exception e) {
-      throw new InternalServerException("Failed to validate S3 bucket '" + bucket + "': " + e.getMessage(), e);
+      // Some S3-compatible stores (MinIO/RustFS) return 404 for a missing bucket
+      // but may not map it to NoSuchBucketException, so also match by status code.
+      if (e.statusCode() == 404) {
+        autoCreateBucket();
+      } else {
+        throw new InternalServerException("Failed to validate S3 bucket '" + bucket + "': " + e.getMessage(), e);
+      }
+    }
+  }
+
+  /**
+   * Auto-create the bucket when it does not exist; works for any S3-compatible store.
+   * In read-only mode the storage is never mutated, so we fail-fast and ask the
+   * operator to create the bucket manually.
+   */
+  private void autoCreateBucket() {
+    if (readOnly) {
+      throw new InternalServerException("S3 bucket '" + bucket + "' does not exist; read-only mode is enabled, refusing to auto-create. Please create the bucket manually.");
+    }
+    try {
+      log.info("S3 bucket '{}' does not exist, auto-creating", bucket);
+      s3Client.createBucket(b -> b.bucket(bucket));
+      log.info("S3 bucket '{}' created successfully", bucket);
+    } catch (S3Exception e) {
+      throw new InternalServerException("Failed to auto-create S3 bucket '" + bucket + "': " + e.getMessage(), e);
     }
   }
 

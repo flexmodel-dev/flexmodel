@@ -207,6 +207,11 @@ class PageAliasManagerTest {
     }
 
     @Override
+    public EventsConfig events() {
+      return null;
+    }
+
+    @Override
     public String projectUrlTemplate() { return ""; }
 
     @Override

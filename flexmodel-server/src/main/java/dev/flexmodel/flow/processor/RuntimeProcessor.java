@@ -24,6 +24,8 @@ import dev.flexmodel.flow.exception.ProcessException;
 import dev.flexmodel.flow.exception.ReentrantException;
 import dev.flexmodel.flow.exception.TurboException;
 import dev.flexmodel.flow.executor.FlowExecutor;
+import dev.flexmodel.flow.event.FlowEventPublisher;
+import dev.flexmodel.flow.event.FlowInstanceTerminatedEvent;
 import dev.flexmodel.flow.repository.FlowDeploymentRepository;
 import dev.flexmodel.flow.repository.FlowInstanceMappingRepository;
 import dev.flexmodel.flow.repository.FlowInstanceRepository;
@@ -68,6 +70,9 @@ public class RuntimeProcessor {
 
   @Inject
   NodeInstanceService nodeInstanceService;
+
+  @Inject
+  FlowEventPublisher flowEventPublisher;
 
   ////////////////////////////////////////startProcess////////////////////////////////////////
 
@@ -253,6 +258,7 @@ public class RuntimeProcessor {
       } else {
         processInstanceRepository.updateStatus(projectId, flowInstancePO, FlowInstanceStatus.TERMINATED);
         flowInstanceStatus = FlowInstanceStatus.TERMINATED;
+        flowEventPublisher.publish(new FlowInstanceTerminatedEvent(projectId, flowInstancePO.getCaller(), flowInstanceId));
       }
       if (effectiveForSubFlowInstance) {
         terminateSubFlowInstance(projectId, flowInstanceId);

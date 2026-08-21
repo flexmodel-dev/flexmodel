@@ -92,6 +92,25 @@ public interface FlexmodelConfig extends Serializable {
     String rootPath();
   }
 
+  /**
+   * 事件转发 RabbitMQ 桥接的业务开关。默认 false：不连 broker，桥接静默跳过。
+   * 该开关经 application.properties 占位符映射到 SmallRye 通道 mp.messaging.outgoing.events-out.enabled。
+   */
+  @WithName("events")
+  EventsConfig events();
+
+  interface EventsConfig {
+
+    @WithName("rabbitmq")
+    RabbitmqConfig rabbitmq();
+
+    interface RabbitmqConfig {
+
+      @WithDefault("false")
+      boolean enabled();
+    }
+  }
+
   interface DatasourceConfig {
 
     @WithName("db-kind")

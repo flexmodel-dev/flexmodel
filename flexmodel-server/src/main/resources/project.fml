@@ -285,7 +285,7 @@ model f_function_log {
 
 enum TriggerType {
   EVENT,
-  SCHEDULED,
+  SCHEDULE,
   @system
 }
 

@@ -45,14 +45,14 @@ public class TriggerResourceTest {
 
   /**
    * 与 {@code TriggerService.getJobGroup} 推导规则保持一致：
-   * SCHEDULED + FLOW → "{projectId}_flow_{jobId}"；SCHEDULED + FUNCTION → "{projectId}_fn_{jobId}"。
+   * SCHEDULE + FLOW → "{projectId}_flow_{jobId}"；SCHEDULE + FUNCTION → "{projectId}_fn_{jobId}"。
    */
   private static final String EXPECTED_FLOW_JOB_GROUP = PROJECT_ID + "_flow_" + TEST_JOB_ID;
 
   private String createdTriggerId;
 
   /**
-   * 本用例在测试过程中被显式启用（PATCH state=true）的 seed SCHEDULED 触发器 ID 列表，
+   * 本用例在测试过程中被显式启用（PATCH state=true）的 seed SCHEDULE 触发器 ID 列表，
    * 用于在 @AfterEach 中确保其 Quartz 调度任务被取消并还原为 state=false，避免污染后续用例。
    */
   private final List<String> enabledSeedTriggerIds = new ArrayList<>();
@@ -82,7 +82,7 @@ public class TriggerResourceTest {
         .body("{ \"state\": false }")
         .when()
         .patch(BASE_PATH + "/" + id);
-      // seed SCHEDULED FLOW 触发器的 jobGroup 在 update 后会被重算为标准格式
+      // seed SCHEDULE FLOW 触发器的 jobGroup 在 update 后会被重算为标准格式
       unscheduleFromScheduler(id, EXPECTED_FLOW_JOB_GROUP);
       // 同时兼容 seed 中旧格式的 jobGroup，避免遗留调度任务
       unscheduleFromScheduler(id, "testFlowName_1757909108656");
@@ -125,7 +125,7 @@ public class TriggerResourceTest {
   }
 
   /**
-   * 断言 SCHEDULED 触发器已正确调度到 Quartz：JobDetail 与 Trigger 同时存在，
+   * 断言 SCHEDULE 触发器已正确调度到 Quartz：JobDetail 与 Trigger 同时存在，
    * 触发器状态为 NORMAL，且 JobDataMap 携带 triggerId/jobId/projectId。
    * <p>
    * 注：SimpleTrigger 在短间隔下可能在断言前已触发完成并被移除，nextFireTime 可能为 null，
@@ -154,13 +154,13 @@ public class TriggerResourceTest {
   }
 
   /**
-   * 断言触发器未在 Quartz 中创建作业/触发器（用于 state=false 的 SCHEDULED 与 EVENT 类型）。
+   * 断言触发器未在 Quartz 中创建作业/触发器（用于 state=false 的 SCHEDULE 与 EVENT 类型）。
    */
   private void assertNotScheduledInQuartz(String triggerId, String jobGroup) throws SchedulerException {
     assertFalse(quartz.checkExists(jobKey(triggerId, jobGroup)),
-      "state=false 的 SCHEDULED 触发器不应创建 Quartz JobDetail: " + jobKey(triggerId, jobGroup));
+      "state=false 的 SCHEDULE 触发器不应创建 Quartz JobDetail: " + jobKey(triggerId, jobGroup));
     assertFalse(quartz.checkExists(triggerKey(triggerId, jobGroup)),
-      "state=false 的 SCHEDULED 触发器不应创建 Quartz Trigger: " + triggerKey(triggerId, jobGroup));
+      "state=false 的 SCHEDULE 触发器不应创建 Quartz Trigger: " + triggerKey(triggerId, jobGroup));
   }
 
   /**
@@ -224,7 +224,7 @@ public class TriggerResourceTest {
       {
           "name": "测试间隔触发",
           "description": "测试描述",
-          "type": "SCHEDULED",
+          "type": "SCHEDULE",
           "config": {
               "type": "interval",
               "interval": 5,
@@ -248,7 +248,7 @@ public class TriggerResourceTest {
       .body("id", notNullValue())
       .body("name", equalTo("测试间隔触发"))
       .body("description", equalTo("测试描述"))
-      .body("type", equalTo("SCHEDULED"))
+      .body("type", equalTo("SCHEDULE"))
       .body("state", equalTo(true))
       .body("jobId", equalTo(TEST_JOB_ID))
       .body("jobType", equalTo("FLOW"))
@@ -273,7 +273,7 @@ public class TriggerResourceTest {
       {
           "name": "测试Cron触发",
           "description": "测试Cron描述",
-          "type": "SCHEDULED",
+          "type": "SCHEDULE",
           "config": {
               "type": "cron",
               "cronExpression": "0 0 8 * * ?"
@@ -294,7 +294,7 @@ public class TriggerResourceTest {
       .statusCode(200)
       .body("id", notNullValue())
       .body("name", equalTo("测试Cron触发"))
-      .body("type", equalTo("SCHEDULED"))
+      .body("type", equalTo("SCHEDULE"))
       .body("jobGroup", equalTo(EXPECTED_FLOW_JOB_GROUP))
       .body("config.cronExpression", equalTo("0 0 8 * * ?"))
       .extract()
@@ -362,7 +362,7 @@ public class TriggerResourceTest {
     String triggerJson = """
       {
           "name": "禁用的间隔触发",
-          "type": "SCHEDULED",
+          "type": "SCHEDULE",
           "config": {
               "type": "interval",
               "interval": 1,
@@ -398,7 +398,7 @@ public class TriggerResourceTest {
       .statusCode(200)
       .body("state", equalTo(false));
 
-    // state=false 的 SCHEDULED 触发器不应在 Quartz 中创建调度任务
+    // state=false 的 SCHEDULE 触发器不应在 Quartz 中创建调度任务
     assertNotScheduledInQuartz(triggerId, EXPECTED_FLOW_JOB_GROUP);
   }
 
@@ -417,7 +417,7 @@ public class TriggerResourceTest {
           "id": "%s",
           "name": "更新后的触发器名称",
           "description": "更新后的描述",
-          "type": "SCHEDULED",
+          "type": "SCHEDULE",
           "config": {
               "type": "interval",
               "interval": 10,
@@ -455,7 +455,7 @@ public class TriggerResourceTest {
           "id": "%s",
           "name": "定时触发-间隔触发",
           "description": "定时触发-间隔触发-备注",
-          "type": "SCHEDULED",
+          "type": "SCHEDULE",
           "config": {
               "type": "interval",
               "interval": 1,
@@ -508,7 +508,7 @@ public class TriggerResourceTest {
       {
           "id": "%s",
           "name": "定时触发-间隔触发",
-          "type": "SCHEDULED",
+          "type": "SCHEDULE",
           "config": {
               "type": "interval",
               "interval": 30,
@@ -543,7 +543,7 @@ public class TriggerResourceTest {
           "id": "%s",
           "name": "定时触发-间隔触发",
           "description": "定时触发-间隔触发-备注",
-          "type": "SCHEDULED",
+          "type": "SCHEDULE",
           "config": {
               "type": "interval",
               "interval": 1,
@@ -571,7 +571,7 @@ public class TriggerResourceTest {
   /**
    * 测试部分更新触发器 - 只更新状态为false
    * <p>
-   * CRON_TRIGGER_ID 是 seed 中 state=false 的 SCHEDULED Cron 触发器，本用例 PATCH 保持 false，
+   * CRON_TRIGGER_ID 是 seed 中 state=false 的 SCHEDULE Cron 触发器，本用例 PATCH 保持 false，
    * 不应触发调度。补充断言：Quartz 中不应存在其调度任务。
    */
   @Test
@@ -597,12 +597,12 @@ public class TriggerResourceTest {
   /**
    * 测试部分更新触发器 - 启用触发器（state: false → true）
    * <p>
-   * INTERVAL_TRIGGER_ID 是 seed 中 state=false 的 SCHEDULED 间隔触发器，
+   * INTERVAL_TRIGGER_ID 是 seed 中 state=false 的 SCHEDULE 间隔触发器，
    * PATCH state=true → TriggerService 会依据配置调度到 Quartz；PATCH 回 false → 取消调度。
    */
   @Test
   void testPatchTriggerEnable() throws SchedulerException {
-    // INTERVAL_TRIGGER_ID 是seed中state=false的SCHEDULED触发器
+    // INTERVAL_TRIGGER_ID 是seed中state=false的SCHEDULE触发器
     // PATCH state=true → TriggerService会调度到Quartz
     String patchJson = """
       { "state": true }
@@ -700,7 +700,7 @@ public class TriggerResourceTest {
       {
           "name": "待删除的触发器",
           "description": "用于删除测试",
-          "type": "SCHEDULED",
+          "type": "SCHEDULE",
           "config": {
               "type": "interval",
               "interval": 1,
@@ -762,7 +762,7 @@ public class TriggerResourceTest {
       .get(BASE_PATH + "/" + INTERVAL_TRIGGER_ID)
       .then()
       .statusCode(200)
-      .body("type", equalTo("SCHEDULED"))
+      .body("type", equalTo("SCHEDULE"))
       .body("config.interval", notNullValue())
       .body("config.intervalUnit", notNullValue())
       .body("config.repeatCount", notNullValue());
@@ -774,7 +774,7 @@ public class TriggerResourceTest {
       .get(BASE_PATH + "/" + CRON_TRIGGER_ID)
       .then()
       .statusCode(200)
-      .body("type", equalTo("SCHEDULED"))
+      .body("type", equalTo("SCHEDULE"))
       .body("config.cronExpression", equalTo("0 0 * * * ? *"));
 
     // 验证事件触发配置

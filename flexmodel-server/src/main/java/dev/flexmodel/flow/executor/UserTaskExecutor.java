@@ -1,5 +1,6 @@
 package dev.flexmodel.flow.executor;
 
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,10 @@ import dev.flexmodel.flow.common.ErrorEnum;
 import dev.flexmodel.flow.common.NodeInstanceStatus;
 import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
+import dev.flexmodel.flow.event.FlowEventPublisher;
+import dev.flexmodel.flow.event.UserTaskCommittedEvent;
+import dev.flexmodel.flow.event.UserTaskRollbackSuspendedEvent;
+import dev.flexmodel.flow.event.UserTaskSuspendedEvent;
 import dev.flexmodel.JsonUtils;
 
 import java.text.MessageFormat;
@@ -21,6 +26,9 @@ import java.util.Map;
 public class UserTaskExecutor extends ElementExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UserTaskExecutor.class);
+
+  @Inject
+  FlowEventPublisher flowEventPublisher;
 
   @Override
   protected void doExecute(RuntimeContext runtimeContext) throws ProcessException {
@@ -39,6 +47,10 @@ public class UserTaskExecutor extends ElementExecutor {
     String nodeName = FlowModelUtil.getElementName(flowElement);
     LOGGER.info("doExecute: userTask to commit.||flowInstanceId={}||nodeInstanceId={}||nodeKey={}||nodeName={}",
       runtimeContext.getFlowInstanceId(), currentNodeInstance.getNodeInstanceId(), flowElement.getKey(), nodeName);
+    flowEventPublisher.publish(new UserTaskSuspendedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+      runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(),
+      currentNodeInstance.getNodeInstanceId(), flowElement.getKey(), runtimeContext.getInstanceDataMap(),
+      flowElement.getProperties()));
     throw new SuspendException(ErrorEnum.COMMIT_SUSPEND, MessageFormat.format(Constants.NODE_INSTANCE_FORMAT,
       flowElement.getKey(), nodeName, currentNodeInstance.getNodeInstanceId()));
   }
@@ -95,6 +107,11 @@ public class UserTaskExecutor extends ElementExecutor {
     if (currentNodeInstance.getStatus() != NodeInstanceStatus.COMPLETED) {
       currentNodeInstance.setStatus(NodeInstanceStatus.COMPLETED);
       runtimeContext.getNodeInstanceList().add(currentNodeInstance);
+      FlowElement committedElement = runtimeContext.getCurrentNodeModel();
+      flowEventPublisher.publish(new UserTaskCommittedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+        runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(),
+        currentNodeInstance.getNodeInstanceId(), currentNodeInstance.getNodeKey(),
+        committedElement == null ? null : committedElement.getProperties()));
     }
   }
 
@@ -123,6 +140,11 @@ public class UserTaskExecutor extends ElementExecutor {
       newNodeInstanceBO.setProperties(currentNodeInstance.getProperties());
       runtimeContext.setCurrentNodeInstance(newNodeInstanceBO);
       runtimeContext.getNodeInstanceList().add(newNodeInstanceBO);
+      FlowElement rollbackElement = FlowModelUtil.getFlowElement(runtimeContext.getFlowElementMap(), newNodeInstanceBO.getNodeKey());
+      flowEventPublisher.publish(new UserTaskRollbackSuspendedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+        runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(),
+        newNodeInstanceBO.getNodeInstanceId(), newNodeInstanceBO.getNodeKey(),
+        rollbackElement == null ? null : rollbackElement.getProperties()));
       throw new SuspendException(ErrorEnum.ROLLBACK_SUSPEND, MessageFormat.format(Constants.NODE_INSTANCE_FORMAT,
         newNodeInstanceBO.getNodeKey(),
         FlowModelUtil.getFlowElement(runtimeContext.getFlowElementMap(), newNodeInstanceBO.getNodeKey()),

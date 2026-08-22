@@ -22,6 +22,23 @@ echo ""
 echo "Optional: Run full server tests (some tests may have known failures):"
 echo "  mvn clean test -pl flexmodel-server -am"
 echo ""
+echo "Optional: Run UI E2E tests (Playwright, requires Node.js):"
+if command -v node >/dev/null 2>&1; then
+  if [ ! -d "flexmodel-ui/node_modules" ]; then
+    echo "  Installing UI dependencies..."
+    (cd flexmodel-ui && npm ci)
+  fi
+  if [ ! -d "flexmodel-ui/node_modules/playwright-core" ]; then
+    echo "  Installing Playwright browser..."
+    (cd flexmodel-ui && npx playwright install chromium)
+  fi
+  echo "  Running E2E tests..."
+  (cd flexmodel-ui && npx playwright test)
+else
+  echo "  Skipped: Node.js not found. To run UI E2E tests manually:"
+  echo "    cd flexmodel-ui && npm ci && npx playwright install chromium && npx playwright test"
+fi
+echo ""
 echo "Next steps:"
 echo "1. Read feature_list.json to see current feature state"
 echo "2. Pick ONE unfinished feature to work on"

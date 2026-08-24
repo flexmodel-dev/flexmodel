@@ -9,6 +9,7 @@
 
 import type {DeployRequest, FunctionMeta} from "../types.ts";
 import {workerPool} from "./worker_pool.ts";
+import {sdkResolution} from "./sdk-resolver.ts";
 
 const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions";
 
@@ -179,7 +180,7 @@ self.addEventListener("message", async (e) => {
 function generateFunctionDenoJson(): string {
   return JSON.stringify({
     imports: {
-      "@flexmodel/sdk": "npm:@flexmodel/sdk@0.0.8",
+      "@flexmodel/sdk": sdkResolution.specifier,
     },
   }, null, 2);
 }

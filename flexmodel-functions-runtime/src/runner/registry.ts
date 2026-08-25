@@ -9,9 +9,29 @@
 
 import type {DeployRequest, FunctionMeta} from "../types.ts";
 import {workerPool} from "./worker_pool.ts";
-import {sdkResolution} from "./sdk-resolver.ts";
 
 const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions";
+
+// ---- @flexmodel/sdk resolution for Workers ----
+// Worker 通过函数级 import map 加载 SDK。优先使用本地构建的 SDK bundle：
+// 内联到函数目录为 ./_flexmodel_sdk.js，import map 用相对路径，离线且可移植；
+// 找不到本地构建时回退 npm（如 CI 未检出 SDK 子模块）。
+const SDK_NPM_FALLBACK = "npm:@flexmodel/sdk@0.0.8";
+const SDK_INLINED_FILE = "_flexmodel_sdk.js";
+const sdkBundle = (() => {
+  const candidates = [
+    Deno.env.get("FLEXMODEL_SDK_PATH"),
+    new URL("../../../flexmodel-sdks/typescript/dist/index.js", import.meta.url).href,
+  ];
+  for (const c of candidates) {
+    if (!c) continue;
+    try {
+      return Deno.readTextFileSync(c);
+    } catch { /* try next */
+    }
+  }
+})();
+const sdkSpecifier = sdkBundle ? `./${SDK_INLINED_FILE}` : SDK_NPM_FALLBACK;
 
 // ---- Wrapper Code Generator ----
 
@@ -180,7 +200,7 @@ self.addEventListener("message", async (e) => {
 function generateFunctionDenoJson(): string {
   return JSON.stringify({
     imports: {
-      "@flexmodel/sdk": sdkResolution.specifier,
+      "@flexmodel/sdk": sdkSpecifier,
     },
   }, null, 2);
 }
@@ -223,6 +243,11 @@ class Registry {
     // Worker loads via file:// URL from this dir, so it cannot inherit the
     // project-level import map — it needs its own.
     await Deno.writeTextFile(`${functionDir}/deno.json`, generateFunctionDenoJson());
+
+    // 内联本地 SDK bundle 到函数目录（相对路径，离线可移植）
+    if (sdkBundle) {
+      await Deno.writeTextFile(`${functionDir}/${SDK_INLINED_FILE}`, sdkBundle);
+    }
 
     // Store metadata
     const entryUrl = `file:///${functionDir.replace(/\\/g, "/")}/_worker_wrapper.ts`;

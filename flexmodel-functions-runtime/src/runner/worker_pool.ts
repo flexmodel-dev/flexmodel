@@ -17,7 +17,6 @@
 // ============================================================
 
 import type {FunctionMeta} from "../types.ts";
-import {sdkResolution} from "./sdk-resolver.ts";
 
 const DEFAULT_MAX_IDLE_PER_FUNCTION = 3;
 
@@ -66,16 +65,12 @@ export class WorkerPool {
      * Centralized factory to avoid duplicating permission config.
      */
     createWorker(meta: FunctionMeta): Worker {
-        const readPaths: (string)[] = [meta.functionDir];
-        if (sdkResolution.readPath) {
-            readPaths.push(sdkResolution.readPath);
-        }
         return new Worker(meta.entryUrl, {
             type: "module",
             deno: {
                 permissions: {
                     net: true,
-                    read: readPaths,
+                    read: [meta.functionDir],
                     write: false,
                     env: true,
                     run: false,

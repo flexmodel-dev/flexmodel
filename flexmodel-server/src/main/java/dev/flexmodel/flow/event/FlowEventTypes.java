@@ -21,5 +21,5 @@ public final class FlowEventTypes {
   // 用户任务层
   public static final String USER_TASK_SUSPENDED = "flow.usertask.suspended";
   public static final String USER_TASK_COMMITTED = "flow.usertask.committed";
-  public static final String USER_TASK_ROLLBACK_SUSPENDED = "flow.usertask.rollback.suspended";
+  public static final String USER_TASK_ROLLBACK_SUSPENDED = "flow.usertask.rollback-suspended";
 }

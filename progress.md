@@ -1,5 +1,24 @@
 ﻿# Session Progress Log
 
+## Doc/Code Fix: flow 用户任务回滚事件路由键规范化（2026-08-26）
+
+**背景:** `flow.usertask.rollback.suspended` 因 `.` 分段导致事件后缀多出一段（4 段 vs 其他事件 3 段）， 消费端绑定
+`flow.*.usertask.*` 无法匹配该事件；且命名解析为「回滚被挂起」，与实际语义（任务因回滚被重新挂起）不符。
+
+**修改:**
+
+- `flexmodel-server/.../flow/event/FlowEventTypes.java`：`USER_TASK_ROLLBACK_SUSPENDED` 值改为
+  `flow.usertask.rollback-suspended`（连字符合并动作段）。`FlowEvent.rabbitmqRoutingKey()` 通用插入逻辑自动 生成
+  `flow.<projectId>.usertask.rollback-suspended`，消费端 `flow.*.usertask.*` 现可匹配全部用户任务事件。
+- `flexmodel-website/docs/tutorial/features/flow.md`：事件表、载荷示例、订阅示例全部改为 `flow.<projectId>.xxx` 格式（此前漏写
+  projectId 段）；同步修正交换机名（`flexmodel.flow.events` → `flexmodel.events`，与 application.properties 及数据事件文档一致）与
+  转发通道名（`flow-events-out` → connector 级默认 `events-out`）。
+
+**验证:**
+
+- `mvn -q clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` → 无 ERROR，BUILD 成功。
+- `@ConsumeEvent` / `UserTaskRollbackSuspendedEvent` / `UserTaskExecutor` 均引用常量，自动生效。
+
 ## Doc Fix: 补全模型引用字段重命名的文档更新（2026-08-15）
 
 **背景:** `feature/model-ref` 分支此前将 `RelationField` 重命名为 `ModelRefField`、`ScalarType.RELATION` → `MODEL_REF`、

@@ -215,7 +215,9 @@ public class FlexmodelNativeProcessor {
 
   /**
    * 注册流程引擎核心类。
-   * 包含执行器、验证器、服务类等运行时通过 CDI/反射实例化的组件。
+   * 包含执行器、验证器、服务类等运行时通过 CDI/反射实例化的组件，
+   * 以及 flow.event 事件类（Lombok @Getter 私有字段，原生镜像下
+   * Jackson 需反射访问 getter 才能序列化到 RabbitMQ events-out 通道）。
    */
   @BuildStep
   ReflectiveClassBuildItem registerFlowEngineClasses(CombinedIndexBuildItem combinedIndex) {
@@ -227,7 +229,8 @@ public class FlexmodelNativeProcessor {
           "dev.flexmodel.flow.common.**",
           "dev.flexmodel.flow.config.**",
           "dev.flexmodel.flow.plugin.**",
-          "dev.flexmodel.flow.processor.**"))
+          "dev.flexmodel.flow.processor.**",
+          "dev.flexmodel.flow.event.**"))
       .methods()
       .fields()
       .build();

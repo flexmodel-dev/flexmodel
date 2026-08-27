@@ -10,7 +10,7 @@ public class StartProcessParam {
   private String projectId;
   private String flowModuleId;
   private String flowDeployId;
-  private String caller;
+  private String initiator;
   private Map<String, Object> variables;
 
   public String getProjectId() {
@@ -21,12 +21,12 @@ public class StartProcessParam {
     this.projectId = projectId;
   }
 
-  public String getCaller() {
-    return caller;
+  public String getInitiator() {
+    return initiator;
   }
 
-  public void setCaller(String caller) {
-    this.caller = caller;
+  public void setInitiator(String initiator) {
+    this.initiator = initiator;
   }
 
   public String getFlowModuleId() {

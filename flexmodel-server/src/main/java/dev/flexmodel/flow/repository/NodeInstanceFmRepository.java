@@ -24,7 +24,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
           int r = session.dsl()
             .update(NodeInstance.class)
             .set(System.nodeInstance.status, ni.getStatus())
-            .set(System.nodeInstance.modifyTime, ni.getModifyTime())
+            .set(System.nodeInstance.updatedAt, ni.getUpdatedAt())
             .where(System.nodeInstance.id.eq(ni.getId()))
             .execute();
           ok = ok && r > 0;

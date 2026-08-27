@@ -35,9 +35,9 @@ public class EntityBuilder {
     flowDefinition.setFlowModuleId(flowModuleId);
     flowDefinition.setFlowModel(JsonUtils.toJsonString(buildFlowElementList()));
     flowDefinition.setStatus(FlowDefinitionStatus.INIT);
-    flowDefinition.setCreateTime(LocalDateTime.now());
-    flowDefinition.setModifyTime(LocalDateTime.now());
-    flowDefinition.setOperator(operator);
+    flowDefinition.setCreatedAt(LocalDateTime.now());
+    flowDefinition.setUpdatedAt(LocalDateTime.now());
+    flowDefinition.setCreatedBy(operator);
     flowDefinition.setRemark(remark);
     return flowDefinition;
   }
@@ -50,9 +50,9 @@ public class EntityBuilder {
     flowDeployment.setFlowDeployId(flowDeployId);
     flowDeployment.setFlowModel(JsonUtils.toJsonString(buildFlowElementList()));
     flowDeployment.setStatus(FlowDeploymentStatus.DEPLOYED);
-    flowDeployment.setCreateTime(LocalDateTime.now());
-    flowDeployment.setModifyTime(LocalDateTime.now());
-    flowDeployment.setOperator(operator);
+    flowDeployment.setCreatedAt(LocalDateTime.now());
+    flowDeployment.setUpdatedAt(LocalDateTime.now());
+    flowDeployment.setCreatedBy(operator);
     flowDeployment.setRemark(remark);
     return flowDeployment;
   }
@@ -377,9 +377,9 @@ public class EntityBuilder {
     flowInstance.setFlowDeployId(flowDeployId);
     flowInstance.setFlowInstanceId(flowInstanceId);
     flowInstance.setStatus(FlowInstanceStatus.RUNNING);
-    flowInstance.setCreateTime(LocalDateTime.now());
-    flowInstance.setModifyTime(LocalDateTime.now());
-    flowInstance.setCaller("caller");
+    flowInstance.setCreatedAt(LocalDateTime.now());
+    flowInstance.setUpdatedAt(LocalDateTime.now());
+    flowInstance.setCreatedBy("caller");
     return flowInstance;
   }
 
@@ -399,9 +399,9 @@ public class EntityBuilder {
     nodeInstance.setSourceNodeInstanceId(sourceNodeInstanceId);
     nodeInstance.setSourceNodeKey(sourceNodeKey);
     nodeInstance.setStatus(NodeInstanceStatus.ACTIVE);
-    nodeInstance.setCreateTime(LocalDateTime.now());
-    nodeInstance.setModifyTime(LocalDateTime.now());
-    nodeInstance.setCaller("caller");
+    nodeInstance.setCreatedAt(LocalDateTime.now());
+    nodeInstance.setUpdatedAt(LocalDateTime.now());
+    nodeInstance.setCreatedBy("caller");
     return nodeInstance;
   }
 
@@ -420,8 +420,8 @@ public class EntityBuilder {
     nodeInstanceLog.setNodeKey(nodeKey);
     nodeInstanceLog.setType(NodeInstanceType.EXECUTE);
     nodeInstanceLog.setStatus(NodeInstanceStatus.ACTIVE);
-    nodeInstanceLog.setCreateTime(LocalDateTime.now());
-    nodeInstanceLog.setCaller("caller");
+    nodeInstanceLog.setCreatedAt(LocalDateTime.now());
+    nodeInstanceLog.setCreatedBy("caller");
     return nodeInstanceLog;
   }
 
@@ -433,8 +433,8 @@ public class EntityBuilder {
     nodeInstanceLog.setNodeKey(nodeKey);
     nodeInstanceLog.setType(NodeInstanceType.EXECUTE);
     nodeInstanceLog.setStatus(NodeInstanceStatus.ACTIVE);
-    nodeInstanceLog.setCreateTime(LocalDateTime.now());
-    nodeInstanceLog.setCaller("caller");
+    nodeInstanceLog.setCreatedAt(LocalDateTime.now());
+    nodeInstanceLog.setCreatedBy("caller");
     return nodeInstanceLog;
   }
 
@@ -449,8 +449,8 @@ public class EntityBuilder {
     Map<String, Object> instanceDataMap = buildInstanceDataMap();
     instanceData.setInstanceData(JsonUtils.toJsonString(instanceDataMap));
     instanceData.setType(InstanceDataType.EXECUTE);
-    instanceData.setCreateTime(LocalDateTime.now());
-    instanceData.setCaller("caller");
+    instanceData.setUpdatedAt(LocalDateTime.now());
+    instanceData.setUpdatedBy("caller");
     return instanceData;
   }
 
@@ -462,7 +462,7 @@ public class EntityBuilder {
 
   public static CreateFlowParam buildCreateFlowParam() {
     CreateFlowParam createFlowParam = new CreateFlowParam("dev_test", "testCaller");
-    createFlowParam.setOperator(operator);
+    createFlowParam.setUpdatedBy(operator);
     createFlowParam.setFlowKey(flowKey);
     createFlowParam.setFlowName(flowName);
     createFlowParam.setRemark(remark);
@@ -471,7 +471,7 @@ public class EntityBuilder {
 
   public static UpdateFlowParam buildUpdateFlowParam() {
     UpdateFlowParam updateFlowParam = new UpdateFlowParam("dev_test", "testCaller");
-    updateFlowParam.setOperator(operator);
+    updateFlowParam.setUpdatedBy(operator);
     updateFlowParam.setFlowKey(flowKey);
     updateFlowParam.setFlowName(flowName);
     updateFlowParam.setRemark(remark);
@@ -856,9 +856,9 @@ public class EntityBuilder {
     flowDeployment.setFlowDeployId("flowDeployId");
     flowDeployment.setFlowModel(JsonUtils.toJsonString(buildSpecialFlowModel()));
     flowDeployment.setStatus(FlowDeploymentStatus.DEPLOYED);
-    flowDeployment.setCreateTime(LocalDateTime.now());
-    flowDeployment.setModifyTime(LocalDateTime.now());
-    flowDeployment.setOperator(operator);
+    flowDeployment.setCreatedAt(LocalDateTime.now());
+    flowDeployment.setUpdatedAt(LocalDateTime.now());
+    flowDeployment.setCreatedBy(operator);
     flowDeployment.setRemark(remark);
     return flowDeployment;
   }

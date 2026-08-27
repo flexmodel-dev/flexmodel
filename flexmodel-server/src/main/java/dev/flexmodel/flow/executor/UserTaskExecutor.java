@@ -47,7 +47,7 @@ public class UserTaskExecutor extends ElementExecutor {
     String nodeName = FlowModelUtil.getElementName(flowElement);
     LOGGER.info("doExecute: userTask to commit.||flowInstanceId={}||nodeInstanceId={}||nodeKey={}||nodeName={}",
       runtimeContext.getFlowInstanceId(), currentNodeInstance.getNodeInstanceId(), flowElement.getKey(), nodeName);
-    flowEventPublisher.publish(new UserTaskSuspendedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+    flowEventPublisher.publish(new UserTaskSuspendedEvent(runtimeContext.getProjectId(), runtimeContext.getInitiator(),
       runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(),
       currentNodeInstance.getNodeInstanceId(), flowElement.getKey(), runtimeContext.getInstanceDataMap(),
       flowElement.getProperties()));
@@ -108,7 +108,7 @@ public class UserTaskExecutor extends ElementExecutor {
       currentNodeInstance.setStatus(NodeInstanceStatus.COMPLETED);
       runtimeContext.getNodeInstanceList().add(currentNodeInstance);
       FlowElement committedElement = runtimeContext.getCurrentNodeModel();
-      flowEventPublisher.publish(new UserTaskCommittedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+      flowEventPublisher.publish(new UserTaskCommittedEvent(runtimeContext.getProjectId(), runtimeContext.getInitiator(),
         runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(),
         currentNodeInstance.getNodeInstanceId(), currentNodeInstance.getNodeKey(),
         committedElement == null ? null : committedElement.getProperties()));
@@ -141,7 +141,7 @@ public class UserTaskExecutor extends ElementExecutor {
       runtimeContext.setCurrentNodeInstance(newNodeInstanceBO);
       runtimeContext.getNodeInstanceList().add(newNodeInstanceBO);
       FlowElement rollbackElement = FlowModelUtil.getFlowElement(runtimeContext.getFlowElementMap(), newNodeInstanceBO.getNodeKey());
-      flowEventPublisher.publish(new UserTaskRollbackSuspendedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+      flowEventPublisher.publish(new UserTaskRollbackSuspendedEvent(runtimeContext.getProjectId(), runtimeContext.getInitiator(),
         runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(),
         newNodeInstanceBO.getNodeInstanceId(), newNodeInstanceBO.getNodeKey(),
         rollbackElement == null ? null : rollbackElement.getProperties()));

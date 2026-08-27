@@ -28,7 +28,7 @@
         },
         {
           "type": "String",
-          "name": "caller",
+          "name": "initiator",
           "modelName": "flow_definition",
           "comment": null,
           "unique": false,

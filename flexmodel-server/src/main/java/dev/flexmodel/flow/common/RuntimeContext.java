@@ -16,7 +16,7 @@ public class RuntimeContext implements Serializable {
   private String flowDeployId;
   private String flowModuleId;
   private String projectId;
-  private String caller;
+  private String initiator;
   private Map<String, FlowElement> flowElementMap;
 
   //2.runtime info
@@ -78,12 +78,12 @@ public class RuntimeContext implements Serializable {
     this.projectId = projectId;
   }
 
-  public String getCaller() {
-    return caller;
+  public String getInitiator() {
+    return initiator;
   }
 
-  public void setCaller(String caller) {
-    this.caller = caller;
+  public void setInitiator(String initiator) {
+    this.initiator = initiator;
   }
 
   public Map<String, FlowElement> getFlowElementMap() {
@@ -212,8 +212,8 @@ public class RuntimeContext implements Serializable {
            "parentRuntimeContext=" + parentRuntimeContext +
            ", flowDeployId='" + flowDeployId + '\'' +
            ", flowModuleId='" + flowModuleId + '\'' +
-           ", tenant='" + projectId + '\'' +
-           ", caller='" + caller + '\'' +
+      ", tenant='" + projectId + '\'' +
+      ", initiator='" + initiator + '\'' +
            ", flowElementMap=" + flowElementMap +
            ", flowInstanceId='" + flowInstanceId + '\'' +
            ", flowInstanceStatus=" + flowInstanceStatus +

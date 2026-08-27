@@ -7,8 +7,8 @@ public class UpdateFlowParam extends OperationParam {
   private String flowModel;
   private String remark;
 
-  public UpdateFlowParam(String tenant, String caller) {
-    super(tenant, caller);
+  public UpdateFlowParam(String tenant, String createdBy) {
+    super(tenant, createdBy);
   }
 
   public String getFlowKey() {

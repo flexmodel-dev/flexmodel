@@ -116,7 +116,7 @@ public class FlowDefinitionResourceTest {
           "flowName": "E2E测试流程",
           "remark": "集成测试创建的流程",
           "projectId": "dev_test",
-          "caller": "admin"
+          "createdBy": "admin"
         }
         """)
       .when()
@@ -151,7 +151,7 @@ public class FlowDefinitionResourceTest {
           "flowName": "E2E测试流程",
           "remark": "集成测试创建的流程",
           "projectId": "dev_test",
-          "caller": "admin"
+          "createdBy": "admin"
         }
         """)
       .when()
@@ -172,8 +172,8 @@ public class FlowDefinitionResourceTest {
           "flowName": "E2E更新后流程",
           "remark": "更新后的备注",
           "projectId": "dev_test",
-          "caller": "admin",
-          "operator": "admin"
+          "createdBy": "admin",
+          "updatedBy": "admin"
         }
         """.formatted(flowModuleId))
       .when()
@@ -203,7 +203,7 @@ public class FlowDefinitionResourceTest {
           "flowKey": "test_flow_e2e_key",
           "flowName": "E2E测试流程-无projectId",
           "remark": "集成测试创建的流程",
-          "caller": "admin"
+          "createdBy": "admin"
         }
         """)
       .when()
@@ -238,7 +238,7 @@ public class FlowDefinitionResourceTest {
           "flowName": "E2E待删除流程",
           "remark": "待删除",
           "projectId": "dev_test",
-          "caller": "admin"
+          "createdBy": "admin"
         }
         """)
       .when()
@@ -269,8 +269,8 @@ public class FlowDefinitionResourceTest {
         {
           "flowModuleId": "%s",
           "projectId": "dev_test",
-          "caller": "admin",
-          "operator": "admin"
+          "createdBy": "admin",
+          "updatedBy": "admin"
         }
         """.formatted(EXISTING_FLOW_MODULE_ID))
       .when()
@@ -296,7 +296,7 @@ public class FlowDefinitionResourceTest {
           "flowName": "CRUD测试流程",
           "remark": "完整CRUD流程",
           "projectId": "dev_test",
-          "caller": "admin"
+          "createdBy": "admin"
         }
         """)
       .when()
@@ -325,8 +325,8 @@ public class FlowDefinitionResourceTest {
           "flowModuleId": "%s",
           "flowName": "CRUD更新后流程",
           "projectId": "dev_test",
-          "caller": "admin",
-          "operator": "admin"
+          "createdBy": "admin",
+          "updatedBy": "admin"
         }
         """.formatted(flowModuleId))
       .when()

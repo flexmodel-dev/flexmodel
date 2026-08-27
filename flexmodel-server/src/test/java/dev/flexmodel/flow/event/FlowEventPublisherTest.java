@@ -35,21 +35,21 @@ public class FlowEventPublisherTest {
     capturingConsumer.captured().set(null);
 
     String projectId = "proj-test";
-    String caller = "caller-test";
+    String initiator = "caller-test";
     String flowDeployId = "deploy-test";
     String flowInstanceId = "instance-test";
     Map<String, Object> variables = new HashMap<>();
     variables.put("amount", 100);
     variables.put("approved", true);
 
-    flowEventPublisher.publish(new FlowInstanceStartedEvent(projectId, caller, flowDeployId,
+    flowEventPublisher.publish(new FlowInstanceStartedEvent(projectId, initiator, flowDeployId,
       flowInstanceId, variables));
 
     FlowInstanceStartedEvent event = pollFor(capturingConsumer.captured(), 5000L);
 
     assertNotNull(event, "FlowInstanceStartedEvent should be received via EventBus");
     assertEquals(projectId, event.getProjectId());
-    assertEquals(caller, event.getCaller());
+    assertEquals(initiator, event.getInitiator());
     assertEquals(flowDeployId, event.getFlowDeployId());
     assertEquals(flowInstanceId, event.getFlowInstanceId());
     assertNotNull(event.getVariables());

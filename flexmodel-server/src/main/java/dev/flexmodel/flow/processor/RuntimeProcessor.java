@@ -83,8 +83,8 @@ public class RuntimeProcessor {
       FlowInfo flowInfo = getFlowInfo(startProcessParam);
       runtimeContext = buildStartProcessContext(flowInfo, startProcessParam.getVariables(), startProcessParam.getRuntimeContext());
       runtimeContext.setProjectId(startProcessParam.getProjectId());
-      if (StringUtils.isNotBlank(startProcessParam.getCaller())) {
-        runtimeContext.setCaller(startProcessParam.getCaller());
+      if (StringUtils.isNotBlank(startProcessParam.getInitiator())) {
+        runtimeContext.setInitiator(startProcessParam.getInitiator());
       }
       flowExecutor.execute(runtimeContext);
       return buildStartProcessResult(runtimeContext);
@@ -261,7 +261,7 @@ public class RuntimeProcessor {
       } else {
         processInstanceRepository.updateStatus(projectId, flowInstancePO, FlowInstanceStatus.TERMINATED);
         flowInstanceStatus = FlowInstanceStatus.TERMINATED;
-        flowEventPublisher.publish(new FlowInstanceTerminatedEvent(projectId, flowInstancePO.getCaller(), flowInstanceId));
+        flowEventPublisher.publish(new FlowInstanceTerminatedEvent(projectId, flowInstancePO.getInitiator(), flowInstanceId));
       }
       if (effectiveForSubFlowInstance) {
         terminateSubFlowInstance(projectId, flowInstanceId);

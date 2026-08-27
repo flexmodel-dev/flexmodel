@@ -23,10 +23,10 @@ public class UserTaskSuspendedEvent extends FlowEvent {
   private final Map<String, Object> variables;
   private final Map<String, Object> nodeAttributes;
 
-  public UserTaskSuspendedEvent(String projectId, String caller, String flowDeployId, String flowInstanceId,
+  public UserTaskSuspendedEvent(String projectId, String initiator, String flowDeployId, String flowInstanceId,
                                 String nodeInstanceId, String nodeKey, Map<String, Object> variables,
                                 Map<String, Object> nodeAttributes) {
-    super(projectId, caller);
+    super(projectId, initiator);
     this.flowDeployId = flowDeployId;
     this.flowInstanceId = flowInstanceId;
     this.nodeInstanceId = nodeInstanceId;

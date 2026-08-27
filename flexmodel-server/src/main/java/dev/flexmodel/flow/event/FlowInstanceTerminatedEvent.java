@@ -16,8 +16,8 @@ public class FlowInstanceTerminatedEvent extends FlowEvent {
 
   private final String flowInstanceId;
 
-  public FlowInstanceTerminatedEvent(String projectId, String caller, String flowInstanceId) {
-    super(projectId, caller);
+  public FlowInstanceTerminatedEvent(String projectId, String initiator, String flowInstanceId) {
+    super(projectId, initiator);
     this.flowInstanceId = flowInstanceId;
   }
 

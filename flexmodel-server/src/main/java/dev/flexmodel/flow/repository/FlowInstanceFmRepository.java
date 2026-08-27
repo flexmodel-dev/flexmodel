@@ -68,7 +68,7 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
         .selectFrom(FlowInstance.class)
         .where(predicate)
         .page(page, size)
-        .orderByDesc(System.flowInstance.createTime)
+        .orderByDesc(System.flowInstance.createdAt)
         .execute();
     }
   }

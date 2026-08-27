@@ -64,7 +64,7 @@ public class FlowExecutor extends RuntimeExecutor {
       runtimeContext.setProcessStatus(processStatus);
       postExecute(runtimeContext);
       if (processStatus == ProcessStatus.FAILED) {
-        flowEventPublisher.publish(new FlowInstanceFailedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+        flowEventPublisher.publish(new FlowInstanceFailedEvent(runtimeContext.getProjectId(), runtimeContext.getInitiator(),
           runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(), errorMessage));
       }
     }
@@ -88,7 +88,7 @@ public class FlowExecutor extends RuntimeExecutor {
     //3.update runtimeContext
     fillExecuteContext(runtimeContext, flowInstancePO.getFlowInstanceId(), instanceDataId);
 
-    flowEventPublisher.publish(new FlowInstanceStartedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+    flowEventPublisher.publish(new FlowInstanceStartedEvent(runtimeContext.getProjectId(), runtimeContext.getInitiator(),
       runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(), runtimeContext.getInstanceDataMap()));
   }
 
@@ -111,9 +111,9 @@ public class FlowExecutor extends RuntimeExecutor {
       flowInstance.setParentFlowInstanceId(parentRuntimeContext.getFlowInstanceId());
     }
     flowInstance.setStatus(FlowInstanceStatus.RUNNING);
-    flowInstance.setCreateTime(LocalDateTime.now());
-    flowInstance.setModifyTime(LocalDateTime.now());
-    flowInstance.setCaller(runtimeContext.getCaller());
+    flowInstance.setCreatedAt(LocalDateTime.now());
+    flowInstance.setUpdatedAt(LocalDateTime.now());
+    flowInstance.setInitiator(runtimeContext.getInitiator());
     return flowInstance;
   }
 
@@ -143,7 +143,7 @@ public class FlowExecutor extends RuntimeExecutor {
 
     instanceDataPO.setNodeInstanceId("");
     instanceDataPO.setNodeKey("");
-    instanceDataPO.setCreateTime(LocalDateTime.now());
+    instanceDataPO.setCreatedAt(LocalDateTime.now());
     instanceDataPO.setType(InstanceDataType.INIT);
     return instanceDataPO;
   }
@@ -207,7 +207,7 @@ public class FlowExecutor extends RuntimeExecutor {
       }
       LOGGER.info("postExecute: flowInstance process completely.||flowInstanceId={}", runtimeContext.getFlowInstanceId());
 
-      flowEventPublisher.publish(new FlowInstanceCompletedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+      flowEventPublisher.publish(new FlowInstanceCompletedEvent(runtimeContext.getProjectId(), runtimeContext.getInitiator(),
         runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(), runtimeContext.getInstanceDataMap()));
     }
   }
@@ -307,7 +307,7 @@ public class FlowExecutor extends RuntimeExecutor {
     instanceDataPO.setNodeInstanceId(nodeInstanceId);
     instanceDataPO.setNodeKey(nodeKey);
     instanceDataPO.setType(InstanceDataType.COMMIT);
-    instanceDataPO.setCreateTime(LocalDateTime.now());
+    instanceDataPO.setCreatedAt(LocalDateTime.now());
 
     instanceDataPO.setInstanceDataId(newInstanceDataId);
     instanceDataPO.setInstanceData(InstanceDataUtil.getInstanceDataStr(instanceDataMap));
@@ -357,7 +357,7 @@ public class FlowExecutor extends RuntimeExecutor {
 
       LOGGER.info("postCommit: flowInstance process completely.||flowInstanceId={}", runtimeContext.getFlowInstanceId());
 
-      flowEventPublisher.publish(new FlowInstanceCompletedEvent(runtimeContext.getProjectId(), runtimeContext.getCaller(),
+      flowEventPublisher.publish(new FlowInstanceCompletedEvent(runtimeContext.getProjectId(), runtimeContext.getInitiator(),
         runtimeContext.getFlowDeployId(), runtimeContext.getFlowInstanceId(), runtimeContext.getInstanceDataMap()));
     }
   }
@@ -624,10 +624,9 @@ public class FlowExecutor extends RuntimeExecutor {
     NodeInstance nodeInstancePO = JsonUtils.convertValue(nodeInstanceBO, NodeInstance.class);
     nodeInstancePO.setFlowInstanceId(runtimeContext.getFlowInstanceId());
     nodeInstancePO.setFlowDeployId(runtimeContext.getFlowDeployId());
-    nodeInstancePO.setCaller(runtimeContext.getCaller());
     LocalDateTime currentTime = LocalDateTime.now();
-    nodeInstancePO.setCreateTime(currentTime);
-    nodeInstancePO.setModifyTime(currentTime);
+    nodeInstancePO.setCreatedAt(currentTime);
+    nodeInstancePO.setUpdatedAt(currentTime);
     return nodeInstancePO;
   }
 

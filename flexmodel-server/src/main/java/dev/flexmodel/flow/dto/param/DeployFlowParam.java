@@ -3,8 +3,8 @@ package dev.flexmodel.flow.dto.param;
 public class DeployFlowParam extends OperationParam {
   private String flowModuleId;
 
-  public DeployFlowParam(String tenant, String caller) {
-    super(tenant, caller);
+  public DeployFlowParam(String tenant, String createdBy) {
+    super(tenant, createdBy);
   }
 
   public String getFlowModuleId() {

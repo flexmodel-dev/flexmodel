@@ -5,8 +5,8 @@ public class CreateFlowParam extends OperationParam {
   private String flowName;
   private String remark;
 
-  public CreateFlowParam(String tenant, String caller) {
-    super(tenant, caller);
+  public CreateFlowParam(String tenant, String createdBy) {
+    super(tenant, createdBy);
   }
 
   public String getFlowKey() {

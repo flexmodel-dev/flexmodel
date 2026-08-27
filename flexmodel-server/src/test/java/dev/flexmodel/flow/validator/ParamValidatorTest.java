@@ -43,17 +43,17 @@ public class ParamValidatorTest {
   }
 
   /**
-   * 测试 UpdateFlowParam 校验 - caller 为 null 时抛出异常
+   * 测试 UpdateFlowParam 校验 - createdBy 为 null 时抛出异常
    */
   @Test
-  void validateUpdateFlowParam_callerNull_throwsParamException() {
+  void validateUpdateFlowParam_createdByNull_throwsParamException() {
     UpdateFlowParam param = new UpdateFlowParam("dev_test", null);
     param.setFlowModuleId("module-1");
     param.setFlowModel("{\"flowElementList\":[]}");
 
     ParamException exception = Assertions.assertThrows(ParamException.class,
       () -> ParamValidator.validate(param));
-    Assertions.assertEquals("caller is null", exception.getErrMsg());
+    Assertions.assertEquals("createdBy is null", exception.getErrMsg());
   }
 
   /**
@@ -119,15 +119,15 @@ public class ParamValidatorTest {
   }
 
   /**
-   * 测试 CreateFlowParam 校验 - caller 为 null 时抛出异常
+   * 测试 CreateFlowParam 校验 - createdBy 为 null 时抛出异常
    */
   @Test
-  void validateCreateFlowParam_callerNull_throwsParamException() {
+  void validateCreateFlowParam_createdByNull_throwsParamException() {
     CreateFlowParam param = new CreateFlowParam("dev_test", null);
 
     ParamException exception = Assertions.assertThrows(ParamException.class,
       () -> ParamValidator.validate(param));
-    Assertions.assertEquals("caller is null", exception.getErrMsg());
+    Assertions.assertEquals("createdBy is null", exception.getErrMsg());
   }
 
   /**

@@ -5,7 +5,7 @@ import java.io.Serializable;
 /**
  * Flow 生命周期事件基类。
  * <p>
- * 公共字段 {@code projectId}、{@code caller}、{@code timestamp}（构造时设为当前毫秒）。
+ * 公共字段 {@code projectId}、{@code initiator}、{@code timestamp}（构造时设为当前毫秒）。
  * 抽象方法 {@link #routingKey()} 作 Vert.x EventBus 地址（静态常量，供 {@code @ConsumeEvent} 匹配）。
  * {@link #rabbitmqRoutingKey()} 在 routing key 中插入 projectId，作 RabbitMQ 转发的 routing key，
  * 格式为 {@code flow.<projectId>.<suffix>}，便于消费端按项目订阅。
@@ -18,12 +18,12 @@ public abstract class FlowEvent implements Serializable {
   private static final String FLOW_PREFIX = "flow.";
 
   private final String projectId;
-  private final String caller;
+  private final String initiator;
   private final long timestamp;
 
-  protected FlowEvent(String projectId, String caller) {
+  protected FlowEvent(String projectId, String initiator) {
     this.projectId = projectId;
-    this.caller = caller;
+    this.initiator = initiator;
     this.timestamp = System.currentTimeMillis();
   }
 
@@ -56,8 +56,8 @@ public abstract class FlowEvent implements Serializable {
     return projectId;
   }
 
-  public String getCaller() {
-    return caller;
+  public String getInitiator() {
+    return initiator;
   }
 
   public long getTimestamp() {

@@ -1,24 +1,24 @@
 package dev.flexmodel.flow.dto.param;
 
 public class OperationParam extends CommonParam {
-  private String operator;
+  private String updatedBy;
 
-  public OperationParam(String tenant, String caller) {
-    super(tenant, caller);
+  public OperationParam(String tenant, String createdBy) {
+    super(tenant, createdBy);
   }
 
-  public String getOperator() {
-    return operator;
+  public String getUpdatedBy() {
+    return updatedBy;
   }
 
-  public void setOperator(String operator) {
-    this.operator = operator;
+  public void setUpdatedBy(String updatedBy) {
+    this.updatedBy = updatedBy;
   }
 
   @Override
   public String toString() {
     return "OperationParam{" +
-           "operator='" + operator + '\'' +
+      "updatedBy='" + updatedBy + '\'' +
            '}';
   }
 }

@@ -104,7 +104,7 @@ public class ExclusiveGatewayExecutor extends ElementExecutor {
     instanceDataPO.setNodeInstanceId(runtimeContext.getCurrentNodeInstance().getNodeInstanceId());
     instanceDataPO.setNodeKey(runtimeContext.getCurrentNodeModel().getKey());
     instanceDataPO.setType(InstanceDataType.HOOK);
-    instanceDataPO.setCreateTime(LocalDateTime.now());
+    instanceDataPO.setCreatedAt(LocalDateTime.now());
     return instanceDataPO;
   }
 

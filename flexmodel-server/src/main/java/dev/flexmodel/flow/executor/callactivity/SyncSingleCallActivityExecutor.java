@@ -159,7 +159,7 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
   }
 
   private void preCheckCallActivityNestedLevel(RuntimeContext runtimeContext) throws ProcessException {
-    int maxCallActivityNestedLevel = businessConfig.getCallActivityNestedLevel(runtimeContext.getCaller());
+    int maxCallActivityNestedLevel = businessConfig.getCallActivityNestedLevel(runtimeContext.getInitiator());
     int currentCallActivityNestedLevel = 0;
     RuntimeContext tmpRuntimeContext = runtimeContext;
     while (tmpRuntimeContext != null) {
@@ -179,9 +179,8 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
     flowInstanceMapping.setNodeInstanceId(currentNodeInstance.getNodeInstanceId());
     flowInstanceMapping.setSubFlowInstanceId(subFlowInstanceId);
     flowInstanceMapping.setType(FlowInstanceMappingType.EXECUTE);
-    flowInstanceMapping.setCaller(runtimeContext.getCaller());
-    flowInstanceMapping.setCreateTime(LocalDateTime.now());
-    flowInstanceMapping.setModifyTime(LocalDateTime.now());
+    flowInstanceMapping.setCreatedAt(LocalDateTime.now());
+    flowInstanceMapping.setUpdatedAt(LocalDateTime.now());
     flowInstanceMappingRepository.insert(runtimeContext.getProjectId(), flowInstanceMapping);
   }
 
@@ -289,8 +288,8 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
     newFlowInstanceMappingPO.setNodeInstanceId(newNodeInstanceBO.getNodeInstanceId());
     newFlowInstanceMappingPO.setNodeKey(oldFlowInstanceMappingPO.getNodeKey());
     newFlowInstanceMappingPO.setType(oldFlowInstanceMappingPO.getType());
-    newFlowInstanceMappingPO.setCreateTime(LocalDateTime.now());
-    newFlowInstanceMappingPO.setModifyTime(LocalDateTime.now());
+    newFlowInstanceMappingPO.setCreatedAt(LocalDateTime.now());
+    newFlowInstanceMappingPO.setUpdatedAt(LocalDateTime.now());
     flowInstanceMappingRepository.insert(runtimeContext.getProjectId(), newFlowInstanceMappingPO);
   }
 

@@ -59,7 +59,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
   @Test
   void flowInstanceStartedEventWithVariablesForwarded() throws Exception {
     String projectId = "proj-vars";
-    String caller = "caller-vars";
+    String initiator = "caller-vars";
     String flowDeployId = "deploy-vars";
     String flowInstanceId = "instance-vars";
     Map<String, Object> variables = new HashMap<>();
@@ -73,7 +73,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
       channel.queueBind(queue, EXCHANGE, "flow.proj-vars.instance.started");
 
       flowEventPublisher.publish(
-        new FlowInstanceStartedEvent(projectId, caller, flowDeployId, flowInstanceId, variables));
+        new FlowInstanceStartedEvent(projectId, initiator, flowDeployId, flowInstanceId, variables));
 
       GetResponse response = pollForMessage(channel, queue, 15000L);
       assertNotNull(response, "FlowInstanceStartedEvent should be forwarded to broker within timeout");
@@ -98,7 +98,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
   @Test
   void userTaskSuspendedEventWithNodeAttributesForwarded() throws Exception {
     String projectId = "proj-task";
-    String caller = "caller-task";
+    String initiator = "caller-task";
     String flowDeployId = "deploy-task";
     String flowInstanceId = "instance-task";
     String nodeInstanceId = "nodeinst-task";
@@ -116,7 +116,7 @@ public class FlowEventRabbitmqBridgeE2ETest {
       String queue = channel.queueDeclare().getQueue();
       channel.queueBind(queue, EXCHANGE, "flow.proj-task.usertask.suspended");
 
-      flowEventPublisher.publish(new UserTaskSuspendedEvent(projectId, caller, flowDeployId,
+      flowEventPublisher.publish(new UserTaskSuspendedEvent(projectId, initiator, flowDeployId,
         flowInstanceId, nodeInstanceId, nodeKey, variables, nodeAttributes));
 
       GetResponse response = pollForMessage(channel, queue, 15000L);

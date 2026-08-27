@@ -101,8 +101,8 @@ public class FlowDefinitionResource {
     )})
   public CreateFlowResult createFlow(@PathParam("projectId") String projectId, CreateFlowParam createFlowParam) {
     createFlowParam.setProjectId(projectId);
-    createFlowParam.setCaller("admin");
-    createFlowParam.setOperator("admin");
+    createFlowParam.setCreatedBy("admin");
+    createFlowParam.setUpdatedBy("admin");
     return flowDefinitionService.createFlow(createFlowParam);
   }
 
@@ -136,8 +136,8 @@ public class FlowDefinitionResource {
     UpdateFlowParam updateFlowParam) {
     updateFlowParam.setProjectId(projectId);
     updateFlowParam.setFlowModuleId(flowModuleId);
-    updateFlowParam.setCaller(updateFlowParam.getCaller());
-    updateFlowParam.setOperator(updateFlowParam.getOperator());
+    updateFlowParam.setCreatedBy(updateFlowParam.getCreatedBy());
+    updateFlowParam.setUpdatedBy(updateFlowParam.getUpdatedBy());
     return flowDefinitionService.updateFlow(updateFlowParam);
   }
 
@@ -205,8 +205,8 @@ public class FlowDefinitionResource {
     DeployFlowParam deployFlowParam) {
     deployFlowParam.setProjectId(projectId);
     deployFlowParam.setFlowModuleId(flowModuleId);
-    deployFlowParam.setCaller("admin");
-    deployFlowParam.setOperator("admin");
+    deployFlowParam.setCreatedBy("admin");
+    deployFlowParam.setUpdatedBy("admin");
     return flowDefinitionService.deployFlow(deployFlowParam);
   }
 
@@ -218,8 +218,8 @@ public class FlowDefinitionResource {
       @SchemaProperty(name = "flowName", examples = {"订单处理流程"}, description = "流程名称"),
       @SchemaProperty(name = "remark", examples = {"处理订单的完整业务流程"}, description = "备注"),
       @SchemaProperty(name = "projectId", examples = {"default"}, description = "项目ID"),
-      @SchemaProperty(name = "caller", examples = {"admin"}, description = "调用者"),
-      @SchemaProperty(name = "operator", examples = {"admin"}, description = "操作者")
+      @SchemaProperty(name = "createdBy", examples = {"admin"}, description = "创建人"),
+      @SchemaProperty(name = "updatedBy", examples = {"admin"}, description = "更新人")
     }
   )
   public static class CreateFlowParamSchema extends CreateFlowParam {
@@ -242,8 +242,8 @@ public class FlowDefinitionResource {
     properties = {
       @SchemaProperty(name = "flowModuleId", examples = {"flow_module_001"}, description = "流程模块ID"),
       @SchemaProperty(name = "projectId", examples = {"default"}, description = "项目ID"),
-      @SchemaProperty(name = "caller", examples = {"admin"}, description = "调用者"),
-      @SchemaProperty(name = "operator", examples = {"admin"}, description = "操作者")
+      @SchemaProperty(name = "createdBy", examples = {"admin"}, description = "创建人"),
+      @SchemaProperty(name = "updatedBy", examples = {"admin"}, description = "更新人")
     }
   )
   public static class DeployFlowParamSchema extends DeployFlowParam {
@@ -256,8 +256,8 @@ public class FlowDefinitionResource {
     properties = {
       @SchemaProperty(name = "flowModuleId", examples = {"flow_module_001"}, description = "流程模块ID"),
       @SchemaProperty(name = "projectId", examples = {"default"}, description = "项目ID"),
-      @SchemaProperty(name = "caller", examples = {"admin"}, description = "调用者"),
-      @SchemaProperty(name = "operator", examples = {"admin"}, description = "操作者")
+      @SchemaProperty(name = "createdBy", examples = {"admin"}, description = "创建人"),
+      @SchemaProperty(name = "updatedBy", examples = {"admin"}, description = "更新人")
     }
   )
   public static class UpdateFlowParamSchema extends DeployFlowParam {
@@ -318,9 +318,9 @@ public class FlowDefinitionResource {
       @SchemaProperty(name = "status", examples = {"4"}, description = "状态：1-草稿，2-设计，3-测试，4-已发布"),
       @SchemaProperty(name = "remark", examples = {"处理订单的完整业务流程"}, description = "备注"),
       @SchemaProperty(name = "projectId", examples = {"default"}, description = "项目ID"),
-      @SchemaProperty(name = "caller", examples = {"admin"}, description = "调用者"),
-      @SchemaProperty(name = "operator", examples = {"admin"}, description = "操作者"),
-      @SchemaProperty(name = "modifyTime", description = "修改时间", readOnly = true)
+      @SchemaProperty(name = "createdBy", examples = {"admin"}, description = "创建人"),
+      @SchemaProperty(name = "updatedBy", examples = {"admin"}, description = "更新人"),
+      @SchemaProperty(name = "updatedAt", description = "更新时间", readOnly = true)
     }
   )
   public static class FlowModuleResponseSchema extends FlowModuleResponse {

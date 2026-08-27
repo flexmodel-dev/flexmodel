@@ -1,7 +1,7 @@
 model flow_definition {
   id : Long @id @default(autoIncrement()),
   last_modified_by? : Long,
-  caller? : String @length("255"),
+  initiator? : String @length("255"),
   flow_name? : String @length("255"),
   flow_title? : String @length("255"),
   status? : String @length("3"),

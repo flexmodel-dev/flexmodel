@@ -22,9 +22,9 @@ public class UserTaskRollbackSuspendedEvent extends FlowEvent {
   private final String nodeKey;
   private final Map<String, Object> nodeAttributes;
 
-  public UserTaskRollbackSuspendedEvent(String projectId, String caller, String flowDeployId, String flowInstanceId,
+  public UserTaskRollbackSuspendedEvent(String projectId, String initiator, String flowDeployId, String flowInstanceId,
                                         String nodeInstanceId, String nodeKey, Map<String, Object> nodeAttributes) {
-    super(projectId, caller);
+    super(projectId, initiator);
     this.flowDeployId = flowDeployId;
     this.flowInstanceId = flowInstanceId;
     this.nodeInstanceId = nodeInstanceId;

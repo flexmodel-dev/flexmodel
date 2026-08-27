@@ -93,8 +93,8 @@ public class CallActivityValidator extends ElementValidator {
   private void checkNestedLevel(Map<String, FlowElement> flowElementMap, FlowElement flowElement, CommonParam commonParam) throws DefinitionException {
     int callActivityNestedLevel = BusinessConfig.MAX_FLOW_NESTED_LEVEL;
     if (commonParam != null) {
-      String caller = commonParam.getCaller();
-      callActivityNestedLevel = businessConfig.getCallActivityNestedLevel(caller);
+      String createdBy = commonParam.getCreatedBy();
+      callActivityNestedLevel = businessConfig.getCallActivityNestedLevel(createdBy);
     }
       int nestedLevel = getNestedLevel(commonParam != null ? commonParam.getProjectId() : null, flowElement, flowElement, new HashMap<>());
     if (callActivityNestedLevel < nestedLevel) {

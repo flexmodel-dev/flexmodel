@@ -18,9 +18,9 @@ public class FlowInstanceFailedEvent extends FlowEvent {
   private final String flowInstanceId;
   private final String error;
 
-  public FlowInstanceFailedEvent(String projectId, String caller, String flowDeployId,
+  public FlowInstanceFailedEvent(String projectId, String initiator, String flowDeployId,
                                  String flowInstanceId, String error) {
-    super(projectId, caller);
+    super(projectId, initiator);
     this.flowDeployId = flowDeployId;
     this.flowInstanceId = flowInstanceId;
     this.error = error;

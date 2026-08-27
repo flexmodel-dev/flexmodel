@@ -20,9 +20,9 @@ public class FlowInstanceStartedEvent extends FlowEvent {
   private final String flowInstanceId;
   private final Map<String, Object> variables;
 
-  public FlowInstanceStartedEvent(String projectId, String caller, String flowDeployId,
+  public FlowInstanceStartedEvent(String projectId, String initiator, String flowDeployId,
                                   String flowInstanceId, Map<String, Object> variables) {
-    super(projectId, caller);
+    super(projectId, initiator);
     this.flowDeployId = flowDeployId;
     this.flowInstanceId = flowInstanceId;
     this.variables = variables == null ? null : new java.util.HashMap<>(variables);

@@ -23,22 +23,22 @@ public class ProcessEngineImpl implements ProcessService {
 
   @Override
   public CreateFlowResult createFlow(CreateFlowParam createFlowParam) {
-    createFlowParam.setCaller(sessionContext.getUserId());
-    createFlowParam.setOperator(sessionContext.getUserId());
+    createFlowParam.setCreatedBy(sessionContext.getUserId());
+    createFlowParam.setUpdatedBy(sessionContext.getUserId());
     return definitionProcessor.create(createFlowParam);
   }
 
   @Override
   public UpdateFlowResult updateFlow(UpdateFlowParam updateFlowParam) {
-    updateFlowParam.setCaller(sessionContext.getUserId());
-    updateFlowParam.setOperator(sessionContext.getUserId());
+    updateFlowParam.setCreatedBy(sessionContext.getUserId());
+    updateFlowParam.setUpdatedBy(sessionContext.getUserId());
     return definitionProcessor.update(updateFlowParam);
   }
 
   @Override
   public DeployFlowResult deployFlow(DeployFlowParam deployFlowParam) {
-    deployFlowParam.setCaller(sessionContext.getUserId());
-    deployFlowParam.setOperator(sessionContext.getUserId());
+    deployFlowParam.setCreatedBy(sessionContext.getUserId());
+    deployFlowParam.setUpdatedBy(sessionContext.getUserId());
     return definitionProcessor.deploy(deployFlowParam);
   }
 
@@ -49,8 +49,8 @@ public class ProcessEngineImpl implements ProcessService {
 
   @Override
   public StartProcessResult startProcess(StartProcessParam startProcessParam) {
-    if (StringUtils.isBlank(startProcessParam.getCaller())) {
-      startProcessParam.setCaller(sessionContext.getUserId());
+    if (StringUtils.isBlank(startProcessParam.getInitiator())) {
+      startProcessParam.setInitiator(sessionContext.getUserId());
     }
     return runtimeProcessor.startProcess(startProcessParam);
   }

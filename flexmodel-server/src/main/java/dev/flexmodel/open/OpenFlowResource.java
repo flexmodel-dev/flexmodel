@@ -53,7 +53,7 @@ public class OpenFlowResource {
     @QueryParam("flowModuleId") String flowModuleId,
     @QueryParam("flowDeployId") String flowDeployId,
     @QueryParam("status") Integer status,
-    @QueryParam("caller") String caller,
+    @QueryParam("initiator") String initiator,
     @QueryParam("page") @DefaultValue("1") Integer page,
     @QueryParam("size") @DefaultValue("20") Integer size) {
     FlowInstanceListRequest request = new FlowInstanceListRequest();
@@ -62,7 +62,7 @@ public class OpenFlowResource {
     request.setFlowModuleId(flowModuleId);
     request.setFlowDeployId(flowDeployId);
     request.setStatus(status);
-    request.setCaller(caller);
+    request.setInitiator(initiator);
     request.setPage(page);
     request.setSize(size);
     return flowInstanceService.findFlowInstanceList(request);

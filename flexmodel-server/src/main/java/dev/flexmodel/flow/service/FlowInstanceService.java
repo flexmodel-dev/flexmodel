@@ -233,6 +233,9 @@ public class FlowInstanceService {
     if (request.getStatus() != null) {
       predicate = predicate.and(flowInstance.status.eq(request.getStatus()));
     }
+    if (StringUtils.isNotBlank(request.getInitiator())) {
+      predicate = predicate.and(flowInstance.initiator.eq(request.getInitiator()));
+    }
     long count = count(request.getProjectId(), predicate);
     if (count == 0) {
       return PageDTO.empty();

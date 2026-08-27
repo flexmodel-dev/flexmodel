@@ -10,8 +10,8 @@ public class FlowModuleResult extends CommonResult {
   private Integer status;
   private String remark;
   private String tenant;
-  private String caller;
-  private String operator;
+  private String createdBy;
+  private String updatedBy;
   private LocalDateTime modifyTime;
 
   public String getFlowModuleId() {
@@ -70,20 +70,20 @@ public class FlowModuleResult extends CommonResult {
     this.tenant = tenant;
   }
 
-  public String getCaller() {
-    return caller;
+  public String getCreatedBy() {
+    return createdBy;
   }
 
-  public void setCaller(String caller) {
-    this.caller = caller;
+  public void setCreatedBy(String createdBy) {
+    this.createdBy = createdBy;
   }
 
-  public String getOperator() {
-    return operator;
+  public String getUpdatedBy() {
+    return updatedBy;
   }
 
-  public void setOperator(String operator) {
-    this.operator = operator;
+  public void setUpdatedBy(String updatedBy) {
+    this.updatedBy = updatedBy;
   }
 
   public LocalDateTime getModifyTime() {
@@ -103,9 +103,9 @@ public class FlowModuleResult extends CommonResult {
            ", flowModel='" + flowModel + '\'' +
            ", status=" + status +
            ", remark='" + remark + '\'' +
-           ", tenant='" + tenant + '\'' +
-           ", caller='" + caller + '\'' +
-           ", operator='" + operator + '\'' +
+      ", tenant='" + tenant + '\'' +
+      ", createdBy='" + createdBy + '\'' +
+      ", updatedBy='" + updatedBy + '\'' +
            ", modifyTime=" + modifyTime +
            '}';
   }

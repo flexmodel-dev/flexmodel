@@ -2,11 +2,11 @@ package dev.flexmodel.flow.dto.param;
 
 public class CommonParam {
   private String projectId;
-  private String caller;
+  private String createdBy;
 
-  public CommonParam(String projectId, String caller) {
+  public CommonParam(String projectId, String createdBy) {
     this.projectId = projectId;
-    this.caller = caller;
+    this.createdBy = createdBy;
   }
 
   public String getProjectId() {
@@ -17,19 +17,19 @@ public class CommonParam {
     this.projectId = projectId;
   }
 
-  public String getCaller() {
-    return caller;
+  public String getCreatedBy() {
+    return createdBy;
   }
 
-  public void setCaller(String caller) {
-    this.caller = caller;
+  public void setCreatedBy(String createdBy) {
+    this.createdBy = createdBy;
   }
 
   @Override
   public String toString() {
     return "CommonParam{" +
            "tenant='" + projectId + '\'' +
-           ", caller='" + caller + '\'' +
+      ", createdBy='" + createdBy + '\'' +
            '}';
   }
 }

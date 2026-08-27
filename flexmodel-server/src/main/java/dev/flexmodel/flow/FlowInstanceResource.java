@@ -61,8 +61,8 @@ public class FlowInstanceResource {
     @QueryParam("flowDeployId") String flowDeployId,
     @Parameter(name = "status", description = "流程实例状态", in = ParameterIn.QUERY)
     @QueryParam("status") Integer status,
-    @Parameter(name = "caller", description = "调用者", in = ParameterIn.QUERY)
-    @QueryParam("caller") String caller,
+    @Parameter(name = "initiator", description = "发起人", in = ParameterIn.QUERY)
+    @QueryParam("initiator") String initiator,
     @Parameter(name = "page", description = "页码", in = ParameterIn.QUERY)
     @QueryParam("page") @DefaultValue("1") Integer page,
     @Parameter(name = "size", description = "每页大小", in = ParameterIn.QUERY)
@@ -73,7 +73,7 @@ public class FlowInstanceResource {
     request.setFlowModuleId(flowModuleId);
     request.setFlowDeployId(flowDeployId);
     request.setStatus(status);
-    request.setCaller(caller);
+    request.setInitiator(initiator);
     request.setPage(page);
     request.setSize(size);
     return flowInstanceService.findFlowInstanceList(request);
@@ -146,10 +146,11 @@ public class FlowInstanceResource {
       @SchemaProperty(name = "status", examples = {"1"}, description = "流程实例状态：1-运行中，2-已完成，3-已终止，4-已暂停"),
       @SchemaProperty(name = "parentFlowInstanceId", examples = {"parent_inst_001"}, description = "父流程实例ID"),
       @SchemaProperty(name = "projectId", examples = {"default"}, description = "项目ID"),
-      @SchemaProperty(name = "caller", examples = {"admin"}, description = "调用者"),
-      @SchemaProperty(name = "operator", examples = {"admin"}, description = "操作者"),
-      @SchemaProperty(name = "createTime", description = "创建时间", readOnly = true),
-      @SchemaProperty(name = "modifyTime", description = "修改时间", readOnly = true)
+      @SchemaProperty(name = "initiator", examples = {"admin"}, description = "发起人"),
+      @SchemaProperty(name = "createdBy", examples = {"admin"}, description = "创建人"),
+      @SchemaProperty(name = "updatedBy", examples = {"admin"}, description = "更新人"),
+      @SchemaProperty(name = "createdAt", description = "创建时间", readOnly = true),
+      @SchemaProperty(name = "updatedAt", description = "更新时间", readOnly = true)
     }
   )
   @Getter
@@ -161,9 +162,11 @@ public class FlowInstanceResource {
     private Integer status;
     private String parentFlowInstanceId;
     private String tenant;
-    private String caller;
-    private java.time.LocalDateTime createTime;
-    private java.time.LocalDateTime modifyTime;
+    private String initiator;
+    private String createdBy;
+    private String updatedBy;
+    private java.time.LocalDateTime createdAt;
+    private java.time.LocalDateTime updatedAt;
   }
 
   @Schema(

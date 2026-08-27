@@ -15,7 +15,7 @@ public class FlowInstanceListRequest {
   private String flowDeployId;
   private Integer page;
   private Integer size;
-  private String caller;
+  private String initiator;
   private Integer status;
 
 }

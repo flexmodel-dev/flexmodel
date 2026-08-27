@@ -194,7 +194,7 @@ public class FlowExecutionResource {
     properties = {
       @SchemaProperty(name = "flowModuleId", examples = {"flow_module_001"}, description = "流程模块ID"),
       @SchemaProperty(name = "flowDeployId", examples = {"flow_deploy_001"}, description = "流程部署ID"),
-      @SchemaProperty(name = "caller", examples = {"admin"}, description = "发起人（流程实例调用者），为空时使用当前登录用户"),
+      @SchemaProperty(name = "initiator", examples = {"admin"}, description = "发起人，为空时使用当前登录用户"),
       @SchemaProperty(name = "variables", description = "流程变量", type = SchemaType.ARRAY)
     }
   )
@@ -220,8 +220,6 @@ public class FlowExecutionResource {
       @SchemaProperty(name = "nodeInstanceId", examples = {"node_inst_001"}, description = "节点实例ID"),
       @SchemaProperty(name = "variables", description = "流程变量", type = SchemaType.ARRAY),
       @SchemaProperty(name = "projectId", examples = {"default"}, description = "项目ID"),
-      @SchemaProperty(name = "caller", examples = {"admin"}, description = "调用者"),
-      @SchemaProperty(name = "operator", examples = {"admin"}, description = "操作者")
     }
   )
   public static class CommitTaskParamSchema extends CommitTaskParam {
@@ -243,8 +241,6 @@ public class FlowExecutionResource {
       @SchemaProperty(name = "flowInstanceId", examples = {"flow_inst_001"}, description = "流程实例ID"),
       @SchemaProperty(name = "nodeInstanceId", examples = {"node_inst_001"}, description = "节点实例ID"),
       @SchemaProperty(name = "projectId", examples = {"default"}, description = "项目ID"),
-      @SchemaProperty(name = "caller", examples = {"admin"}, description = "调用者"),
-      @SchemaProperty(name = "operator", examples = {"admin"}, description = "操作者")
     }
   )
   public static class RollbackTaskParamSchema extends RollbackTaskParam {

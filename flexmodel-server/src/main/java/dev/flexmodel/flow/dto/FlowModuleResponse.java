@@ -31,7 +31,6 @@ public class FlowModuleResponse {
     this.flowKey = flowDefinition.getFlowKey();
     this.status = flowDefinition.getStatus();
     this.remark = flowDefinition.getRemark();
-    this.caller = flowDefinition.getCaller();
     this.operator = flowDefinition.getOperator();
     this.modifyTime = flowDefinition.getModifyTime();
   }

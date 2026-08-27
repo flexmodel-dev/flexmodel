@@ -83,6 +83,9 @@ public class RuntimeProcessor {
       FlowInfo flowInfo = getFlowInfo(startProcessParam);
       runtimeContext = buildStartProcessContext(flowInfo, startProcessParam.getVariables(), startProcessParam.getRuntimeContext());
       runtimeContext.setProjectId(startProcessParam.getProjectId());
+      if (StringUtils.isNotBlank(startProcessParam.getCaller())) {
+        runtimeContext.setCaller(startProcessParam.getCaller());
+      }
       flowExecutor.execute(runtimeContext);
       return buildStartProcessResult(runtimeContext);
     } catch (TurboException e) {

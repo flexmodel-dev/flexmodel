@@ -10,6 +10,7 @@ public class StartProcessParam {
   private String projectId;
   private String flowModuleId;
   private String flowDeployId;
+  private String caller;
   private Map<String, Object> variables;
 
   public String getProjectId() {
@@ -18,6 +19,14 @@ public class StartProcessParam {
 
   public void setProjectId(String projectId) {
     this.projectId = projectId;
+  }
+
+  public String getCaller() {
+    return caller;
+  }
+
+  public void setCaller(String caller) {
+    this.caller = caller;
   }
 
   public String getFlowModuleId() {

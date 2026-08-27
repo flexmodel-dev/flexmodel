@@ -1,6 +1,7 @@
 package dev.flexmodel.flow.service;
 
 import dev.flexmodel.common.SessionContext;
+import dev.flexmodel.common.utils.StringUtils;
 import dev.flexmodel.flow.dto.param.*;
 import dev.flexmodel.flow.dto.result.*;
 import dev.flexmodel.flow.processor.DefinitionProcessor;
@@ -48,6 +49,9 @@ public class ProcessEngineImpl implements ProcessService {
 
   @Override
   public StartProcessResult startProcess(StartProcessParam startProcessParam) {
+    if (StringUtils.isBlank(startProcessParam.getCaller())) {
+      startProcessParam.setCaller(sessionContext.getUserId());
+    }
     return runtimeProcessor.startProcess(startProcessParam);
   }
 

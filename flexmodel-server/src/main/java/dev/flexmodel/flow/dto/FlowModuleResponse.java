@@ -20,7 +20,7 @@ public class FlowModuleResponse {
   private String remark;
   private String createdBy;
   private String updatedBy;
-  private LocalDateTime modifyTime;
+  private LocalDateTime updatedAt;
 
   public FlowModuleResponse() {
   }
@@ -31,7 +31,7 @@ public class FlowModuleResponse {
     this.flowKey = flowDefinition.getFlowKey();
     this.status = flowDefinition.getStatus();
     this.remark = flowDefinition.getRemark();
-    this.modifyTime = flowDefinition.getUpdatedAt();
+    this.updatedAt = flowDefinition.getUpdatedAt();
     this.updatedBy = flowDefinition.getUpdatedBy();
   }
 

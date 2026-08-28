@@ -12,7 +12,7 @@ public class FlowModuleResult extends CommonResult {
   private String tenant;
   private String createdBy;
   private String updatedBy;
-  private LocalDateTime modifyTime;
+  private LocalDateTime updatedAt;
 
   public String getFlowModuleId() {
     return flowModuleId;
@@ -86,12 +86,12 @@ public class FlowModuleResult extends CommonResult {
     this.updatedBy = updatedBy;
   }
 
-  public LocalDateTime getModifyTime() {
-    return modifyTime;
+  public LocalDateTime getUpdatedAt() {
+    return updatedAt;
   }
 
-  public void setModifyTime(LocalDateTime modifyTime) {
-    this.modifyTime = modifyTime;
+  public void setUpdatedAt(LocalDateTime updatedAt) {
+    this.updatedAt = updatedAt;
   }
 
   @Override
@@ -106,7 +106,7 @@ public class FlowModuleResult extends CommonResult {
       ", tenant='" + tenant + '\'' +
       ", createdBy='" + createdBy + '\'' +
       ", updatedBy='" + updatedBy + '\'' +
-           ", modifyTime=" + modifyTime +
+            ", updatedAt=" + updatedAt +
            '}';
   }
 }

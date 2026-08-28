@@ -1116,7 +1116,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getCreateTime",
+          "name": "getCreatedAt",
           "parameterTypes": []
         },
         {
@@ -1152,7 +1152,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getModifyTime",
+          "name": "getUpdatedAt",
           "parameterTypes": []
         },
         {
@@ -1188,7 +1188,7 @@
           ]
         },
         {
-          "name": "setCreateTime",
+          "name": "setCreatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -1242,7 +1242,7 @@
           ]
         },
         {
-          "name": "setModifyTime",
+          "name": "setUpdatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -1295,7 +1295,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getCreateTime",
+          "name": "getCreatedAt",
           "parameterTypes": []
         },
         {
@@ -1331,7 +1331,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getModifyTime",
+          "name": "getUpdatedAt",
           "parameterTypes": []
         },
         {
@@ -1367,7 +1367,7 @@
           ]
         },
         {
-          "name": "setCreateTime",
+          "name": "setCreatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -1421,7 +1421,7 @@
           ]
         },
         {
-          "name": "setModifyTime",
+          "name": "setUpdatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -1474,7 +1474,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getCreateTime",
+          "name": "getCreatedAt",
           "parameterTypes": []
         },
         {
@@ -1502,7 +1502,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getModifyTime",
+          "name": "getUpdatedAt",
           "parameterTypes": []
         },
         {
@@ -1534,7 +1534,7 @@
           ]
         },
         {
-          "name": "setCreateTime",
+          "name": "setCreatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -1576,7 +1576,7 @@
           ]
         },
         {
-          "name": "setModifyTime",
+          "name": "setUpdatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -1801,7 +1801,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getCreateTime",
+          "name": "getCreatedAt",
           "parameterTypes": []
         },
         {
@@ -1869,7 +1869,7 @@
           ]
         },
         {
-          "name": "setCreateTime",
+          "name": "setCreatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -2229,7 +2229,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getCreateTime",
+          "name": "getCreatedAt",
           "parameterTypes": []
         },
         {
@@ -2257,7 +2257,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getModifyTime",
+          "name": "getUpdatedAt",
           "parameterTypes": []
         },
         {
@@ -2305,7 +2305,7 @@
           ]
         },
         {
-          "name": "setCreateTime",
+          "name": "setCreatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -2347,7 +2347,7 @@
           ]
         },
         {
-          "name": "setModifyTime",
+          "name": "setUpdatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -2418,7 +2418,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getCreateTime",
+          "name": "getCreatedAt",
           "parameterTypes": []
         },
         {
@@ -2478,7 +2478,7 @@
           ]
         },
         {
-          "name": "setCreateTime",
+          "name": "setCreatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]
@@ -3991,7 +3991,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getModifyTime",
+          "name": "getUpdatedAt",
           "parameterTypes": []
         },
         {
@@ -4555,7 +4555,7 @@
           "parameterTypes": []
         },
         {
-          "name": "getModifyTime",
+          "name": "getUpdatedAt",
           "parameterTypes": []
         },
         {
@@ -4605,7 +4605,7 @@
           ]
         },
         {
-          "name": "setModifyTime",
+          "name": "setUpdatedAt",
           "parameterTypes": [
             "java.time.LocalDateTime"
           ]

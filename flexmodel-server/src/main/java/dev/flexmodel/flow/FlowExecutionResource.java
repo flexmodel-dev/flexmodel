@@ -269,8 +269,8 @@ public class FlowExecutionResource {
       @SchemaProperty(name = "subFlowInstanceIdList", description = "子流程实例ID列表", type = SchemaType.ARRAY),
       @SchemaProperty(name = "subElementInstanceList", description = "子元素实例列表", type = SchemaType.ARRAY),
       @SchemaProperty(name = "instanceDataId", examples = {"data_001"}, description = "实例数据ID"),
-      @SchemaProperty(name = "createTime", description = "创建时间", readOnly = true),
-      @SchemaProperty(name = "modifyTime", description = "修改时间", readOnly = true)
+      @SchemaProperty(name = "createdAt", description = "创建时间", readOnly = true),
+      @SchemaProperty(name = "updatedAt", description = "修改时间", readOnly = true)
     }
   )
   public static class NodeInstanceSchema extends NodeInstance {

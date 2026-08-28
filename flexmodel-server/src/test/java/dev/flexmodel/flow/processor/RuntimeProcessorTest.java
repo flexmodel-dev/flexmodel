@@ -42,10 +42,10 @@ public class RuntimeProcessorTest {
     if (_flowDeployment != null) {
       if (!Objects.equals(_flowDeployment.getFlowModel(), flowDeployment.getFlowModel())) {
         flowDeploymentRepository.deleteById("dev_test", _flowDeployment.getId());
-        flowDeploymentRepository.insert("dev_test",flowDeployment);
+        flowDeploymentRepository.insert("dev_test", flowDeployment);
       }
     } else {
-      flowDeploymentRepository.insert("dev_test",flowDeployment);
+      flowDeploymentRepository.insert("dev_test", flowDeployment);
     }
 
     // start process
@@ -212,7 +212,7 @@ public class RuntimeProcessorTest {
     // UserTask -> ExclusiveGateway -> UserTask
     CommitTaskResult commitTaskResult = runtimeProcessor.commit(commitTaskParam);
 
-    // StartEvent <- UserTask
+    // rollback the latest completed UserTask (BranchUserTask): reactivate it and suspend (Ignore current userTask)
     RollbackTaskParam rollbackTaskParam = new RollbackTaskParam();
     rollbackTaskParam.setProjectId(startProcessResult.getProjectId());
     rollbackTaskParam.setFlowInstanceId(startProcessResult.getFlowInstanceId());
@@ -220,16 +220,16 @@ public class RuntimeProcessorTest {
     rollbackTaskParam.setTaskInstanceId(branchUserTaskNodeInstanceId);
     RollbackTaskResult rollbackTaskResult = runtimeProcessor.rollback(rollbackTaskParam);
 
-    // Ignore current userTask
+    // the latest completed UserTask (BranchUserTask) is reactivated and suspended
     log.info("testRollbackFromMiddleUserTask.||rollbackTaskResult={}", rollbackTaskResult);
     Assertions.assertEquals(rollbackTaskResult.getErrCode(), ErrorEnum.ROLLBACK_SUSPEND.getErrNo());
     Assertions.assertEquals("BranchUserTask_0scrl8d", rollbackTaskResult.getActiveTaskInstance().getKey());
   }
 
 
-  // UserTask <- ExclusiveGateway <- UserTask
+  // rollback FROM the active UserTask suspends at the previous UserTask
   @Test
-  public void testRollbackToUserTask() throws Exception {
+  public void testRollbackFromActiveUserTask() throws Exception {
     // start process
     StartProcessResult startProcessResult = startProcess();
     CommitTaskParam commitTaskParam = new CommitTaskParam();
@@ -243,7 +243,7 @@ public class RuntimeProcessorTest {
     // UserTask -> ExclusiveGateway -> UserTask
     CommitTaskResult commitTaskResult = runtimeProcessor.commit(commitTaskParam);
 
-    // UserTask <- ExclusiveGateway <- UserTask
+    // rollback FROM the active UserTask (UserTask_0uld0u9) -> suspend at the previous UserTask (BranchUserTask)
     RollbackTaskParam rollbackTaskParam = new RollbackTaskParam();
     rollbackTaskParam.setProjectId(startProcessResult.getProjectId());
     rollbackTaskParam.setFlowInstanceId(startProcessResult.getFlowInstanceId());
@@ -278,7 +278,7 @@ public class RuntimeProcessorTest {
     rollbackTaskParam.setTaskInstanceId(commitTaskResult.getActiveTaskInstance().getNodeInstanceId());
     RollbackTaskResult rollbackTaskResult = runtimeProcessor.rollback(rollbackTaskParam);
 
-    // StartEvent <- UserTask
+    // rollback the reactivated BranchUserTask: reaches the start event, no userTask to rollback
     rollbackTaskParam = new RollbackTaskParam();
     rollbackTaskParam.setProjectId(startProcessResult.getProjectId());
     rollbackTaskParam.setFlowInstanceId(startProcessResult.getFlowInstanceId());
@@ -448,7 +448,7 @@ public class RuntimeProcessorTest {
     commitTaskParam1.setVariables(variables1);
     CommitTaskResult commitTaskResult1 = runtimeProcessor.commit(commitTaskParam1);
 
-    instanceDataList = runtimeProcessor.getInstanceData(commitTaskResult.getProjectId(), flowInstanceId, false);
+    instanceDataList = runtimeProcessor.getInstanceData(commitTaskResult1.getProjectId(), flowInstanceId, false);
     log.info("testGetInstanceData 2.||instanceDataList={}", instanceDataList);
 
     // UserTask <- UserTask

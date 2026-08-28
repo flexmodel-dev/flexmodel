@@ -11,8 +11,8 @@ public class NodeInstance extends ElementInstance {
   private String nodeInstanceId;
   private int flowElementType;
   private List<RuntimeResult> subNodeResultList;
-  private LocalDateTime createTime;
-  private LocalDateTime modifyTime;
+  private LocalDateTime createdAt;
+  private LocalDateTime updatedAt;
   private Map<String, Object> properties = new HashMap<>();
 
   public String getNodeInstanceId() {
@@ -23,20 +23,20 @@ public class NodeInstance extends ElementInstance {
     this.nodeInstanceId = nodeInstanceId;
   }
 
-  public LocalDateTime getCreateTime() {
-    return createTime;
+  public LocalDateTime getCreatedAt() {
+    return createdAt;
   }
 
-  public void setCreateTime(LocalDateTime createTime) {
-    this.createTime = createTime;
+  public void setCreatedAt(LocalDateTime createdAt) {
+    this.createdAt = createdAt;
   }
 
-  public LocalDateTime getModifyTime() {
-    return modifyTime;
+  public LocalDateTime getUpdatedAt() {
+    return updatedAt;
   }
 
-  public void setModifyTime(LocalDateTime modifyTime) {
-    this.modifyTime = modifyTime;
+  public void setUpdatedAt(LocalDateTime updatedAt) {
+    this.updatedAt = updatedAt;
   }
 
   public List<RuntimeResult> getSubNodeResultList() {
@@ -79,8 +79,8 @@ public class NodeInstance extends ElementInstance {
            "nodeInstanceId='" + nodeInstanceId + '\'' +
            ", flowElementType=" + flowElementType +
            ", subNodeResultList=" + subNodeResultList +
-           ", createTime=" + createTime +
-           ", modifyTime=" + modifyTime +
+            ", createdAt=" + createdAt +
+            ", updatedAt=" + updatedAt +
            ", properties=" + properties +
            '}';
   }

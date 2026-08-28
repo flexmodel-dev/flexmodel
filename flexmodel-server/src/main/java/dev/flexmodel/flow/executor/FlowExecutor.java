@@ -45,7 +45,7 @@ public class FlowExecutor extends RuntimeExecutor {
   @Inject
   FlowEventPublisher flowEventPublisher;
 
-  ////////////////////////////////////////execute////////////////////////////////////////
+  /// /////////////////////////////////////execute////////////////////////////////////////
 
   @Override
   public void execute(RuntimeContext runtimeContext) throws ProcessException {
@@ -213,7 +213,7 @@ public class FlowExecutor extends RuntimeExecutor {
   }
 
 
-  ////////////////////////////////////////commit////////////////////////////////////////
+  /// /////////////////////////////////////commit////////////////////////////////////////
 
   @Override
   public void commit(RuntimeContext runtimeContext) throws ProcessException {
@@ -276,7 +276,7 @@ public class FlowExecutor extends RuntimeExecutor {
       InstanceData instanceDataPO = instanceDataRepository.select(runtimeContext.getProjectId(), flowInstanceId, instanceDataId);
       if (instanceDataPO == null) {
         LOGGER.warn("preCommit failed: cannot find instanceDataPO from db." +
-                    "||flowInstanceId={}||instanceDataId={}", flowInstanceId, instanceDataId);
+          "||flowInstanceId={}||instanceDataId={}", flowInstanceId, instanceDataId);
         throw new ProcessException(ErrorEnum.GET_INSTANCE_DATA_FAILED);
       }
       instanceDataMap = InstanceDataUtil.getInstanceDataMap(instanceDataPO.getInstanceData());
@@ -362,7 +362,7 @@ public class FlowExecutor extends RuntimeExecutor {
     }
   }
 
-  ////////////////////////////////////////rollback////////////////////////////////////////
+  /// /////////////////////////////////////rollback////////////////////////////////////////
 
   @Override
   public void rollback(RuntimeContext runtimeContext) throws ProcessException {
@@ -398,7 +398,7 @@ public class FlowExecutor extends RuntimeExecutor {
     //2.check status: flowInstance is completed
     if (isCompleted(runtimeContext)) {
       LOGGER.warn("invalid preRollback: FlowInstance has been processed completely."
-                  + "||flowInstanceId={}||flowDeployId={}", flowInstanceId, runtimeContext.getFlowDeployId());
+        + "||flowInstanceId={}||flowDeployId={}", flowInstanceId, runtimeContext.getFlowDeployId());
       NodeInstanceBO suspendNodeInstance = JsonUtils.convertValue(rollbackNodeInstance, NodeInstanceBO.class);
       runtimeContext.setSuspendNodeInstance(suspendNodeInstance);
       runtimeContext.setFlowInstanceStatus(FlowInstanceStatus.COMPLETED);
@@ -414,7 +414,7 @@ public class FlowExecutor extends RuntimeExecutor {
       InstanceData instanceDataPO = instanceDataRepository.select(runtimeContext.getProjectId(), flowInstanceId, instanceDataId);
       if (instanceDataPO == null) {
         LOGGER.warn("preRollback failed: cannot find instanceDataPO from db."
-                    + "||flowInstanceId={}||instanceDataId={}", flowInstanceId, instanceDataId);
+          + "||flowInstanceId={}||instanceDataId={}", flowInstanceId, instanceDataId);
         throw new ProcessException(ErrorEnum.GET_INSTANCE_DATA_FAILED);
       }
       instanceDataMap = InstanceDataUtil.getInstanceDataMap(instanceDataPO.getInstanceData());
@@ -430,7 +430,7 @@ public class FlowExecutor extends RuntimeExecutor {
     List<NodeInstance> nodeInstancePOList = nodeInstanceRepository.selectDescByFlowInstanceId(projectId, flowInstanceId);
     if (CollectionUtils.isEmpty(nodeInstancePOList)) {
       LOGGER.warn("getActiveNodeForRollback: nodeInstancePOList is empty."
-                  + "||flowInstanceId={}||suspendNodeInstanceId={}", flowInstanceId, suspendNodeInstanceId);
+        + "||flowInstanceId={}||suspendNodeInstanceId={}", flowInstanceId, suspendNodeInstanceId);
       return null;
     }
 
@@ -459,15 +459,15 @@ public class FlowExecutor extends RuntimeExecutor {
         }
 
         LOGGER.warn("getActiveNodeForRollback: cannot rollback the Node."
-                    + "||flowInstanceId={}||suspendNodeInstanceId={}", flowInstanceId, suspendNodeInstanceId);
+          + "||flowInstanceId={}||suspendNodeInstanceId={}", flowInstanceId, suspendNodeInstanceId);
         return null;
       }
       LOGGER.info("getActiveNodeForRollback: ignore disabled Node instance.||flowInstanceId={}"
-                  + "||suspendNodeInstanceId={}||status={}", flowInstanceId, suspendNodeInstanceId, nodeInstancePO.getStatus());
+        + "||suspendNodeInstanceId={}||status={}", flowInstanceId, suspendNodeInstanceId, nodeInstancePO.getStatus());
 
     }
     LOGGER.warn("getActiveNodeForRollback: cannot rollback the suspendNodeInstance."
-                + "||flowInstanceId={}||suspendNodeInstanceId={}", flowInstanceId, suspendNodeInstanceId);
+      + "||flowInstanceId={}||suspendNodeInstanceId={}", flowInstanceId, suspendNodeInstanceId);
     return null;
   }
 

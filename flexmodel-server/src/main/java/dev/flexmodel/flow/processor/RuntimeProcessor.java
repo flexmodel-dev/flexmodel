@@ -74,7 +74,7 @@ public class RuntimeProcessor {
   @Inject
   FlowEventPublisher flowEventPublisher;
 
-  ////////////////////////////////////////startProcess////////////////////////////////////////
+  /// /////////////////////////////////////startProcess////////////////////////////////////////
 
   public StartProcessResult startProcess(StartProcessParam startProcessParam) {
     RuntimeContext runtimeContext = null;
@@ -119,7 +119,7 @@ public class RuntimeProcessor {
     return (StartProcessResult) fillRuntimeResult(startProcessResult, runtimeContext, e);
   }
 
-  ////////////////////////////////////////commit////////////////////////////////////////
+  /// /////////////////////////////////////commit////////////////////////////////////////
 
   public CommitTaskResult commit(CommitTaskParam commitTaskParam) {
     RuntimeContext runtimeContext = null;
@@ -183,7 +183,7 @@ public class RuntimeProcessor {
     return (CommitTaskResult) fillRuntimeResult(commitTaskResult, runtimeContext, e);
   }
 
-  ////////////////////////////////////////rollback////////////////////////////////////////
+  /// /////////////////////////////////////rollback////////////////////////////////////////
 
   public RollbackTaskResult rollback(RollbackTaskParam rollbackTaskParam) {
     String projectId = rollbackTaskParam.getProjectId();
@@ -244,7 +244,7 @@ public class RuntimeProcessor {
     return (RollbackTaskResult) fillRuntimeResult(rollbackTaskResult, runtimeContext, e);
   }
 
-  ////////////////////////////////////////terminate////////////////////////////////////////
+  /// /////////////////////////////////////terminate////////////////////////////////////////
 
   public TerminateResult terminateProcess(String projectId, String flowInstanceId, boolean effectiveForSubFlowInstance) {
     TerminateResult terminateResult;
@@ -284,10 +284,10 @@ public class RuntimeProcessor {
     }
   }
 
-  ////////////////////////////////////////getHistoryUserTaskList////////////////////////////////////////
+  /// /////////////////////////////////////getHistoryUserTaskList////////////////////////////////////////
 
   public NodeInstanceListResult getHistoryUserTaskList(String projectId, String flowInstanceId, boolean effectiveForSubFlowInstance) {
-    List<NodeInstance> historyNodeInstanceList = getDescHistoryNodeInstanceList(projectId, flowInstanceId);
+    List<NodeInstance> historyNodeInstanceList = getHistoryNodeInstanceList(projectId, flowInstanceId);
     NodeInstanceListResult historyListResult = new NodeInstanceListResult(ErrorEnum.SUCCESS);
     historyListResult.setNodeInstanceList(new ArrayList<>());
     try {
@@ -374,7 +374,7 @@ public class RuntimeProcessor {
     return type == FlowElementType.CALL_ACTIVITY;
   }
 
-  ////////////////////////////////////////getHistoryElementList////////////////////////////////////////
+  /// /////////////////////////////////////getHistoryElementList////////////////////////////////////////
 
   public ElementInstanceListResult getHistoryElementList(String projectId, String flowInstanceId, boolean effectiveForSubFlowInstance) {
     List<NodeInstance> historyNodeInstanceList = getHistoryNodeInstanceList(projectId, flowInstanceId);
@@ -488,7 +488,7 @@ public class RuntimeProcessor {
     return nodeInstanceResult;
   }
 
-  ////////////////////////////////////////getInstanceData////////////////////////////////////////
+  /// /////////////////////////////////////getInstanceData////////////////////////////////////////
   public InstanceDataListResult getInstanceData(String projectId, String flowInstanceId, boolean effectiveForSubFlowInstance) {
     dev.flexmodel.codegen.entity.InstanceData instanceDataPO = instanceDataService.select(projectId, flowInstanceId, effectiveForSubFlowInstance);
     return packageInstanceDataResult(instanceDataPO);
@@ -522,7 +522,7 @@ public class RuntimeProcessor {
     return flowInstanceResult;
   }
 
-  ////////////////////////////////////////common////////////////////////////////////////
+  /// /////////////////////////////////////common////////////////////////////////////////
 
   private FlowInfo getFlowInfoByFlowDeployId(String projectId, String flowDeployId) throws ProcessException {
     FlowDeployment flowDeploymentPO = flowDeploymentRepository.findByDeployId(projectId, flowDeployId);

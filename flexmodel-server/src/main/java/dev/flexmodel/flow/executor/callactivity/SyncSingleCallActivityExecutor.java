@@ -227,8 +227,8 @@ public class SyncSingleCallActivityExecutor extends AbstractCallActivityExecutor
     runtimeResult.setStatus(subFlowInstance.getStatus());
 
     dev.flexmodel.flow.dto.bo.NodeInstance nodeInstance = JsonUtils.convertValue(nodeInstancePO, dev.flexmodel.flow.dto.bo.NodeInstance.class);
-    nodeInstance.setCreateTime(null);
-    nodeInstance.setModifyTime(null);
+    nodeInstance.setCreatedAt(null);
+    nodeInstance.setUpdatedAt(null);
     nodeInstance.setKey(nodeInstancePO.getNodeKey());
     FlowElement flowElement = subFlowElementMap.get(nodeInstancePO.getNodeKey());
     nodeInstance.setName(FlowModelUtil.getElementName(flowElement));

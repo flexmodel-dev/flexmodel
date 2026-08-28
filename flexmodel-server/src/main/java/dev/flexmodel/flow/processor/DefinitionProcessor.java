@@ -195,7 +195,7 @@ public class DefinitionProcessor {
     FlowModuleResult flowModuleResult = JsonUtils.convertValue(flowDefinitionPO, FlowModuleResult.class);
     Integer status = FlowModuleEnum.getStatusByDefinitionStatus(flowDefinitionPO.getStatus());
     flowModuleResult.setStatus(status);
-    flowModuleResult.setModifyTime(flowDefinitionPO.getUpdatedAt());
+    flowModuleResult.setUpdatedAt(flowDefinitionPO.getUpdatedAt());
     flowModuleResult.setUpdatedBy(flowDefinitionPO.getUpdatedBy());
     LOGGER.info("getFlowModuleByFlowModuleId||flowModuleId={}||FlowModuleResult={}", flowModuleId, JsonUtils.toJsonString(flowModuleResult));
     return flowModuleResult;
@@ -210,7 +210,7 @@ public class DefinitionProcessor {
     FlowModuleResult flowModuleResult = JsonUtils.convertValue(flowDeploymentPO, FlowModuleResult.class);
     Integer status = FlowModuleEnum.getStatusByDeploymentStatus(flowDeploymentPO.getStatus());
     flowModuleResult.setStatus(status);
-    flowModuleResult.setModifyTime(flowDeploymentPO.getUpdatedAt());
+    flowModuleResult.setUpdatedAt(flowDeploymentPO.getUpdatedAt());
     flowModuleResult.setUpdatedBy(flowDeploymentPO.getUpdatedBy());
     LOGGER.info("getFlowModuleByFlowDeployId||flowDeployId={}||response={}", flowDeployId, JsonUtils.toJsonString(flowModuleResult));
     return flowModuleResult;

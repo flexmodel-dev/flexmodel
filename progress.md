@@ -1,5 +1,17 @@
 ﻿# Session Progress Log
 
+## Fix: flow 用户任务时间线时间字段（2026-08-28）
+
+**修改:**
+
+- `flexmodel-ui/src/pages/Flow/components/UserTasksDrawer.tsx`：流程实例完成时间由不存在的 `modifyTime` 改为后端返回的
+  `updatedAt`；开始时间由不存在的 `createTime` 改为 `createdAt`。
+
+**验证:**
+
+- `npx tsc -b` → 通过。
+- `npm run build`（`tsc -b && vite build`）→ 通过。
+
 ## Doc/Code Fix: flow 用户任务回滚事件路由键规范化（2026-08-26）
 
 **背景:** `flow.usertask.rollback.suspended` 因 `.` 分段导致事件后缀多出一段（4 段 vs 其他事件 3 段）， 消费端绑定

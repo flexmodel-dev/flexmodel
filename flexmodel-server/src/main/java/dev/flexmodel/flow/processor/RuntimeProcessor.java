@@ -287,7 +287,7 @@ public class RuntimeProcessor {
   /// /////////////////////////////////////getHistoryUserTaskList////////////////////////////////////////
 
   public NodeInstanceListResult getHistoryUserTaskList(String projectId, String flowInstanceId, boolean effectiveForSubFlowInstance) {
-    List<NodeInstance> historyNodeInstanceList = getHistoryNodeInstanceList(projectId, flowInstanceId);
+    List<NodeInstance> historyNodeInstanceList = getDescHistoryNodeInstanceList(projectId, flowInstanceId);
     NodeInstanceListResult historyListResult = new NodeInstanceListResult(ErrorEnum.SUCCESS);
     historyListResult.setNodeInstanceList(new ArrayList<>());
     try {

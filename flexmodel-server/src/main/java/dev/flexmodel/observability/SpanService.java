@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Comparator;
 import java.util.Map;
 
 import static dev.flexmodel.codegen.System.apiRequestLog;
@@ -57,8 +58,9 @@ public class SpanService {
    * 查询 trace 列表（按 trace_id 聚合 span）。
    */
   public PageDTO<TraceListItem> findTraces(String projectId, int page, int size, String traceId) {
-    // 拉取该项目近期 span，在 Java 侧按 trace_id 聚合
-    int limit = Math.min(page * size, 5000);
+    // 不做服务端分页：span 按 trace_id 聚合后再分页需要 DB 侧聚合支持，
+    // 这里一次性拉取近期 span 窗口，Java 侧聚合全部 trace 返回，由前端客户端分页。
+    int limit = 5000;
     List<Span> spans = spanRepository.findByProject(projectId, null, null, traceId, limit);
 
     Map<String, TraceListItemBuilder> byTrace = new LinkedHashMap<>();
@@ -96,11 +98,9 @@ public class SpanService {
         .hasError(b.hasError)
         .build());
     }
-
-    int from = Math.min((page - 1) * size, all.size());
-    int to = Math.min(from + size, all.size());
-    List<TraceListItem> pageList = all.subList(from, to);
-    return new PageDTO<>(pageList, (long) all.size());
+    // 按起始时间倒序，全部返回，total 即聚合后的 trace 总数
+    all.sort(Comparator.comparing(TraceListItem::getStartTime, Comparator.nullsLast(Comparator.reverseOrder())));
+    return new PageDTO<>(all, (long) all.size());
   }
 
   /**

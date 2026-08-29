@@ -1,6 +1,7 @@
 package dev.flexmodel.realtime;
 
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.common.FlexmodelEvent;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventListener;
 import dev.flexmodel.project.ProjectRepository;
@@ -34,8 +35,8 @@ import java.util.Map;
 public class RealtimeRabbitmqListener implements EventListener {
 
   @Inject
-  @Channel("data-events-out")
-  Instance<MutinyEmitter<DataChangeEvent>> dataEventEmitterInstance;
+  @Channel("events-out")
+  Instance<MutinyEmitter<FlexmodelEvent>> dataEventEmitterInstance;
 
   @Inject
   ProjectRepository projectRepository;
@@ -47,7 +48,7 @@ public class RealtimeRabbitmqListener implements EventListener {
       return;
     }
     if (dataEventEmitterInstance.isUnsatisfied()) {
-      log.debug("data-events-out channel not resolvable, skip forwarding.||model={}", event.getModelName());
+      log.debug("events-out channel not resolvable, skip forwarding.||model={}", event.getModelName());
       return;
     }
     try {
@@ -61,7 +62,7 @@ public class RealtimeRabbitmqListener implements EventListener {
         routingKey, project.getId(), operation, event.getModelName(), event.getSchemaName(),
         event.getId(), event.getTimestamp(), event.getAffectedRows(), newData, oldData);
 
-      MutinyEmitter<DataChangeEvent> emitter = dataEventEmitterInstance.get();
+      MutinyEmitter<FlexmodelEvent> emitter = dataEventEmitterInstance.get();
       OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
         .withRoutingKey(routingKey)
         // 持久化投递（delivery_mode=2）：使消息在 broker 重启后仍可恢复，配合 durable 交换机与 durable 队列生效

@@ -1,6 +1,7 @@
 package dev.flexmodel.flow.event;
 
 import io.smallrye.reactive.messaging.MutinyEmitter;
+import dev.flexmodel.common.FlexmodelEvent;
 import io.smallrye.reactive.messaging.rabbitmq.OutgoingRabbitMQMetadata;
 import io.quarkus.vertx.ConsumeEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -36,7 +37,7 @@ public class FlowEventRabbitmqBridge {
 
   @Inject
   @Channel("events-out")
-  Instance<MutinyEmitter<FlowEvent>> flowEventEmitterInstance;
+  Instance<MutinyEmitter<FlexmodelEvent>> flowEventEmitterInstance;
 
   @ConsumeEvent(value = FlowEventTypes.FLOW_INSTANCE_STARTED, blocking = false)
   public void onFlowInstanceStarted(FlowInstanceStartedEvent event) {
@@ -83,7 +84,7 @@ public class FlowEventRabbitmqBridge {
       return;
     }
     try {
-      MutinyEmitter<FlowEvent> emitter = flowEventEmitterInstance.get();
+      MutinyEmitter<FlexmodelEvent> emitter = flowEventEmitterInstance.get();
       OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
         .withRoutingKey(event.rabbitmqRoutingKey())
         // 持久化投递（delivery_mode=2）：使消息在 broker 重启后仍可恢复，配合 durable 交换机与 durable 队列生效

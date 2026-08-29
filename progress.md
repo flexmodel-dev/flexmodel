@@ -2,6 +2,31 @@
 
 ## Fix: flow 用户任务时间线时间字段（2026-08-28）
 
+## Refactor: 合并 data-events-out 至 events-out（2026-08-29）
+
+**背景:** flow 事件桥接（`events-out`）与 realtime 数据变更桥接（`data-events-out`）共享同一 connector、同一
+`flexmodel.events` topic 交换机、同一开关 `flexmodel.events.rabbitmq.enabled`，仅载荷类型不同。当前无分开使用的实际
+场景，合并减少一个 AMQP channel 与一处配置。
+
+**修改:**
+
+- 新增 `dev.flexmodel.common.FlexmodelEvent` 标记接口（出站事件载荷统一类型）。
+- `FlowEvent`（抽象基类）与 `DataChangeEvent` 实现 `FlexmodelEvent`。
+- `FlowEventRabbitmqBridge`、`RealtimeRabbitmqListener` 统一注入
+  `@Channel("events-out") Instance<MutinyEmitter<FlexmodelEvent>>`。
+- `application.properties` 删除 `mp.messaging.outgoing.data-events-out.*` 两行。
+- `DataChangeEvent` javadoc 通道名同步更新为 `events-out`。
+
+**设计效果:** 单一出站通道 `events-out`，消费端按 routing key（`data.*` / `flow.*`）区分流类型，零改动。 native image
+反射注册无需调整（两具体类型包 `dev.flexmodel.flow.event.**`、`dev.flexmodel.realtime.**` 已注册）。
+
+**验证:**
+
+- 服务模块编译（`build_project` 指定改动文件）→ 通过，无错误。
+- 改动文件 lint 仅余既有 warning（Lombok @Getter 提示、`@ConsumeEvent` 方法 "never used" 误报、预存未用 import），非本次引入。
+
+## Fix: flow 用户任务时间线时间字段（2026-08-28）
+
 **修改:**
 
 - `flexmodel-ui/src/pages/Flow/components/UserTasksDrawer.tsx`：流程实例完成时间由不存在的 `modifyTime` 改为后端返回的

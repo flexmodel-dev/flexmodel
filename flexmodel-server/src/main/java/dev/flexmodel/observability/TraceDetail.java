@@ -1,10 +1,11 @@
-package dev.flexmodel.observability.dto;
+package dev.flexmodel.observability;
 
 import dev.flexmodel.codegen.entity.Span;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.codegen.entity.FunctionLog;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.codegen.entity.NodeInstanceLog;
+import dev.flexmodel.codegen.entity.AuditLog;
 import lombok.Builder;
 import lombok.Data;
 
@@ -24,4 +25,5 @@ public class TraceDetail {
   private List<FunctionLog> functionLogs;
   private List<JobExecutionLog> jobExecutionLogs;
   private List<NodeInstanceLog> nodeInstanceLogs;
+  private List<AuditLog> auditLogs;
 }

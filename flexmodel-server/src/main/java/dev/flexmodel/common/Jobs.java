@@ -3,7 +3,7 @@ package dev.flexmodel.common;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.inject.Inject;
 import dev.flexmodel.settings.SettingsService;
-import dev.flexmodel.observability.apilog.ApiRequestLogService;
+import dev.flexmodel.observability.api.ApiRequestLogService;
 import dev.flexmodel.scheduling.JobExecutionLogService;
 import dev.flexmodel.settings.Settings;
 import dev.flexmodel.project.ProjectService;

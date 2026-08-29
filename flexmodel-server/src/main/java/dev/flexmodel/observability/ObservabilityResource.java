@@ -1,8 +1,6 @@
 package dev.flexmodel.observability;
 
 import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.observability.dto.TraceDetail;
-import dev.flexmodel.observability.dto.TraceListItem;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;

@@ -1,4 +1,4 @@
-package dev.flexmodel.observability.dto;
+package dev.flexmodel.observability;
 
 import lombok.Builder;
 import lombok.Data;

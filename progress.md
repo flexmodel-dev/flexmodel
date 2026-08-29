@@ -666,7 +666,7 @@ outgoing channel→RabbitMQ topic 交换机链路，routing key 与 JSON 载荷�
 ## 接续会话：日志功能合并到 observability 包（2026-08-29）
 
 **目标:** 将分散在 metrics / functions 包的日志功能统一归入
-dev.flexmodel.observability.apilog，使可观测性三支柱（Traces/Logs）后端分包与前端分类一致。
+dev.flexmodel.observability.api，使可观测性三支柱（Traces/Logs）后端分包与前端分类一致。
 
 **完成内容:**
 

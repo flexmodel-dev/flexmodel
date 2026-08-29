@@ -1,4 +1,4 @@
-package dev.flexmodel.observability.apilog;
+package dev.flexmodel.observability.function;
 
 import dev.flexmodel.codegen.entity.FunctionLog;
 import dev.flexmodel.common.dto.PageDTO;

@@ -1,6 +1,6 @@
 package dev.flexmodel.metrics;
 
-import dev.flexmodel.observability.apilog.ApiRequestLogService;
+import dev.flexmodel.observability.api.ApiRequestLogService;
 import dev.flexmodel.flow.service.FlowDefinitionService;
 import dev.flexmodel.flow.service.FlowInstanceService;
 import dev.flexmodel.metrics.dto.FmMetricsResponse;

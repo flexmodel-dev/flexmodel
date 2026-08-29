@@ -4,6 +4,7 @@ import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.AuditDataEventListener;
 import dev.flexmodel.common.FlexmodelConfig;
+import dev.flexmodel.observability.audit.AuditEventListener;
 import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.project.BranchRepository;
 import dev.flexmodel.project.ProjectService;
@@ -53,7 +54,8 @@ public class EngineConfig {
                                        TriggerDataChangedEventListener triggerDataChangedEventListener,
                                        AuditDataEventListener auditDataEventListener,
                                        RealtimeEventListener realtimeEventListener,
-                                       RealtimeRabbitmqListener realtimeRabbitmqListener) {
+                                       RealtimeRabbitmqListener realtimeRabbitmqListener,
+                                       AuditEventListener auditEventListener) {
     FlexmodelConfig.DatasourceConfig datasourceConfig = flexmodelConfig.datasources().get(SYSTEM_DS_KEY);
     AgroalDataSource defaultDs = AgroalDataSourceFactory.createDataSource(
       datasourceConfig.url(),
@@ -83,6 +85,7 @@ public class EngineConfig {
     sf.getEventPublisher().addListener(auditDataEventListener);
     sf.getEventPublisher().addListener(realtimeEventListener);
     sf.getEventPublisher().addListener(realtimeRabbitmqListener);
+    sf.getEventPublisher().addListener(auditEventListener);
     return sf;
   }
 

@@ -270,6 +270,26 @@ model f_function_log {
   @comment("边缘函数执行日志")
 }
 
+model f_audit_log {
+  id : String @id @default(uuid()),
+  action : String @length("20") @comment("操作类型(INSERT/UPDATE/DELETE)"),
+  resource_type : String @length("100") @comment("资源类型(模型名)"),
+  resource_id : String @length("200") @comment("资源ID"),
+  resource_name? : String @length("200") @comment("资源名称"),
+  user_id? : String @length("100") @comment("操作人ID"),
+  success : Boolean @default("true") @comment("是否成功"),
+  error_message? : String @length("2000") @comment("错误信息"),
+  old_data? : JSON @comment("变更前数据"),
+  new_data? : JSON @comment("变更后数据"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
+  created_at : DateTime @default(now()) @comment("操作时间"),
+  @index(name: "IDX_AUDIT_LOG_RESOURCE", fields: [resource_type, created_at]),
+  @index(name: "IDX_AUDIT_LOG_USER", fields: [user_id, created_at]),
+  @index(name: "IDX_AUDIT_LOG_TRACE", fields: [trace_id]),
+  @system,
+  @comment("审计日志(配置变更)")
+}
+
 enum TriggerType {
   EVENT,
   SCHEDULE,

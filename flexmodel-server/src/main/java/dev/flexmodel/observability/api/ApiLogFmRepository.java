@@ -1,4 +1,4 @@
-package dev.flexmodel.observability.apilog;
+package dev.flexmodel.observability.api;
 
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.common.AbstractRepository;

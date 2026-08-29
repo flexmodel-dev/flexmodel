@@ -1,4 +1,4 @@
-package dev.flexmodel.observability.log;
+package dev.flexmodel.observability.apilog;
 
 import dev.flexmodel.codegen.entity.FunctionLog;
 import dev.flexmodel.common.dto.PageDTO;
@@ -34,7 +34,6 @@ public class FunctionLogResource {
     @QueryParam("functionName") String functionName,
     @QueryParam("level") String level,
     @QueryParam("dateRange") String dateRange,
-    @QueryParam("invokeId") String invokeId,
     @QueryParam("traceId") String traceId,
     @QueryParam("keyword") String keyword
   ) {
@@ -52,6 +51,6 @@ public class FunctionLogResource {
       }
     }
     return functionLogService.findFunctionLogs(projectId, page, size, functionName, level,
-      startDate, endDate, invokeId, traceId, keyword);
+      startDate, endDate, traceId, keyword);
   }
 }

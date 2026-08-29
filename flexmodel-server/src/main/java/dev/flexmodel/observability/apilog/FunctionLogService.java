@@ -1,4 +1,4 @@
-package dev.flexmodel.observability.log;
+package dev.flexmodel.observability.apilog;
 
 import dev.flexmodel.codegen.entity.FunctionLog;
 import dev.flexmodel.common.dto.PageDTO;
@@ -30,8 +30,8 @@ public class FunctionLogService {
   public PageDTO<FunctionLog> findFunctionLogs(String projectId, int current, int pageSize,
                                                String functionName, String level,
                                                LocalDateTime startDate, LocalDateTime endDate,
-                                               String invokeId, String traceId, String keyword) {
-    Predicate filter = getCondition(functionName, level, startDate, endDate, invokeId, traceId, keyword);
+                                               String traceId, String keyword) {
+    Predicate filter = getCondition(functionName, level, startDate, endDate, traceId, keyword);
     List<FunctionLog> list = functionLogRepository.find(projectId, filter, current, pageSize);
     long total = functionLogRepository.count(projectId, filter);
     return new PageDTO<>(list, total);
@@ -39,7 +39,7 @@ public class FunctionLogService {
 
   private static Predicate getCondition(String functionName, String level,
                                         LocalDateTime startDate, LocalDateTime endDate,
-                                        String invokeId, String traceId, String keyword) {
+                                        String traceId, String keyword) {
     Predicate condition = Expressions.TRUE;
     if (functionName != null && !functionName.isBlank()) {
       condition = condition.and(functionLog.functionName.eq(functionName));
@@ -49,9 +49,6 @@ public class FunctionLogService {
     }
     if (startDate != null && endDate != null) {
       condition = condition.and(functionLog.createdAt.between(startDate, endDate));
-    }
-    if (invokeId != null && !invokeId.isBlank()) {
-      condition = condition.and(functionLog.invokeId.eq(invokeId));
     }
     if (traceId != null && !traceId.isBlank()) {
       condition = condition.and(functionLog.traceId.eq(traceId));

@@ -126,6 +126,11 @@ public class FmSpanExporter implements SpanExporter {
   private String extractProjectId(SpanData s) {
     try {
       Attributes attrs = s.getAttributes();
+      // 优先从手动设置的自定义属性提取（Quartz Job 等非 HTTP 入口）
+      String customPid = attrs.get(AttributeKey.stringKey("flexmodel.project_id"));
+      if (customPid != null) {
+        return customPid;
+      }
       String urlPath = attrs.get(AttributeKey.stringKey("url.path"));
       if (urlPath == null) {
         urlPath = attrs.get(AttributeKey.stringKey("http.target"));

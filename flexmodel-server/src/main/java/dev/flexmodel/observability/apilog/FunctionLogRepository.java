@@ -1,4 +1,4 @@
-package dev.flexmodel.observability.log;
+package dev.flexmodel.observability.apilog;
 
 import dev.flexmodel.codegen.entity.FunctionLog;
 import dev.flexmodel.query.Predicate;

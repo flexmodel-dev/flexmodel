@@ -85,7 +85,7 @@ self.addEventListener("message", async (e) => {
   }
 
   if (type === "invoke") {
-    const { body, authToken, projectId, invokeId, traceId, functionName, forwardedHeaders } = e.data;
+    const { body, authToken, projectId, traceId, functionName, forwardedHeaders } = e.data;
 
     // ---- console 拦截：日志缓冲，统一通过 SDK 批量接口写入 f_function_log ----
     // 关键：__nativeConsole 已在模块加载时捕获（见顶部），始终指向真正的原生 console。
@@ -111,11 +111,10 @@ self.addEventListener("message", async (e) => {
     };
     const __writeLog = (level, args) => {
       __nativeConsole[level](...args);
-      if (!invokeId) return;
-      // 记录日志实际产生时间，避免批量入库时 created_at 全部相同
-      __logBuffer.push({
-        invoke_id: invokeId,
-        function_name: functionName ?? "",
+      if (!traceId) return;
+     // 记录日志实际产生时间，避免批量入库时 created_at 全部相同
+     __logBuffer.push({
+       function_name: functionName ?? "",
         level: level,
         message: __serialize(args),
         trace_id: traceId,
@@ -158,7 +157,6 @@ self.addEventListener("message", async (e) => {
         "content-type": "application/json",
       });
       if (projectId) reqHeaders.set("x-flexmodel-project-id", projectId);
-      if (invokeId) reqHeaders.set("x-flexmodel-invoke-id", invokeId);
       if (functionName) reqHeaders.set("x-flexmodel-function-name", functionName);
       // 合并原始客户端 headers
       if (forwardedHeaders) {

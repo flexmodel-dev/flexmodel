@@ -30,6 +30,14 @@ function extractTraceId(traceparent?: string | null): string | undefined {
   const parts = traceparent.split("-");
   return parts.length >= 2 && parts[1].length === 32 ? parts[1] : undefined;
 }
+
+/**
+ * 生成 32 hex chars 的 traceId（无 traceparent 时用于外部 edge 调用）。
+ */
+function generateTraceId(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
 const router = new Hono<{ Variables: { edgeAuth: EdgeAuthContext } }>();
 
 // ============================================================
@@ -78,7 +86,7 @@ router.delete("/functions/:projectId/:name", async (c) => {
 
 // ---- POST /functions/:projectId/:name/invoke ----
 // Internal invoke (Java → Deno, no auth required)
-// authToken 和 invokeId 通过 HTTP headers 传入（由 Java 服务端设置）
+// authToken 通过 HTTP header 传入（由 Java 服务端设置）
 // 请求体直接作为函数的 Request body
 router.post("/functions/:projectId/:name/invoke", async (c) => {
     const {projectId, name} = c.req.param();
@@ -92,7 +100,6 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
 
     // 从 headers 提取服务端注入的元数据
     const authToken = c.req.header("x-flexmodel-auth-token");
-    const invokeId = c.req.header("x-flexmodel-invoke-id");
   const traceId = extractTraceId(c.req.header("traceparent"));
 
     // 收集所有 incoming headers 传给 Worker，让云函数的 Request 对象能访问原始客户端 headers
@@ -101,7 +108,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
         // 排除 hop-by-hop headers 和内部元数据 headers（内部 headers 通过单独字段传递）
         const lower = key.toLowerCase();
         if (lower !== "host" && lower !== "content-length" && lower !== "transfer-encoding"
-            && lower !== "connection" && lower !== "x-flexmodel-auth-token" && lower !== "x-flexmodel-invoke-id") {
+          && lower !== "connection" && lower !== "x-flexmodel-auth-token") {
             forwardedHeaders[key] = value;
         }
     }
@@ -110,7 +117,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     const body = await c.req.json().catch(() => null);
 
     try {
-      const result = await invokeFunction(projectId, name, body, authToken, invokeId, traceId, forwardedHeaders);
+      const result = await invokeFunction(projectId, name, body, authToken, traceId, forwardedHeaders);
 
         // Return function result directly as HTTP response
         // _meta is passed via response header for debug/observability
@@ -128,7 +135,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
         const message = err instanceof Error ? err.message : String(err);
         const isTimeout = message.includes("timed out");
         const status = isTimeout ? 504 : 500;
-      const errorMeta = {executionTimeMs: 0, invokeId, traceId};
+      const errorMeta = {executionTimeMs: 0, traceId};
 
         return c.json(
             {error: isTimeout ? "Function execution timed out" : message},
@@ -166,7 +173,7 @@ router.post(
             const lower = key.toLowerCase();
             if (lower !== "host" && lower !== "content-length" && lower !== "transfer-encoding"
                 && lower !== "connection" && lower !== "authorization"
-                && lower !== "x-flexmodel-auth-token" && lower !== "x-flexmodel-invoke-id") {
+              && lower !== "x-flexmodel-auth-token") {
                 forwardedHeaders[key] = value;
             }
         }
@@ -174,14 +181,16 @@ router.post(
         // Request body as function input
         const body = await c.req.json().catch(() => null);
 
+      // traceId: 优先从 traceparent 提取，无则生成（外部调用可能无 traceparent）
+      const traceId = extractTraceId(c.req.header("traceparent")) ?? generateTraceId();
+
         try {
             const result = await invokeFunction(
                 projectId,
                 name,
                 body,
                 authCtx.authToken,
-                authCtx.invokeId,
-              extractTraceId(c.req.header("traceparent")),
+              traceId,
                 forwardedHeaders,
             );
 
@@ -202,8 +211,7 @@ router.post(
             const status = isTimeout ? 504 : 500;
           const errorMeta = {
             executionTimeMs: 0,
-            invokeId: authCtx.invokeId,
-            traceId: extractTraceId(c.req.header("traceparent"))
+            traceId
           };
 
             return c.json(

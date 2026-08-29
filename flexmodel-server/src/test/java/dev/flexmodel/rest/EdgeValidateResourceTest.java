@@ -75,7 +75,7 @@ public class EdgeValidateResourceTest {
       .body("authType", equalTo("anonymous"))
       .body("projectId", equalTo("dev_test"))
       .body("authToken", notNullValue())
-      .body("invokeId", notNullValue());
+    ;
   }
 
   /**

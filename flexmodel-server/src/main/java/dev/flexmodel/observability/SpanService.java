@@ -3,12 +3,13 @@ package dev.flexmodel.observability;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.codegen.entity.FunctionLog;
 import dev.flexmodel.codegen.entity.Span;
+import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.common.dto.PageDTO;
-import dev.flexmodel.observability.log.FunctionLogService;
-import dev.flexmodel.observability.log.ApiRequestLogService;
+import dev.flexmodel.observability.apilog.FunctionLogService;
+import dev.flexmodel.observability.apilog.ApiRequestLogService;
+import dev.flexmodel.scheduling.JobExecutionLogRepository;
 import dev.flexmodel.observability.dto.TraceDetail;
 import dev.flexmodel.observability.dto.TraceListItem;
-import dev.flexmodel.query.Expressions;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.flexmodel.codegen.System.apiRequestLog;
-import static dev.flexmodel.codegen.System.functionLog;
+import static dev.flexmodel.codegen.System.jobExecutionLog;
 
 /**
  * 链路追踪查询服务。
@@ -40,6 +41,9 @@ public class SpanService {
 
   @Inject
   FunctionLogService functionLogService;
+
+  @Inject
+  JobExecutionLogRepository jobExecutionLogRepository;
 
   /**
    * 查询 trace 列表（按 trace_id 聚合 span）。
@@ -100,6 +104,7 @@ public class SpanService {
     // 关联日志从项目库按 trace_id 查询
     List<ApiRequestLog> apiLogs = List.of();
     List<FunctionLog> functionLogs = List.of();
+    List<JobExecutionLog> jobExecutionLogs = List.of();
     try {
       apiLogs = apiRequestLogService.find(projectId, apiRequestLog.traceId.eq(traceId), 1, 200);
     } catch (Exception e) {
@@ -107,9 +112,14 @@ public class SpanService {
     }
     try {
       functionLogs = functionLogService.findFunctionLogs(projectId, 1, 200,
-        null, null, null, null, null, traceId, null).list();
+        null, null, null, null, traceId, null).list();
     } catch (Exception e) {
       log.debug("Failed to fetch function logs for trace {}", traceId, e);
+    }
+    try {
+      jobExecutionLogs = jobExecutionLogRepository.find(projectId, jobExecutionLog.traceId.eq(traceId), 1, 200);
+    } catch (Exception e) {
+      log.debug("Failed to fetch job execution logs for trace {}", traceId, e);
     }
 
     return TraceDetail.builder()
@@ -117,6 +127,7 @@ public class SpanService {
       .spans(spans)
       .apiLogs(apiLogs)
       .functionLogs(functionLogs)
+      .jobExecutionLogs(jobExecutionLogs)
       .build();
   }
 

@@ -12,7 +12,7 @@ import java.util.List;
  * can access the original client headers via their Request object.
  *
  * <p>Also injects runtime-internal headers (x-flexmodel-auth-token,
- * x-flexmodel-invoke-id) that are set programmatically by
+ * x-flexmodel-auth-token) that are set programmatically by
  * {@link FunctionInvoker} via @HeaderParam.
  *
  * <p>Hop-by-hop headers (host, content-length, transfer-encoding, connection)

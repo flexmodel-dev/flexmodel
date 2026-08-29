@@ -666,7 +666,7 @@ outgoing channel→RabbitMQ topic 交换机链路，routing key 与 JSON 载荷�
 ## 接续会话：日志功能合并到 observability 包（2026-08-29）
 
 **目标:** 将分散在 metrics / functions 包的日志功能统一归入
-dev.flexmodel.observability.log，使可观测性三支柱（Traces/Logs）后端分包与前端分类一致。
+dev.flexmodel.observability.apilog，使可观测性三支柱（Traces/Logs）后端分包与前端分类一致。
 
 **完成内容:**
 
@@ -681,3 +681,29 @@ dev.flexmodel.observability.log，使可观测性三支柱（Traces/Logs）后�
 - **前端**：上一步已将接口日志挂为可观测性子路由（observability/api-logs），后端至此对齐。
 
 **验证:** mvn compile（全模块，排除 maven-plugin）BUILD SUCCESS，仅剩既有 DB2/MapToObjectConverter deprecation 警告（与本次无关）。
+
+## 接续会话：触发器触发任务追踪链路（2026-08-29）
+
+**目标:** Quartz 定时触发器触发任务（流程/函数）时创建 OTel span，traceId 贯穿 触发器→函数/流程→下游，并记录到
+f_job_execution_log。
+
+**完成内容:**
+
+- **TracingHelper**（新建 observability 包）：封装 OTel 手动 span 创建，设置 flexmodel.project_id 属性；提供 startSpan（根
+  span）、startChildSpan（从远程 traceId/spanId 恢复）、currentTraceId（获取当前 HTTP span traceId）。
+- **f_job_execution_log 模型**：新增 trace_id 字段 + IDX_JOB_EXEC_TRACE_ID 索引（project.fml）。
+- **ScheduledFunctionExecutionJob**：execute () 中用 TracingHelper.startSpan 创建根 span 包裹执行；span 激活后
+  Span.current () 有效，FunctionRuntimeClientHeadersFactory 自动注入 traceparent 贯穿 Java→Deno 链路；traceId 存入
+  JobExecutionContext 供 listener 记录。
+- **ScheduledFlowExecutionJob**：同理创建根 span，traceId+spanId 传入 StartProcessParamEvent，EventBus 跨线程传播。
+- **TriggerFlowEventConsumer**：用 startChildSpan 从 param 的 traceId/spanId 恢复 span 上下文，使流程执行中的下游调用（含函数调用）在同一
+  trace 下。
+- **StartProcessParamEvent**：新增 traceId、spanId 字段。
+- **ScheduledFlowExecutionJobListener**：从 context 取 traceId 传给 recordJobStart。
+- **JobExecutionLogService.recordJobStart**：新增 traceId 参数，setTraceId 到 JobExecutionLog。
+- **TriggerService**（手动触发 2 处）+ **TriggerDataChangedEventListener**（事件触发 1 处）：注入
+  TracingHelper，recordJobStart 传 currentTraceId ()。
+- **FmSpanExporter.extractProjectId**：优先从 flexmodel.project_id 属性提取 projectId（非 HTTP span 如 Quartz Job）。
+
+**验证:** mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS（codegen 重新生成 JobExecutionLog 含
+trace_id）。

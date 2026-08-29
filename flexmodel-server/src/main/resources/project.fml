@@ -152,10 +152,11 @@ model f_ei_node_instance_log {
   flow_instance_id: String @comment("流程执行实例id"),
   instance_data_id: String @comment("实例数据id"),
   node_key: String @comment("节点唯一标识"),
-  type: Int @default(0) @comment("操作类型(1.系统执行 2.任务提交 3.任务撤销)"),
-  status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
-  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
-  created_by?: String @comment("创建人"),
+ type: Int @default(0) @comment("操作类型(1.系统执行 2.任务提交 3.任务撤销)"),
+ status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
+ archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+ trace_id? : String @length("64") @comment("链路追踪ID"),
+ created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
@@ -225,6 +226,7 @@ model f_job_execution_log {
   instance_name : String @length("190") @comment("调度实例名称"),
   fired_time : Long @comment("实际触发时间(毫秒)"),
   scheduled_time : Long @comment("计划执行时间(毫秒)"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
@@ -237,6 +239,7 @@ model f_job_execution_log {
   @index(name:"IDX_JOB_EXEC_START_TIME", unique: false, fields: [start_time]),
   @index(name:"IDX_JOB_EXEC_SUCCESS", unique: false, fields: [is_success]),
   @index(name:"IDX_JOB_EXEC_COMPOSITE", unique: false, fields: [trigger_id, start_time]),
+  @index(name:"IDX_JOB_EXEC_TRACE_ID", unique: false, fields: [trace_id]),
   @system,
   @comment("作业执行日志")
 }
@@ -256,14 +259,12 @@ model f_function {
 
 model f_function_log {
   id : String @id @default(uuid()),
-  invoke_id : String @comment("调用ID，关联同一次函数调用"),
   function_name : String @comment("函数名称"),
   level : String @comment("日志级别(log/warn/error)"),
   message : String @comment("日志消息"),
   trace_id? : String @length("64") @comment("链路追踪ID"),
   created_at? : DateTime @default(now()) @comment("记录时间"),
   @index(name: "IDX_FUNCTION_LOG_TRACE", fields: [trace_id]),
-  @index(name: "IDX_FUNCTION_LOG_INVOKE", fields: [invoke_id]),
   @index(name: "IDX_FUNCTION_LOG_NAME_TIME", fields: [function_name, created_at]),
   @system,
   @comment("边缘函数执行日志")

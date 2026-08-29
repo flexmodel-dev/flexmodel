@@ -1,5 +1,6 @@
 package dev.flexmodel.flow.event;
 
+import dev.flexmodel.common.FlexmodelConfig;
 import io.smallrye.reactive.messaging.MutinyEmitter;
 import dev.flexmodel.common.FlexmodelEvent;
 import io.smallrye.reactive.messaging.rabbitmq.OutgoingRabbitMQMetadata;
@@ -7,12 +8,10 @@ import io.quarkus.vertx.ConsumeEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import org.eclipse.microprofile.reactive.messaging.Metadata;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Flow 生命周期事件 RabbitMQ 桥接。
@@ -30,10 +29,12 @@ import org.slf4j.LoggerFactory;
  *
  * @author cjbi
  */
+@Slf4j
 @ApplicationScoped
 public class FlowEventRabbitmqBridge {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FlowEventRabbitmqBridge.class);
+  @Inject
+  FlexmodelConfig flexmodelConfig;
 
   @Inject
   @Channel("events-out")
@@ -79,8 +80,11 @@ public class FlowEventRabbitmqBridge {
    * 通道未启用时 SmallRye 提供 no-op emitter，发送即丢弃、不连 broker。
    */
   private void forward(FlowEvent event) {
+    if (!flexmodelConfig.events().rabbitmq().enabled()) {
+      return;
+    }
     if (flowEventEmitterInstance.isUnsatisfied()) {
-      LOGGER.debug("events-out channel not resolvable, skip forwarding.||routingKey={}", event.rabbitmqRoutingKey());
+      log.debug("events-out channel not resolvable, skip forwarding.||routingKey={}", event.rabbitmqRoutingKey());
       return;
     }
     try {
@@ -92,13 +96,13 @@ public class FlowEventRabbitmqBridge {
         .build();
       emitter.sendMessage(Message.of(event, Metadata.of(metadata)))
         .onFailure()
-        .invoke(e -> LOGGER.warn("forward flow event to rabbitmq failed.||routingKey={}||payloadType={}",
+        .invoke(e -> log.warn("forward flow event to rabbitmq failed.||routingKey={}||payloadType={}",
           event.rabbitmqRoutingKey(), event.getClass().getSimpleName(), e))
         .subscribe()
         .asCompletionStage();
     } catch (Exception e) {
       // 仅记录 routing key 与异常，不打印事件载荷（避免泄露流程变量）
-      LOGGER.warn("forward flow event to rabbitmq failed (sync).||routingKey={}", event.rabbitmqRoutingKey(), e);
+      log.warn("forward flow event to rabbitmq failed (sync).||routingKey={}", event.rabbitmqRoutingKey(), e);
     }
   }
 }

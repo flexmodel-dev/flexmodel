@@ -1,6 +1,7 @@
 package dev.flexmodel.realtime;
 
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.common.FlexmodelConfig;
 import dev.flexmodel.common.FlexmodelEvent;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventListener;
@@ -35,6 +36,9 @@ import java.util.Map;
 public class RealtimeRabbitmqListener implements EventListener {
 
   @Inject
+  FlexmodelConfig flexmodelConfig;
+
+  @Inject
   @Channel("events-out")
   Instance<MutinyEmitter<FlexmodelEvent>> dataEventEmitterInstance;
 
@@ -43,6 +47,9 @@ public class RealtimeRabbitmqListener implements EventListener {
 
   @Override
   public void onChanged(ChangedEvent event) {
+    if (!flexmodelConfig.events().rabbitmq().enabled()) {
+      return;
+    }
     // 操作失败时不转发，避免无谓的对象构造与 IO
     if (!event.isSuccess()) {
       return;

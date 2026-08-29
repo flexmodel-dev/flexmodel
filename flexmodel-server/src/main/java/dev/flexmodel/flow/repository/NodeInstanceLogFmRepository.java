@@ -35,7 +35,7 @@ public class NodeInstanceLogFmRepository extends AbstractRepository implements N
       return session.dsl()
         .selectFrom(NodeInstanceLog.class)
         .where(Expressions.TRUE.and(nodeInstanceLog.traceId.eq(traceId)))
-        .orderBy(nodeInstanceLog.createdAt, Direction.DESC)
+        .orderBy(nodeInstanceLog.id, Direction.ASC)
         .page(1, limit)
         .execute();
     }

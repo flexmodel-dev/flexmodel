@@ -67,7 +67,6 @@
       "jsr:@hono/hono@^4.6.0",
       "jsr:@std/assert@1",
       "jsr:@std/testing@1",
-      "npm:@flexmodel/sdk@0.0.10",
       "npm:jose@^5.9.0"
     ]
   }

@@ -1,4 +1,4 @@
-package dev.flexmodel.api;
+package dev.flexmodel.graphql;
 
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;

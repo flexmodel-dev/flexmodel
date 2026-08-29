@@ -1,6 +1,6 @@
 package dev.flexmodel.modeling;
 
-import dev.flexmodel.api.dto.GraphQLRefreshEvent;
+import dev.flexmodel.graphql.dto.GraphQLRefreshEvent;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;

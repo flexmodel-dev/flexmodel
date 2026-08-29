@@ -1,8 +1,8 @@
 package dev.flexmodel.project;
 
 import dev.flexmodel.SchemaProvider;
-import dev.flexmodel.api.GraphQLManager;
-import dev.flexmodel.api.consumer.GraphQLEventConsumer;
+import dev.flexmodel.graphql.GraphQLManager;
+import dev.flexmodel.graphql.consumer.GraphQLEventConsumer;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.FlexmodelConfig;

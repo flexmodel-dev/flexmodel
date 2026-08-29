@@ -1,4 +1,4 @@
-package dev.flexmodel.api.consumer;
+package dev.flexmodel.graphql.consumer;
 
 import dev.flexmodel.project.BranchService;
 import dev.flexmodel.codegen.entity.Branch;
@@ -8,8 +8,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.api.GraphQLManager;
-import dev.flexmodel.api.dto.GraphQLRefreshEvent;
+import dev.flexmodel.graphql.GraphQLManager;
+import dev.flexmodel.graphql.dto.GraphQLRefreshEvent;
 import dev.flexmodel.session.SessionFactory;
 
 import java.util.List;

@@ -1,4 +1,4 @@
-package dev.flexmodel.api;
+package dev.flexmodel.metrics;
 
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.common.AbstractRepository;

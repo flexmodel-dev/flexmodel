@@ -1,8 +1,8 @@
-package dev.flexmodel.api.dto;
+package dev.flexmodel.metrics.dto;
 
 import lombok.*;
-import dev.flexmodel.api.LogApiRank;
-import dev.flexmodel.api.LogStat;
+import dev.flexmodel.metrics.LogApiRank;
+import dev.flexmodel.metrics.LogStat;
 
 import java.util.ArrayList;
 import java.util.List;

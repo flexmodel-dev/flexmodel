@@ -1,6 +1,6 @@
-package dev.flexmodel.api;
+package dev.flexmodel.metrics;
 
-import dev.flexmodel.api.dto.LogStatResponse;
+import dev.flexmodel.metrics.dto.LogStatResponse;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.query.Expressions;

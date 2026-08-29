@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+
 /**
  * @author cjbi
  */
@@ -36,6 +39,7 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
     requestContext.setProperty("startTime", System.currentTimeMillis());
+    requestContext.setProperty("traceId", currentTraceId());
     try {
       byte[] bytes = requestContext.getEntityStream().readAllBytes();
       if (bytes.length > 0) {
@@ -58,6 +62,11 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     } else {
       execTime = -1L;
     }
+    // 在响应头中返回 traceId，方便前端/客户端排查问题时直接关联链路追踪
+    String traceId = (String) requestContext.getProperty("traceId");
+    if (traceId != null) {
+      responseContext.getHeaders().putSingle("x-trace-id", traceId);
+    }
     CompletableFuture.runAsync(() -> {
       Settings settings = settingsService.getSettings();
       boolean isLoggingEnabled = settings.getLog().isConsoleLoggingEnabled();
@@ -75,6 +84,7 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     apiLog.setPath(apiLog.getHttpMethod() + " " + requestContext.getUriInfo().getPath());
     apiLog.setRequestHeaders(requestContext.getHeaders());
     apiLog.setRequestBody(requestContext.getProperty("requestBody"));
+    apiLog.setTraceId((String) requestContext.getProperty("traceId"));
     apiLog.setIsSuccess(true);
     String projectId = Objects.toString(requestContext.getProperty("projectId"), null);
 //      apiData.setRemoteIp(null);
@@ -94,5 +104,17 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     payload.put("projectId", projectId);
     payload.put("log", apiLog);
     eventBusProvider.get().send("request.logging", payload);
+  }
+
+  /**
+   * 提取当前 OTel Span 的 traceId（仅在请求线程且 Span 有效时）。
+   */
+  private static String currentTraceId() {
+    try {
+      SpanContext ctx = Span.current().getSpanContext();
+      return ctx.isValid() ? ctx.getTraceId() : null;
+    } catch (Throwable t) {
+      return null;
+    }
   }
 }

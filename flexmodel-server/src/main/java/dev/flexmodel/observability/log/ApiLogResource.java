@@ -1,4 +1,4 @@
-package dev.flexmodel.metrics;
+package dev.flexmodel.observability.log;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -13,7 +13,7 @@ import org.eclipse.microprofile.openapi.annotations.media.SchemaProperty;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import dev.flexmodel.metrics.dto.LogStatResponse;
+import dev.flexmodel.observability.log.dto.LogStatResponse;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 

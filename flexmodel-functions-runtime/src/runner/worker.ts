@@ -25,6 +25,7 @@ export async function invokeFunction(
   body: unknown,
   authToken?: string,
   invokeId?: string,
+  traceId?: string,
   forwardedHeaders?: Record<string, string>,
 ): Promise<InvokeResult> {
   const meta = registry.get(projectId, name);
@@ -32,7 +33,7 @@ export async function invokeFunction(
     throw new Error(`Function not found: ${projectId}:${name}`);
   }
 
-    return executeInWorker(meta, body, authToken, invokeId, forwardedHeaders);
+  return executeInWorker(meta, body, authToken, invokeId, traceId, forwardedHeaders);
 }
 
 /**
@@ -48,6 +49,7 @@ async function executeInWorker(
   body: unknown,
   authToken?: string,
   invokeId?: string,
+  traceId?: string,
   forwardedHeaders?: Record<string, string>,
 ): Promise<InvokeResult> {
   // Validate that the function directory exists before attempting Worker creation
@@ -95,7 +97,7 @@ async function executeInWorker(
           status: data.status,
           headers: data.headers,
           body: data.body,
-          _meta: {executionTimeMs, invokeId},
+          _meta: {executionTimeMs, invokeId, traceId, logs: data.logs},
         });
         return;
       }
@@ -124,6 +126,7 @@ async function executeInWorker(
       authToken,
       projectId: meta.projectId,
       invokeId,
+        traceId,
       functionName: meta.name,
           forwardedHeaders,
     });

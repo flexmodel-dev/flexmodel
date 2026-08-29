@@ -1,5 +1,49 @@
 ﻿# Session Progress Log
 
+## Feature: Observability 可观测性（traceId 链路 + 函数日志 + 链路追踪页面）（2026-08-29）
+
+**目标:** 对标 Cloudflare/Supabase 的可观测性，统一 traceId 贯穿 HTTP → 函数调用全链路，前端提供链路追踪页面（瀑布图）。
+
+**完成内容:**
+
+- feat-012 traceId 基础设施 + Span 存储：quarkus-opentelemetry + 自定义 FmSpanExporter（CDI SpanExporter）将 Span 持久化到平台级
+  f_span 表；sampler parentbased_traceidratio@1.0；MDC 日志注入 traceId/spanId；LogFilter.currentTraceId () 写入
+  f_api_request_log；platform.fml 新增 f_span 模型，project.fml 为 f_api_request_log/f_function_log 增加 trace_id 列与索引。
+- feat-013 函数执行日志：Deno Runtime 解析 W3C traceparent 头透传 traceId 至 Worker，console.log/warn/error 捕获并携带
+  trace_id 持久化到 f_function_log（+内联 100 行到 x-function-meta.logs 供测试面板）；Java
+  FunctionLogResource/Service/Repository 提供查询（functionName/level/dateRange/invokeId/traceId/keyword）。
+- feat-014 链路追踪页面（前端）：Observability 父级导航（Outlet 容器，父路径自动重定向到 traces
+  子页），子页含「链路追踪」与「函数日志」；TracesList（按 trace_id 聚合列表）+ TraceDetail（ECharts custom 系列瀑布图 + Span
+  列表 + 关联 API 日志 + 关联函数日志 Tab）；traces/:traceId 隐藏全屏详情路由（镜像现有 flow 父+隐藏详情模式）；FunctionLogList
+  独立函数日志页（traceId 跳转链路详情）。其他入口（API 日志、函数列表等）保留。
+
+**本次（接续）完成的前端接线:**
+
+- 新增 flexmodel-ui/src/pages/Observability/components/TracesList.tsx（从 index.tsx 抽出列表）。
+- Observability/index.tsx 改为重定向+Outlet 容器（直接访问父路径 → 重定向到 /observability/traces，子路由激活时渲染
+  Outlet）。
+- routes.tsx 接入：Observability 父路由 + traces/function-logs 子路由 + traces/:traceId 隐藏全屏详情（hideInMenu/hideLayout），新增
+  MonitorOutlined/FileTextOutlined 图标。
+- utils/echarts.ts 注册 CustomChart（瀑布图 custom 系列所需，此前仅注册 LineChart）。
+- locales/zh.json、locales/en.json 补全 observability. */trace.*/function.log* 键（路由 translationKey 无 fallback，必须落
+  locale）。
+
+**验证:**
+
+- npx tsc --noEmit（flexmodel-ui）→ 通过，0 错误。
+- deno check src/main.ts（functions-runtime）→ 通过。
+- mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'（全 reactor 除 maven-plugin）→ BUILD SUCCESS（flexmodel-server
+  SUCCESS）。
+- feature_list.json / locales JSON 校验 → 通过。
+
+**遗留/说明:**
+
+- flexmodel-maven-plugin 插件描述符在 reactor 内 compile 阶段不生成（plugin.xml 在 package 阶段），导致 -am 全量编译报
+  PluginDescriptorParsingException；此为既有环境特性，AGENTS.md 验证命令已显式排除该模块，非本次引入。
+- 现有「blank 父路径」模式（scheduling/api/flow/data 直接访问父路径渲染空 Outlet）未改动；Observability 父路径通过重定向改善为自动跳转
+  traces。
+- 未提交 git（遵循「未明确要求不提交」）。
+
 ## Fix: flow 用户任务时间线时间字段（2026-08-28）
 
 ## Refactor: 合并 data-events-out 至 events-out（2026-08-29）
@@ -585,3 +629,55 @@ outgoing channel→RabbitMQ topic 交换机链路，routing key 与 JSON 载荷�
 **验证:**
 
 - `npx tsc -b` → 通过，无错误。
+
+## 接续会话：SDK 版本同步 + 开发/生产依赖分离（2026-08-29）
+
+**目标:** 生产用 npm、开发用本地源码覆盖；修复 `flexmodelClient.setTraceId is not a function` 链路断裂。
+
+**完成内容:**
+
+- **SDK 版本同步**: SDK `package.json` 已为 `0.0.10`（含 `setTraceId`）。将 `flexmodel-functions-runtime/deno.json` 与
+  `registry.ts` 的 `SDK_NPM_FALLBACK` 由 `npm:@flexmodel/sdk@0.0.8` 统一提升至 `0.0.10`，使生产 npm 依赖与已升级 SDK 一致（含
+  setTraceId）。
+- **开发/生产配置分离**:
+  - `deno.json`（生产/Docker）：`@flexmodel/sdk` → `npm:@flexmodel/sdk@0.0.10`，`start` 任务无 --config，Docker 安全。
+  - `deno.local.json`（开发覆盖）：`@flexmodel/sdk` → `../flexmodel-sdks/typescript/src/index.ts`（本地源码，无构建/无 npm
+    即时反映）。Deno `extends` 替换而非合并 imports，故 deno.local.json 含全量 imports。
+  - `deno.json` 的 `dev` 任务显式 `--config=deno.local.json` + `--sloppy-imports`（SDK 源码用 .js 扩展名导入 ESM 规范，Deno
+    2.8 需该 flag 解析 .ts）。
+- **Worker SDK 内联**: `registry.ts` 的 `sdkBundle` 优先读取本地 `dist/index.js` 内联为函数目录 `_flexmodel_sdk.js`，函数级
+  import map 用相对路径（离线可移植）；找不到本地构建时回退 npm。dev/prod 宿主不直接 import SDK，Worker 始终用内联 bundle，故
+  npm 版本 bump 不影响 `deno task dev`/测试（测试用内联 dist）。
+- **清理**: 删除根目录误建的 `mvn_verify.txt` 与 `src/`（来自此前错误 create_new_file）。
+
+**关键决策:**
+
+- 生产 npm@0.0.10 需先 `npm publish` 发布；未发布前生产若 SDK 子模块未进镜像且回退 npm 会失败。monorepo 镜像构建（子模块检出）下
+  Worker 用内联 dist，与 npm 版本无关。
+- 不对 setTraceId 做 typeof 防御（用户明确要求；SDK 升级保证存在）。
+
+**验证:**
+
+- `deno check --config=deno.local.json src/main.ts src/server_test.ts` → DEV_OK
+- `deno check src/main.ts src/server_test.ts src/runner/worker_test.ts src/runner/registry_test.ts` → PROD_CHECK_OK
+- `deno run --sloppy-imports --config=deno.local.json _sdk_check.ts` → hasSetTraceId true（本地源码 setTraceId 可用）
+- SDK `dist/index.js` 含 5 处 setTraceId；`deno --version` = 2.8.2
+
+## 接续会话：日志功能合并到 observability 包（2026-08-29）
+
+**目标:** 将分散在 metrics / functions 包的日志功能统一归入
+dev.flexmodel.observability.log，使可观测性三支柱（Traces/Logs）后端分包与前端分类一致。
+
+**完成内容:**
+
+- **API 日志迁移**（metrics → observability.log，8
+  文件）：ApiLogResource、ApiRequestLogService、ApiRequestLogRepository、ApiLogFmRepository、LogStat、LogApiRank、dto/LogStatResponse、consumer/LogEventConsumer（consumer
+  子包拍平至 log）。
+- **函数日志迁移**（functions → observability.log，4
+  文件）：FunctionLogResource、FunctionLogService、FunctionLogRepository、FunctionLogFmRepository。
+- **保留**：MetricsResource / MetricsService / dto/FmMetricsResponse 留在 metrics 包（项目概览统计，非运行时遥测）。
+- **引用更新**（4 处）：common/Jobs.java、metrics/MetricsService.java（ApiRequestLogService
+  import）、observability/SpanService.java（ApiRequestLogService + FunctionLogService 两条 import）。
+- **前端**：上一步已将接口日志挂为可观测性子路由（observability/api-logs），后端至此对齐。
+
+**验证:** mvn compile（全模块，排除 maven-plugin）BUILD SUCCESS，仅剩既有 DB2/MapToObjectConverter deprecation 警告（与本次无关）。

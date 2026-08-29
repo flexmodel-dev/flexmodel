@@ -1,6 +1,6 @@
-package dev.flexmodel.metrics.consumer;
+package dev.flexmodel.observability.log;
 
-import dev.flexmodel.metrics.ApiRequestLogService;
+import dev.flexmodel.observability.log.ApiRequestLogService;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import io.quarkus.vertx.ConsumeEvent;
 import jakarta.enterprise.context.ApplicationScoped;

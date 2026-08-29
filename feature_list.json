@@ -91,6 +91,39 @@
       ],
       "status": "done",
       "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。【重构】合并 data-events-out 至 events-out：新增 dev.flexmodel.common.FlexmodelEvent 标记接口，FlowEvent 与 DataChangeEvent 实现之，两个桥接统一注入 @Channel(\"events-out\") MutinyEmitter<FlexmodelEvent>，删除 data-events-out 通道配置。消费端按 routing key 区分（data.* / flow.*），零改动。验证：服务模块编译通过。"
+    },
+    {
+      "id": "feat-012",
+      "name": "Observability - traceId 基础设施与 Span 存储",
+      "description": "基于 OpenTelemetry 的统一 traceId 链路基础设施。引入 quarkus-opentelemetry，自定义 FmSpanExporter (CDI SpanExporter) 将 Span 持久化到平台级 f_span 表（系统库），sampler parentbased_traceidratio@1.0。HTTP 根 Span 的 url.path 提取 project_id 并按 trace_id 回填子 Span。MDC 日志格式注入 traceId/spanId，LogFilter 捕获当前 traceId 写入 f_api_request_log。",
+      "dependencies": [
+        "feat-004",
+        "feat-010"
+      ],
+      "status": "done",
+      "evidence": "flexmodel-server/pom.xml 增加 quarkus-opentelemetry；application.properties 配置 exporter=cdi + sampler + MDC traceId/spanId；platform.fml 新增 f_span 模型（trace_id/span_id/parent_id/name/kind/project_id/start_time/duration_ns/attributes/status + 3 索引）；project.fml 为 f_api_request_log 增加 trace_id 列与索引、为 f_function_log 增加 trace_id 列与 3 索引。FmSpanExporter 实现失败安全导出（CompletableResultCode.ofSuccess）。LogFilter.currentTraceId() 写入 ApiRequestLog。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS。"
+    },
+    {
+      "id": "feat-013",
+      "name": "Observability - 函数执行日志",
+      "description": "Deno Functions Runtime 捕获 console.log/warn/error 并持久化到 f_function_log，携带 trace_id（解析 W3C traceparent 头透传至 Worker）。Java 后端提供 FunctionLog 查询（按 functionName/level/dateRange/invokeId/traceId/keyword 过滤）与清理。前端独立函数日志列表页（含 traceId 跳转链路详情）。",
+      "dependencies": [
+        "feat-010",
+        "feat-012"
+      ],
+      "status": "done",
+      "evidence": "Deno: types.ts/worker.ts/registry.ts/router functions.ts 增加 traceId 透传（traceparent 解析 + postMessage 传递 + log buffer trace_id 字段 + 内联 100 行日志到 x-function-meta.logs）。Java: FunctionLogRepository/FunctionLogFmRepository/FunctionLogService/FunctionLogResource（GET /projects/{projectId}/functions/logs）。前端: FunctionLogList.tsx（筛选表单 + 虚拟表格 + 抽屉 + traceId 跳转）。验证：deno check src/main.ts 通过；mvn compile BUILD SUCCESS；npx tsc --noEmit 通过。【包重构】API 日志（8 文件）从 dev.flexmodel.metrics、函数日志（4 文件）从 dev.flexmodel.functions 统一迁入 dev.flexmodel.observability.log；MetricsResource/MetricsService 保留 metrics。引用更新 4 处。mvn compile BUILD SUCCESS。【包重构】API 日志（8 文件）从 dev.flexmodel.metrics、函数日志（4 文件）从 dev.flexmodel.functions 统一迁入 dev.flexmodel.observability.log；MetricsResource/MetricsService 保留 metrics。引用更新 4 处。mvn compile BUILD SUCCESS。【SDK链路修复】SDK 0.0.10 含 setTraceId；deno.json 与 registry.ts 的 npm 引用同步 0.0.10；新增 deno.local.json 开发用本地源码（../flexmodel-sdks/typescript/src/index.ts）+ dev 任务 --sloppy-imports；Worker 内联 dist/index.js（含 setTraceId）。验证：deno check 双配置（deno.local.json / deno.json）均通过。"
+    },
+    {
+      "id": "feat-014",
+      "name": "Observability - 链路追踪页面（前端）",
+      "description": "统一可观测性前端页面：链路追踪列表（按 trace_id 聚合，含根操作/起始时间/总耗时/Span 数/错误状态），链路详情含 ECharts 自定义系列瀑布图 + Span 列表 + 关联 API 日志 + 关联函数日志 Tab。Observability 作为父级导航（Outlet 容器，父路径自动重定向到 traces 子页），子页含链路追踪与函数日志；TraceDetail 为隐藏全屏路由。其他入口（API 日志、函数列表等）保留。",
+      "dependencies": [
+        "feat-012",
+        "feat-013"
+      ],
+      "status": "done",
+      "evidence": "前端: observability.d.ts 类型、observability.ts/function-log.ts 服务、Observability/components/TracesList.tsx、Observability/TraceDetail.tsx（ECharts custom 瀑布图）、Functions/components/FunctionLogList.tsx。routes.tsx 接入 Observability 父路由 + traces/function-logs 子路由 + traces/:traceId 隐藏全屏详情（镜像现有 flow 父+隐藏详情模式）。utils/echarts.ts 注册 CustomChart。locales zh/en 补全 observability.* / trace.* / function.log* 键。验证：npx tsc --noEmit 通过；JSON 校验通过。"
     }
   ]
 }

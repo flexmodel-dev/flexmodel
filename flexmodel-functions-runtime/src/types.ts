@@ -32,13 +32,23 @@ export interface InvokeResult {
   _meta: {
     executionTimeMs: number;
     invokeId?: string;
+    traceId?: string;
+    logs?: Array<{ level: string; message: string }>;
   };
 }
 
 // ---- Worker Messages ----
 
 export type WorkerOutMessage =
-  | { type: "result"; data: { status: number; headers: Record<string, string>; body: unknown } }
+  | {
+  type: "result";
+  data: {
+    status: number;
+    headers: Record<string, string>;
+    body: unknown;
+    logs?: Array<{ level: string; message: string }>
+  }
+}
   | { type: "error"; data: { message: string } };
 
 export type WorkerInMessage =
@@ -48,6 +58,7 @@ export type WorkerInMessage =
   authToken?: string;
   projectId: string;
   invokeId?: string;
+  traceId?: string;
   functionName?: string;
   forwardedHeaders?: Record<string, string>
 };

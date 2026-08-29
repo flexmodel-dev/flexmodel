@@ -20,6 +20,16 @@ import {type EdgeAuthContext, edgeAuthMiddleware} from "../middleware/auth.ts";
 import {edgeCorsMiddleware} from "../middleware/cors.ts";
 import {autoDeployMiddleware} from "../middleware/auto-deploy.ts";
 
+
+/**
+ * 从 W3C traceparent 头解析 traceId（32 hex chars）。
+ * Java→Deno 调用经 quarkus rest-client headers-propagate 自动注入。
+ */
+function extractTraceId(traceparent?: string | null): string | undefined {
+  if (!traceparent) return undefined;
+  const parts = traceparent.split("-");
+  return parts.length >= 2 && parts[1].length === 32 ? parts[1] : undefined;
+}
 const router = new Hono<{ Variables: { edgeAuth: EdgeAuthContext } }>();
 
 // ============================================================
@@ -83,6 +93,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     // 从 headers 提取服务端注入的元数据
     const authToken = c.req.header("x-flexmodel-auth-token");
     const invokeId = c.req.header("x-flexmodel-invoke-id");
+  const traceId = extractTraceId(c.req.header("traceparent"));
 
     // 收集所有 incoming headers 传给 Worker，让云函数的 Request 对象能访问原始客户端 headers
     const forwardedHeaders: Record<string, string> = {};
@@ -99,7 +110,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
     const body = await c.req.json().catch(() => null);
 
     try {
-        const result = await invokeFunction(projectId, name, body, authToken, invokeId, forwardedHeaders);
+      const result = await invokeFunction(projectId, name, body, authToken, invokeId, traceId, forwardedHeaders);
 
         // Return function result directly as HTTP response
         // _meta is passed via response header for debug/observability
@@ -117,7 +128,7 @@ router.post("/functions/:projectId/:name/invoke", async (c) => {
         const message = err instanceof Error ? err.message : String(err);
         const isTimeout = message.includes("timed out");
         const status = isTimeout ? 504 : 500;
-        const errorMeta = {executionTimeMs: 0, invokeId};
+      const errorMeta = {executionTimeMs: 0, invokeId, traceId};
 
         return c.json(
             {error: isTimeout ? "Function execution timed out" : message},
@@ -170,6 +181,7 @@ router.post(
                 body,
                 authCtx.authToken,
                 authCtx.invokeId,
+              extractTraceId(c.req.header("traceparent")),
                 forwardedHeaders,
             );
 
@@ -188,7 +200,11 @@ router.post(
             const message = err instanceof Error ? err.message : String(err);
             const isTimeout = message.includes("timed out");
             const status = isTimeout ? 504 : 500;
-            const errorMeta = {executionTimeMs: 0, invokeId: authCtx.invokeId};
+          const errorMeta = {
+            executionTimeMs: 0,
+            invokeId: authCtx.invokeId,
+            traceId: extractTraceId(c.req.header("traceparent"))
+          };
 
             return c.json(
                 {error: isTimeout ? "Function execution timed out" : message},

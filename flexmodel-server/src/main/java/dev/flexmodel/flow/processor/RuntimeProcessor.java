@@ -405,9 +405,22 @@ public class RuntimeProcessor {
             sourceSequenceFlowStatus = NodeInstanceStatus.COMPLETED;
           }
           ElementInstance sequenceFlowInstance = new ElementInstance(sourceFlowElement.getKey(), sourceSequenceFlowStatus, null, null);
+          sequenceFlowInstance.setName(FlowModelUtil.getElementName(sourceFlowElement));
+          sequenceFlowInstance.setProperties(sourceFlowElement.getProperties() != null ? sourceFlowElement.getProperties() : new HashMap<>());
           elementInstanceList.add(sequenceFlowInstance);
+          sequenceFlowInstance.setFlowElementType(sourceFlowElement.getType());
         }
         ElementInstance nodeInstance = new ElementInstance(nodeKey, nodeStatus, nodeInstanceId, instanceDataId);
+        FlowElement nodeFlowElement = FlowModelUtil.getFlowElement(flowElementMap, nodeKey);
+        nodeInstance.setFlowElementType(FlowModelUtil.getElementType(nodeKey, flowElementMap));
+        if (nodeFlowElement == null) {
+          nodeInstance.setName("");
+          nodeInstance.setProperties(new HashMap<>());
+        } else {
+          nodeInstance.setName(FlowModelUtil.getElementName(nodeFlowElement));
+          Map<String, Object> nodeProps = nodeFlowElement.getProperties();
+          nodeInstance.setProperties(nodeProps != null && !nodeProps.isEmpty() ? nodeProps : new HashMap<>());
+        }
         elementInstanceList.add(nodeInstance);
         if (!FlowModelUtil.isElementType(nodeKey, flowElementMap, FlowElementType.CALL_ACTIVITY)) {
           continue;

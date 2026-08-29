@@ -506,3 +506,57 @@ outgoing channel→RabbitMQ topic 交换机链路，routing key 与 JSON 载荷�
 - 默认回归 → Tests run: 28, Failures: 0, Errors: 0, Skipped: 3（E2E 默认跳过），BUILD SUCCESS。
 
 **设计要点:** nodeAttributes = 节点定义的 `FlowElement.properties` 快照，事件发生时已确定且不可变；外部订阅者无需回查定义仓库即可读取节点配置，解耦核心与外部系统。
+
+## 评估：flow rollback 是否需支持「退回到指定节点」（2026-08-29）
+
+**结论:** 当前阶段不必要，列为 P2，待真实业务场景催动再做。
+
+**当前实现摘要:**
+
+- `RollbackTaskParam` 仅携带 `flowInstanceId` + `taskInstanceId`，`getActiveNodeForRollback`（`FlowExecutor.java:428`
+  ）只允许回退与 `suspendNodeInstanceId` 完全匹配的节点——ACTIVE 的当前节点，或最后一个 COMPLETED 节点。
+- `doRollback`（`FlowExecutor.java:474`）为单步链：禁用当前节点实例 → 若该节点是 COMPLETED 的 UserTask，则在同一 nodeKey 上新建
+  ACTIVE 实例并 `SuspendException` 挂起（`UserTaskExecutor.java:125`），等用户重新提交；回退到 StartEvent 则置 `TERMINATED`。
+- 本质是「重做当前环节 / 回退一步」模型，状态机与数据快照均按单步设计。
+
+**不做的理由（成本与前提破坏）:**
+
+- 多节点链路：跨步回退需沿 `sourceNodeInstanceId` 链路批量 DISABLE 中间节点，并重新激活目标节点；目标节点的
+  `instanceDataId` 可能已被后续步骤覆盖，需明确数据回放策略。
+- 并行/分支：跨 fork 后 sibling 分支节点实例的处理语义未定义（一并 disable / 保留），当前 `getActiveNodeForRollback` 未涉及。
+- CallActivity 嵌套：跨子流程回退时子流程实例生命周期需单独处理。
+- 幂等与重复回退：指定节点回退后，「上一个节点」语义变化，需重新定义可回退判定。
+
+**触发条件（满足任一可启动）:**
+
+- 出现「驳回发起人 / 驳回到指定环节」等 BPM 标配语义的真实审批流需求。
+- flow 产品 roadmap 需对标 Activiti/Flowable 的回退能力。
+- 「连退两步」频率高，单步回退成为体验瓶颈。
+
+**启动时的建议实现路径:**
+
+- `RollbackTaskParam` 增加可选 `targetNodeInstanceId`。
+- `getActiveNodeForRollback` 改为「链路可达性校验 + 中间节点批量 disable」。
+- 引入节点级 instanceData 快照表支撑数据回放，而非在现有单步逻辑上打补丁。
+
+## Feature: flow 实例列表增加「历史元素列表」按钮（2026-08-29）
+
+**需求:** 流程实例列表已有「用户操作记录」 (/user-tasks) 按钮，需再增加一个按钮拉取流程实例历史元素列表 (/elements)。
+
+**改动:**
+
+- 新增 `flexmodel-ui/src/pages/Flow/components/ElementInstancesDrawer.tsx`：只读 Drawer，用 vertical Steps 时间线展示
+  `getElementInstances` 返回的全部元素实例（含开始/网关/任务/结束），复用 NodeInstanceStatus
+  标签与实例数据查看（getInstanceData + Monaco 只读 Modal）。
+- `flexmodel-ui/src/pages/Flow/components/FlowInstanceList.tsx`：
+  - 引入 `NodeIndexOutlined`、`getElementInstances`、`ElementInstancesDrawer`。
+  - 新增 elements 相关 state（visible/loading/instances）与 `handleShowElements` handler。
+  - 操作列在「用户操作记录」后追加「历史元素列表」按钮（NodeIndexOutlined 图标）。
+  - JSX 末尾挂载 `<ElementInstancesDrawer/>`。
+
+**附带修复:** `FlowDetail/index.tsx:56` 的 `loadData` 增加 `projectId` 守卫，修复 hideLayout 路由下 currentProject 未就绪导致
+`projects//flows/instances/...` 404。
+
+**验证:**
+
+- `npx tsc -b` → 通过，无错误。

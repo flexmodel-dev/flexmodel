@@ -408,11 +408,11 @@ public class RuntimeProcessor {
           sequenceFlowInstance.setName(FlowModelUtil.getElementName(sourceFlowElement));
           sequenceFlowInstance.setProperties(sourceFlowElement.getProperties() != null ? sourceFlowElement.getProperties() : new HashMap<>());
           elementInstanceList.add(sequenceFlowInstance);
-          sequenceFlowInstance.setFlowElementType(sourceFlowElement.getType());
+          sequenceFlowInstance.setType(sourceFlowElement.getType());
         }
         ElementInstance nodeInstance = new ElementInstance(nodeKey, nodeStatus, nodeInstanceId, instanceDataId);
         FlowElement nodeFlowElement = FlowModelUtil.getFlowElement(flowElementMap, nodeKey);
-        nodeInstance.setFlowElementType(FlowModelUtil.getElementType(nodeKey, flowElementMap));
+        nodeInstance.setType(FlowModelUtil.getElementType(nodeKey, flowElementMap));
         if (nodeFlowElement == null) {
           nodeInstance.setName("");
           nodeInstance.setProperties(new HashMap<>());

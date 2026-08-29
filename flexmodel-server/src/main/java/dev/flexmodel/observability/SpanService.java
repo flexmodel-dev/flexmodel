@@ -4,10 +4,12 @@ import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.codegen.entity.FunctionLog;
 import dev.flexmodel.codegen.entity.Span;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
+import dev.flexmodel.codegen.entity.NodeInstanceLog;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.observability.apilog.FunctionLogService;
 import dev.flexmodel.observability.apilog.ApiRequestLogService;
 import dev.flexmodel.scheduling.JobExecutionLogRepository;
+import dev.flexmodel.flow.repository.NodeInstanceLogRepository;
 import dev.flexmodel.observability.dto.TraceDetail;
 import dev.flexmodel.observability.dto.TraceListItem;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -44,6 +46,9 @@ public class SpanService {
 
   @Inject
   JobExecutionLogRepository jobExecutionLogRepository;
+
+  @Inject
+  NodeInstanceLogRepository nodeInstanceLogRepository;
 
   /**
    * 查询 trace 列表（按 trace_id 聚合 span）。
@@ -105,6 +110,7 @@ public class SpanService {
     List<ApiRequestLog> apiLogs = List.of();
     List<FunctionLog> functionLogs = List.of();
     List<JobExecutionLog> jobExecutionLogs = List.of();
+    List<NodeInstanceLog> nodeInstanceLogs = List.of();
     try {
       apiLogs = apiRequestLogService.find(projectId, apiRequestLog.traceId.eq(traceId), 1, 200);
     } catch (Exception e) {
@@ -121,6 +127,11 @@ public class SpanService {
     } catch (Exception e) {
       log.debug("Failed to fetch job execution logs for trace {}", traceId, e);
     }
+    try {
+      nodeInstanceLogs = nodeInstanceLogRepository.findByTraceId(projectId, traceId, 200);
+    } catch (Exception e) {
+      log.debug("Failed to fetch node instance logs for trace {}", traceId, e);
+    }
 
     return TraceDetail.builder()
       .traceId(traceId)
@@ -128,6 +139,7 @@ public class SpanService {
       .apiLogs(apiLogs)
       .functionLogs(functionLogs)
       .jobExecutionLogs(jobExecutionLogs)
+      .nodeInstanceLogs(nodeInstanceLogs)
       .build();
   }
 

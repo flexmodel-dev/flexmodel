@@ -272,11 +272,12 @@ class Registry {
     // Store metadata
     const entryUrl = `file:///${functionDir.replace(/\\/g, "/")}/_worker_wrapper.ts`;
     const key = `${req.projectId}:${req.name}`;
+    const timeout = req.timeout ?? 30000;
     this.functions.set(key, {
       id: req.functionId,
       projectId: req.projectId,
       name: req.name,
-      timeout: req.timeout,
+      timeout,
       functionDir,
       entryUrl,
     });
@@ -290,8 +291,8 @@ class Registry {
     // Internal 15s timeout prevents blocking forever.
     try {
       await workerPool.warmup(
-          {id: req.functionId, projectId: req.projectId, name: req.name, timeout: req.timeout, functionDir, entryUrl},
-          1,
+        {id: req.functionId, projectId: req.projectId, name: req.name, timeout, functionDir, entryUrl},
+        1,
       );
     } catch (err) {
       console.warn(`[registry] Worker warmup failed for ${key}: ${err}`);

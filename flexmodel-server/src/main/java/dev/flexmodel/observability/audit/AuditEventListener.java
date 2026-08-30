@@ -4,6 +4,7 @@ import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.AuditLog;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.SessionContext;
+import dev.flexmodel.settings.ProjectObservabilitySettings;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventListener;
 import dev.flexmodel.observability.TracingHelper;
@@ -15,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 审计日志监听器：监听引擎后置数据变更事件，对配置定义类表的增删改记录审计日志。
@@ -31,21 +31,14 @@ import java.util.Set;
 @ApplicationScoped
 public class AuditEventListener implements EventListener {
 
-  /**
-   * 审计白名单：仅这些配置定义表的增删改记审计日志。
-   * 不含运行实例表（流程实例/节点实例）与日志表（API/任务/函数/节点日志），避免量过大与职责重复。
-   */
-  private static final Set<String> AUDIT_MODELS = Set.of(
-    "f_trigger",
-    "f_em_flow_definition",
-    "f_em_flow_deployment",
-    "f_function",
-    "f_bucket",
-    "f_auth_provider_config"
-  );
-
   @Inject
   AuditLogRepository auditLogRepository;
+
+  @Inject
+  ProjectRepository projectRepository;
+
+  @Inject
+  TracingHelper tracingHelper;
 
   @Override
   public void onChanged(ChangedEvent event) {
@@ -53,15 +46,15 @@ public class AuditEventListener implements EventListener {
       return;
     }
     String modelName = event.getModelName();
-    if (!AUDIT_MODELS.contains(modelName)) {
-      return;
-    }
     try {
       // schemaName 为项目数据库名，反查 projectId
-      Project project = CDI.current().select(ProjectRepository.class).get()
-        .findProjectByDatabaseName(event.getSchemaName());
+      Project project = projectRepository.findProjectByDatabaseName(event.getSchemaName());
       if (project == null) {
         log.debug("Audit skip: project not found for schemaName={}", event.getSchemaName());
+        return;
+      }
+      // 审计资源白名单按项目级 metadata.observability.auditResources 解析，未配置回退默认
+      if (!ProjectObservabilitySettings.auditResources(project).contains(modelName)) {
         return;
       }
       String projectId = project.getId();
@@ -97,7 +90,6 @@ public class AuditEventListener implements EventListener {
         // 非请求上下文（如定时任务）时无法获取 userId，留空
       }
       try {
-        TracingHelper tracingHelper = CDI.current().select(TracingHelper.class).get();
         auditLog.setTraceId(tracingHelper.currentTraceId());
       } catch (Exception ignored) {
       }

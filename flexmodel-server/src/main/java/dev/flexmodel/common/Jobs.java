@@ -2,10 +2,9 @@ package dev.flexmodel.common;
 
 import io.quarkus.scheduler.Scheduled;
 import jakarta.inject.Inject;
-import dev.flexmodel.settings.SettingsService;
 import dev.flexmodel.observability.api.ApiRequestLogService;
 import dev.flexmodel.scheduling.JobExecutionLogService;
-import dev.flexmodel.settings.Settings;
+import dev.flexmodel.settings.ProjectObservabilitySettings;
 import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.codegen.entity.Project;
 
@@ -15,8 +14,6 @@ import dev.flexmodel.codegen.entity.Project;
 public class Jobs {
 
   @Inject
-  SettingsService settingsService;
-  @Inject
   ApiRequestLogService apiLogService;
   @Inject
   JobExecutionLogService jobExecutionLogService;
@@ -25,12 +22,12 @@ public class Jobs {
 
   @Scheduled(cron = "0 0 1 * * ?")
   void purgeOldLogs() {
-    Settings settings = settingsService.getSettings();
-    int maxDays = settings.getLog().getMaxDays();
     for (Project project : projectService.findProjects()) {
+      int maxDays = ProjectObservabilitySettings.logRetentionDays(project);
       apiLogService.purgeOldLogs(project.getId(), maxDays);
     }
-    jobExecutionLogService.purgeOldLogs(maxDays);
+    // 作业执行日志为平台级全局表，按默认保留天数清理
+    jobExecutionLogService.purgeOldLogs(ProjectObservabilitySettings.DEFAULT_LOG_RETENTION_DAYS);
   }
 
 }

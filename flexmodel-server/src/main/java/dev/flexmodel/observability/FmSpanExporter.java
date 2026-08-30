@@ -6,6 +6,7 @@ import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import jakarta.annotation.PreDestroy;
@@ -46,9 +47,9 @@ public class FmSpanExporter implements SpanExporter {
   SessionFactory sessionFactory;
 
   @Override
-  public io.opentelemetry.sdk.common.CompletableResultCode export(java.util.Collection<SpanData> spans) {
+  public CompletableResultCode export(java.util.Collection<SpanData> spans) {
     if (spans == null || spans.isEmpty()) {
-      return io.opentelemetry.sdk.common.CompletableResultCode.ofSuccess();
+      return CompletableResultCode.ofSuccess();
     }
     try {
       // 第一遍：按 trace_id 收集根 span 的 projectId（来自 HTTP url.path 属性）
@@ -73,17 +74,17 @@ public class FmSpanExporter implements SpanExporter {
       // exporter 绝不能抛出，否则会中断 OTel 批处理
       log.debug("Failed to export spans to f_span", t);
     }
-    return io.opentelemetry.sdk.common.CompletableResultCode.ofSuccess();
+    return CompletableResultCode.ofSuccess();
   }
 
   @Override
-  public io.opentelemetry.sdk.common.CompletableResultCode flush() {
-    return io.opentelemetry.sdk.common.CompletableResultCode.ofSuccess();
+  public CompletableResultCode flush() {
+    return CompletableResultCode.ofSuccess();
   }
 
   @Override
-  public io.opentelemetry.sdk.common.CompletableResultCode shutdown() {
-    return io.opentelemetry.sdk.common.CompletableResultCode.ofSuccess();
+  public CompletableResultCode shutdown() {
+    return CompletableResultCode.ofSuccess();
   }
 
   @PreDestroy

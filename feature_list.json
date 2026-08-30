@@ -124,6 +124,16 @@
       ],
       "status": "done",
       "evidence": "前端: observability.d.ts 类型、observability.ts/function-log.ts 服务、Observability/components/TracesList.tsx、Observability/TraceDetail.tsx（ECharts custom 瀑布图）、Functions/components/FunctionLogList.tsx。routes.tsx 接入 Observability 父路由 + traces/function-logs 子路由 + traces/:traceId 隐藏全屏详情（镜像现有 flow 父+隐藏详情模式）。utils/echarts.ts 注册 CustomChart。locales zh/en 补全 observability.* / trace.* / function.log* 键。验证：npx tsc --noEmit 通过；JSON 校验通过。"
+    },
+    {
+      "id": "feat-015",
+      "name": "Branch - 日志表迁移过滤（@migration 注解）",
+      "description": "在 FML 中为 5 张日志/trace 表叠加 @migration(enabled: false) 标记，分支创建/合并时跳过这些表的数据迁移（表结构照常复制）。引擎侧零改动——@migration 走未识别注解的 additionalProperties 通道，与现有 @system 机制一致。v1 仅实现 enabled，MigrationConfig 预留 limit 接口暂不消费。",
+      "dependencies": [
+        "feat-008"
+      ],
+      "status": "done",
+      "evidence": "project.fml 为 f_api_request_log/f_function_log/f_audit_log/f_span/f_job_execution_log 在 @system 后追加 @migration(enabled: false)。新增 dev.flexmodel.project.MigrationConfig.of(SchemaObject) 解析 additionalProperties['migration']（Map→enabled/limit，默认全量迁移）。BranchService.createBranch/mergeBranch 数据迁移循环加入 isEnabled() 跳过判断；DefaultSchemaCopier 不变（仅复制表结构）。新增 ASTNodeConverterTest.migrationAnnotationIsStoredInAdditionalProperties 回归测试。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；mvn test -pl flexmodel-engine 通过（ASTNodeConverterTest 3 tests 0 failures）。"
     }
   ]
 }

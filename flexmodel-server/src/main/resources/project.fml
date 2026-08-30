@@ -47,6 +47,7 @@ model f_api_request_log {
   @index(name: "IDX_API_REQUEST_LOG_STATUS_CREATED_AT", fields: [status_code, created_at]),
   @index(name: "IDX_API_REQUEST_LOG_TRACE", fields: [trace_id]),
   @system,
+  @migration(enabled: false),
   @comment("API请求日志")
 }
 
@@ -241,6 +242,7 @@ model f_job_execution_log {
   @index(name:"IDX_JOB_EXEC_COMPOSITE", unique: false, fields: [trigger_id, start_time]),
   @index(name:"IDX_JOB_EXEC_TRACE_ID", unique: false, fields: [trace_id]),
   @system,
+  @migration(enabled: false),
   @comment("作业执行日志")
 }
 
@@ -267,6 +269,7 @@ model f_function_log {
   @index(name: "IDX_FUNCTION_LOG_TRACE", fields: [trace_id]),
   @index(name: "IDX_FUNCTION_LOG_NAME_TIME", fields: [function_name, created_at]),
   @system,
+  @migration(enabled: false),
   @comment("边缘函数执行日志")
 }
 
@@ -287,6 +290,7 @@ model f_audit_log {
   @index(name: "IDX_AUDIT_LOG_USER", fields: [user_id, created_at]),
   @index(name: "IDX_AUDIT_LOG_TRACE", fields: [trace_id]),
   @system,
+  @migration(enabled: false),
   @comment("审计日志(配置变更)")
 }
 
@@ -344,5 +348,6 @@ model f_span {
   @index(name: "IDX_SPAN_TRACE", fields: [trace_id]),
   @index(name: "IDX_SPAN_START_TIME", fields: [start_time]),
   @system,
+  @migration(enabled: false),
   @comment("链路追踪Span(项目级)")
 }

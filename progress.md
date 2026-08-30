@@ -707,3 +707,31 @@ f_job_execution_log。
 
 **验证:** mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS（codegen 重新生成 JobExecutionLog 含
 trace_id）。
+
+## Feature: 分支数据迁移过滤日志表（@migration 注解）（2026-08-30）
+
+**目标:** 创建/合并分支时跳过日志/trace 表的数据迁移（表结构照常复制），通过 FML 声明式标记驱动，可扩展。
+
+**完成内容:**
+
+- **FML 标记**（project.fml）：在 f_api_request_log、f_function_log、f_audit_log、f_span、f_job_execution_log 的
+  `@system` 后追加 `@migration(enabled: false)`（叠加不替换）。
+- **MigrationConfig**（新增 dev.flexmodel.project.MigrationConfig）：`of(SchemaObject)` 从
+  `additionalProperties["migration"]` 解析——无参标记→true（启用迁移）；带参注解→Map，取 enabled（Boolean.parseBoolean） 与
+  limit（Integer.parseInt，预留）；未标记或 null→默认全量迁移（向后兼容）。
+- **BranchService**：createBranch（数据迁移循环）与 mergeBranch（新模型插入 + 双方都有模型 diff 两个分支）加入
+  `if (!MigrationConfig.of(model).isEnabled()) continue;`，跳过数据迁移并 log.info 提示。
+- **DefaultSchemaCopier 不变**：仅复制表结构，日志表空结构照常建到新分支。
+- **回归测试**（ASTNodeConverterTest.migrationAnnotationIsStoredInAdditionalProperties）：断言
+  `@migration(enabled: false)` 被解析为 additionalProperties 中的 Map，enabled 以 String "false" 存储。
+
+**关键事实链:** ASTNodeConverter.toSchemaEntity L71-72 未识别注解走 default 分支——无参存 true、带参存参数 Map，
+引擎侧零改动；getAdditionalProperties 全仓仅 ModelService 与 FlexmodelGraphQL 两处消费者且只查 "system" key， codegen 不读
+additionalProperties，故 @migration 对实体生成透明无副作用。
+
+**验证:** mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；mvn test -pl flexmodel-engine
+通过；ASTNodeConverterTest 3 tests 0 failures 0 errors。
+
+**遗留/风险:** v1 仅实现 enabled，limit 字段已预留但 BranchService 未消费；将来支持 @migration (limit: N) 需在两处 迁移循环加按
+created_at desc 限量查询逻辑（各日志表均有 created_at）。注：mvn clean 因 dev 进程占用 flexmodel-server-dev.jar 失败，改用
+mvn compile 验证。

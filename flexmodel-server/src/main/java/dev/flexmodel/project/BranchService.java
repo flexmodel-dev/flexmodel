@@ -139,7 +139,12 @@ public class BranchService {
       List<SchemaObject> models = sessionFactory.getModels(sourceDbName);
       for (SchemaObject model : models) {
         if (!(model instanceof EntityDefinition entity)) continue;
+        MigrationConfig migrationConfig = MigrationConfig.of(model);
         String modelName = entity.getName();
+        if (!migrationConfig.isEnabled()) {
+          log.info("分支创建: 跳过迁移标记为 @migration(enabled: false) 的模型 {}", modelName);
+          continue;
+        }
         try {
           List<Map<String, Object>> records = sourceSession.data().findAll(modelName, new Query());
           if (!records.isEmpty()) {
@@ -278,6 +283,11 @@ public class BranchService {
           continue;
         }
         String modelName = sourceEntity.getName();
+
+        if (!MigrationConfig.of(sourceModel).isEnabled()) {
+          log.info("分支合并: 跳过迁移标记为 @migration(enabled: false) 的模型 {}", modelName);
+          continue;
+        }
 
         // 新创建的模型，直接批量插入所有源数据
         if (targetModelMap.get(modelName) == null) {

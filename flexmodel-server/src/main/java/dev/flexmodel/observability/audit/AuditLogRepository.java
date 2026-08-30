@@ -50,4 +50,12 @@ public interface AuditLogRepository {
    * @return 审计日志列表
    */
   List<AuditLog> findByTraceId(String projectId, String traceId, int limit);
+
+  /**
+   * 按条件删除审计日志。
+   *
+   * @param projectId 项目ID
+   * @param filter    删除条件
+   */
+  void delete(String projectId, Predicate filter);
 }

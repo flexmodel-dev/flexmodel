@@ -26,4 +26,12 @@ public interface SpanRepository {
    */
   List<Span> findByTraceId(String traceId);
 
+  /**
+   * 清理指定项目超过保留天数的 span（平台级系统库，按 project_id 过滤）。
+   *
+   * @param projectId 项目ID
+   * @param maxDays   保留天数
+   */
+  void purgeOldLogs(String projectId, int maxDays);
+
 }

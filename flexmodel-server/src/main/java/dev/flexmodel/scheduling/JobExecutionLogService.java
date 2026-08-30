@@ -179,6 +179,13 @@ public class JobExecutionLogService {
   }
 
   /**
+   * 清理指定项目超过保留天数的作业执行日志。
+   */
+  public void purgeOldLogs(String projectId, int maxDays) {
+    jobExecutionLogRepository.purgeOldLogs(projectId, maxDays);
+  }
+
+  /**
    * 根据多个条件查询日志
    *
    * @param triggerId 触发器ID（可选）

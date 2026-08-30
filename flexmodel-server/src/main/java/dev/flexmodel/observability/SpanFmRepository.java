@@ -9,6 +9,7 @@ import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static dev.flexmodel.codegen.System.span;
@@ -73,6 +74,18 @@ public class SpanFmRepository implements SpanRepository {
       return session.dsl().selectFrom(Span.class)
         .where(span.traceId.eq(traceId))
         .orderBy(span.startTime, Direction.ASC)
+        .execute();
+    }
+  }
+
+  @Override
+  public void purgeOldLogs(String projectId, int maxDays) {
+    LocalDateTime purgeDate = LocalDateTime.now().minusDays(maxDays);
+    Predicate filter = span.projectId.eq(projectId).and(span.createdAt.lte(purgeDate));
+    try (Session session = sessionFactory.createSession()) {
+      session.dsl()
+        .deleteFrom(Span.class)
+        .where(filter)
         .execute();
     }
   }

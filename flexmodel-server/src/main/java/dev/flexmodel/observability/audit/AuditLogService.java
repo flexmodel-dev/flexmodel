@@ -9,6 +9,7 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static dev.flexmodel.codegen.System.auditLog;
@@ -54,5 +55,14 @@ public class AuditLogService {
    */
   public List<AuditLog> findByTraceId(String projectId, String traceId) {
     return auditLogRepository.findByTraceId(projectId, traceId, 200);
+  }
+
+  /**
+   * 清理指定项目超过保留天数的审计日志。
+   */
+  public void purgeOldLogs(String projectId, int maxDays) {
+    log.info("Purging old audit logs older than {} days for project {}", maxDays, projectId);
+    LocalDateTime purgeDate = LocalDateTime.now().minusDays(maxDays);
+    auditLogRepository.delete(projectId, auditLog.createdAt.lte(purgeDate));
   }
 }

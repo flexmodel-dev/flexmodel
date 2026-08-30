@@ -66,4 +66,14 @@ public class AuditLogFmRepository extends AbstractRepository implements AuditLog
         .execute();
     }
   }
+
+  @Override
+  public void delete(String projectId, Predicate filter) {
+    try (Session session = getProjectSession(projectId)) {
+      session.dsl()
+        .deleteFrom(AuditLog.class)
+        .where(filter)
+        .execute();
+    }
+  }
 }

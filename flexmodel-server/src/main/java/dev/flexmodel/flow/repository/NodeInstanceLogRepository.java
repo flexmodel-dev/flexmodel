@@ -21,4 +21,12 @@ public interface NodeInstanceLogRepository {
    */
   List<NodeInstanceLog> findByTraceId(String projectId, String traceId, int limit);
 
+  /**
+   * 清理指定项目超过保留天数的节点执行日志。
+   *
+   * @param projectId 项目ID
+   * @param maxDays   保留天数
+   */
+  void purgeOldLogs(String projectId, int maxDays);
+
 }

@@ -107,7 +107,7 @@ public class SpanService {
    * 查询 trace 详情（全部 span + 关联日志）。
    */
   public TraceDetail findTraceDetail(String projectId, String traceId) {
-    List<Span> spans = spanRepository.findByTraceId(traceId);
+    List<Span> spans = spanRepository.findByTraceId(projectId, traceId);
 
     // 关联日志从项目库按 trace_id 查询
     List<ApiRequestLog> apiLogs = List.of();

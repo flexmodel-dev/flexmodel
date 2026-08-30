@@ -328,3 +328,21 @@ model f_page_site {
 }
 
 enum PageDeploymentStatus { READY, FAILED, @system }
+
+model f_span {
+  id : String @id @default(uuid()),
+  trace_id : String @length("64") @comment("链路追踪ID"),
+  span_id : String @length("64") @comment("Span ID"),
+  parent_id? : String @length("64") @comment("父Span ID"),
+  name : String @length("512") @comment("Span名称(如HTTP GET/JDBC query)"),
+  kind : String @length("32") @comment("Span类型(INTERNAL/SERVER/CLIENT)"),
+  start_time : Long @comment("起始时间(纳秒epoch)"),
+  duration_ns : Long @comment("耗时(纳秒)"),
+  attributes? : JSON @comment("Span属性"),
+  status : String @length("32") @comment("状态(UNSET/OK/ERROR)"),
+  created_at? : DateTime @default(now()) @comment("记录时间"),
+  @index(name: "IDX_SPAN_TRACE", fields: [trace_id]),
+  @index(name: "IDX_SPAN_START_TIME", fields: [start_time]),
+  @system,
+  @comment("链路追踪Span(项目级)")
+}

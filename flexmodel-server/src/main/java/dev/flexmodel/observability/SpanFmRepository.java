@@ -1,13 +1,12 @@
 package dev.flexmodel.observability;
 
 import dev.flexmodel.codegen.entity.Span;
+import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.session.Session;
-import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,27 +14,23 @@ import java.util.List;
 import static dev.flexmodel.codegen.System.span;
 
 /**
+ * 链路追踪 Span 仓储（项目级，每个项目库各自持有 f_span 表）。
+ *
  * @author cjbi
  */
 @ApplicationScoped
-public class SpanFmRepository implements SpanRepository {
-
-  @Inject
-  SessionFactory sessionFactory;
+public class SpanFmRepository extends AbstractRepository implements SpanRepository {
 
   @Override
   public List<Span> findByProject(String projectId, Long startFrom, Long startTo, int limit) {
     Predicate filter = Expressions.TRUE;
-    if (projectId != null) {
-      filter = filter.and(span.projectId.eq(projectId));
-    }
     if (startFrom != null) {
       filter = filter.and(span.startTime.gte(startFrom));
     }
     if (startTo != null) {
       filter = filter.and(span.startTime.lte(startTo));
     }
-    try (Session session = sessionFactory.createSession()) {
+    try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(Span.class)
         .where(filter)
         .orderBy(span.startTime, Direction.DESC)
@@ -47,9 +42,6 @@ public class SpanFmRepository implements SpanRepository {
   @Override
   public List<Span> findByProject(String projectId, Long startFrom, Long startTo, String traceId, int limit) {
     Predicate filter = Expressions.TRUE;
-    if (projectId != null) {
-      filter = filter.and(span.projectId.eq(projectId));
-    }
     if (startFrom != null) {
       filter = filter.and(span.startTime.gte(startFrom));
     }
@@ -59,7 +51,7 @@ public class SpanFmRepository implements SpanRepository {
     if (traceId != null && !traceId.isBlank()) {
       filter = filter.and(span.traceId.contains(traceId));
     }
-    try (Session session = sessionFactory.createSession()) {
+    try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(Span.class)
         .where(filter)
         .orderBy(span.startTime, Direction.DESC)
@@ -69,10 +61,10 @@ public class SpanFmRepository implements SpanRepository {
   }
 
   @Override
-  public List<Span> findByTraceId(String traceId) {
-    try (Session session = sessionFactory.createSession()) {
+  public List<Span> findByTraceId(String projectId, String traceId) {
+    try (Session session = getProjectSession(projectId)) {
       return session.dsl().selectFrom(Span.class)
-        .where(span.traceId.eq(traceId))
+        .where(Expressions.TRUE.and(span.traceId.eq(traceId)))
         .orderBy(span.startTime, Direction.ASC)
         .execute();
     }
@@ -81,8 +73,8 @@ public class SpanFmRepository implements SpanRepository {
   @Override
   public void purgeOldLogs(String projectId, int maxDays) {
     LocalDateTime purgeDate = LocalDateTime.now().minusDays(maxDays);
-    Predicate filter = span.projectId.eq(projectId).and(span.createdAt.lte(purgeDate));
-    try (Session session = sessionFactory.createSession()) {
+    Predicate filter = span.createdAt.lte(purgeDate);
+    try (Session session = getProjectSession(projectId)) {
       session.dsl()
         .deleteFrom(Span.class)
         .where(filter)

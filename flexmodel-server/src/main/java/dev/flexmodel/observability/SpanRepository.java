@@ -24,7 +24,7 @@ public interface SpanRepository {
   /**
    * 按 trace_id 查询全部 span
    */
-  List<Span> findByTraceId(String traceId);
+  List<Span> findByTraceId(String projectId, String traceId);
 
   /**
    * 清理指定项目超过保留天数的 span（平台级系统库，按 project_id 过滤）。

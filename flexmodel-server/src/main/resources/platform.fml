@@ -351,26 +351,6 @@ model f_function_template {
   @comment("边缘函数模板(平台级)")
 }
 
-model f_span {
-  id : String @id @default(uuid()),
-  trace_id : String @length("64") @comment("链路追踪ID"),
-  span_id : String @length("64") @comment("Span ID"),
-  parent_id? : String @length("64") @comment("父Span ID"),
-  name : String @length("512") @comment("Span名称(如HTTP GET/JDBC query)"),
-  kind : String @length("32") @comment("Span类型(INTERNAL/SERVER/CLIENT)"),
-  project_id? : String @length("64") @comment("项目ID(从HTTP根span提取)"),
-  start_time : Long @comment("起始时间(纳秒epoch)"),
-  duration_ns : Long @comment("耗时(纳秒)"),
-  attributes? : JSON @comment("Span属性"),
-  status : String @length("32") @comment("状态(UNSET/OK/ERROR)"),
-  created_at? : DateTime @default(now()) @comment("记录时间"),
-  @index(name: "IDX_SPAN_TRACE", fields: [trace_id]),
-  @index(name: "IDX_SPAN_PROJECT_START", fields: [project_id, start_time]),
-  @index(name: "IDX_SPAN_START_TIME", fields: [start_time]),
-  @system,
-  @comment("链路追踪Span(平台级)")
-}
-
 seed f_function_template {
   {id: "tpl-001", name: "Hello World", slug: "hello-world", description: "最简单的函数，返回问候语", source_files: {"index.ts": "export default async function(req: Request) {\n  return new Response(JSON.stringify({ message: \"Hello, World!\" }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"}, tags: "[\"beginner\"]", icon: "code", sort_order: 1},
   {id: "tpl-002", name: "Database Query", slug: "database-query", description: "查询 Flexmodel 数据表并返回结果", source_files: {"index.ts": "import { flexmodelClient } from \"@flexmodel/sdk\";\n\nexport default async function(req: Request) {\n  const url = new URL(req.url);\n  const model = url.searchParams.get(\"model\") || \"Student\";\n  const page = Number(url.searchParams.get(\"page\") || \"1\");\n  const size = Number(url.searchParams.get(\"size\") || \"10\");\n  const result = await flexmodelClient.data.from(model).findMany({ page, size });\n  console.log(\"Query completed\", { model, total: result.total });\n  return new Response(JSON.stringify(result), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"}, tags: "[\"database\"]", icon: "database", sort_order: 2},

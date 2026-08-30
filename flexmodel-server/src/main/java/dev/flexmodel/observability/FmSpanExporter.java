@@ -1,17 +1,15 @@
 package dev.flexmodel.observability;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.codegen.entity.Span;
 import dev.flexmodel.session.Session;
-import dev.flexmodel.session.SessionFactory;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -22,7 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 自定义 OTel SpanExporter —— 将 Quarkus 自动埋点产生的 Span 落库到平台级 {@code f_span} 表。
+ * 自定义 OTel SpanExporter —— 将 Quarkus 自动埋点产生的 Span 落库到项目级 {@code f_span} 表。
  * <p>
  * 通过 Quarkus OTel 的 {@code cdi} exporter 机制接入：设置
  * {@code quarkus.otel.traces.exporter=cdi} 后，{@code SpanExporterCDIProvider} 会收集
@@ -32,6 +30,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>failsafe —— 任何异常都不抛出，避免拖垮 OTel 批处理线程和应用请求</li>
  *   <li>project_id 从 HTTP 根 span 的 {@code url.path} 提取，同批次按 trace_id 回填子 span</li>
+ *   <li>按 project_id 分组，分别写入对应项目库的 f_span 表（项目级隔离）</li>
  *   <li>attributes 序列化为 JSON 列</li>
  * </ul>
  *
@@ -39,17 +38,14 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 @ApplicationScoped
-public class FmSpanExporter implements SpanExporter {
+public class FmSpanExporter extends AbstractRepository implements SpanExporter {
 
   private static final Pattern PROJECT_PATH = Pattern.compile("/(?:api/)?projects/([^/]+)/");
 
-  @Inject
-  SessionFactory sessionFactory;
-
   @Override
-  public CompletableResultCode export(java.util.Collection<SpanData> spans) {
+  public io.opentelemetry.sdk.common.CompletableResultCode export(java.util.Collection<SpanData> spans) {
     if (spans == null || spans.isEmpty()) {
-      return CompletableResultCode.ofSuccess();
+      return io.opentelemetry.sdk.common.CompletableResultCode.ofSuccess();
     }
     try {
       // 第一遍：按 trace_id 收集根 span 的 projectId（来自 HTTP url.path 属性）
@@ -60,31 +56,36 @@ public class FmSpanExporter implements SpanExporter {
           traceProject.putIfAbsent(s.getTraceId(), pid);
         }
       }
-      List<Span> records = new ArrayList<>(spans.size());
+      // 按 projectId 分组构建 Span 记录，分别写入对应项目库
+      Map<String, List<Span>> byProject = new HashMap<>();
       for (SpanData s : spans) {
-        Span rec = toSpan(s, traceProject.get(s.getTraceId()));
+        String pid = traceProject.get(s.getTraceId());
+        if (pid == null) {
+          continue;
+        }
+        Span rec = toSpan(s);
         if (rec != null) {
-          records.add(rec);
+          byProject.computeIfAbsent(pid, k -> new ArrayList<>()).add(rec);
         }
       }
-      if (!records.isEmpty()) {
-        persist(records);
+      if (!byProject.isEmpty()) {
+        persist(byProject);
       }
     } catch (Throwable t) {
       // exporter 绝不能抛出，否则会中断 OTel 批处理
       log.debug("Failed to export spans to f_span", t);
     }
-    return CompletableResultCode.ofSuccess();
+    return io.opentelemetry.sdk.common.CompletableResultCode.ofSuccess();
   }
 
   @Override
-  public CompletableResultCode flush() {
-    return CompletableResultCode.ofSuccess();
+  public io.opentelemetry.sdk.common.CompletableResultCode flush() {
+    return io.opentelemetry.sdk.common.CompletableResultCode.ofSuccess();
   }
 
   @Override
-  public CompletableResultCode shutdown() {
-    return CompletableResultCode.ofSuccess();
+  public io.opentelemetry.sdk.common.CompletableResultCode shutdown() {
+    return io.opentelemetry.sdk.common.CompletableResultCode.ofSuccess();
   }
 
   @PreDestroy
@@ -95,17 +96,22 @@ public class FmSpanExporter implements SpanExporter {
     }
   }
 
-  private void persist(List<Span> records) {
-    try (Session session = sessionFactory.createSession()) {
-      for (Span rec : records) {
-        session.dsl().mergeInto(Span.class).values(rec).execute();
+  /**
+   * 按 projectId 分组，分别写入对应项目库的 f_span 表。
+   */
+  private void persist(Map<String, List<Span>> byProject) {
+    for (var entry : byProject.entrySet()) {
+      try (Session session = getProjectSession(entry.getKey())) {
+        for (Span rec : entry.getValue()) {
+          session.dsl().mergeInto(Span.class).values(rec).execute();
+        }
+      } catch (Throwable t) {
+        log.debug("Failed to persist {} spans for project {}", entry.getValue().size(), entry.getKey(), t);
       }
-    } catch (Throwable t) {
-      log.debug("Failed to persist {} spans", records.size(), t);
     }
   }
 
-  private Span toSpan(SpanData s, String projectId) {
+  private Span toSpan(SpanData s) {
     try {
       Span rec = new Span();
       rec.setTraceId(s.getTraceId());
@@ -113,7 +119,6 @@ public class FmSpanExporter implements SpanExporter {
       rec.setParentId(s.getParentSpanId());
       rec.setName(s.getName());
       rec.setKind(s.getKind().name());
-      rec.setProjectId(projectId);
       rec.setStartTime(s.getStartEpochNanos());
       rec.setDurationNs(s.getEndEpochNanos() - s.getStartEpochNanos());
       rec.setAttributes(toAttributesJson(s.getAttributes()));

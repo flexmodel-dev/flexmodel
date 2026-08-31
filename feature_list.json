@@ -64,7 +64,7 @@
       "description": "基于 React + Ant Design v6 的前端界面持续优化和功能完善",
       "dependencies": ["feat-002", "feat-003", "feat-004"],
       "status": "in-progress",
-      "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中"
+      "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中。2026-08-31 趋势分析面板请求接入 loading 状态：Overview 管理 API 统计请求 loading，TrendAnalysis 图表与排名区域使用 Spin 展示；npx tsc --noEmit 通过。"
     },
     {
       "id": "feat-009",

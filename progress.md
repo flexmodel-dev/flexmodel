@@ -1,4 +1,21 @@
-﻿# Session Progress Log
+# Session Progress Log
+
+## Feature: Overview 趋势分析加载状态（2026-08-31）
+
+**目标:** 趋势分析面板在 API 统计数据请求期间显示加载状态，避免请求中渲染旧数据。
+
+**完成内容:**
+
+- Overview 页面新增 API 统计请求 loading 状态，请求开始置为 loading，结束后无论成功或异常都关闭。
+- TrendAnalysis 组件接收 loading 属性，并在图表与 API 排名区域外层展示 Spin。
+
+**验证:**
+
+- `npx tsc --noEmit`（flexmodel-ui）通过。
+
+**遗留/说明:**
+
+- 仓库根目录 `./init.sh` 在当前 Windows 会话中无法启动 Bash，已改用等价的前端类型检查；后续环境恢复后需重跑标准初始化验证。
 
 ## Feature: Observability 可观测性（traceId 链路 + 函数日志 + 链路追踪页面）（2026-08-29）
 

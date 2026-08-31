@@ -11,7 +11,7 @@ public enum Direction implements Serializable {
 
   public static Direction fromString(String direction) {
     for (Direction value : Direction.values()) {
-      if (value.name().equalsIgnoreCase(direction)) {
+      if (value.name().equalsIgnoreCase(direction.toUpperCase())) {
         return value;
       }
     }

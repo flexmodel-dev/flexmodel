@@ -40,11 +40,14 @@ model f_api_request_log {
   created_at : DateTime @default(now()),
   is_success: Boolean @comment("是否成功") @default("true"),
   error_message? : JSON @comment("异常信息"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
   @index(name: "IDX_API_REQUEST_LOG_CREATED_AT", fields: [created_at]),
   @index(name: "IDX_API_REQUEST_LOG_IS_ERROR", fields: [is_success]),
   @index(name: "IDX_API_REQUEST_LOG_PATH_CREATED_AT", fields: [path, created_at]),
   @index(name: "IDX_API_REQUEST_LOG_STATUS_CREATED_AT", fields: [status_code, created_at]),
+  @index(name: "IDX_API_REQUEST_LOG_TRACE", fields: [trace_id]),
   @system,
+  @migration(enabled: false),
   @comment("API请求日志")
 }
 
@@ -150,10 +153,11 @@ model f_ei_node_instance_log {
   flow_instance_id: String @comment("流程执行实例id"),
   instance_data_id: String @comment("实例数据id"),
   node_key: String @comment("节点唯一标识"),
-  type: Int @default(0) @comment("操作类型(1.系统执行 2.任务提交 3.任务撤销)"),
-  status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
-  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
-  created_by?: String @comment("创建人"),
+ type: Int @default(0) @comment("操作类型(1.系统执行 2.任务提交 3.任务撤销)"),
+ status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
+ archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+ trace_id? : String @length("64") @comment("链路追踪ID"),
+ created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
@@ -223,6 +227,7 @@ model f_job_execution_log {
   instance_name : String @length("190") @comment("调度实例名称"),
   fired_time : Long @comment("实际触发时间(毫秒)"),
   scheduled_time : Long @comment("计划执行时间(毫秒)"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
@@ -235,7 +240,9 @@ model f_job_execution_log {
   @index(name:"IDX_JOB_EXEC_START_TIME", unique: false, fields: [start_time]),
   @index(name:"IDX_JOB_EXEC_SUCCESS", unique: false, fields: [is_success]),
   @index(name:"IDX_JOB_EXEC_COMPOSITE", unique: false, fields: [trigger_id, start_time]),
+  @index(name:"IDX_JOB_EXEC_TRACE_ID", unique: false, fields: [trace_id]),
   @system,
+  @migration(enabled: false),
   @comment("作业执行日志")
 }
 
@@ -254,13 +261,37 @@ model f_function {
 
 model f_function_log {
   id : String @id @default(uuid()),
-  invoke_id : String @comment("调用ID，关联同一次函数调用"),
   function_name : String @comment("函数名称"),
   level : String @comment("日志级别(log/warn/error)"),
   message : String @comment("日志消息"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
   created_at? : DateTime @default(now()) @comment("记录时间"),
+  @index(name: "IDX_FUNCTION_LOG_TRACE", fields: [trace_id]),
+  @index(name: "IDX_FUNCTION_LOG_NAME_TIME", fields: [function_name, created_at]),
   @system,
+  @migration(enabled: false),
   @comment("边缘函数执行日志")
+}
+
+model f_audit_log {
+  id : String @id @default(uuid()),
+  action : String @length("20") @comment("操作类型(INSERT/UPDATE/DELETE)"),
+  resource_type : String @length("100") @comment("资源类型(模型名)"),
+  resource_id : String @length("200") @comment("资源ID"),
+  resource_name? : String @length("200") @comment("资源名称"),
+  user_id? : String @length("100") @comment("操作人ID"),
+  success : Boolean @default("true") @comment("是否成功"),
+  error_message? : String @length("2000") @comment("错误信息"),
+  old_data? : JSON @comment("变更前数据"),
+  new_data? : JSON @comment("变更后数据"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
+  created_at : DateTime @default(now()) @comment("操作时间"),
+  @index(name: "IDX_AUDIT_LOG_RESOURCE", fields: [resource_type, created_at]),
+  @index(name: "IDX_AUDIT_LOG_USER", fields: [user_id, created_at]),
+  @index(name: "IDX_AUDIT_LOG_TRACE", fields: [trace_id]),
+  @system,
+  @migration(enabled: false),
+  @comment("审计日志(配置变更)")
 }
 
 enum TriggerType {
@@ -301,3 +332,22 @@ model f_page_site {
 }
 
 enum PageDeploymentStatus { READY, FAILED, @system }
+
+model f_span {
+  id : String @id @default(uuid()),
+  trace_id : String @length("64") @comment("链路追踪ID"),
+  span_id : String @length("64") @comment("Span ID"),
+  parent_id? : String @length("64") @comment("父Span ID"),
+  name : String @length("512") @comment("Span名称(如HTTP GET/JDBC query)"),
+  kind : String @length("32") @comment("Span类型(INTERNAL/SERVER/CLIENT)"),
+  start_time : Long @comment("起始时间(纳秒epoch)"),
+  duration_ns : Long @comment("耗时(纳秒)"),
+  attributes? : JSON @comment("Span属性"),
+  status : String @length("32") @comment("状态(UNSET/OK/ERROR)"),
+  created_at? : DateTime @default(now()) @comment("记录时间"),
+  @index(name: "IDX_SPAN_TRACE", fields: [trace_id]),
+  @index(name: "IDX_SPAN_START_TIME", fields: [start_time]),
+  @system,
+  @migration(enabled: false),
+  @comment("链路追踪Span(项目级)")
+}

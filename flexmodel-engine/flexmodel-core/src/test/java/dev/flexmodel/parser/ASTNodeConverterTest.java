@@ -2,7 +2,10 @@ package dev.flexmodel.parser;
 
 import dev.flexmodel.parser.ASTNodeConverter;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.parser.impl.ModelParser;
 import dev.flexmodel.parser.impl.ParseException;
@@ -45,6 +48,26 @@ public class ASTNodeConverterTest {
       sb.append(ASTNodeConverter.fromSchemaObject(schemaObject)).append("\n");
     }
     System.out.println(sb);
+  }
+
+  @Test
+  void migrationAnnotationIsStoredInAdditionalProperties() throws ParseException {
+    String fml = "model f_log {\n"
+            + "  id : String @id @default(uuid()),\n"
+            + "  message : String,\n"
+            + "  @system,\n"
+            + "  @migration(enabled: false),\n"
+            + "  @comment(\"日志表\")\n"
+            + "}\n";
+    List<SchemaObject> models = ASTNodeConverter.parseFML(fml).getModels();
+    assertEquals(1, models.size());
+    EntityDefinition entity = (EntityDefinition) models.get(0);
+    Object migration = entity.getAdditionalProperties().get("migration");
+    assertNotNull(migration, "@migration 应存入 additionalProperties");
+    assertInstanceOf(Map.class, migration, "带参数的 @migration 应存为参数 Map");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> params = (Map<String, Object>) migration;
+    assertEquals("false", params.get("enabled"), "enabled 参数应以 String 形式存储");
   }
 
 }

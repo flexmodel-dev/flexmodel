@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static dev.flexmodel.codegen.System.function;
 
@@ -165,17 +164,15 @@ public class FunctionService {
 
     // 为本次 invoke 签发 Runtime 回调专用 JWT（5 分钟有效期）
     String authToken = internalTokenService.signToken(projectId);
-    // 生成本次调用的唯一ID，用于关联 f_function_log 日志记录
-    String invokeId = UUID.randomUUID().toString();
 
-    Response response = functionInvoker.invoke(projectId, name, body, authToken, invokeId);
+    Response response = functionInvoker.invoke(projectId, name, body, authToken);
 
     // runtime 重启等情况会导致函数未注册（404），此时按需部署后重试一次
     if (response.getStatus() == 404) {
       log.info("Function not registered in runtime, deploying: {}:{}", projectId, name);
       response.close();
       deployToRuntime(projectId, fn);
-      response = functionInvoker.invoke(projectId, name, body, authToken, invokeId);
+      response = functionInvoker.invoke(projectId, name, body, authToken);
     }
 
     log.info("Function {} invoked, status={}", name, response.getStatus());

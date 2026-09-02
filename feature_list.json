@@ -64,7 +64,18 @@
       "description": "基于 React + Ant Design v6 的前端界面持续优化和功能完善",
       "dependencies": ["feat-002", "feat-003", "feat-004"],
       "status": "in-progress",
-      "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中"
+      "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中。2026-08-31 移除 OpenTelemetry 依赖与运行时，改用轻量 trace 上下文；日志按功能归属迁移到后端 feature 包与 UI 路由（API/数据/边缘函数/任务调度）。同日移除前端链路追踪页面、API、路由和跳转，仅保留日志 traceId 元数据。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；ApiLogResourceTest + TriggerResourceTest 18 tests 通过；npx tsc --noEmit 通过。"
+    },
+    {
+      "id": "feat-008-session-2026-09-02",
+      "name": "UI - 合并函数日志到函数详情页",
+      "description": "将独立的「函数日志」页面合并到 FunctionDetail.tsx，作为函数详情抽屉的「日志」Tab，按当前函数过滤展示执行日志。",
+      "dependencies": [
+        "feat-008",
+        "feat-010"
+      ],
+      "status": "done",
+      "evidence": "新增 flexmodel-ui/src/pages/Functions/components/FunctionLogPanel.tsx（单函数作用域日志查看：级别/时间范围/Trace ID/关键字筛选 + 分页表格 + 详情抽屉，复用 getFunctionLogs）。FunctionDetail.tsx 新增「日志」Tab（FileTextOutlined + function.logTitle）。删除独立 FunctionLogList.tsx 页面；routes.tsx 移除 /project/:projectId/functions/logs 路由、FunctionLogList 导入与 FileTextOutlined 图标导入。验证：npx tsc -p tsconfig.app.json --noEmit 对本次改动文件 0 错误（既有 4 处 noUnusedLocals 历史错误非本次引入）。"
     },
     {
       "id": "feat-009",
@@ -90,7 +101,17 @@
         "feat-003"
       ],
       "status": "done",
-      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。"
+      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。【重构】合并 data-events-out 至 events-out：新增 dev.flexmodel.common.FlexmodelEvent 标记接口，FlowEvent 与 DataChangeEvent 实现之，两个桥接统一注入 @Channel(\"events-out\") MutinyEmitter<FlexmodelEvent>，删除 data-events-out 通道配置。消费端按 routing key 区分（data.* / flow.*），零改动。验证：服务模块编译通过。"
+    },
+    {
+      "id": "feat-015",
+      "name": "Branch - 日志表迁移过滤（@migration 注解）",
+      "description": "在 FML 中为 5 张日志/trace 表叠加 @migration(enabled: false) 标记，分支创建/合并时跳过这些表的数据迁移（表结构照常复制）。引擎侧零改动——@migration 走未识别注解的 additionalProperties 通道，与现有 @system 机制一致。v1 仅实现 enabled，MigrationConfig 预留 limit 接口暂不消费。",
+      "dependencies": [
+        "feat-008"
+      ],
+      "status": "done",
+      "evidence": "project.fml 为 f_api_request_log/f_function_log/f_audit_log/f_span/f_job_execution_log 在 @system 后追加 @migration(enabled: false)。新增 dev.flexmodel.project.MigrationConfig.of(SchemaObject) 解析 additionalProperties['migration']（Map→enabled/limit，默认全量迁移）。BranchService.createBranch/mergeBranch 数据迁移循环加入 isEnabled() 跳过判断；DefaultSchemaCopier 不变（仅复制表结构）。新增 ASTNodeConverterTest.migrationAnnotationIsStoredInAdditionalProperties 回归测试。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；mvn test -pl flexmodel-engine 通过（ASTNodeConverterTest 3 tests 0 failures）。"
     }
   ]
 }

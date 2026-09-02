@@ -2,6 +2,7 @@ package dev.flexmodel.scheduling.job;
 
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.scheduling.JobExecutionLogService;
+import dev.flexmodel.common.trace.TraceContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,10 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
   JobExecutionLogService jobExecutionLogService;
 
   private static final String EXECUTION_LOG_ID_KEY = "executionLogId";
+  static final String SPAN_SCOPE_KEY = "traceScope";
+
+  @Inject
+  TraceContext traceContext;
 
   @Override
   public String getName() {
@@ -52,6 +57,15 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       Long scheduledTime = context.getScheduledFireTime().getTime();
       String projectId = context.getJobDetail().getJobDataMap().getString("projectId");
 
+      // 生成根 span 的 traceId/spanId：Quartz Job 为非 HTTP 入口，无自动 span 上下文。
+      // ScopedValue 无法跨 jobToBeExecuted→execute→jobWasExecuted 三个独立回调维持绑定，
+      // 此处仅生成 scope 并存入 context；实际绑定在 Job.execute() 内通过 TraceContextHolder.with 完成，
+      // 保证 recordJobStart 拿到 traceId，下游（函数调用的 traceparent 注入）在 execute 作用域内可见。
+      TraceContext.TraceScope traceScope = traceContext.createScope();
+      context.put("traceId", traceScope.traceId());
+      context.put("spanId", traceScope.spanId());
+      context.put(SPAN_SCOPE_KEY, traceScope);
+
       // 获取输入数据
       Object inputData = extractInputData(context);
 
@@ -59,7 +73,7 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       JobExecutionLog executionLog = jobExecutionLogService.recordJobStart(
         triggerId, jobId, jobGroup, jobType, jobName,
         schedulerName, instanceName, firedTime, scheduledTime,
-        inputData, projectId
+        inputData, projectId, traceScope.traceId()
       );
 
       // 将执行日志ID存储到上下文中，供后续使用
@@ -134,6 +148,9 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       }
     } catch (Exception e) {
       log.error("记录作业执行结果失败", e);
+    } finally {
+      // ScopedValue 由 Job.execute() 内的 TraceContextHolder.with 自动清理，
+      // 跨回调无法维持绑定，此处无需（也无法）关闭 span。
     }
   }
 

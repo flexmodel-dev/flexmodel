@@ -99,7 +99,8 @@ public class JobExecutionLogService {
    */
   public JobExecutionLog recordJobStart(String triggerId, String jobId, String jobGroup, String jobType,
                                         String jobName, String schedulerName, String instanceName,
-                                        Long firedTime, Long scheduledTime, Object inputData, String projectId) {
+                                        Long firedTime, Long scheduledTime, Object inputData, String projectId,
+                                        String traceId) {
     JobExecutionLog log = new JobExecutionLog();
     log.setTriggerId(triggerId);
     log.setJobId(jobId);
@@ -116,6 +117,7 @@ public class JobExecutionLogService {
     log.setInputData(inputData);
     log.setRetryCount(0);
     log.setMaxRetryCount(0);
+    log.setTraceId(traceId);
 
     return create(projectId, log);
   }
@@ -174,6 +176,13 @@ public class JobExecutionLogService {
     for (Project project : projects) {
       jobExecutionLogRepository.delete(project.getId(), filter);
     }
+  }
+
+  /**
+   * 清理指定项目超过保留天数的作业执行日志。
+   */
+  public void purgeOldLogs(String projectId, int maxDays) {
+    jobExecutionLogRepository.purgeOldLogs(projectId, maxDays);
   }
 
   /**

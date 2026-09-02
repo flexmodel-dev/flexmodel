@@ -2,12 +2,14 @@ package dev.flexmodel.storage;
 
 import dev.flexmodel.codegen.entity.Bucket;
 import dev.flexmodel.common.NotFoundException;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.storage.config.StorageProvider;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +34,9 @@ public class BucketService {
   @Inject
   StorageProvider storageProvider;
 
+  @Inject
+  SessionContext sessionContext;
+
   // ==================== Bucket CRUD ====================
 
   public Bucket createBucket(String ownerType, String ownerId, Bucket bucket) {
@@ -49,6 +54,9 @@ public class BucketService {
     if (bucket.getId() == null || bucket.getId().isEmpty()) {
       bucket.setId(UUID.randomUUID().toString());
     }
+    // 审计字段：创建人 / 创建时间
+    bucket.setCreatedBy(sessionContext.getUserId() != null ? sessionContext.getUserId() : "system");
+    bucket.setCreatedAt(LocalDateTime.now());
 
     // 创建底层容器
     String prefix = buildPrefix(bucket);
@@ -79,6 +87,9 @@ public class BucketService {
     bucket.setOwnerId(ownerId);
     bucket.setName(old.getName()); // name 不可修改
     bucket.setCreatedAt(old.getCreatedAt());
+    bucket.setCreatedBy(old.getCreatedBy()); // 创建人不可变
+    bucket.setUpdatedAt(LocalDateTime.now()); // 刷新更新时间
+    bucket.setUpdatedBy(sessionContext.getUserId()); // 记录更新人
     return bucketRepository.save(bucket);
   }
 

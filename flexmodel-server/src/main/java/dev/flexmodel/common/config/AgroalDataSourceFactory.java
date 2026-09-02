@@ -68,7 +68,7 @@ public final class AgroalDataSourceFactory {
     }
 
     // 连接池参数
-    poolConfig.maxSize(10);
+    poolConfig.maxSize(100);
     poolConfig.minSize(0);
     poolConfig.initialSize(0);
     poolConfig.acquisitionTimeout(Duration.ofSeconds(10));   // connectionTimeout

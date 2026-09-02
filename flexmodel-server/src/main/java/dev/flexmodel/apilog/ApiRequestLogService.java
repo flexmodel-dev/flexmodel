@@ -1,6 +1,6 @@
-package dev.flexmodel.api;
+package dev.flexmodel.apilog;
 
-import dev.flexmodel.api.dto.LogStatResponse;
+import dev.flexmodel.apilog.dto.LogStatResponse;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.query.Expressions;
@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -93,6 +94,9 @@ public class ApiRequestLogService {
     statDTO = new LogStatResponse.ApiChart();
     List<Long> successData = new ArrayList<>();
     List<Long> failData = new ArrayList<>();
+    Map<String, Long> totalMap = new HashMap<>();
+    successMap.forEach((d, v) -> totalMap.merge(d, v, Long::sum));
+    failMap.forEach((d, v) -> totalMap.merge(d, v, Long::sum));
     for (String date : dateList) {
       successData.add(successMap.getOrDefault(date, 0L));
       failData.add(failMap.getOrDefault(date, 0L));
@@ -101,7 +105,17 @@ public class ApiRequestLogService {
     statDTO.setSuccessData(successData);
     statDTO.setFailData(failData);
 
-    List<LogStat> stat = stat(projectId, condition, fmt);
+    // is_success 为 NOT NULL 字段（默认 true），每日总数等于成功数与失败数之和，
+    // 无需再发起一次按日期分组的全表统计查询
+    List<LogStat> stat = new ArrayList<>();
+    for (String date : dateList) {
+      if (totalMap.containsKey(date)) {
+        LogStat logStat = new LogStat();
+        logStat.setDate(date);
+        logStat.setTotal(totalMap.get(date));
+        stat.add(logStat);
+      }
+    }
 
     List<LogApiRank> apiRankList = ranking(projectId, condition);
 

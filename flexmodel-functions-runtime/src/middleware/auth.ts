@@ -17,7 +17,6 @@ export interface EdgeAuthContext {
     projectId: string;
     functionName: string;
     authToken: string;
-    invokeId: string;
     authType: "invoke-token" | "api-key" | "idp" | "anonymous";
 }
 
@@ -48,7 +47,6 @@ async function validateViaJava(
             projectId: result.projectId,
             functionName: result.functionName,
             authToken: result.authToken,
-            invokeId: result.invokeId,
             authType: result.authType,
         };
     } catch {

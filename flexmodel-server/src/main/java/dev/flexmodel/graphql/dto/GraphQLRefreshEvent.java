@@ -1,4 +1,4 @@
-package dev.flexmodel.api.dto;
+package dev.flexmodel.graphql.dto;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -1,4 +1,54 @@
-﻿# Session Progress Log
+# Session Progress Log
+
+## Feature: 去除 OpenTelemetry 并按功能归属日志（2026-08-31）
+
+**目标:** 移除 OpenTelemetry 运行时依赖，保留轻量 traceId 生成/传播；将各类日志迁移到所属功能包与前端功能路由下。
+
+**完成内容:**
+
+- 新增 `common.trace` 轻量 trace 上下文，替换 OTel span/span context；HTTP、Quartz、EventBus、函数运行时调用均继续生成或传递
+  W3C `traceparent`。
+- 删除 FmSpanExporter、Span 落库、链路列表后端接口、链路资源、日志清理任务和 `quarkus-opentelemetry` 配置。
+- 接口日志迁入 `dev.flexmodel.apilog`，审计日志迁入 `dev.flexmodel.data`，函数日志迁入 `dev.flexmodel.functions`，任务执行日志保留在
+  `dev.flexmodel.scheduling`。
+- 前端移除可观测性菜单：API 日志移到 API，审计日志移到数据，函数日志移到边缘函数，任务执行日志移到任务调度；trace 详情改用轻量
+  `/trace/:traceId` 路由。
+
+**验证:**
+
+- `mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `mvn test -pl flexmodel-server -Dtest=ApiLogResourceTest,TriggerResourceTest` 通过（18 tests, 0 failures, 0 errors）。
+- `npx tsc --noEmit`（flexmodel-ui）通过。
+
+**遗留/风险:**
+
+- `ApiLogResourceIT` 存在原有 `@Inject is not supported in @QuarkusIntegrationTest` 问题，不属于本次改动引入；后续需要单独修复。
+
+
+## Fix: flow 用户任务时间线时间字段（2026-08-28）
+
+## Refactor: 合并 data-events-out 至 events-out（2026-08-29）
+
+**背景:** flow 事件桥接（`events-out`）与 realtime 数据变更桥接（`data-events-out`）共享同一 connector、同一
+`flexmodel.events` topic 交换机、同一开关 `flexmodel.events.rabbitmq.enabled`，仅载荷类型不同。当前无分开使用的实际
+场景，合并减少一个 AMQP channel 与一处配置。
+
+**修改:**
+
+- 新增 `dev.flexmodel.common.FlexmodelEvent` 标记接口（出站事件载荷统一类型）。
+- `FlowEvent`（抽象基类）与 `DataChangeEvent` 实现 `FlexmodelEvent`。
+- `FlowEventRabbitmqBridge`、`RealtimeRabbitmqListener` 统一注入
+  `@Channel("events-out") Instance<MutinyEmitter<FlexmodelEvent>>`。
+- `application.properties` 删除 `mp.messaging.outgoing.data-events-out.*` 两行。
+- `DataChangeEvent` javadoc 通道名同步更新为 `events-out`。
+
+**设计效果:** 单一出站通道 `events-out`，消费端按 routing key（`data.*` / `flow.*`）区分流类型，零改动。 native image
+反射注册无需调整（两具体类型包 `dev.flexmodel.flow.event.**`、`dev.flexmodel.realtime.**` 已注册）。
+
+**验证:**
+
+- 服务模块编译（`build_project` 指定改动文件）→ 通过，无错误。
+- 改动文件 lint 仅余既有 warning（Lombok @Getter 提示、`@ConsumeEvent` 方法 "never used" 误报、预存未用 import），非本次引入。
 
 ## Fix: flow 用户任务时间线时间字段（2026-08-28）
 
@@ -506,3 +556,171 @@ outgoing channel→RabbitMQ topic 交换机链路，routing key 与 JSON 载荷�
 - 默认回归 → Tests run: 28, Failures: 0, Errors: 0, Skipped: 3（E2E 默认跳过），BUILD SUCCESS。
 
 **设计要点:** nodeAttributes = 节点定义的 `FlowElement.properties` 快照，事件发生时已确定且不可变；外部订阅者无需回查定义仓库即可读取节点配置，解耦核心与外部系统。
+
+## 评估：flow rollback 是否需支持「退回到指定节点」（2026-08-29）
+
+**结论:** 当前阶段不必要，列为 P2，待真实业务场景催动再做。
+
+**当前实现摘要:**
+
+- `RollbackTaskParam` 仅携带 `flowInstanceId` + `taskInstanceId`，`getActiveNodeForRollback`（`FlowExecutor.java:428`
+  ）只允许回退与 `suspendNodeInstanceId` 完全匹配的节点——ACTIVE 的当前节点，或最后一个 COMPLETED 节点。
+- `doRollback`（`FlowExecutor.java:474`）为单步链：禁用当前节点实例 → 若该节点是 COMPLETED 的 UserTask，则在同一 nodeKey 上新建
+  ACTIVE 实例并 `SuspendException` 挂起（`UserTaskExecutor.java:125`），等用户重新提交；回退到 StartEvent 则置 `TERMINATED`。
+- 本质是「重做当前环节 / 回退一步」模型，状态机与数据快照均按单步设计。
+
+**不做的理由（成本与前提破坏）:**
+
+- 多节点链路：跨步回退需沿 `sourceNodeInstanceId` 链路批量 DISABLE 中间节点，并重新激活目标节点；目标节点的
+  `instanceDataId` 可能已被后续步骤覆盖，需明确数据回放策略。
+- 并行/分支：跨 fork 后 sibling 分支节点实例的处理语义未定义（一并 disable / 保留），当前 `getActiveNodeForRollback` 未涉及。
+- CallActivity 嵌套：跨子流程回退时子流程实例生命周期需单独处理。
+- 幂等与重复回退：指定节点回退后，「上一个节点」语义变化，需重新定义可回退判定。
+
+**触发条件（满足任一可启动）:**
+
+- 出现「驳回发起人 / 驳回到指定环节」等 BPM 标配语义的真实审批流需求。
+- flow 产品 roadmap 需对标 Activiti/Flowable 的回退能力。
+- 「连退两步」频率高，单步回退成为体验瓶颈。
+
+**启动时的建议实现路径:**
+
+- `RollbackTaskParam` 增加可选 `targetNodeInstanceId`。
+- `getActiveNodeForRollback` 改为「链路可达性校验 + 中间节点批量 disable」。
+- 引入节点级 instanceData 快照表支撑数据回放，而非在现有单步逻辑上打补丁。
+
+## Feature: flow 实例列表增加「历史元素列表」按钮（2026-08-29）
+
+**需求:** 流程实例列表已有「用户操作记录」 (/user-tasks) 按钮，需再增加一个按钮拉取流程实例历史元素列表 (/elements)。
+
+**改动:**
+
+- 新增 `flexmodel-ui/src/pages/Flow/components/ElementInstancesDrawer.tsx`：只读 Drawer，用 vertical Steps 时间线展示
+  `getElementInstances` 返回的全部元素实例（含开始/网关/任务/结束），复用 NodeInstanceStatus
+  标签与实例数据查看（getInstanceData + Monaco 只读 Modal）。
+- `flexmodel-ui/src/pages/Flow/components/FlowInstanceList.tsx`：
+  - 引入 `NodeIndexOutlined`、`getElementInstances`、`ElementInstancesDrawer`。
+  - 新增 elements 相关 state（visible/loading/instances）与 `handleShowElements` handler。
+  - 操作列在「用户操作记录」后追加「历史元素列表」按钮（NodeIndexOutlined 图标）。
+  - JSX 末尾挂载 `<ElementInstancesDrawer/>`。
+
+**附带修复:** `FlowDetail/index.tsx:56` 的 `loadData` 增加 `projectId` 守卫，修复 hideLayout 路由下 currentProject 未就绪导致
+`projects//flows/instances/...` 404。
+
+**验证:**
+
+- `npx tsc -b` → 通过，无错误。
+
+## 接续会话：SDK 版本同步 + 开发/生产依赖分离（2026-08-29）
+
+**目标:** 生产用 npm、开发用本地源码覆盖；修复 `flexmodelClient.setTraceId is not a function` 链路断裂。
+
+**完成内容:**
+
+- **SDK 版本同步**: SDK `package.json` 已为 `0.0.10`（含 `setTraceId`）。将 `flexmodel-functions-runtime/deno.json` 与
+  `registry.ts` 的 `SDK_NPM_FALLBACK` 由 `npm:@flexmodel/sdk@0.0.8` 统一提升至 `0.0.10`，使生产 npm 依赖与已升级 SDK 一致（含
+  setTraceId）。
+- **开发/生产配置分离**:
+  - `deno.json`（生产/Docker）：`@flexmodel/sdk` → `npm:@flexmodel/sdk@0.0.10`，`start` 任务无 --config，Docker 安全。
+  - `deno.local.json`（开发覆盖）：`@flexmodel/sdk` → `../flexmodel-sdks/typescript/src/index.ts`（本地源码，无构建/无 npm
+    即时反映）。Deno `extends` 替换而非合并 imports，故 deno.local.json 含全量 imports。
+  - `deno.json` 的 `dev` 任务显式 `--config=deno.local.json` + `--sloppy-imports`（SDK 源码用 .js 扩展名导入 ESM 规范，Deno
+    2.8 需该 flag 解析 .ts）。
+- **Worker SDK 内联**: `registry.ts` 的 `sdkBundle` 优先读取本地 `dist/index.js` 内联为函数目录 `_flexmodel_sdk.js`，函数级
+  import map 用相对路径（离线可移植）；找不到本地构建时回退 npm。dev/prod 宿主不直接 import SDK，Worker 始终用内联 bundle，故
+  npm 版本 bump 不影响 `deno task dev`/测试（测试用内联 dist）。
+- **清理**: 删除根目录误建的 `mvn_verify.txt` 与 `src/`（来自此前错误 create_new_file）。
+
+**关键决策:**
+
+- 生产 npm@0.0.10 需先 `npm publish` 发布；未发布前生产若 SDK 子模块未进镜像且回退 npm 会失败。monorepo 镜像构建（子模块检出）下
+  Worker 用内联 dist，与 npm 版本无关。
+- 不对 setTraceId 做 typeof 防御（用户明确要求；SDK 升级保证存在）。
+
+**验证:**
+
+- `deno check --config=deno.local.json src/main.ts src/server_test.ts` → DEV_OK
+- `deno check src/main.ts src/server_test.ts src/runner/worker_test.ts src/runner/registry_test.ts` → PROD_CHECK_OK
+- `deno run --sloppy-imports --config=deno.local.json _sdk_check.ts` → hasSetTraceId true（本地源码 setTraceId 可用）
+- SDK `dist/index.js` 含 5 处 setTraceId；`deno --version` = 2.8.2
+
+## 接续会话：触发器触发任务追踪链路（2026-08-29）
+
+**目标:** Quartz 定时触发器触发任务（流程/函数）时创建 OTel span，traceId 贯穿 触发器→函数/流程→下游，并记录到
+f_job_execution_log。
+
+**完成内容:**
+
+- **TracingHelper**（新建 observability 包）：封装 OTel 手动 span 创建，设置 flexmodel.project_id 属性；提供 startSpan（根
+  span）、startChildSpan（从远程 traceId/spanId 恢复）、currentTraceId（获取当前 HTTP span traceId）。
+- **f_job_execution_log 模型**：新增 trace_id 字段 + IDX_JOB_EXEC_TRACE_ID 索引（project.fml）。
+- **ScheduledFunctionExecutionJob**：execute () 中用 TracingHelper.startSpan 创建根 span 包裹执行；span 激活后
+  Span.current () 有效，FunctionRuntimeClientHeadersFactory 自动注入 traceparent 贯穿 Java→Deno 链路；traceId 存入
+  JobExecutionContext 供 listener 记录。
+- **ScheduledFlowExecutionJob**：同理创建根 span，traceId+spanId 传入 StartProcessParamEvent，EventBus 跨线程传播。
+- **TriggerFlowEventConsumer**：用 startChildSpan 从 param 的 traceId/spanId 恢复 span 上下文，使流程执行中的下游调用（含函数调用）在同一
+  trace 下。
+- **StartProcessParamEvent**：新增 traceId、spanId 字段。
+- **ScheduledFlowExecutionJobListener**：从 context 取 traceId 传给 recordJobStart。
+- **JobExecutionLogService.recordJobStart**：新增 traceId 参数，setTraceId 到 JobExecutionLog。
+- **TriggerService**（手动触发 2 处）+ **TriggerDataChangedEventListener**（事件触发 1 处）：注入
+  TracingHelper，recordJobStart 传 currentTraceId ()。
+- **FmSpanExporter.extractProjectId**：优先从 flexmodel.project_id 属性提取 projectId（非 HTTP span 如 Quartz Job）。
+
+**验证:** mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS（codegen 重新生成 JobExecutionLog 含
+trace_id）。
+
+## Feature: 分支数据迁移过滤日志表（@migration 注解）（2026-08-30）
+
+**目标:** 创建/合并分支时跳过日志/trace 表的数据迁移（表结构照常复制），通过 FML 声明式标记驱动，可扩展。
+
+**完成内容:**
+
+- **FML 标记**（project.fml）：在 f_api_request_log、f_function_log、f_audit_log、f_span、f_job_execution_log 的
+  `@system` 后追加 `@migration(enabled: false)`（叠加不替换）。
+- **MigrationConfig**（新增 dev.flexmodel.project.MigrationConfig）：`of(SchemaObject)` 从
+  `additionalProperties["migration"]` 解析——无参标记→true（启用迁移）；带参注解→Map，取 enabled（Boolean.parseBoolean） 与
+  limit（Integer.parseInt，预留）；未标记或 null→默认全量迁移（向后兼容）。
+- **BranchService**：createBranch（数据迁移循环）与 mergeBranch（新模型插入 + 双方都有模型 diff 两个分支）加入
+  `if (!MigrationConfig.of(model).isEnabled()) continue;`，跳过数据迁移并 log.info 提示。
+- **DefaultSchemaCopier 不变**：仅复制表结构，日志表空结构照常建到新分支。
+- **回归测试**（ASTNodeConverterTest.migrationAnnotationIsStoredInAdditionalProperties）：断言
+  `@migration(enabled: false)` 被解析为 additionalProperties 中的 Map，enabled 以 String "false" 存储。
+
+**关键事实链:** ASTNodeConverter.toSchemaEntity L71-72 未识别注解走 default 分支——无参存 true、带参存参数 Map，
+引擎侧零改动；getAdditionalProperties 全仓仅 ModelService 与 FlexmodelGraphQL 两处消费者且只查 "system" key， codegen 不读
+additionalProperties，故 @migration 对实体生成透明无副作用。
+
+**验证:** mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；mvn test -pl flexmodel-engine
+通过；ASTNodeConverterTest 3 tests 0 failures 0 errors。
+
+**遗留/风险:** v1 仅实现 enabled，limit 字段已预留但 BranchService 未消费；将来支持 @migration (limit: N) 需在两处 迁移循环加按
+created_at desc 限量查询逻辑（各日志表均有 created_at）。注：mvn clean 因 dev 进程占用 flexmodel-server-dev.jar 失败，改用
+mvn compile 验证。
+
+## Session (续) - 重命名剩余 observability key/变量 (2026-09-02)
+
+**目标:** 将多语言及代码中残留的 observability 相关键/变量统一改为 log 命名。
+
+**完成内容:**
+
+- **i18n key**: en.json/zh.json 中 observability.
+  *（function_logs/api_logs/job_execution_log/node_instance_logs/audit_logs）重命名为 log.*；移除未引用的顶层 observability
+  孤儿 key。
+- **routes.tsx**: 4 处 translationKey 由 observability.* 改为 log.*；AuditLogList 导入路径由 @/pages/Observability/... 改为
+  @/pages/Logs/...。
+- **t () 调用**: APILog/index.tsx 与 AuditLogList.tsx 中 t ('observability. *') 改为 t ('log.*')。
+- **类型文件**: @/types/observability.d.ts 重命名为 @/types/log.d.ts，更新
+  audit-log.ts/function-log.ts/FunctionLogList.tsx/AuditLogList.tsx 共 4 处导入。
+- **目录**: pages/Observability/ 重命名为 pages/Logs/（仅含 components/AuditLogList.tsx）。
+
+**验证:** flexmodel-ui tsc --noEmit -p tsconfig.json 通过；rg 全局无残留 observability 引用。
+
+**说明:** 后端 ProjectLogSettings.java 保留对旧 metadata.observability 的 fallback 读取（向后兼容），不在本次改动范围。
+
+### 补充修正 (同 session)
+
+- 目录最终命名为 pages/AuditLog/（非 pages/Logs）：因 .gitignore 第 2 行 logs 规则在 Windows（core.ignorecase）下会忽略
+  pages/Logs，导致文件无法被 git 跟踪。AuditLog 不匹配该规则且语义更贴切。
+- 移除 ypes/settings.d.ts 中未被引用的孤儿 Observability 接口（其形状仅含 auditResources，与实际 logSettings 不符）。
+- 验证： sc --noEmit -p tsconfig.json 通过； g -i observability flexmodel-ui/src 无残留。

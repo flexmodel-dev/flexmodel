@@ -245,9 +245,8 @@ Deno.test("invokeFunction passes Request with accessible body and headers", asyn
           return {
             method: req.method,
             url: req.url,
-            projectId: req.headers.get("x-flexmodel-project-id"),
-            invokeId: req.headers.get("x-flexmodel-invoke-id"),
-            functionName: req.headers.get("x-flexmodel-function-name"),
+           projectId: req.headers.get("x-flexmodel-project-id"),
+           functionName: req.headers.get("x-flexmodel-function-name"),
             contentType: req.headers.get("content-type"),
             echo: body,
           };
@@ -255,14 +254,12 @@ Deno.test("invokeFunction passes Request with accessible body and headers", asyn
       `,
         );
 
-        const invokeId = "test-invoke-123";
-        const result = await invokeFunction("wk-p7", "requestInspector", {message: "hello"}, undefined, invokeId);
+      const result = await invokeFunction("wk-p7", "requestInspector", {message: "hello"}, undefined);
 
         assertEquals(result.status, 200);
         const body = result.body as Record<string, unknown>;
         assertEquals(body.method, "POST");
         assertEquals(body.projectId, "wk-p7");
-        assertEquals(body.invokeId, invokeId);
         assertEquals(body.functionName, "requestInspector");
         assertEquals(body.contentType, "application/json");
         assertEquals((body.echo as Record<string, unknown>).message, "hello");

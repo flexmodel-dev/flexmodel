@@ -1,12 +1,9 @@
 package dev.flexmodel.metrics;
 
-import dev.flexmodel.api.ApiRequestLogService;
+import dev.flexmodel.apilog.ApiRequestLogService;
 import dev.flexmodel.flow.service.FlowDefinitionService;
 import dev.flexmodel.flow.service.FlowInstanceService;
 import dev.flexmodel.metrics.dto.FmMetricsResponse;
-import dev.flexmodel.model.EntityDefinition;
-import dev.flexmodel.model.NativeQueryDefinition;
-import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.modeling.ModelService;
 import dev.flexmodel.project.BranchService;
 import dev.flexmodel.project.ProjectService;

@@ -1,26 +1,26 @@
 // ============================================================
-// Flexmodel Functions — Shared TypeScript Type Definitions
+// Types — Shared type definitions for the functions runtime
 // ============================================================
 
-// ---- Function Metadata (cached in Registry) ----
+// ---- Deploy Request (Java → Deno) ----
+
+export interface DeployRequest {
+  projectId: string;
+  functionId: string;
+  name: string;
+  sourceFiles: Record<string, string>;
+  timeout?: number;
+}
+
+// ---- Function Metadata ----
 
 export interface FunctionMeta {
   id: string;
   projectId: string;
   name: string;
   timeout: number;
-  functionDir: string;  // disk directory path
-  entryUrl: string;     // file:// URL pointing to _worker_wrapper.ts
-}
-
-// ---- Deploy Request (from Java → Deno) ----
-
-export interface DeployRequest {
-  projectId: string;
-  functionId: string;
-  name: string;
-  sourceFiles: Record<string, string>;  // filename → content
-  timeout: number;
+  functionDir: string;
+  entryUrl: string;
 }
 
 // ---- Invoke Result (from Deno → Java) ----
@@ -31,14 +31,23 @@ export interface InvokeResult {
   body: unknown;
   _meta: {
     executionTimeMs: number;
-    invokeId?: string;
+    traceId?: string;
+    logs?: Array<{ level: string; message: string }>;
   };
 }
 
 // ---- Worker Messages ----
 
 export type WorkerOutMessage =
-  | { type: "result"; data: { status: number; headers: Record<string, string>; body: unknown } }
+  | {
+  type: "result";
+  data: {
+    status: number;
+    headers: Record<string, string>;
+    body: unknown;
+    logs?: Array<{ level: string; message: string }>
+  }
+}
   | { type: "error"; data: { message: string } };
 
 export type WorkerInMessage =
@@ -47,7 +56,7 @@ export type WorkerInMessage =
   body: unknown;
   authToken?: string;
   projectId: string;
-  invokeId?: string;
+  traceId?: string;
   functionName?: string;
   forwardedHeaders?: Record<string, string>
 };

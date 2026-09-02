@@ -13,25 +13,33 @@ import {workerPool} from "./worker_pool.ts";
 const FUNCTIONS_DIR = Deno.env.get("FUNCTIONS_DIR") ?? "/tmp/flexmodel-functions";
 
 // ---- @flexmodel/sdk resolution for Workers ----
-// Worker 通过函数级 import map 加载 SDK。优先使用本地构建的 SDK bundle：
-// 内联到函数目录为 ./_flexmodel_sdk.js，import map 用相对路径，离线且可移植；
-// 找不到本地构建时回退 npm（如 CI 未检出 SDK 子模块）。
-const SDK_NPM_FALLBACK = "npm:@flexmodel/sdk@0.0.8";
+// Worker 隔离执行，read 权限仅限函数目录，且 Worker 继承父进程 import map
+// （不读函数目录的 deno.json）。因此：
+// - 本地路径（开发）→ 读取该文件内联为 ./_flexmodel_sdk.js，wrapper 用相对
+//   路径 import "./_flexmodel_sdk.js"，不依赖 import map，Worker 直接加载
+// - npm:（生产）→ wrapper 用 bare specifier "@flexmodel/sdk"，由父进程 import
+//   map（deno.json）解析到 npm，Worker 从 npm 缓存加载（需 npm 包已发布+缓存）
+// SDK specifier 从宿主配置（deno.local.json 优先，deno.json 回退）读取，
+// 版本号单一来源，不在源码里重复声明。
 const SDK_INLINED_FILE = "_flexmodel_sdk.js";
-const sdkBundle = (() => {
-  const candidates = [
-    Deno.env.get("FLEXMODEL_SDK_PATH"),
-    new URL("../../../flexmodel-sdks/typescript/dist/index.js", import.meta.url).href,
-  ];
-  for (const c of candidates) {
-    if (!c) continue;
+
+function readHostSdkSpecifier(): string {
+  for (const cfg of ["deno.local.json", "deno.json"]) {
     try {
-      return Deno.readTextFileSync(c);
+      const json = JSON.parse(Deno.readTextFileSync(cfg));
+      const spec = json.imports?.["@flexmodel/sdk"];
+      if (spec) return spec;
     } catch { /* try next */
     }
   }
-})();
-const sdkSpecifier = sdkBundle ? `./${SDK_INLINED_FILE}` : SDK_NPM_FALLBACK;
+  throw new Error("[registry] @flexmodel/sdk not found in deno.local.json or deno.json");
+}
+
+const SDK_SPEC = readHostSdkSpecifier();
+const sdkBundle = SDK_SPEC.startsWith("npm:")
+  ? undefined
+  : Deno.readTextFileSync(Deno.realPathSync(SDK_SPEC));
+const sdkSpecifier = sdkBundle ? `./${SDK_INLINED_FILE}` : SDK_SPEC;
 
 // ---- Wrapper Code Generator ----
 
@@ -41,7 +49,7 @@ function generateWrapperCode(): string {
 // Worker message loop + SDK token/projectId injection + user module loading
 // console.log/warn/error 被重写，缓冲后通过 SDK 批量写入 f_function_log 表
 
-import { flexmodelClient } from "@flexmodel/sdk";
+import { flexmodelClient } from "${sdkBundle ? "./_flexmodel_sdk.js" : "@flexmodel/sdk"}";
 
 // ---- 捕获原生 console（仅一次，模块加载时）----
 // 关键：必须在任何覆写之前捕获。warm Worker 被复用时本模块不会重新加载，
@@ -77,7 +85,7 @@ self.addEventListener("message", async (e) => {
   }
 
   if (type === "invoke") {
-    const { body, authToken, projectId, invokeId, functionName, forwardedHeaders } = e.data;
+    const { body, authToken, projectId, traceId, functionName, forwardedHeaders } = e.data;
 
     // ---- console 拦截：日志缓冲，统一通过 SDK 批量接口写入 f_function_log ----
     // 关键：__nativeConsole 已在模块加载时捕获（见顶部），始终指向真正的原生 console。
@@ -103,13 +111,13 @@ self.addEventListener("message", async (e) => {
     };
     const __writeLog = (level, args) => {
       __nativeConsole[level](...args);
-      if (!invokeId) return;
-      // 记录日志实际产生时间，避免批量入库时 created_at 全部相同
-      __logBuffer.push({
-        invoke_id: invokeId,
-        function_name: functionName ?? "",
+      if (!traceId) return;
+     // 记录日志实际产生时间，避免批量入库时 created_at 全部相同
+     __logBuffer.push({
+       function_name: functionName ?? "",
         level: level,
         message: __serialize(args),
+        trace_id: traceId,
         created_at: __nowLocal(),
       });
     };
@@ -125,11 +133,14 @@ self.addEventListener("message", async (e) => {
     console.warn = (...args) => __writeLog("warn", args);
     console.error = (...args) => __writeLog("error", args);
 
-    try {
-      // Inject auth token + projectId into the SDK singleton before user code runs
-      if (authToken) flexmodelClient.setAuthToken(authToken);
-      if (projectId) flexmodelClient.setProjectId(projectId);
-      const __t0 = performance.now();
+   try {
+     // Inject auth token + projectId into the SDK singleton before user code runs
+     if (authToken) flexmodelClient.setAuthToken(authToken);
+     if (projectId) flexmodelClient.setProjectId(projectId);
+     // Inject traceId so SDK outgoing requests propagate W3C traceparent,
+     // linking function→SDK→Java backend calls under the same traceId
+     flexmodelClient.setTraceId(traceId);
+     const __t0 = performance.now();
       const mod = await import("./index.ts");
       const __tImport = performance.now();
       const handler = mod.default;
@@ -146,7 +157,6 @@ self.addEventListener("message", async (e) => {
         "content-type": "application/json",
       });
       if (projectId) reqHeaders.set("x-flexmodel-project-id", projectId);
-      if (invokeId) reqHeaders.set("x-flexmodel-invoke-id", invokeId);
       if (functionName) reqHeaders.set("x-flexmodel-function-name", functionName);
       // 合并原始客户端 headers
       if (forwardedHeaders) {
@@ -180,7 +190,9 @@ self.addEventListener("message", async (e) => {
       // 错误路径（下方 catch）仍 await 确保错误日志落库
       __nativeConsole.log("[perf] import=" + Math.round(__tImport - __t0) + "ms handler=" + Math.round(__tHandler - __tBeforeHandler) + "ms total=" + Math.round(__tHandler - __t0) + "ms");
       __flushLogs();
-      self.postMessage({ type: "result", data: { status, headers: resultHeaders, body: resultBody } });
+      // 内联日志(限量首100行)进 result.data.logs，经 x-function-meta 头回 Java → 喂测试面板
+      const __inlineLogs = __logBuffer.slice(0, 100).map(l => ({ level: l.level, message: l.message }));
+      self.postMessage({ type: "result", data: { status, headers: resultHeaders, body: resultBody, logs: __inlineLogs } });
     } catch (err) {
       __flushLogs();
       self.postMessage({ type: "error", data: { message: err instanceof Error ? err.message : String(err) } });
@@ -229,11 +241,19 @@ class Registry {
     const functionDir = Deno.realPathSync(rawDir);
 
     // Write all user source files (flat structure, no subdirectories)
+    // 本地模式（SDK 已内联为 ./_flexmodel_sdk.js）：改写用户代码里的 SDK import
+    // 为相对路径，使其不依赖父进程 import map —— Deno Worker 只继承父 import map，
+    // 不读函数目录的 deno.json，且 read 权限仅限函数目录，无法读父 map 指向的外部
+    // SDK 路径。改写后用户代码与 wrapper 统一用 ./_flexmodel_sdk.js，离线可加载。
+    // npm 模式不改写，保留 bare specifier 由父 import map（deno.json）解析到 npm。
     for (const [filename, content] of Object.entries(req.sourceFiles)) {
       if (filename.includes("/")) {
         throw new Error(`Subdirectories are not supported: ${filename}`);
       }
-      await Deno.writeTextFile(`${functionDir}/${filename}`, content);
+      const finalContent = sdkBundle
+        ? content.replace(/(["'])@flexmodel\/sdk\1/g, "\"./_flexmodel_sdk.js\"")
+        : content;
+      await Deno.writeTextFile(`${functionDir}/${filename}`, finalContent);
     }
 
     // Generate wrapper
@@ -252,11 +272,12 @@ class Registry {
     // Store metadata
     const entryUrl = `file:///${functionDir.replace(/\\/g, "/")}/_worker_wrapper.ts`;
     const key = `${req.projectId}:${req.name}`;
+    const timeout = req.timeout ?? 30000;
     this.functions.set(key, {
       id: req.functionId,
       projectId: req.projectId,
       name: req.name,
-      timeout: req.timeout,
+      timeout,
       functionDir,
       entryUrl,
     });
@@ -270,8 +291,8 @@ class Registry {
     // Internal 15s timeout prevents blocking forever.
     try {
       await workerPool.warmup(
-          {id: req.functionId, projectId: req.projectId, name: req.name, timeout: req.timeout, functionDir, entryUrl},
-          1,
+        {id: req.functionId, projectId: req.projectId, name: req.name, timeout, functionDir, entryUrl},
+        1,
       );
     } catch (err) {
       console.warn(`[registry] Worker warmup failed for ${key}: ${err}`);

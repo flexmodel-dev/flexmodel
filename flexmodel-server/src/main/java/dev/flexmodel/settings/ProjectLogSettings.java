@@ -1,4 +1,4 @@
-﻿package dev.flexmodel.settings;
+package dev.flexmodel.settings;
 
 import dev.flexmodel.codegen.entity.Project;
 

@@ -115,13 +115,10 @@ public class DataFmRepository implements DataRepository {
   @Override
   public Map<String, Object> updateRecord(String projectId, String datasourceName, String modelName, Object id, Map<String, Object> data) {
     try (Session session = sessionFactory.createSession(datasourceName)) {
-      EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
-      Optional<TypedField<?, ?>> idField = entity.findIdField();
-
       session.dsl()
         .update(modelName)
         .values(data)
-        .where(Expressions.field(idField.orElseThrow().getName()).eq(id))
+        .whereId(id)
         .execute();
 
       return data;
@@ -137,7 +134,7 @@ public class DataFmRepository implements DataRepository {
 
       session.dsl()
         .deleteFrom(modelName)
-        .where(Expressions.field(idField.orElseThrow().getName()).eq(id))
+        .whereId(id)
         .execute();
     }
   }

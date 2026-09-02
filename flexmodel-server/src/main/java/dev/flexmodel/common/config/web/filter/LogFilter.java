@@ -12,6 +12,7 @@ import dev.flexmodel.settings.SettingsService;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.settings.Settings;
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.common.trace.TraceContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -20,8 +21,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 
 /**
  * @author cjbi
@@ -36,10 +35,13 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
   @Inject
   jakarta.inject.Provider<EventBus> eventBusProvider;
 
+  @Inject
+  TraceContext traceContext;
+
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
     requestContext.setProperty("startTime", System.currentTimeMillis());
-    requestContext.setProperty("traceId", currentTraceId());
+    requestContext.setProperty("traceId", traceContext.currentTraceId());
     try {
       byte[] bytes = requestContext.getEntityStream().readAllBytes();
       if (bytes.length > 0) {
@@ -106,15 +108,4 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     eventBusProvider.get().send("request.logging", payload);
   }
 
-  /**
-   * 提取当前 OTel Span 的 traceId（仅在请求线程且 Span 有效时）。
-   */
-  private static String currentTraceId() {
-    try {
-      SpanContext ctx = Span.current().getSpanContext();
-      return ctx.isValid() ? ctx.getTraceId() : null;
-    } catch (Throwable t) {
-      return null;
-    }
-  }
 }

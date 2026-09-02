@@ -11,7 +11,7 @@ import dev.flexmodel.event.EventType;
 import dev.flexmodel.event.PreChangeEvent;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.functions.FunctionService;
-import dev.flexmodel.observability.TracingHelper;
+import dev.flexmodel.common.trace.TraceContext;
 import dev.flexmodel.project.ProjectRepository;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -43,7 +43,7 @@ public class TriggerDataChangedEventListener implements EventListener {
   EventBus eventBus;
 
   @Inject
-  TracingHelper tracingHelper;
+  TraceContext traceContext;
 
   private final Map<String, String> beforeMutationTypeMap = Map.of(
     "delete", "PRE_DELETE",
@@ -197,7 +197,7 @@ public class TriggerDataChangedEventListener implements EventListener {
         System.currentTimeMillis(),
         inputData,
         projectId,
-        tracingHelper.currentTraceId()
+        traceContext.currentTraceId()
       );
 
       log.debug("已记录事件触发日志: triggerId={}, phase={}, mutationType={}",

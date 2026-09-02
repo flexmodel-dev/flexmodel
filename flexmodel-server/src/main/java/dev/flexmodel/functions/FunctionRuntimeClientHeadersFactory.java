@@ -4,6 +4,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.MultivaluedMap;
 import org.eclipse.microprofile.rest.client.ext.ClientHeadersFactory;
 
+import dev.flexmodel.common.trace.CurrentTraceContext;
+import dev.flexmodel.common.trace.TraceContext;
+import dev.flexmodel.common.trace.TraceContextHolder;
+
 import java.util.List;
 
 /**
@@ -66,13 +70,10 @@ public class FunctionRuntimeClientHeadersFactory implements ClientHeadersFactory
       return; // OTel 自动注入已生效，不覆盖
     }
     try {
-      io.opentelemetry.api.trace.SpanContext ctx = io.opentelemetry.api.trace.Span.current().getSpanContext();
-      if (ctx.isValid()) {
-        String traceparent = String.format("00-%s-%s-%s",
-          ctx.getTraceId(),
-          ctx.getSpanId(),
-          ctx.getTraceFlags().asHex());
-        outgoing.putSingle("traceparent", traceparent);
+      CurrentTraceContext currentTraceContext = TraceContextHolder.current();
+      TraceContext.TraceScope scope = currentTraceContext.get();
+      if (scope != null) {
+        outgoing.putSingle("traceparent", scope.traceParent());
       }
     } catch (Throwable ignored) {
       // 上下文不可用时静默跳过，不影响函数调用

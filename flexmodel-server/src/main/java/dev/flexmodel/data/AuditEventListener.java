@@ -1,13 +1,13 @@
-package dev.flexmodel.observability.audit;
+package dev.flexmodel.data;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.AuditLog;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.SessionContext;
-import dev.flexmodel.settings.ProjectObservabilitySettings;
+import dev.flexmodel.settings.ProjectLogSettings;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.event.EventListener;
-import dev.flexmodel.observability.TracingHelper;
+import dev.flexmodel.common.trace.TraceContext;
 import dev.flexmodel.project.ProjectRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.spi.CDI;
@@ -22,7 +22,7 @@ import java.util.Map;
  * <p>
  * 与 {@link dev.flexmodel.realtime.RealtimeEventListener} 同构，仅订阅后置事件且仅在操作成功时记录。
  * 通过白名单过滤，只审计配置定义表（trigger/flow/function 等），不审计运行实例与日志表，避免量过大与重复。
- * 监听器内自行从 {@link SessionContext} 补充 userId、从 {@link TracingHelper} 补充 traceId，
+ * 监听器内自行从 {@link SessionContext} 补充 userId、从 {@link TraceContext} 补充 traceId，
  * 引擎事件本身不携带审计关注点。
  *
  * @author cjbi
@@ -38,7 +38,7 @@ public class AuditEventListener implements EventListener {
   ProjectRepository projectRepository;
 
   @Inject
-  TracingHelper tracingHelper;
+  TraceContext traceContext;
 
   @Override
   public void onChanged(ChangedEvent event) {
@@ -53,8 +53,8 @@ public class AuditEventListener implements EventListener {
         log.debug("Audit skip: project not found for schemaName={}", event.getSchemaName());
         return;
       }
-      // 审计资源白名单按项目级 metadata.observability.auditResources 解析，未配置回退默认
-      if (!ProjectObservabilitySettings.auditResources(project).contains(modelName)) {
+      // 审计资源白名单按项目级 metadata.logSettings.auditResources 解析，未配置回退默认
+      if (!ProjectLogSettings.auditResources(project).contains(modelName)) {
         return;
       }
       String projectId = project.getId();
@@ -90,7 +90,7 @@ public class AuditEventListener implements EventListener {
         // 非请求上下文（如定时任务）时无法获取 userId，留空
       }
       try {
-        auditLog.setTraceId(tracingHelper.currentTraceId());
+        auditLog.setTraceId(traceContext.currentTraceId());
       } catch (Exception ignored) {
       }
 

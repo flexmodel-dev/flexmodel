@@ -1,4 +1,4 @@
-package dev.flexmodel.observability.audit;
+package dev.flexmodel.data;
 
 import dev.flexmodel.codegen.entity.AuditLog;
 import dev.flexmodel.common.dto.PageDTO;

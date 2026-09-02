@@ -2,7 +2,7 @@ package dev.flexmodel.scheduling.job;
 
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.scheduling.JobExecutionLogService;
-import dev.flexmodel.observability.TracingHelper;
+import dev.flexmodel.common.trace.TraceContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -30,10 +30,10 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
   JobExecutionLogService jobExecutionLogService;
 
   private static final String EXECUTION_LOG_ID_KEY = "executionLogId";
-  private static final String SPAN_SCOPE_KEY = "spanScope";
+  private static final String SPAN_SCOPE_KEY = "traceScope";
 
   @Inject
-  TracingHelper tracingHelper;
+  TraceContext traceContext;
 
   @Override
   public String getName() {
@@ -60,11 +60,10 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       // 启动根 span 生成 traceId：Quartz Job 为非 HTTP 入口，无自动 span 上下文。
       // span 在 jobToBeExecuted（execute 之前）启动，保证 recordJobStart 能拿到 traceId；
       // span 跨 execute() 保持激活（同一线程），供下游调用传播，并在 jobWasExecuted 中关闭。
-      String spanName = "trigger." + (jobType != null ? jobType.toLowerCase() : "job") + ".execute";
-      TracingHelper.SpanScope spanScope = tracingHelper.startSpan(spanName, projectId);
-      context.put("traceId", spanScope.traceId());
-      context.put("spanId", spanScope.spanId());
-      context.put(SPAN_SCOPE_KEY, spanScope);
+      TraceContext.TraceScope traceScope = traceContext.start(projectId);
+      context.put("traceId", traceScope.traceId());
+      context.put("spanId", traceScope.spanId());
+      context.put(SPAN_SCOPE_KEY, traceScope);
 
       // 获取输入数据
       Object inputData = extractInputData(context);
@@ -73,7 +72,7 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       JobExecutionLog executionLog = jobExecutionLogService.recordJobStart(
         triggerId, jobId, jobGroup, jobType, jobName,
         schedulerName, instanceName, firedTime, scheduledTime,
-        inputData, projectId, spanScope.traceId()
+        inputData, projectId, traceScope.traceId()
       );
 
       // 将执行日志ID存储到上下文中，供后续使用
@@ -196,21 +195,21 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
   }
 
   /**
-   * 关闭 jobToBeExecuted 中启动的 span：失败时记录异常并标记 ERROR，随后 end span + 关闭 scope。
-   * spanScope 不存在（作业被否决或 jobToBeExecuted 未启动 span）时跳过。
+   * 关闭 jobToBeExecuted 中启动的 trace scope。
+   * scope 不存在（作业被否决或 jobToBeExecuted 未启动 trace）时跳过。
    */
   private void endSpan(JobExecutionContext context, JobExecutionException jobException) {
-    TracingHelper.SpanScope spanScope = (TracingHelper.SpanScope) context.get(SPAN_SCOPE_KEY);
-    if (spanScope == null) {
+    TraceContext.TraceScope traceScope = (TraceContext.TraceScope) context.get(SPAN_SCOPE_KEY);
+    if (traceScope == null) {
       return;
     }
     try {
       if (jobException != null) {
-        spanScope.recordException(jobException);
+        jobException.printStackTrace();
       }
-      spanScope.close();
+      traceScope.close();
     } catch (Exception e) {
-      log.warn("关闭作业执行 span 失败", e);
+      log.warn("关闭作业执行 trace scope 失败", e);
     }
   }
 

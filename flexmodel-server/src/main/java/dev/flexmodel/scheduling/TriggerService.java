@@ -12,7 +12,7 @@ import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.flow.service.FlowDeploymentService;
 import dev.flexmodel.functions.FunctionService;
-import dev.flexmodel.observability.TracingHelper;
+import dev.flexmodel.common.trace.TraceContext;
 import dev.flexmodel.project.ProjectRepository;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
@@ -63,7 +63,7 @@ public class TriggerService {
   @Inject
   SessionContext sessionContext;
   @Inject
-  TracingHelper tracingHelper;
+  TraceContext traceContext;
 
   /**
    * 应用启动时扫描全部启用项目的 f_trigger 表，
@@ -328,7 +328,7 @@ public class TriggerService {
 
         JobExecutionLog jobExecutionLog = jobExecutionLogService.recordJobStart(trigger.getId(), trigger.getJobId(), trigger.getJobGroup(),
           trigger.getJobType(), trigger.getName(), trigger.getName(), trigger.getName(), startTime,
-          startTime, invokeBody, projectId2, tracingHelper.currentTraceId());
+          startTime, invokeBody, projectId2, traceContext.currentTraceId());
 
         try {
           jakarta.ws.rs.core.Response response = functionService.invoke(projectId2, trigger.getJobId(), invokeBody);
@@ -351,13 +351,13 @@ public class TriggerService {
 
         JobExecutionLog jobExecutionLog = jobExecutionLogService.recordJobStart(trigger.getId(), trigger.getJobId(), trigger.getJobGroup(),
           trigger.getJobType(), trigger.getName(), trigger.getName(), trigger.getName(), startTime,
-          startTime, startProcessParam, projectId2, tracingHelper.currentTraceId());
+          startTime, startProcessParam, projectId2, traceContext.currentTraceId());
 
         startProcessParam.setEventId(jobExecutionLog.getId());
 
         // 传播当前 HTTP span 的 traceId/spanId，EventBus 消费端恢复链路，使流程执行与手动触发同属一条 trace
-        startProcessParam.setTraceId(tracingHelper.currentTraceId());
-        startProcessParam.setSpanId(tracingHelper.currentSpanId());
+        startProcessParam.setTraceId(traceContext.currentTraceId());
+        startProcessParam.setSpanId(traceContext.currentSpanId());
 
         // 直接调用流程应用服务启动流程
         eventBus.send("flow.start", startProcessParam);

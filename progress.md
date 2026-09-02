@@ -1,65 +1,29 @@
 # Session Progress Log
 
-## Feature: Overview 趋势分析加载状态（2026-08-31）
+## Feature: 去除 OpenTelemetry 并按功能归属日志（2026-08-31）
 
-**目标:** 趋势分析面板在 API 统计数据请求期间显示加载状态，避免请求中渲染旧数据。
+**目标:** 移除 OpenTelemetry 运行时依赖，保留轻量 traceId 生成/传播；将各类日志迁移到所属功能包与前端功能路由下。
 
 **完成内容:**
 
-- Overview 页面新增 API 统计请求 loading 状态，请求开始置为 loading，结束后无论成功或异常都关闭。
-- TrendAnalysis 组件接收 loading 属性，并在图表与 API 排名区域外层展示 Spin。
+- 新增 `common.trace` 轻量 trace 上下文，替换 OTel span/span context；HTTP、Quartz、EventBus、函数运行时调用均继续生成或传递
+  W3C `traceparent`。
+- 删除 FmSpanExporter、Span 落库、链路列表后端接口、链路资源、日志清理任务和 `quarkus-opentelemetry` 配置。
+- 接口日志迁入 `dev.flexmodel.apilog`，审计日志迁入 `dev.flexmodel.data`，函数日志迁入 `dev.flexmodel.functions`，任务执行日志保留在
+  `dev.flexmodel.scheduling`。
+- 前端移除可观测性菜单：API 日志移到 API，审计日志移到数据，函数日志移到边缘函数，任务执行日志移到任务调度；trace 详情改用轻量
+  `/trace/:traceId` 路由。
 
 **验证:**
 
+- `mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `mvn test -pl flexmodel-server -Dtest=ApiLogResourceTest,TriggerResourceTest` 通过（18 tests, 0 failures, 0 errors）。
 - `npx tsc --noEmit`（flexmodel-ui）通过。
 
-**遗留/说明:**
+**遗留/风险:**
 
-- 仓库根目录 `./init.sh` 在当前 Windows 会话中无法启动 Bash，已改用等价的前端类型检查；后续环境恢复后需重跑标准初始化验证。
+- `ApiLogResourceIT` 存在原有 `@Inject is not supported in @QuarkusIntegrationTest` 问题，不属于本次改动引入；后续需要单独修复。
 
-## Feature: Observability 可观测性（traceId 链路 + 函数日志 + 链路追踪页面）（2026-08-29）
-
-**目标:** 对标 Cloudflare/Supabase 的可观测性，统一 traceId 贯穿 HTTP → 函数调用全链路，前端提供链路追踪页面（瀑布图）。
-
-**完成内容:**
-
-- feat-012 traceId 基础设施 + Span 存储：quarkus-opentelemetry + 自定义 FmSpanExporter（CDI SpanExporter）将 Span 持久化到平台级
-  f_span 表；sampler parentbased_traceidratio@1.0；MDC 日志注入 traceId/spanId；LogFilter.currentTraceId () 写入
-  f_api_request_log；platform.fml 新增 f_span 模型，project.fml 为 f_api_request_log/f_function_log 增加 trace_id 列与索引。
-- feat-013 函数执行日志：Deno Runtime 解析 W3C traceparent 头透传 traceId 至 Worker，console.log/warn/error 捕获并携带
-  trace_id 持久化到 f_function_log（+内联 100 行到 x-function-meta.logs 供测试面板）；Java
-  FunctionLogResource/Service/Repository 提供查询（functionName/level/dateRange/invokeId/traceId/keyword）。
-- feat-014 链路追踪页面（前端）：Observability 父级导航（Outlet 容器，父路径自动重定向到 traces
-  子页），子页含「链路追踪」与「函数日志」；TracesList（按 trace_id 聚合列表）+ TraceDetail（ECharts custom 系列瀑布图 + Span
-  列表 + 关联 API 日志 + 关联函数日志 Tab）；traces/:traceId 隐藏全屏详情路由（镜像现有 flow 父+隐藏详情模式）；FunctionLogList
-  独立函数日志页（traceId 跳转链路详情）。其他入口（API 日志、函数列表等）保留。
-
-**本次（接续）完成的前端接线:**
-
-- 新增 flexmodel-ui/src/pages/Observability/components/TracesList.tsx（从 index.tsx 抽出列表）。
-- Observability/index.tsx 改为重定向+Outlet 容器（直接访问父路径 → 重定向到 /observability/traces，子路由激活时渲染
-  Outlet）。
-- routes.tsx 接入：Observability 父路由 + traces/function-logs 子路由 + traces/:traceId 隐藏全屏详情（hideInMenu/hideLayout），新增
-  MonitorOutlined/FileTextOutlined 图标。
-- utils/echarts.ts 注册 CustomChart（瀑布图 custom 系列所需，此前仅注册 LineChart）。
-- locales/zh.json、locales/en.json 补全 observability. */trace.*/function.log* 键（路由 translationKey 无 fallback，必须落
-  locale）。
-
-**验证:**
-
-- npx tsc --noEmit（flexmodel-ui）→ 通过，0 错误。
-- deno check src/main.ts（functions-runtime）→ 通过。
-- mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'（全 reactor 除 maven-plugin）→ BUILD SUCCESS（flexmodel-server
-  SUCCESS）。
-- feature_list.json / locales JSON 校验 → 通过。
-
-**遗留/说明:**
-
-- flexmodel-maven-plugin 插件描述符在 reactor 内 compile 阶段不生成（plugin.xml 在 package 阶段），导致 -am 全量编译报
-  PluginDescriptorParsingException；此为既有环境特性，AGENTS.md 验证命令已显式排除该模块，非本次引入。
-- 现有「blank 父路径」模式（scheduling/api/flow/data 直接访问父路径渲染空 Outlet）未改动；Observability 父路径通过重定向改善为自动跳转
-  traces。
-- 未提交 git（遵循「未明确要求不提交」）。
 
 ## Fix: flow 用户任务时间线时间字段（2026-08-28）
 
@@ -680,25 +644,6 @@ outgoing channel→RabbitMQ topic 交换机链路，routing key 与 JSON 载荷�
 - `deno run --sloppy-imports --config=deno.local.json _sdk_check.ts` → hasSetTraceId true（本地源码 setTraceId 可用）
 - SDK `dist/index.js` 含 5 处 setTraceId；`deno --version` = 2.8.2
 
-## 接续会话：日志功能合并到 observability 包（2026-08-29）
-
-**目标:** 将分散在 metrics / functions 包的日志功能统一归入
-dev.flexmodel.observability.api，使可观测性三支柱（Traces/Logs）后端分包与前端分类一致。
-
-**完成内容:**
-
-- **API 日志迁移**（metrics → observability.log，8
-  文件）：ApiLogResource、ApiRequestLogService、ApiRequestLogRepository、ApiLogFmRepository、LogStat、LogApiRank、dto/LogStatResponse、consumer/LogEventConsumer（consumer
-  子包拍平至 log）。
-- **函数日志迁移**（functions → observability.log，4
-  文件）：FunctionLogResource、FunctionLogService、FunctionLogRepository、FunctionLogFmRepository。
-- **保留**：MetricsResource / MetricsService / dto/FmMetricsResponse 留在 metrics 包（项目概览统计，非运行时遥测）。
-- **引用更新**（4 处）：common/Jobs.java、metrics/MetricsService.java（ApiRequestLogService
-  import）、observability/SpanService.java（ApiRequestLogService + FunctionLogService 两条 import）。
-- **前端**：上一步已将接口日志挂为可观测性子路由（observability/api-logs），后端至此对齐。
-
-**验证:** mvn compile（全模块，排除 maven-plugin）BUILD SUCCESS，仅剩既有 DB2/MapToObjectConverter deprecation 警告（与本次无关）。
-
 ## 接续会话：触发器触发任务追踪链路（2026-08-29）
 
 **目标:** Quartz 定时触发器触发任务（流程/函数）时创建 OTel span，traceId 贯穿 触发器→函数/流程→下游，并记录到
@@ -752,3 +697,30 @@ additionalProperties，故 @migration 对实体生成透明无副作用。
 **遗留/风险:** v1 仅实现 enabled，limit 字段已预留但 BranchService 未消费；将来支持 @migration (limit: N) 需在两处 迁移循环加按
 created_at desc 限量查询逻辑（各日志表均有 created_at）。注：mvn clean 因 dev 进程占用 flexmodel-server-dev.jar 失败，改用
 mvn compile 验证。
+
+## Session (续) - 重命名剩余 observability key/变量 (2026-09-02)
+
+**目标:** 将多语言及代码中残留的 observability 相关键/变量统一改为 log 命名。
+
+**完成内容:**
+
+- **i18n key**: en.json/zh.json 中 observability.
+  *（function_logs/api_logs/job_execution_log/node_instance_logs/audit_logs）重命名为 log.*；移除未引用的顶层 observability
+  孤儿 key。
+- **routes.tsx**: 4 处 translationKey 由 observability.* 改为 log.*；AuditLogList 导入路径由 @/pages/Observability/... 改为
+  @/pages/Logs/...。
+- **t () 调用**: APILog/index.tsx 与 AuditLogList.tsx 中 t ('observability. *') 改为 t ('log.*')。
+- **类型文件**: @/types/observability.d.ts 重命名为 @/types/log.d.ts，更新
+  audit-log.ts/function-log.ts/FunctionLogList.tsx/AuditLogList.tsx 共 4 处导入。
+- **目录**: pages/Observability/ 重命名为 pages/Logs/（仅含 components/AuditLogList.tsx）。
+
+**验证:** flexmodel-ui tsc --noEmit -p tsconfig.json 通过；rg 全局无残留 observability 引用。
+
+**说明:** 后端 ProjectLogSettings.java 保留对旧 metadata.observability 的 fallback 读取（向后兼容），不在本次改动范围。
+
+### 补充修正 (同 session)
+
+- 目录最终命名为 pages/AuditLog/（非 pages/Logs）：因 .gitignore 第 2 行 logs 规则在 Windows（core.ignorecase）下会忽略
+  pages/Logs，导致文件无法被 git 跟踪。AuditLog 不匹配该规则且语义更贴切。
+- 移除 ypes/settings.d.ts 中未被引用的孤儿 Observability 接口（其形状仅含 auditResources，与实际 logSettings 不符）。
+- 验证： sc --noEmit -p tsconfig.json 通过； g -i observability flexmodel-ui/src 无残留。

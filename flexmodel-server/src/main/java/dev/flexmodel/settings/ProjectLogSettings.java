@@ -1,4 +1,4 @@
-package dev.flexmodel.settings;
+﻿package dev.flexmodel.settings;
 
 import dev.flexmodel.codegen.entity.Project;
 
@@ -8,13 +8,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 项目级可观测性设置解析器：从 {@link Project#getMetadata()} 的 {@code observability} 节点读取
+ * 项目级日志设置解析器：从 {@link Project#getMetadata()} 的 {@code logSettings} 节点读取
  * 日志保留天数与审计资源白名单，未配置时回退到默认值。
  * <p>
  * metadata 结构示例：
  * <pre>
  * {
- *   "observability": {
+ *   "logSettings": {
  *     "logRetentionDays": 7,
  *     "auditResources": ["f_trigger", "f_function", ...]
  *   }
@@ -23,7 +23,7 @@ import java.util.Set;
  *
  * @author cjbi
  */
-public final class ProjectObservabilitySettings {
+public final class ProjectLogSettings {
 
   /**
    * 默认日志保留天数（天）。
@@ -42,15 +42,15 @@ public final class ProjectObservabilitySettings {
     "f_auth_provider_config"
   );
 
-  private ProjectObservabilitySettings() {
+  private ProjectLogSettings() {
   }
 
   /**
    * 解析项目级日志保留天数，未配置或非法时回退到 {@link #DEFAULT_LOG_RETENTION_DAYS}。
    */
   public static int logRetentionDays(Project project) {
-    Map<String, Object> observability = observabilityNode(project);
-    Object value = observability.get("logRetentionDays");
+    Map<String, Object> logSettings = logSettingsNode(project);
+    Object value = logSettings.get("logRetentionDays");
     if (value instanceof Number number && number.intValue() > 0) {
       return number.intValue();
     }
@@ -61,8 +61,8 @@ public final class ProjectObservabilitySettings {
    * 解析项目级审计资源白名单，未配置或为空时回退到 {@link #DEFAULT_AUDIT_RESOURCES}。
    */
   public static Set<String> auditResources(Project project) {
-    Map<String, Object> observability = observabilityNode(project);
-    Object value = observability.get("auditResources");
+    Map<String, Object> logSettings = logSettingsNode(project);
+    Object value = logSettings.get("auditResources");
     if (value instanceof List<?> list && !list.isEmpty()) {
       List<String> resources = new ArrayList<>();
       for (Object item : list) {
@@ -78,18 +78,18 @@ public final class ProjectObservabilitySettings {
   }
 
   /**
-   * 安全提取 metadata 中的 observability 节点，缺失时返回空 Map。
+   * 安全提取 metadata 中的 logSettings 节点，缺失时返回空 Map。
    */
   @SuppressWarnings("unchecked")
-  private static Map<String, Object> observabilityNode(Project project) {
+  private static Map<String, Object> logSettingsNode(Project project) {
     if (project == null) {
       return Map.of();
     }
     Object metadata = project.getMetadata();
     if (metadata instanceof Map<?, ?> map) {
-      Object observability = map.get("observability");
-      if (observability instanceof Map<?, ?> obs) {
-        return (Map<String, Object>) obs;
+      Object logSettings = map.get("logSettings");
+      if (logSettings instanceof Map<?, ?> settings) {
+        return (Map<String, Object>) settings;
       }
     }
     return Map.of();

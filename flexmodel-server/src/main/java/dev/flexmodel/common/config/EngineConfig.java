@@ -4,7 +4,7 @@ import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.AuditDataEventListener;
 import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.observability.audit.AuditEventListener;
+import dev.flexmodel.data.AuditEventListener;
 import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.project.BranchRepository;
 import dev.flexmodel.project.ProjectService;

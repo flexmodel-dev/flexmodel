@@ -1,6 +1,6 @@
-package dev.flexmodel.observability.api;
+package dev.flexmodel.apilog;
 
-import dev.flexmodel.observability.api.dto.LogStatResponse;
+import dev.flexmodel.apilog.dto.LogStatResponse;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.query.Expressions;

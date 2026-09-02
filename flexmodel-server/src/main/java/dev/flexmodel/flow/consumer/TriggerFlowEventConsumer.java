@@ -4,7 +4,7 @@ import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.flow.dto.result.StartProcessResult;
 import dev.flexmodel.flow.service.FlowExecutionService;
-import dev.flexmodel.observability.TracingHelper;
+import dev.flexmodel.common.trace.TraceContext;
 import dev.flexmodel.scheduling.JobExecutionLogService;
 import io.quarkus.vertx.ConsumeEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -28,7 +28,7 @@ public class TriggerFlowEventConsumer {
   SessionContext sessionContext;
 
   @Inject
-  TracingHelper tracingHelper;
+  TraceContext traceContext;
 
   // blocking = true: 流程执行含 DB 读写与函数调用（HTTP），必须在工作线程上执行
   @ConsumeEvent(value = "flow.start", blocking = true) // 监听特定地址的事件
@@ -37,8 +37,7 @@ public class TriggerFlowEventConsumer {
     sessionContext.setUserId(param.getUserId());
     // 恢复 span 上下文：EventBus 跨线程，OTel context 不会自动传播，
     // 用 Job 端传入的 traceId/spanId 恢复，使流程执行中的下游调用（含函数调用）在同一 trace 下
-    try (TracingHelper.SpanScope span = tracingHelper.startChildSpan(
-      "flow.start.consume", param.getTraceId(), param.getSpanId(), param.getProjectId())) {
+    try (var ignored = traceContext.startChild(param.getTraceId(), param.getSpanId())) {
       StartProcessResult result = null;
       try {
         result = flowExecutionService.startProcess(param);

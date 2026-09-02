@@ -22,7 +22,7 @@ import dev.flexmodel.flow.event.FlowInstanceStartedEvent;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
 import dev.flexmodel.common.utils.CollectionUtils;
-import dev.flexmodel.observability.TracingHelper;
+import dev.flexmodel.common.trace.TraceContext;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
@@ -41,7 +41,7 @@ public class FlowExecutor extends RuntimeExecutor {
   FlowInstanceRepository flowInstanceRepository;
 
   @Inject
-  TracingHelper tracingHelper;
+  TraceContext traceContext;
 
   @Inject
   Instance<ExecutorFactory> executorFactoryInstance;
@@ -639,7 +639,7 @@ public class FlowExecutor extends RuntimeExecutor {
     nodeInstanceLogPO.setId(null);
     nodeInstanceLogPO.setType(nodeInstanceType);
     // 关联当前链路：流程执行（HTTP/定时/事件触发）均处于激活 span 上下文中
-    nodeInstanceLogPO.setTraceId(tracingHelper.currentTraceId());
+    nodeInstanceLogPO.setTraceId(traceContext.currentTraceId());
     return nodeInstanceLogPO;
   }
 

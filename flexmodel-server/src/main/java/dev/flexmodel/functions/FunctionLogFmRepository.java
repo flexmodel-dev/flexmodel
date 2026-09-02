@@ -1,4 +1,4 @@
-package dev.flexmodel.observability.function;
+package dev.flexmodel.functions;
 
 import dev.flexmodel.codegen.entity.FunctionLog;
 import dev.flexmodel.common.AbstractRepository;

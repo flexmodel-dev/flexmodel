@@ -67,6 +67,17 @@
       "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中。2026-08-31 移除 OpenTelemetry 依赖与运行时，改用轻量 trace 上下文；日志按功能归属迁移到后端 feature 包与 UI 路由（API/数据/边缘函数/任务调度）。同日移除前端链路追踪页面、API、路由和跳转，仅保留日志 traceId 元数据。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；ApiLogResourceTest + TriggerResourceTest 18 tests 通过；npx tsc --noEmit 通过。"
     },
     {
+      "id": "feat-008-session-2026-09-02",
+      "name": "UI - 合并函数日志到函数详情页",
+      "description": "将独立的「函数日志」页面合并到 FunctionDetail.tsx，作为函数详情抽屉的「日志」Tab，按当前函数过滤展示执行日志。",
+      "dependencies": [
+        "feat-008",
+        "feat-010"
+      ],
+      "status": "done",
+      "evidence": "新增 flexmodel-ui/src/pages/Functions/components/FunctionLogPanel.tsx（单函数作用域日志查看：级别/时间范围/Trace ID/关键字筛选 + 分页表格 + 详情抽屉，复用 getFunctionLogs）。FunctionDetail.tsx 新增「日志」Tab（FileTextOutlined + function.logTitle）。删除独立 FunctionLogList.tsx 页面；routes.tsx 移除 /project/:projectId/functions/logs 路由、FunctionLogList 导入与 FileTextOutlined 图标导入。验证：npx tsc -p tsconfig.app.json --noEmit 对本次改动文件 0 错误（既有 4 处 noUnusedLocals 历史错误非本次引入）。"
+    },
+    {
       "id": "feat-009",
       "name": "文档站建设",
       "description": "基于 Docusaurus 的文档站内容完善，包含 API 文档和教程",

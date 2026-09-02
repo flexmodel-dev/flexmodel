@@ -30,7 +30,7 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
   JobExecutionLogService jobExecutionLogService;
 
   private static final String EXECUTION_LOG_ID_KEY = "executionLogId";
-  private static final String SPAN_SCOPE_KEY = "traceScope";
+  static final String SPAN_SCOPE_KEY = "traceScope";
 
   @Inject
   TraceContext traceContext;
@@ -57,10 +57,11 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
       Long scheduledTime = context.getScheduledFireTime().getTime();
       String projectId = context.getJobDetail().getJobDataMap().getString("projectId");
 
-      // 启动根 span 生成 traceId：Quartz Job 为非 HTTP 入口，无自动 span 上下文。
-      // span 在 jobToBeExecuted（execute 之前）启动，保证 recordJobStart 能拿到 traceId；
-      // span 跨 execute() 保持激活（同一线程），供下游调用传播，并在 jobWasExecuted 中关闭。
-      TraceContext.TraceScope traceScope = traceContext.start(projectId);
+      // 生成根 span 的 traceId/spanId：Quartz Job 为非 HTTP 入口，无自动 span 上下文。
+      // ScopedValue 无法跨 jobToBeExecuted→execute→jobWasExecuted 三个独立回调维持绑定，
+      // 此处仅生成 scope 并存入 context；实际绑定在 Job.execute() 内通过 TraceContextHolder.with 完成，
+      // 保证 recordJobStart 拿到 traceId，下游（函数调用的 traceparent 注入）在 execute 作用域内可见。
+      TraceContext.TraceScope traceScope = traceContext.createScope();
       context.put("traceId", traceScope.traceId());
       context.put("spanId", traceScope.spanId());
       context.put(SPAN_SCOPE_KEY, traceScope);
@@ -148,8 +149,8 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
     } catch (Exception e) {
       log.error("记录作业执行结果失败", e);
     } finally {
-      // 无论作业成功/失败/早退，都需关闭 jobToBeExecuted 中启动的 span，避免 span 泄漏
-      endSpan(context, jobException);
+      // ScopedValue 由 Job.execute() 内的 TraceContextHolder.with 自动清理，
+      // 跨回调无法维持绑定，此处无需（也无法）关闭 span。
     }
   }
 
@@ -191,25 +192,6 @@ public class ScheduledFlowExecutionJobListener implements JobListener {
     } catch (Exception e) {
       log.warn("提取输出数据失败", e);
       return Map.of("error", "Failed to extract output data", "exception", e.getMessage());
-    }
-  }
-
-  /**
-   * 关闭 jobToBeExecuted 中启动的 trace scope。
-   * scope 不存在（作业被否决或 jobToBeExecuted 未启动 trace）时跳过。
-   */
-  private void endSpan(JobExecutionContext context, JobExecutionException jobException) {
-    TraceContext.TraceScope traceScope = (TraceContext.TraceScope) context.get(SPAN_SCOPE_KEY);
-    if (traceScope == null) {
-      return;
-    }
-    try {
-      if (jobException != null) {
-        jobException.printStackTrace();
-      }
-      traceScope.close();
-    } catch (Exception e) {
-      log.warn("关闭作业执行 trace scope 失败", e);
     }
   }
 

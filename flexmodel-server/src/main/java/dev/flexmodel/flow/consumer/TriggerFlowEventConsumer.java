@@ -35,22 +35,25 @@ public class TriggerFlowEventConsumer {
   public void consume(StartProcessParamEvent param) {
     sessionContext.setProjectId(param.getProjectId());
     sessionContext.setUserId(param.getUserId());
-    // 恢复 span 上下文：EventBus 跨线程，OTel context 不会自动传播，
-    // 用 Job 端传入的 traceId/spanId 恢复，使流程执行中的下游调用（含函数调用）在同一 trace 下
-    try (var ignored = traceContext.startChild(param.getTraceId(), param.getSpanId())) {
-      StartProcessResult result = null;
-      try {
-        result = flowExecutionService.startProcess(param);
-        log.info("flow.start.||startProcessParam={}||result={}", param, result);
-      } catch (Exception e) {
-        if (param.getEventId() != null) {
-          jobExecutionLogService.recordJobFailure(param.getProjectId(), param.getEventId(), e.getMessage(), e.getStackTrace(), System.currentTimeMillis() - param.getStartTime());
+    try {
+      // 恢复 span 上下文：EventBus 跨线程，OTel context 不会自动传播，
+      // 用 Job 端传入的 traceId/spanId 恢复，使流程执行中的下游调用（含函数调用）在同一 trace 下。
+      // 基于 ScopedValue 绑定：仅在 body 执行期间激活，退出自动清理，适配虚拟线程。
+      traceContext.startChild(param.getTraceId(), param.getSpanId(), () -> {
+        StartProcessResult result = null;
+        try {
+          result = flowExecutionService.startProcess(param);
+          log.info("flow.start.||startProcessParam={}||result={}", param, result);
+        } catch (Exception e) {
+          if (param.getEventId() != null) {
+            jobExecutionLogService.recordJobFailure(param.getProjectId(), param.getEventId(), e.getMessage(), e.getStackTrace(), System.currentTimeMillis() - param.getStartTime());
+          }
+        } finally {
+          if (param.getEventId() != null) {
+            jobExecutionLogService.recordJobSuccess(param.getProjectId(), param.getEventId(), result, System.currentTimeMillis() - param.getStartTime());
+          }
         }
-      } finally {
-        if (param.getEventId() != null) {
-          jobExecutionLogService.recordJobSuccess(param.getProjectId(), param.getEventId(), result, System.currentTimeMillis() - param.getStartTime());
-        }
-      }
+      });
     } finally {
       // 清理会话上下文，避免状态泄漏到同一线程的下一次消息处理
       sessionContext.setProjectId(null);

@@ -17,9 +17,10 @@ public final class TraceContextHolder {
 
   /**
    * 返回当前作用域内激活的 TraceScope，未绑定时返回 {@code null}。
+   * 注意：{@link ScopedValue#orElse(Object)} 要求默认值非 null，故用 isBound + get 手动判空。
    */
   public static TraceContext.TraceScope current() {
-    return CURRENT.orElse(null);
+    return CURRENT.isBound() ? CURRENT.get() : null;
   }
 
   /**

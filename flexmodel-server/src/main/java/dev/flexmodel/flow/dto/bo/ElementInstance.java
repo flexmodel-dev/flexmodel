@@ -13,6 +13,7 @@ public class ElementInstance {
   private List<String> subFlowInstanceIdList;
   private List<ElementInstance> subElementInstanceList;
   private String instanceDataId;
+  private int type;
 
   public ElementInstance() {
     super();
@@ -86,6 +87,14 @@ public class ElementInstance {
     this.instanceDataId = instanceDataId;
   }
 
+  public int getType() {
+    return type;
+  }
+
+  public void setType(int type) {
+    this.type = type;
+  }
+
   public List<ElementInstance> getSubElementInstanceList() {
     return subElementInstanceList;
   }
@@ -105,6 +114,7 @@ public class ElementInstance {
            ", subFlowInstanceIdList=" + subFlowInstanceIdList +
            ", subElementInstanceList=" + subElementInstanceList +
            ", instanceDataId='" + instanceDataId + '\'' +
+      ", type=" + type +
            '}';
   }
 }

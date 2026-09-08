@@ -1,6 +1,6 @@
 package dev.flexmodel.open;
 
-import dev.flexmodel.api.GraphQLManager;
+import dev.flexmodel.graphql.GraphQLManager;
 import graphql.ExecutionResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

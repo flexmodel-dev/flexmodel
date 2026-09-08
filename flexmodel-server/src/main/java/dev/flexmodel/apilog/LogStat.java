@@ -1,4 +1,4 @@
-package dev.flexmodel.api;
+package dev.flexmodel.apilog;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -8,7 +8,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class LogApiRank {
-  private String name;
+public class LogStat {
+  private String date;
   private Long total;
 }

@@ -138,8 +138,8 @@ public class FunctionTools {
     \
     The input parameter is passed as the Request body — the function \
     can read it via req.json() or req.text(). Metadata like projectId \
-    and invokeId are available via Request headers (x-flexmodel-project-id, \
-    x-flexmodel-invoke-id, x-flexmodel-function-name). \
+    is available via Request headers (x-flexmodel-project-id, \
+    x-flexmodel-function-name). \
     \
     If the function is not currently registered in the runtime (e.g. after a runtime restart), \
     it will be automatically re-deployed before invocation. \

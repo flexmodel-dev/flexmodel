@@ -1,4 +1,4 @@
-package dev.flexmodel.api;
+package dev.flexmodel.apilog;
 
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.query.Predicate;

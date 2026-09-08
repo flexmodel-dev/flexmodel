@@ -11,7 +11,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
  * Reactive REST client interface for the flexmodel-functions-runtime (Deno process).
  *
  * <p>Invoke endpoint sends the request body directly as JSON (no wrapping DTO).
- * authToken and invokeId are passed via custom headers.
+ * authToken is passed via custom header.
  *
  * @author cjbi
  */
@@ -32,7 +32,6 @@ public interface FunctionRuntimeClient {
     Response invoke(@PathParam("projectId") String projectId,
                     @PathParam("name") String name,
                     @HeaderParam("x-flexmodel-auth-token") String authToken,
-                    @HeaderParam("x-flexmodel-invoke-id") String invokeId,
                     Object body);
 
     @DELETE

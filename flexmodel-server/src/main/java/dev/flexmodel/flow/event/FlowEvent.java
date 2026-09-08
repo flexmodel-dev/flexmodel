@@ -1,5 +1,6 @@
 package dev.flexmodel.flow.event;
 
+import dev.flexmodel.common.FlexmodelEvent;
 import java.io.Serializable;
 
 /**
@@ -13,7 +14,7 @@ import java.io.Serializable;
  *
  * @author cjbi
  */
-public abstract class FlowEvent implements Serializable {
+public abstract class FlowEvent implements Serializable, FlexmodelEvent {
 
   private static final String FLOW_PREFIX = "flow.";
 

@@ -1,6 +1,5 @@
-package dev.flexmodel.api.consumer;
+package dev.flexmodel.apilog;
 
-import dev.flexmodel.api.ApiRequestLogService;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import io.quarkus.vertx.ConsumeEvent;
 import jakarta.enterprise.context.ApplicationScoped;

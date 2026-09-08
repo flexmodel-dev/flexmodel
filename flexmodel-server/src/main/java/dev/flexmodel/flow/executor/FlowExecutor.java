@@ -22,6 +22,7 @@ import dev.flexmodel.flow.event.FlowInstanceStartedEvent;
 import dev.flexmodel.flow.common.util.FlowModelUtil;
 import dev.flexmodel.flow.common.util.InstanceDataUtil;
 import dev.flexmodel.common.utils.CollectionUtils;
+import dev.flexmodel.common.trace.TraceContext;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.utils.StringUtils;
 
@@ -38,6 +39,9 @@ public class FlowExecutor extends RuntimeExecutor {
 
   @Inject
   FlowInstanceRepository flowInstanceRepository;
+
+  @Inject
+  TraceContext traceContext;
 
   @Inject
   Instance<ExecutorFactory> executorFactoryInstance;
@@ -437,23 +441,23 @@ public class FlowExecutor extends RuntimeExecutor {
     for (NodeInstance nodeInstancePO : nodeInstancePOList) {
       int elementType = FlowModelUtil.getElementType(nodeInstancePO.getNodeKey(), flowElementMap);
       if (elementType != FlowElementType.USER_TASK
-          && elementType != FlowElementType.END_EVENT
-          && elementType != FlowElementType.CALL_ACTIVITY) {
+        && elementType != FlowElementType.END_EVENT
+        && elementType != FlowElementType.CALL_ACTIVITY) {
         LOGGER.info("getActiveNodeForRollback: ignore un-userTask or un-endEvent or un-callActivity nodeInstance.||flowInstanceId={}"
-                    + "||suspendNodeInstanceId={}||nodeKey={}", flowInstanceId, suspendNodeInstanceId, nodeInstancePO.getNodeKey());
+          + "||suspendNodeInstanceId={}||nodeKey={}", flowInstanceId, suspendNodeInstanceId, nodeInstancePO.getNodeKey());
         continue;
       }
 
       if (nodeInstancePO.getStatus() == NodeInstanceStatus.ACTIVE) {
         if (nodeInstancePO.getNodeInstanceId().equals(suspendNodeInstanceId)) {
           LOGGER.info("getActiveNodeForRollback: roll back the active Node."
-                      + "||flowInstanceId={}||suspendNodeInstanceId={}", flowInstanceId, suspendNodeInstanceId);
+            + "||flowInstanceId={}||suspendNodeInstanceId={}", flowInstanceId, suspendNodeInstanceId);
           return nodeInstancePO;
         }
       } else if (nodeInstancePO.getStatus() == NodeInstanceStatus.COMPLETED) {
         if (nodeInstancePO.getNodeInstanceId().equals(suspendNodeInstanceId)) {
           LOGGER.info("getActiveNodeForRollback: roll back the lasted completed Node."
-                      + "||flowInstanceId={}||suspendNodeInstanceId={}||activeNodeInstanceId={}",
+              + "||flowInstanceId={}||suspendNodeInstanceId={}||activeNodeInstanceId={}",
             flowInstanceId, suspendNodeInstanceId, nodeInstancePO);
           return nodeInstancePO;
         }
@@ -582,7 +586,7 @@ public class FlowExecutor extends RuntimeExecutor {
     return executorFactoryInstance.get().getElementExecutor(runtimeContext.getCurrentNodeModel());
   }
 
-  ////////////////////////////////////////common////////////////////////////////////////
+  /// /////////////////////////////////////common////////////////////////////////////////
 
   private void saveNodeInstanceList(RuntimeContext runtimeContext, int nodeInstanceType) {
 
@@ -634,6 +638,8 @@ public class FlowExecutor extends RuntimeExecutor {
     NodeInstanceLog nodeInstanceLogPO = JsonUtils.convertValue(nodeInstancePO, NodeInstanceLog.class);
     nodeInstanceLogPO.setId(null);
     nodeInstanceLogPO.setType(nodeInstanceType);
+    // 关联当前链路：流程执行（HTTP/定时/事件触发）均处于激活 span 上下文中
+    nodeInstanceLogPO.setTraceId(traceContext.currentTraceId());
     return nodeInstanceLogPO;
   }
 

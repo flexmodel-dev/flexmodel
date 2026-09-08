@@ -1,17 +1,18 @@
 package dev.flexmodel.realtime;
 
+import dev.flexmodel.common.FlexmodelEvent;
 import java.io.Serializable;
 import java.util.Map;
 
 /**
  * 数据变更事件载荷，由 {@link RealtimeRabbitmqListener} 从引擎 {@code ChangedEvent} 转换而来，
- * 经 SmallRye RabbitMQ 通道 {@code data-events-out} 投递到 {@code flexmodel.events} topic 交换机。
+ * 经 SmallRye RabbitMQ 通道 {@code events-out} 投递到 {@code flexmodel.events} topic 交换机。
  * <p>
  * routing key 形如 {@code data.<projectId>.<modelName>.<operation>}，便于消费端按项目、模型或操作类型订阅过滤。
  *
  * @author cjbi
  */
-public class DataChangeEvent implements Serializable {
+public class DataChangeEvent implements Serializable, FlexmodelEvent {
 
   private final String routingKey;
   private final String projectId;

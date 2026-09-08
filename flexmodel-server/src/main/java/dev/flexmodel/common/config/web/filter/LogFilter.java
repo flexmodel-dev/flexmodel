@@ -12,6 +12,7 @@ import dev.flexmodel.settings.SettingsService;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
 import dev.flexmodel.settings.Settings;
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.common.trace.TraceContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -19,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+
 
 /**
  * @author cjbi
@@ -33,9 +35,13 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
   @Inject
   jakarta.inject.Provider<EventBus> eventBusProvider;
 
+  @Inject
+  TraceContext traceContext;
+
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
     requestContext.setProperty("startTime", System.currentTimeMillis());
+    requestContext.setProperty("traceId", traceContext.currentTraceId());
     try {
       byte[] bytes = requestContext.getEntityStream().readAllBytes();
       if (bytes.length > 0) {
@@ -58,6 +64,11 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     } else {
       execTime = -1L;
     }
+    // 在响应头中返回 traceId，方便前端/客户端排查问题时直接关联链路追踪
+    String traceId = (String) requestContext.getProperty("traceId");
+    if (traceId != null) {
+      responseContext.getHeaders().putSingle("x-trace-id", traceId);
+    }
     CompletableFuture.runAsync(() -> {
       Settings settings = settingsService.getSettings();
       boolean isLoggingEnabled = settings.getLog().isConsoleLoggingEnabled();
@@ -75,6 +86,7 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     apiLog.setPath(apiLog.getHttpMethod() + " " + requestContext.getUriInfo().getPath());
     apiLog.setRequestHeaders(requestContext.getHeaders());
     apiLog.setRequestBody(requestContext.getProperty("requestBody"));
+    apiLog.setTraceId((String) requestContext.getProperty("traceId"));
     apiLog.setIsSuccess(true);
     String projectId = Objects.toString(requestContext.getProperty("projectId"), null);
 //      apiData.setRemoteIp(null);
@@ -95,4 +107,5 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
     payload.put("log", apiLog);
     eventBusProvider.get().send("request.logging", payload);
   }
+
 }

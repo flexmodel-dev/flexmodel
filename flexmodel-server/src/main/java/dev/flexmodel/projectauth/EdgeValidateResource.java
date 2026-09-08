@@ -101,16 +101,15 @@ public class EdgeValidateResource {
       String claimProjectId = jwtService.getClaim(token, "projectId");
       String claimFunctionName = jwtService.getClaim(token, "functionName");
       String authToken = jwtService.getClaim(token, "authToken");
-      String invokeId = jwtService.getClaim(token, "invokeId");
 
       if (claimProjectId == null || claimFunctionName == null
-        || authToken == null || invokeId == null) {
+        || authToken == null) {
         return null;
       }
 
       log.debug("Edge auth: invoke-token validated for {}:{}", claimProjectId, claimFunctionName);
       return EdgeValidateResponse.valid(
-        claimProjectId, claimFunctionName, authToken, invokeId, "invoke-token", "svc:invoke"
+        claimProjectId, claimFunctionName, authToken, "invoke-token", "svc:invoke"
       );
 
     } catch (Exception e) {
@@ -128,11 +127,10 @@ public class EdgeValidateResource {
     if (apiKey == null) return null;
 
     String authToken = internalTokenService.signToken(projectId);
-    String invokeId = "ak-" + UUID.randomUUID().toString().substring(0, 8);
 
     log.debug("Edge auth: API key validated for project {}", projectId);
     return EdgeValidateResponse.valid(
-      projectId, functionName, authToken, invokeId, "api-key", apiKey.getName()
+      projectId, functionName, authToken, "api-key", apiKey.getName()
     );
   }
 
@@ -146,10 +144,9 @@ public class EdgeValidateResource {
     // --- No providers configured → anonymous access ---
     if (configs == null || configs.isEmpty()) {
       String authToken = internalTokenService.signToken(projectId);
-      String invokeId = "anon-" + UUID.randomUUID().toString().substring(0, 8);
       log.debug("Edge auth: no IdP configured for {} → anonymous access", projectId);
       return EdgeValidateResponse.valid(
-        projectId, functionName, authToken, invokeId, "anonymous", "anonymous"
+        projectId, functionName, authToken, "anonymous", "anonymous"
       );
     }
 
@@ -174,10 +171,9 @@ public class EdgeValidateResource {
         AuthResult result = provider.authenticate(authContext);
         if (result != null && result.isSuccess()) {
           String authToken = internalTokenService.signToken(projectId);
-          String invokeId = "idp-" + UUID.randomUUID().toString().substring(0, 8);
           log.debug("Edge auth: IdP '{}' validated for {} → user {}", config.getName(), projectId, result.getUserId());
           return EdgeValidateResponse.valid(
-            projectId, functionName, authToken, invokeId, "idp", result.getUserId()
+            projectId, functionName, authToken, "idp", result.getUserId()
           );
         }
       } catch (Exception e) {

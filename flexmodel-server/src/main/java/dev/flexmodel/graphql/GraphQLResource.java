@@ -1,4 +1,4 @@
-package dev.flexmodel.api;
+package dev.flexmodel.graphql;
 
 import dev.flexmodel.common.authz.RequiresPermissions;
 import graphql.ExecutionResult;

@@ -724,3 +724,21 @@ mvn compile 验证。
   pages/Logs，导致文件无法被 git 跟踪。AuditLog 不匹配该规则且语义更贴切。
 - 移除 ypes/settings.d.ts 中未被引用的孤儿 Observability 接口（其形状仅含 auditResources，与实际 logSettings 不符）。
 - 验证： sc --noEmit -p tsconfig.json 通过； g -i observability flexmodel-ui/src 无残留。
+
+## Fix: 清理前端未使用变量并修复生产构建 (2026-09-08)
+
+**目标:** 修复 Docker/UI 生产构建中 TypeScript `noUnusedLocals` 报错。
+
+**修改:**
+
+- 移除 `APILog/index.tsx`、`AuditLogList.tsx`、`JobExecutionLogList.tsx` 中未使用的 `useNavigate` 导入与 `navigate` 变量。
+- 移除 `Functions/index.tsx` 中未使用的 `Outlet` 导入。
+
+**验证:**
+
+- `flexmodel-ui/npm run build` 通过（`tsc -b && vite build`）。
+- `mvn clean compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `mvn test -pl flexmodel-engine -q` 通过。
+
+**遗留:** Vite 构建提示 Monaco Editor 相关 chunk 超过 500 kB，属既有性能警告，不影响本次构建结果；`./init.sh` 在 Git Bash
+中因 `java` 不在 PATH 无法直接运行，PowerShell 环境中 Maven/Java 25 可用，本次已按同等检查项验证。

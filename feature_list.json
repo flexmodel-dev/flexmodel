@@ -64,7 +64,7 @@
       "description": "基于 React + Ant Design v6 的前端界面持续优化和功能完善",
       "dependencies": ["feat-002", "feat-003", "feat-004"],
       "status": "in-progress",
-      "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中。2026-08-31 移除 OpenTelemetry 依赖与运行时，改用轻量 trace 上下文；日志按功能归属迁移到后端 feature 包与 UI 路由（API/数据/边缘函数/任务调度）。同日移除前端链路追踪页面、API、路由和跳转，仅保留日志 traceId 元数据。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；ApiLogResourceTest + TriggerResourceTest 18 tests 通过；npx tsc --noEmit 通过。"
+      "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中。2026-08-31 移除 OpenTelemetry 依赖与运行时，改用轻量 trace 上下文；日志按功能归属迁移到后端 feature 包与 UI 路由（API/数据/边缘函数/任务调度）。同日移除前端链路追踪页面、API、路由和跳转，仅保留日志 traceId 元数据。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；ApiLogResourceTest + TriggerResourceTest 18 tests 通过；npx tsc --noEmit 通过。2026-09-08 清理 APILog/AuditLog/Functions/JobExecutionLogList 中未使用导入与变量，flexmodel-ui npm run build 通过；全模块 Maven 编译与 flexmodel-engine 测试通过。"
     },
     {
       "id": "feat-008-session-2026-09-02",

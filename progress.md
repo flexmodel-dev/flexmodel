@@ -742,3 +742,18 @@ mvn compile 验证。
 
 **遗留:** Vite 构建提示 Monaco Editor 相关 chunk 超过 500 kB，属既有性能警告，不影响本次构建结果；`./init.sh` 在 Git Bash
 中因 `java` 不在 PATH 无法直接运行，PowerShell 环境中 Maven/Java 25 可用，本次已按同等检查项验证。
+
+## Fix: SDK 文档 MDX 表达式解析失败 (2026-09-08)
+
+**目标:** 修复 `flexmodel-website` 生产构建中 `docs/tutorial/features/sdk.md` 第 610 行的 acorn/MDX 解析错误。
+
+**修改:**
+
+- 将 SDK 文档中的分支管理示例移回 TypeScript 代码块内，避免 `{...}` 被 MDX 当作 JavaScript 表达式解析。
+- 将「分支管理」注释与 `branches.create` 调用拆分为独立行，保持示例结构清晰。
+
+**验证:**
+
+- `flexmodel-website yarn build` 通过，Docusaurus Server/Client 编译成功并生成静态文件。
+
+**遗留:** `./init.sh` 在当前 Git Bash 环境因 `java` 不在 PATH 无法启动；这是本机环境问题，非本次文档改动引入。

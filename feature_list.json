@@ -83,7 +83,7 @@
       "description": "基于 Docusaurus 的文档站内容完善，包含 API 文档和教程",
       "dependencies": ["feat-004"],
       "status": "in-progress",
-      "evidence": "flexmodel-website 模块已有基础结构，docs/api 和 docs/tutorial 目录已有内容"
+      "evidence": "flexmodel-website 模块已有基础结构，docs/api 和 docs/tutorial 目录已有内容。2026-09-08 修复 SDK 文档分支管理示例误置于 MDX 代码块外导致的 acorn 解析失败；flexmodel-website yarn build 通过。"
     },
     {
       "id": "feat-010",

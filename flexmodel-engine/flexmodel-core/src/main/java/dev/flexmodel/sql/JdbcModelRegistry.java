@@ -236,6 +236,10 @@ public class JdbcModelRegistry implements ModelRegistry {
               }
             }
             stringField.setLength(sqlColumn.getLength());
+            stringField.setText(
+              sqlColumn.getSqlTypeCode() == Types.LONGVARCHAR ||
+                sqlColumn.getSqlTypeCode() == Types.CLOB
+            );
             break;
           }
           case FLOAT: {

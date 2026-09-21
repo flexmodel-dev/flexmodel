@@ -81,7 +81,9 @@ public class ASTNodeConverter {
         field = new StringField(idlField.name);
         field.setNullable(idlField.optional);
         for (ModelParser.Annotation annotation : idlField.annotations) {
-          if (annotation.name.equals("length")) {
+          if (annotation.name.equals("text")) {
+            ((StringField) field).setText(true);
+          } else if (annotation.name.equals("length")) {
             ((StringField) field).setLength(Integer.parseInt((String) annotation.parameters.get("value")));
           }
         }
@@ -254,6 +256,9 @@ public class ASTNodeConverter {
     // 类型特定处理
     switch (field) {
       case StringField stringField -> {
+        if (stringField.isText()) {
+          idlField.annotations.add(new ModelParser.Annotation("text"));
+        }
         if (stringField.getLength() > 0) {
           ModelParser.Annotation anno = new ModelParser.Annotation("length");
           anno.parameters.put("value", String.valueOf(stringField.getLength()));

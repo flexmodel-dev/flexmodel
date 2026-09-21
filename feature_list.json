@@ -112,6 +112,16 @@
       ],
       "status": "done",
       "evidence": "project.fml 为 f_api_request_log/f_function_log/f_audit_log/f_span/f_job_execution_log 在 @system 后追加 @migration(enabled: false)。新增 dev.flexmodel.project.MigrationConfig.of(SchemaObject) 解析 additionalProperties['migration']（Map→enabled/limit，默认全量迁移）。BranchService.createBranch/mergeBranch 数据迁移循环加入 isEnabled() 跳过判断；DefaultSchemaCopier 不变（仅复制表结构）。新增 ASTNodeConverterTest.migrationAnnotationIsStoredInAdditionalProperties 回归测试。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；mvn test -pl flexmodel-engine 通过（ASTNodeConverterTest 3 tests 0 failures）。"
+    },
+    {
+      "id": "feat-016",
+      "name": "Data - String @text 无限长文本",
+      "description": "新增 String @text 语法，逻辑类型保持 String；物理列映射为数据库无限文本类型，普通 String 与 @length(n) 行为不变。支持 FML 解析/回写、模型相等性变更检测、SQL DDL/反向读取、字段表单和记录表单。",
+      "dependencies": [
+        "feat-001"
+      ],
+      "status": "done",
+      "evidence": "StringField 新增 text 元数据并纳入 equals/hashCode；ASTNodeConverter 解析/回写 @text 且保留 @length(n)；SqlSchemaService 将 text=true 映射为 Types.LONGVARCHAR 且不使用 length 生成物理长度；JdbcModelRegistry 识别 LONGVARCHAR/CLOB；方言验证 MySQL/MariaDB longtext、PostgreSQL text、SQL Server varchar(MAX)、Oracle CLOB、SQLite text。UI FieldForm 支持 text 开关，RecordForm 使用多行输入，API Field 类型透传 text。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；mvn test -pl flexmodel-engine 通过；mvn test -pl flexmodel-engine/flexmodel-core -Dtest=StringFieldTextTest 7 tests 通过；flexmodel-ui npx tsc --noEmit 通过；npx playwright test 35 tests 全部通过。"
     }
   ]
 }

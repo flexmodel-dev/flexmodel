@@ -415,7 +415,6 @@ broker，本地事件照常发布。
 **验证:**
 
 - `mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` → BUILD SUCCESS
--
 `mvn test -pl flexmodel-server -Dtest=FlowEventPublisherTest,FlowEventRabbitmqBridgeTest,DefinitionProcessorTest,RuntimeProcessorTest` →
 25 tests, 0 failures, 0 errors（含 DefinitionProcessorTest 4、RuntimeProcessorTest 17 回归通过）
 
@@ -757,3 +756,30 @@ mvn compile 验证。
 - `flexmodel-website yarn build` 通过，Docusaurus Server/Client 编译成功并生成静态文件。
 
 **遗留:** `./init.sh` 在当前 Git Bash 环境因 `java` 不在 PATH 无法启动；这是本机环境问题，非本次文档改动引入。
+
+## Feature: String @text 无限长文本 (2026-09-21)
+
+**目标:** 为 `String` 增加 `@text` 能力，逻辑类型保持 `String`，物理列使用数据库无限文本类型；普通 `String` 与 `@length(n)`
+保持原语义。
+
+**完成内容:**
+
+- `StringField.text` 元数据纳入 equals/hashCode，模型变更可检测 `varchar → text`。
+- `@text` 解析与 FML 回写完成；`String @text @length(10000)` 同时保留 text 与 length。
+- `SqlSchemaService` 在 text=true 时映射 `Types.LONGVARCHAR`，物理 DDL 不使用 length；`JdbcModelRegistry` 识别
+  `LONGVARCHAR` / `CLOB`。
+- 校正方言映射：MySQL/MariaDB `longtext`，PostgreSQL `text`，SQL Server `varchar(MAX)`，Oracle `CLOB`，SQLite `text`。
+- UI 字段表单支持 `text` 开关；记录表单对 `String + text` 使用多行输入；前端 API 类型透传 `text`。
+- 更新建模文档中的类型、属性、FML 修饰符与 JSON API 示例。
+
+**验证:**
+
+- `mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `mvn test -pl flexmodel-engine` 通过。
+- `mvn test -pl flexmodel-engine/flexmodel-core -Dtest=StringFieldTextTest`：7 tests，0 failures。
+- `flexmodel-ui npx tsc --noEmit` 通过。
+
+**测试路由修复:** E2E 中 3 个失败用例访问的旧路径 `/api/log` 与 `/scheduling/job-execution-log` 与当前路由定义不一致；已同步为
+`/api/logs` 与 `/scheduling/job-execution-logs`。修复后目标 3 个用例通过，完整 Playwright 套件 35/35 通过。
+
+**遗留/风险:** 无功能相关遗留。

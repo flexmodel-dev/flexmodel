@@ -11,6 +11,7 @@ import dev.flexmodel.service.SchemaService;
 
 import java.util.Iterator;
 import java.util.List;
+import java.sql.Types;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -367,7 +368,11 @@ public class SqlSchemaService extends BaseService implements SchemaService {
       DefaultValue defaultValue = field.getDefaultValue();
       switch (field) {
         case StringField stringField -> {
-          aSqlColumn.setLength(stringField.getLength());
+          if (stringField.isText()) {
+            aSqlColumn.setSqlTypeCode(Types.LONGVARCHAR);
+          } else {
+            aSqlColumn.setLength(stringField.getLength());
+          }
           if (defaultValue != null && defaultValue.isFixed()) {
             aSqlColumn.setDefaultValue(defaultValue.getValue().toString());
           }

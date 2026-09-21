@@ -58,7 +58,7 @@ public class SQLServerSqlDialect extends SqlDialect {
 
     // supports chinese characters
     registerColumnType(Types.CLOB, "nvarchar(MAX)");
-    registerColumnType(Types.LONGVARCHAR, "nvarchar(MAX)");
+    registerColumnType(Types.LONGVARCHAR, "varchar(MAX)");
     registerColumnType(Types.VARCHAR, "nvarchar(MAX)");
     registerColumnType(Types.VARCHAR, MAX_LENGTH, "nvarchar($l)");
 

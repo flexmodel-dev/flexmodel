@@ -2,11 +2,11 @@ package dev.flexmodel.common.config.web.filter;
 
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerResponseContext;
 import lombok.extern.slf4j.Slf4j;
 import dev.flexmodel.settings.SettingsService;
 import dev.flexmodel.codegen.entity.ApiRequestLog;
@@ -42,17 +42,17 @@ public class LogFilter implements ContainerRequestFilter, ContainerResponseFilte
   public void filter(ContainerRequestContext requestContext) throws IOException {
     requestContext.setProperty("startTime", System.currentTimeMillis());
     requestContext.setProperty("traceId", traceContext.currentTraceId());
-    try {
-      byte[] bytes = requestContext.getEntityStream().readAllBytes();
-      if (bytes.length > 0) {
-        String body = new String(bytes);
-        requestContext.setProperty("requestBody", body);
-      }
-      requestContext.setEntityStream(new ByteArrayInputStream(bytes));
-      //This is your POST Body as String
-    } catch (IOException e) {
-      log.error("Failed to read request body", e);
-    }
+//    try {
+//      byte[] bytes = requestContext.getEntityStream().readAllBytes();
+//      if (bytes.length > 0) {
+//        String body = new String(bytes);
+//        requestContext.setProperty("requestBody", body);
+//      }
+//      requestContext.setEntityStream(new ByteArrayInputStream(bytes));
+//      //This is your POST Body as String
+//    } catch (IOException e) {
+//      log.error("Failed to read request body", e);
+//    }
   }
 
   @Override

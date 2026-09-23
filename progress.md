@@ -742,3 +742,49 @@ mvn compile 验证。
 
 **遗留:** Vite 构建提示 Monaco Editor 相关 chunk 超过 500 kB，属既有性能警告，不影响本次构建结果；`./init.sh` 在 Git Bash
 中因 `java` 不在 PATH 无法直接运行，PowerShell 环境中 Maven/Java 25 可用，本次已按同等检查项验证。
+
+## Branch - mergeBranch SSE 迁移进度 (2026-09-23)
+
+**目标:** 将耗时的分支合并接口改为 SSE 流式响应，向前端实时输出每个模型的数据迁移进度。
+
+**修改:**
+
+- 后端新增 `BranchMergeProgressEvent`，包含事件类型、阶段、模型名、总数/已处理数、源/目标/插入/更新记录数和消息。
+- `BranchService.mergeBranch` 改为返回 `Flow.Publisher<BranchMergeProgressEvent>`，在 ManagedExecutor 中异步执行原合并逻辑，并通过
+  `SubmissionPublisher` 输出准备、结构合并、逐模型数据迁移、完成/失败事件。
+- `BranchResource.mergeBranch` 原路径不变，响应改为 `text/event-stream`。
+- 针对 Quarkus Reactive 的 `BlockingNotAllowedException`，为 `mergeBranch` 方法补充 `@Blocking`，确保请求体在 worker
+  线程读取，SSE 响应仍由 Publisher 异步输出。
+- 前端 `mergeBranch` 改用 `fetch` 流式读取并解析 SSE；`BranchSwitcher` 点击合并后立即显示进度面板，并实时更新总体进度与每个模型的迁移状态。
+
+**验证:**
+
+- `mvn clean compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `mvn test -pl flexmodel-engine -q` 通过。
+- `flexmodel-ui npm run lint` 通过。
+- `flexmodel-ui npm run build` 通过（`tsc -b && vite build`）。
+
+**遗留/风险:** `init.sh` 在当前 Git Bash 环境受 CRLF/PATH 影响无法直接执行；本次已使用其等价 Maven 检查命令在
+PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大小警告，不影响构建结果。
+
+## Branch - 创建/合并 SSE 进度与数据迁移细化 (2026-09-23)
+
+**目标:** 将耗时的 createBranch、mergeBranch 改为 SSE 进度流，细化每个模型的数据迁移进度；删除分支恢复普通同步接口。前端实时展示进度，并在成功后保留进度供用户查看。
+
+**修改:**
+
+- 新增统一 `BranchProgressEvent`，承载 CREATE/MERGE 操作、阶段、模型、进度、记录数与结果。
+- `BranchService.createBranch`、`mergeBranch` 返回 `Flow.Publisher<BranchProgressEvent>`，由 ManagedExecutor +
+  SubmissionPublisher 异步执行。
+- 创建分支的数据迁移逐模型输出开始、完成、跳过、失败事件，并将 50%-90% 映射为迁移进度；合并分支继续输出结构合并和逐模型数据合并事件。
+- `BranchResource.createBranch`、`mergeBranch` 声明 `text/event-stream` 与 JSON 元素类型；`deleteBranch` 恢复普通同步接口。
+- 前端 `createBranch`、`mergeBranch` 使用 `fetch` 流式解析 SSE；`BranchSwitcher` 实时显示进度，成功后弹窗保持打开并展示
+  100% 进度，用户关闭时清除进度。
+- `LogFilter` 移除请求体阻塞读取，业务接口不再需要 `@Blocking`。
+
+**验证:**
+
+- `mvn compile -pl flexmodel-server -am -q` 通过。
+- `mvn test -pl flexmodel-engine -q` 通过。
+- `flexmodel-ui npm run lint` 通过。
+- `flexmodel-ui npm run build` 通过（`tsc -b && vite build`）。

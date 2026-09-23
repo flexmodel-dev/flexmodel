@@ -2,7 +2,9 @@ package dev.flexmodel.project;
 
 import dev.flexmodel.project.dto.BranchCreateRequest;
 import dev.flexmodel.project.dto.BranchMergeRequest;
+import dev.flexmodel.project.dto.BranchProgressEvent;
 import dev.flexmodel.codegen.entity.Branch;
+import org.jboss.resteasy.reactive.RestStreamElementType;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -15,6 +17,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
+import java.util.concurrent.Flow;
 import java.util.List;
 
 /**
@@ -68,7 +71,9 @@ public class BranchResource {
   )
   @Operation(summary = "创建分支")
   @POST
-  public Branch createBranch(
+  @Produces(MediaType.SERVER_SENT_EVENTS)
+  @RestStreamElementType(MediaType.APPLICATION_JSON)
+  public Flow.Publisher<BranchProgressEvent> createBranch(
     @Parameter(name = "projectId", in = ParameterIn.PATH, description = "项目ID", required = true)
     @PathParam("projectId") String projectId,
     BranchCreateRequest request) {
@@ -101,14 +106,16 @@ public class BranchResource {
     responseCode = "200",
     description = "OK"
   )
-  @Operation(summary = "合并分支", description = "将源分支的模型结构和数据合并到目标分支，支持冲突策略：OVERWRITE（覆盖）或 SKIP（跳过）")
+  @Operation(summary = "合并分支", description = "通过 SSE 流式返回源分支模型结构和数据合并到目标分支的进度，支持冲突策略：OVERWRITE（覆盖）或 SKIP（跳过）")
   @POST
   @Path("/merge")
-  public void mergeBranch(
+  @Produces(MediaType.SERVER_SENT_EVENTS)
+  @RestStreamElementType(MediaType.APPLICATION_JSON)
+  public Flow.Publisher<BranchProgressEvent> mergeBranch(
     @Parameter(name = "projectId", in = ParameterIn.PATH, description = "项目ID", required = true)
     @PathParam("projectId") String projectId,
     BranchMergeRequest request) {
-    branchService.mergeBranch(
+    return branchService.mergeBranch(
       projectId,
       request.getSourceBranch(),
       request.getTargetBranch(),

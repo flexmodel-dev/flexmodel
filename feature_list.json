@@ -112,6 +112,17 @@
       ],
       "status": "done",
       "evidence": "project.fml 为 f_api_request_log/f_function_log/f_audit_log/f_span/f_job_execution_log 在 @system 后追加 @migration(enabled: false)。新增 dev.flexmodel.project.MigrationConfig.of(SchemaObject) 解析 additionalProperties['migration']（Map→enabled/limit，默认全量迁移）。BranchService.createBranch/mergeBranch 数据迁移循环加入 isEnabled() 跳过判断；DefaultSchemaCopier 不变（仅复制表结构）。新增 ASTNodeConverterTest.migrationAnnotationIsStoredInAdditionalProperties 回归测试。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；mvn test -pl flexmodel-engine 通过（ASTNodeConverterTest 3 tests 0 failures）。"
+    },
+    {
+      "id": "feat-016",
+      "name": "Branch - 创建/合并 SSE 进度",
+      "description": "将创建、合并分支接口改造为 SSE 流式响应，输出阶段与逐模型数据迁移进度事件；删除分支保持普通同步接口。前端实时展示总体进度、阶段状态和每个模型状态，并在成功后保留进度供用户查看。",
+      "dependencies": [
+        "feat-008",
+        "feat-015"
+      ],
+      "status": "done",
+      "evidence": "新增统一 BranchProgressEvent，包含 CREATE/MERGE 操作、阶段、模型名、总数、进度、记录数和结果。createBranch/mergeBranch 返回 Flow.Publisher<BranchProgressEvent>，由 ManagedExecutor + SubmissionPublisher 异步执行；创建分支的数据迁移逐模型输出 MODEL_STARTED/MODEL_COMPLETED/MODEL_SKIPPED/MODEL_FAILED，并把 50%-90% 映射为迁移进度；合并分支输出结构合并与数据合并进度。deleteBranch 恢复普通同步接口。前端 createBranch/mergeBranch 使用 fetch 流式解析 SSE，BranchSwitcher 实时显示进度面板，成功后弹窗保持打开并展示 100% 进度，用户关闭时清除进度。LogFilter 不再阻塞读取请求体，业务接口无需 @Blocking。验证：mvn compile -pl flexmodel-server -am -q 通过；mvn test -pl flexmodel-engine -q 通过；flexmodel-ui npm run lint 通过；npm run build（tsc -b + vite build）通过。"
     }
   ]
 }

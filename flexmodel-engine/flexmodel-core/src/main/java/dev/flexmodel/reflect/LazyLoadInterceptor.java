@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.field.ModelRefField;
+import dev.flexmodel.model.field.RelationFilterSupport;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Expressions;
+import dev.flexmodel.query.Query;
 import dev.flexmodel.session.AbstractSession;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.type.TypeHandler;
@@ -113,6 +115,10 @@ public class LazyLoadInterceptor {
                                      Callable<?> superCall,
                                      String fieldName,
                                      ModelRefField relationField) throws Exception {
+    if (relationField.isConditionRelation()
+      || (relationField.getFilter() != null && !relationField.getFilter().isEmpty())) {
+      return loadConditionRelationValue(proxy, clazz, method, superCall, fieldName, relationField);
+    }
     Object id = resolveRelationIdentifier(relationField);
     if (id == null) {
       return superCall.call();
@@ -133,6 +139,63 @@ public class LazyLoadInterceptor {
     applyLoadedValue(proxy, clazz, fieldName, method.getReturnType(), loadedValue);
     loadCache.get().putIfAbsent(cacheKey, loadedValue);
     return loadedValue;
+  }
+
+  private Object loadConditionRelationValue(Object proxy,
+                                            Class<?> clazz,
+                                            Method method,
+                                            Callable<?> superCall,
+                                            String fieldName,
+                                            ModelRefField relationField) throws Exception {
+    Map<String, Object> targetFilter =
+      RelationFilterSupport.resolveTargetFilter(
+        relationField.getFilter(),
+        dataMap,
+        relationField.getName()
+      );
+
+    if (!relationField.isConditionRelation()) {
+      Object identifier = resolveRelationIdentifier(relationField);
+      if (identifier == null) {
+        return superCall.call();
+      }
+      Object convertedIdentifier =
+        castValueType(relationField.getFrom(), relationField.getForeignField(), identifier);
+      Map<String, Object> keyCondition = new HashMap<>();
+      keyCondition.put("_eq", convertedIdentifier);
+      Map<String, Object> keyFilter = new HashMap<>();
+      keyFilter.put(relationField.getForeignField(), keyCondition);
+      targetFilter = targetFilter.isEmpty()
+        ? keyFilter
+        : Map.of("_and", List.of(keyFilter, targetFilter));
+    }
+
+    if (targetFilter.isEmpty()) {
+      return superCall.call();
+    }
+
+    Query query = new Query();
+    query.setFilter(JsonUtils.toJsonString(targetFilter));
+    List<Map<String, Object>> result = session.data().findAll(relationField.getFrom(), query);
+
+    if (relationField.isMultiple()) {
+      Class<?> elementType = resolveCollectionElementType(method);
+      List<?> objects = JsonUtils.convertValueList(result, elementType);
+      List<?> proxyList = LazyObjProxy.createProxyList(objects, relationField.getFrom(), session);
+      applyLoadedValue(proxy, clazz, fieldName, method.getReturnType(), proxyList);
+      return proxyList;
+    }
+
+    if (result.isEmpty()) {
+      return null;
+    }
+    if (result.size() > 1) {
+      throw new IllegalStateException("Relation " + fieldName + " matched more than one record");
+    }
+    Object value = JsonUtils.convertValue(result.getFirst(), method.getReturnType());
+    Object proxyValue = LazyObjProxy.createProxy(value, relationField.getFrom(), session);
+    applyLoadedValue(proxy, clazz, fieldName, method.getReturnType(), proxyValue);
+    return proxyValue;
   }
 
   private RelationLoadResult loadRelationValue(ModelRefField relationField, Method method, Object identifier) {

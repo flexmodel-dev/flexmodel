@@ -191,8 +191,12 @@ public abstract class BaseService {
    */
   private void autoFillRelationFields(Query.Join joinConfig, EntityDefinition entity) {
     try {
-      ModelRefField relationField = entity.findRelationByModelName(joinConfig.getFrom())
+      ModelRefField relationField = findRelationField(entity, joinConfig)
         .orElseThrow(() -> new SqlExecutionException("Relation field not found for model: " + joinConfig.getFrom()));
+
+      if (relationField.isConditionRelation()) {
+        return;
+      }
 
       String localFieldName = relationField.getLocalField() != null ?
         relationField.getLocalField() :
@@ -207,6 +211,87 @@ public abstract class BaseService {
       log.error("Failed to auto-fill relation fields for join: {}, error: {}", joinConfig.getFrom(), e.getMessage(), e);
       throw e;
     }
+  }
+
+  /**
+   * 解析 join 对应的关联字段。同一目标模型允许存在多个关联字段，按以下顺序消歧：
+   * <ol>
+   *   <li>join 别名命中关联字段名</li>
+   *   <li>join 显式声明的键字段与候选的键字段匹配</li>
+   *   <li>候选的关联定义完全一致（外键、过滤条件、基数均相同）时任取其一</li>
+   * </ol>
+   * 仍无法唯一确定时抛出异常，提示调用方改用关联字段名作为 join 别名。
+   *
+   * @param entity     关联所属的实体定义
+   * @param joinConfig 连接配置
+   * @return 匹配到的关联字段，找不到时为 {@link Optional#empty()}
+   */
+  protected Optional<ModelRefField> findRelationField(EntityDefinition entity, Query.Join joinConfig) {
+    if (entity.getField(joinConfig.getAs()) instanceof ModelRefField relationField
+      && relationField.getFrom().equals(joinConfig.getFrom())) {
+      return Optional.of(relationField);
+    }
+    List<ModelRefField> candidates = entity.getFields().stream()
+      .filter(ModelRefField.class::isInstance)
+      .map(ModelRefField.class::cast)
+      .filter(field -> field.getFrom().equals(joinConfig.getFrom()))
+      .toList();
+    if (candidates.size() <= 1) {
+      return candidates.stream().findFirst();
+    }
+
+    if (joinConfig.getLocalField() != null || joinConfig.getForeignField() != null) {
+      List<ModelRefField> keyMatched = candidates.stream()
+        .filter(field -> matchesJoinKeyFields(field, joinConfig))
+        .toList();
+      if (keyMatched.size() == 1) {
+        return Optional.of(keyMatched.getFirst());
+      }
+      if (!keyMatched.isEmpty()) {
+        candidates = keyMatched;
+      }
+    }
+
+    ModelRefField first = candidates.getFirst();
+    if (candidates.stream().allMatch(field -> isSameRelationDefinition(first, field))) {
+      log.debug("Multiple equivalent relations to model {}; using relation field: {}",
+        joinConfig.getFrom(), first.getName());
+      return Optional.of(first);
+    }
+
+    throw new IllegalArgumentException("Ambiguous relation to model " + joinConfig.getFrom()
+      + "; use one of the relation field names as join alias: "
+      + candidates.stream().map(ModelRefField::getName).collect(Collectors.joining(", ")));
+  }
+
+  /**
+   * 判断关联字段的键字段是否与 join 显式声明的键字段匹配，join 未声明的键字段不参与比较。
+   *
+   * @param relationField 候选关联字段
+   * @param joinConfig    连接配置
+   * @return 是否匹配
+   */
+  private boolean matchesJoinKeyFields(ModelRefField relationField, Query.Join joinConfig) {
+    boolean localMatches = joinConfig.getLocalField() == null
+      || Objects.equals(relationField.getLocalField(), joinConfig.getLocalField());
+    boolean foreignMatches = joinConfig.getForeignField() == null
+      || Objects.equals(relationField.getForeignField(), joinConfig.getForeignField());
+    return localMatches && foreignMatches;
+  }
+
+  /**
+   * 判断两个关联字段的关联定义是否一致，仅字段名不同。
+   *
+   * @param left  关联字段
+   * @param right 关联字段
+   * @return 关联定义是否完全一致
+   */
+  private boolean isSameRelationDefinition(ModelRefField left, ModelRefField right) {
+    return left.isMultiple() == right.isMultiple()
+      && left.getStrategy() == right.getStrategy()
+      && Objects.equals(left.getLocalField(), right.getLocalField())
+      && Objects.equals(left.getForeignField(), right.getForeignField())
+      && Objects.equals(left.getFilter(), right.getFilter());
   }
 
   /**
@@ -376,7 +461,18 @@ public abstract class BaseService {
       relationField.getName(), foreignKeyValues.size());
 
     Query relationQuery = new Query();
-    relationQuery.setFilter(field(relationField.getForeignField()).in(foreignKeyValues).toJsonString());
+    Map<String, Object> targetFilter =
+      RelationFilterSupport.resolveTargetFilter(relationField.getFilter(), Map.of(), relationField.getName());
+    if (targetFilter.isEmpty()) {
+      relationQuery.setFilter(field(relationField.getForeignField()).in(foreignKeyValues).toJsonString());
+    } else {
+      Map<String, Object> keyFilter = Map.of(
+        relationField.getForeignField(),
+        Map.of("_in", foreignKeyValues)
+      );
+      Map<String, Object> combinedFilter = Map.of("_and", List.of(keyFilter, targetFilter));
+      relationQuery.setFilter(JsonUtils.toJsonString(combinedFilter));
+    }
 
     List<Map<String, Object>> result = relationQueryFunction.apply(relationField.getFrom(), relationQuery);
 
@@ -461,6 +557,14 @@ public abstract class BaseService {
                                     AtomicInteger remainingDepth,
                                     String relationFieldAlias,
                                     ModelRefField relationField) {
+    if (relationField.isConditionRelation()
+      || (relationField.getFilter() != null && !relationField.getFilter().isEmpty())) {
+      remainingDepth.decrementAndGet();
+      fillConditionRelationData(parentDataList, relationQueryFunction, query,
+        remainingDepth, relationFieldAlias, relationField);
+      return;
+    }
+
     // 收集所有外键值
     Set<Object> foreignKeyValues = parentDataList.stream()
       .map(dataItem -> dataItem.get(relationField.getLocalField()))
@@ -496,6 +600,168 @@ public abstract class BaseService {
     });
   }
 
+  /**
+   * Fill a condition relation, or a key relation whose filter references source fields.
+   */
+  private void fillConditionRelationData(List<Map<String, Object>> parentDataList,
+                                         BiFunction<String, Query, List<Map<String, Object>>> relationQueryFunction,
+                                         Query query,
+                                         AtomicInteger remainingDepth,
+                                         String relationFieldAlias,
+                                         ModelRefField relationField) {
+    EntityDefinition relationModel = (EntityDefinition) sessionContext.getModelDefinition(relationField.getFrom());
+    if (relationModel == null) {
+      log.warn("Relation model not found for relation: {}", relationField.getName());
+      return;
+    }
+
+    List<String> childExpand = query != null
+      ? extractChildExpand(query.getExpand(), relationField.getName())
+      : null;
+    Query childQuery = null;
+    if (childExpand != null) {
+      childQuery = new Query();
+      childQuery.setExpand(childExpand);
+    }
+
+    if (!relationField.isConditionRelation()
+      && !RelationFilterSupport.hasSourceReference(relationField.getFilter(), relationField.getName())) {
+      fillBatchedKeyRelationData(parentDataList, relationQueryFunction, childQuery,
+        remainingDepth, relationFieldAlias, relationField, relationModel);
+      return;
+    }
+
+    for (Map<String, Object> parentDataItem : parentDataList) {
+      Map<String, Object> targetFilter =
+        RelationFilterSupport.resolveTargetFilter(
+          relationField.getFilter(),
+          parentDataItem,
+          relationField.getName()
+        );
+
+      if (!relationField.isConditionRelation()) {
+        Object localKeyValue = getSourceValue(parentDataItem, relationField.getLocalField());
+        if (localKeyValue == null) {
+          parentDataItem.put(relationFieldAlias, relationField.isMultiple() ? List.of() : null);
+          continue;
+        }
+        Map<String, Object> keyFilter = Map.of(
+          relationField.getForeignField(),
+          Map.of("_eq", localKeyValue)
+        );
+        targetFilter = targetFilter.isEmpty()
+          ? keyFilter
+          : Map.of("_and", List.of(keyFilter, targetFilter));
+      }
+
+      if (targetFilter.isEmpty()) {
+        parentDataItem.put(relationFieldAlias, relationField.isMultiple() ? List.of() : null);
+        continue;
+      }
+
+      Query relationQuery = new Query();
+      relationQuery.setFilter(JsonUtils.toJsonString(targetFilter));
+      List<Map<String, Object>> relationDataList =
+        relationQueryFunction.apply(relationField.getFrom(), relationQuery);
+
+      if (childQuery != null) {
+        nestedQuery(relationDataList, relationQueryFunction, relationModel, childQuery,
+          new AtomicInteger(remainingDepth.get()));
+      }
+
+      if (!relationField.isMultiple() && relationDataList.size() > 1) {
+        throw new IllegalStateException(
+          "Relation " + relationField.getName() + " matched more than one record");
+      }
+      parentDataItem.put(relationFieldAlias, relationField.isMultiple()
+        ? relationDataList
+        : relationDataList.isEmpty() ? null : relationDataList.getFirst());
+    }
+  }
+
+  private void fillBatchedKeyRelationData(List<Map<String, Object>> parentDataList,
+                                          BiFunction<String, Query, List<Map<String, Object>>> relationQueryFunction,
+                                          Query childQuery,
+                                          AtomicInteger remainingDepth,
+                                          String relationFieldAlias,
+                                          ModelRefField relationField,
+                                          EntityDefinition relationModel) {
+    Map<Object, List<Map<String, Object>>> relationDataGroup = new LinkedHashMap<>();
+    Set<Object> foreignKeyValues = new LinkedHashSet<>();
+    for (Map<String, Object> parentDataItem : parentDataList) {
+      Object localKeyValue = getSourceValue(parentDataItem, relationField.getLocalField());
+      if (localKeyValue != null) {
+        foreignKeyValues.add(localKeyValue);
+      }
+    }
+    if (foreignKeyValues.isEmpty()) {
+      parentDataList.forEach(parentDataItem ->
+        parentDataItem.put(relationFieldAlias, relationField.isMultiple() ? List.of() : null));
+      return;
+    }
+
+    Map<String, Object> targetFilter = RelationFilterSupport.resolveTargetFilter(
+      relationField.getFilter(), Map.of(), relationField.getName());
+    Map<String, Object> keyCondition = new LinkedHashMap<>();
+    keyCondition.put("_in", foreignKeyValues);
+    Map<String, Object> keyFilter = new LinkedHashMap<>();
+    keyFilter.put(relationField.getForeignField(), keyCondition);
+    Map<String, Object> combinedFilter = new LinkedHashMap<>();
+    combinedFilter.put("_and", List.of(keyFilter, targetFilter));
+
+    Query relationQuery = new Query();
+    relationQuery.setFilter(JsonUtils.toJsonString(combinedFilter));
+    List<Map<String, Object>> relationDataList =
+      relationQueryFunction.apply(relationField.getFrom(), relationQuery);
+    if (childQuery != null) {
+      nestedQuery(relationDataList, relationQueryFunction, relationModel, childQuery,
+        new AtomicInteger(remainingDepth.get()));
+    }
+    relationDataList.forEach(dataItem ->
+      relationDataGroup.computeIfAbsent(dataItem.get(relationField.getForeignField()), key -> new ArrayList<>())
+        .add(dataItem));
+
+    for (Map<String, Object> parentDataItem : parentDataList) {
+      Object localKeyValue = getSourceValue(parentDataItem, relationField.getLocalField());
+      List<Map<String, Object>> matches = localKeyValue == null
+        ? List.of()
+        : relationDataGroup.getOrDefault(localKeyValue, List.of());
+      if (!relationField.isMultiple() && matches.size() > 1) {
+        throw new IllegalStateException(
+          "Relation " + relationField.getName() + " matched more than one record");
+      }
+      parentDataItem.put(relationFieldAlias, relationField.isMultiple()
+        ? matches
+        : matches.isEmpty() ? null : matches.getFirst());
+    }
+  }
+
+  private Object getSourceValue(Map<String, Object> data, String fieldName) {
+    if (data.containsKey(fieldName)) {
+      return data.get(fieldName);
+    }
+    String camelCaseField = underscoreToCamelCase(fieldName);
+    return camelCaseField.equals(fieldName) ? null : data.get(camelCaseField);
+  }
+
+  private String underscoreToCamelCase(String fieldName) {
+    if (fieldName == null || fieldName.isEmpty()) {
+      return fieldName;
+    }
+    StringBuilder result = new StringBuilder();
+    boolean capitalizeNext = false;
+    for (char character : fieldName.toCharArray()) {
+      if (character == '_') {
+        capitalizeNext = true;
+      } else if (capitalizeNext) {
+        result.append(Character.toUpperCase(character));
+        capitalizeNext = false;
+      } else {
+        result.append(Character.toLowerCase(character));
+      }
+    }
+    return result.toString();
+  }
   /**
    * 将关联数据填充到父级数据中
    *
@@ -727,6 +993,9 @@ public abstract class BaseService {
       EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
       relationObject.forEach((fieldName, fieldValue) -> {
         if (fieldValue != null && entity.getField(fieldName) instanceof ModelRefField relationField) {
+          if (relationField.isConditionRelation()) {
+            return;
+          }
           processRelationFieldInsertion(entity, fieldName, fieldValue, relationObject.get(relationField.getLocalField()));
         }
       });

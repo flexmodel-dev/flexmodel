@@ -1,5 +1,6 @@
 package dev.flexmodel.model.field;
 
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -27,6 +28,11 @@ public class ModelRefField extends TypedField<Long, ModelRefField> {
    * 级联删除，此功能依赖外键约束
    */
   private boolean cascadeDelete;
+  /**
+   * 关联过滤条件。FOREIGN_KEY 关联中表示附加过滤，CONDITION 关联中表示完整关联谓词。
+   */
+  private Map<String, Object> filter;
+  private RelationStrategy strategy = RelationStrategy.FOREIGN_KEY;
 
   public ModelRefField(String name) {
     super(name, ScalarType.MODEL_REF.getType());
@@ -77,19 +83,43 @@ public class ModelRefField extends TypedField<Long, ModelRefField> {
     return this;
   }
 
+  public Map<String, Object> getFilter() {
+    return filter;
+  }
+
+  public ModelRefField setFilter(Map<String, Object> filter) {
+    this.filter = filter;
+    return this;
+  }
+
+  public RelationStrategy getStrategy() {
+    return strategy;
+  }
+
+  public ModelRefField setStrategy(RelationStrategy strategy) {
+    this.strategy = strategy;
+    return this;
+  }
+
+  public boolean isConditionRelation() {
+    return strategy == RelationStrategy.CONDITION;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (!(o instanceof ModelRefField that)) return false;
     if (!super.equals(o)) return false;
     return isMultiple() == that.isMultiple() &&
            isCascadeDelete() == that.isCascadeDelete() &&
+      Objects.equals(getStrategy(), that.getStrategy()) &&
            Objects.equals(getFrom(), that.getFrom()) &&
-           Objects.equals(getForeignField(), that.getForeignField());
+      Objects.equals(getForeignField(), that.getForeignField()) &&
+      Objects.equals(getFilter(), that.getFilter());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), isMultiple(), getFrom(), getForeignField(), isCascadeDelete());
+    return Objects.hash(super.hashCode(), isMultiple(), getFrom(), getForeignField(), isCascadeDelete(), getStrategy(), getFilter());
   }
 
   @Override

@@ -57,6 +57,8 @@ public abstract class FlexmodelAbstractDataFetcher<T> implements DataFetcher<T> 
     path = path == null ? relationField.getName() : path + "/" + relationField.getName();
     List<SelectedField> selectedFields = env.getSelectionSet().getFields(path + "/*");
     List<ModelRefField> relationFields = new ArrayList<>();
+    // 同一目标模型可能有多个关联字段，用关联字段名作为 join 别名以唯一确定关联
+    String targetAlias = relationField.getName();
 
     List<Map<String, Object>> list = session.dsl()
       .select(selector -> {
@@ -71,12 +73,12 @@ public abstract class FlexmodelAbstractDataFetcher<T> implements DataFetcher<T> 
             relationFields.add(secondaryRelationField);
             continue;
           }
-          selector.field(selectedField.getName(), Query.field(targetEntity.getName() + "." + flexModelField.getName()));
+          selector.field(selectedField.getName(), Query.field(targetAlias + "." + flexModelField.getName()));
         }
         return selector;
       })
       .from(entity.getName())
-      .leftJoin(joins -> joins.addLeftJoin(join -> join.setFrom(targetEntity.getName())))
+      .join(joins -> joins.addInnerJoin(join -> join.setFrom(targetEntity.getName()).setAs(targetAlias)))
       .where(field(entity.getName() + "." + entity.findIdField().map(TypedField::getName).orElseThrow()).eq(id))
       .execute();
 

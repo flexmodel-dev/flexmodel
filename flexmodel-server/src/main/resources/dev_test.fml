@@ -30,6 +30,8 @@ model Classes {
   classCode? : String @length("255"),
   className? : String @length("255"),
   students? : Student[] @relation(localField: "id", foreignField: "classId", cascadeDelete: "true"),
+  studentsMale? : Student[] @comment("男学生") @relation(localField: "id", foreignField: "classId", filter: {"studentsMale.gender": {"_eq": "MALE"}}),
+  studentsFemale? : Student[] @comment("女学生") @relation(localField: "id", foreignField: "classId", filter: {"studentsFemale.gender": {"_eq": "FEMALE"}, "studentsFemale.classId": {"_eq": {"_field": "id"}}}),
   @index(name:"IDX_CLASS_CODE", unique: "false", fields: [classCode]),
   @comment("班级")
 }

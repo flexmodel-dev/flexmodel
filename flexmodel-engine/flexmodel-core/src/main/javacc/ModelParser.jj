@@ -96,7 +96,7 @@ public class ModelParser {
                 if (parameters.size()==1 && parameters.containsKey("value")) {
                   Object value = parameters.get("value");
                   if(value instanceof String)
-                    return sb.append("\"").append(value).append("\"").append(")").toString();
+                    return sb.append(quoteString((String) value)).append(")").toString();
                   else return sb.append(value).append(")").toString();
                 }
                 for (Map.Entry<String, Object> entry : parameters.entrySet()) {
@@ -104,14 +104,14 @@ public class ModelParser {
                         sb.append(", ");
                     }
                     first = false;
-                    sb.append(entry.getKey()).append(": ");
+                    sb.append(quoteKey(Objects.toString(entry.getKey(), ""))).append(": ");
                     Object value = entry.getValue();
                     if (value instanceof String) {
-                        sb.append("\"").append(value).append("\"");
+                        sb.append(quoteString((String) value));
                     } else if (value instanceof List) {
                         sb.append(listToString((List<?>) value));
                     } else if (value instanceof Map) {
-                        sb.append(mapToString((Map<?, ?>) value));
+                        sb.append("{").append(mapToString((Map<?, ?>) value)).append("}");
                     } else {
                         sb.append(value);
                     }
@@ -131,9 +131,9 @@ public class ModelParser {
                 }
                 first = false;
                 if (elem instanceof String) {
-                    sb.append(elem);
+                    sb.append(quoteString((String) elem));
                 } else if (elem instanceof Map) {
-                    sb.append(mapToString((Map<?, ?>) elem));
+                    sb.append("{").append(mapToString((Map<?, ?>) elem)).append("}");
                 } else {
                     sb.append(elem);
                 }
@@ -150,12 +150,12 @@ public class ModelParser {
               sb.append(", ");
             }
             first = false;
-            sb.append(entry.getKey()).append(": ");
+            sb.append(quoteKey(Objects.toString(entry.getKey(), ""))).append(": ");
             Object value = entry.getValue();
             if (value instanceof String) {
               sb.append("\"").append(value).append("\"");
             } else if (value instanceof Map<?, ?>) {
-              sb.append("(").append(mapToString((Map<?, ?>)value)).append(")");
+              sb.append("{").append(mapToString((Map<?, ?>)value)).append("}");
             } else if (value instanceof List<?>) {
               sb.append(listToString((List<?>)value));
             } else {
@@ -163,6 +163,23 @@ public class ModelParser {
             }
           }
           return sb.toString();
+        }
+
+        private String quoteKey(String key) {
+          return key.matches("[A-Za-z][A-Za-z0-9_]*") ? key : quoteString(key);
+        }
+
+        private String quoteString(String value) {
+          return "\"" + escapeString(value) + "\"";
+        }
+
+        private String escapeString(String value) {
+          return value
+              .replace("\\", "\\\\")
+              .replace("\"", "\\\"")
+              .replace("\n", "\\n")
+              .replace("\r", "\\r")
+              .replace("\t", "\\t");
         }
     }
 
@@ -505,6 +522,7 @@ Object AnnotationValue() : { Token t; Object s; }
   | t = <TRUE> { return t.image; }
   | t = <FALSE> { return t.image; }
   | s = ArrayLiteral() { return s; }
+  | s = ObjectLiteral() { return s; }
   | s = Identifier() { return s; }
 }
 
@@ -525,14 +543,53 @@ Object ArrayLiteral() : { List list = new ArrayList(); Object elem; }
 }
 
 /* 解析单个数组元素，支持内联注解参数 */
-Object ArrayElement() : { Map inline = null; String id; }
+Object ArrayElement() : { Map inline = null; Object objectValue; String id; Token t; }
 {
-    id = Identifier() (<COLON>)?
+    t = <STRING_LITERAL> { return unescapeString(t.image.substring(1, t.image.length()-1)); }
+  | t = <INTEGER_LITERAL> { return Long.parseLong(t.image); }
+  | t = <TRUE> { return Boolean.TRUE; }
+  | t = <FALSE> { return Boolean.FALSE; }
+  | objectValue = ObjectLiteral() { return objectValue; }
+  | id = Identifier() (<COLON>)?
     ( <LPAREN> { inline = InlineAnnotation(); } <RPAREN> )?
     {
        if (inline == null) return id;
        else { Map m = new LinkedHashMap(); m.put(id, inline); return m; }
     }
+}
+
+Map<String, Object> ObjectLiteral() : {
+    Map<String, Object> map = new LinkedHashMap();
+}
+{
+    <LBRACE>
+    ( ObjectPairList(map) )?
+    <RBRACE>
+    { return map; }
+}
+
+void ObjectPairList(Map<String, Object> map) : { String key; Object value; }
+{
+    key = ObjectKey() <COLON> value = ObjectValue() { map.put(key, value); }
+    ( LOOKAHEAD(<COMMA> (<IDENTIFIER> | <STRING_LITERAL>) <COLON>) <COMMA> key = ObjectKey() <COLON> value = ObjectValue() { map.put(key, value); } )*
+    ( <COMMA> )?
+}
+
+Object ObjectValue() : { Token t; Object value; }
+{
+    t = <STRING_LITERAL> { return unescapeString(t.image.substring(1, t.image.length()-1)); }
+  | t = <INTEGER_LITERAL> { return Long.parseLong(t.image); }
+  | t = <TRUE> { return Boolean.TRUE; }
+  | t = <FALSE> { return Boolean.FALSE; }
+  | value = ArrayLiteral() { return value; }
+  | value = ObjectLiteral() { return value; }
+  | value = Identifier() { return value; }
+}
+
+String ObjectKey() : { Token t; }
+{
+    t = <IDENTIFIER> { return t.image; }
+  | t = <STRING_LITERAL> { return unescapeString(t.image.substring(1, t.image.length()-1)); }
 }
 
 /* 解析内联注解参数列表，返回 Map */

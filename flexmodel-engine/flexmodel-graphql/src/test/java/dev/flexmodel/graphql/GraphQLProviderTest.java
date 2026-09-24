@@ -2,10 +2,13 @@ package dev.flexmodel.graphql;
 
 import graphql.ExecutionResult;
 import graphql.GraphQL;
+import dev.flexmodel.model.field.ModelRefField;
+import dev.flexmodel.model.field.RelationStrategy;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static dev.flexmodel.graphql.Models.*;
@@ -99,6 +102,70 @@ public class GraphQLProviderTest extends AbstractIntegrationTest {
     // 打印结果
     System.out.println(executionResult);
     Assertions.assertNotNull(data);
+  }
+
+  @Test
+  void relationWithNoRowsReturnsEmptyList() {
+    String classesEntityName = "testEmptyRelationClasses";
+    String studentEntityName = "testEmptyRelationStudent";
+    String studentDetailEntityName = "testEmptyRelationStudentDetail";
+    String courseEntityName = "testEmptyRelationCourse";
+    String teacherEntityName = "testEmptyRelationTeacher";
+    createClassesEntity(session, classesEntityName);
+    createStudentEntity(session, studentEntityName);
+    createStudentDetailEntity(session, studentDetailEntityName);
+    createCourseEntity(session, courseEntityName);
+    createTeacherEntity(session, teacherEntityName);
+    createAssociations(session, classesEntityName, studentEntityName, studentDetailEntityName, courseEntityName, teacherEntityName);
+    createCourseData(session, courseEntityName);
+    createClassesData(session, classesEntityName);
+    createStudentData(session, studentEntityName);
+    createTeacherData(session, teacherEntityName);
+    session.schema().createField(new ModelRefField("femaleStudents")
+      .setModelName(classesEntityName)
+      .setFrom(studentEntityName)
+      .setLocalField("id")
+      .setForeignField("classId")
+      .setMultiple(true)
+      .setStrategy(RelationStrategy.FOREIGN_KEY)
+      .setFilter(Map.of("femaleStudents.gender", Map.of("_eq", "FEMALE"))));
+
+    FlexmodelGraphQL graphQLProvider = new FlexmodelGraphQL();
+    GraphQL graphQL = graphQLProvider.generateGraphQLWithSchemaObject(sessionFactory, "system");
+    String query = """
+      query {
+        emptyClass: testEmptyRelationClassesById(id: 3) {
+          className
+          id
+          students {
+            id
+            gender
+            studentName
+          }
+        }
+        classWithStudents: testEmptyRelationClassesById(id: 1) {
+          students {
+            gender
+            studentName
+          }
+          femaleStudents {
+            gender
+            studentName
+          }
+        }
+      }
+      """;
+    ExecutionResult executionResult = graphQL.execute(query);
+    Assertions.assertTrue(executionResult.getErrors().isEmpty(), executionResult::toString);
+    Map<String, Object> data = executionResult.getData();
+    Assertions.assertNotNull(data);
+    Map<?, ?> emptyClassData = (Map<?, ?>) data.get("emptyClass");
+    Assertions.assertNotNull(emptyClassData);
+    Assertions.assertEquals(List.of(), emptyClassData.get("students"));
+    Map<?, ?> classWithStudentsData = (Map<?, ?>) data.get("classWithStudents");
+    Assertions.assertNotNull(classWithStudentsData);
+    Assertions.assertEquals(2, ((List<?>) classWithStudentsData.get("students")).size());
+    Assertions.assertEquals(1, ((List<?>) classWithStudentsData.get("femaleStudents")).size());
   }
 
   @Test

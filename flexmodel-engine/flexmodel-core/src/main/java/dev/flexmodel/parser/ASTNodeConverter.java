@@ -1,5 +1,6 @@
 package dev.flexmodel.parser;
 
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
 import dev.flexmodel.model.IndexDefinition;
@@ -115,12 +116,39 @@ public class ASTNodeConverter {
         String from = idlField.type.replace("[]", "");
         boolean multiple = idlField.type.endsWith("[]");
         if (isModelRefField) {
+          String localField = (String) relationAnno.parameters.get("localField");
+          String foreignField = (String) relationAnno.parameters.get("foreignField");
+          Map<String, Object> filter =
+            parseRelationFilter(relationAnno.parameters.get("filter"), idlField.name);
+          boolean hasForeignKey = localField != null && foreignField != null;
+          boolean hasFilter = filter != null && !filter.isEmpty();
+          if (localField == null && foreignField == null && !hasFilter) {
+            throw new IllegalArgumentException("Relation field " + idlField.name + " requires key fields or a filter");
+          }
+          if ((localField == null) != (foreignField == null)) {
+            throw new IllegalArgumentException("Relation field " + idlField.name + " requires both localField and foreignField");
+          }
+          boolean cascadeDelete = Boolean.parseBoolean(Objects.toString(relationAnno.parameters.get("cascadeDelete")));
+          if (cascadeDelete && hasFilter) {
+            throw new IllegalArgumentException("Relation field " + idlField.name + " cannot combine cascadeDelete with filter");
+          }
+          if (hasFilter && !RelationFilterSupport.isSupportedRelationFilter(filter, idlField.name)) {
+            throw new IllegalArgumentException(
+              "Relation field " + idlField.name + " has an unsupported source field condition");
+          }
+          if (!hasForeignKey
+            && !RelationFilterSupport.hasSourceTargetComparison(filter, idlField.name)) {
+            throw new IllegalArgumentException(
+              "Relation field " + idlField.name + " requires a source-target comparison in filter");
+          }
           ModelRefField modelRefField = new ModelRefField(idlField.name);
           modelRefField.setMultiple(multiple);
           modelRefField.setFrom(from);
-          modelRefField.setLocalField((String) relationAnno.parameters.get("localField"));
-          modelRefField.setForeignField((String) relationAnno.parameters.get("foreignField"));
-          modelRefField.setCascadeDelete(Boolean.parseBoolean(Objects.toString(relationAnno.parameters.get("cascadeDelete"))));
+          modelRefField.setLocalField(localField);
+          modelRefField.setForeignField(foreignField);
+          modelRefField.setFilter(filter);
+          modelRefField.setStrategy(hasForeignKey ? RelationStrategy.FOREIGN_KEY : RelationStrategy.CONDITION);
+          modelRefField.setCascadeDelete(cascadeDelete);
           field = modelRefField;
         } else {
           field = new EnumRefField(idlField.name);
@@ -160,6 +188,34 @@ public class ASTNodeConverter {
       }
     }
     return field;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> parseRelationFilter(Object filterValue, String fieldName) {
+    if (filterValue == null) {
+      return null;
+    }
+    if (filterValue instanceof String text
+      && (text.isBlank() || "null".equals(text))) {
+      return null;
+    }
+    Map<?, ?> filterMap;
+    if (filterValue instanceof Map<?, ?> map) {
+      filterMap = map;
+    } else if (filterValue instanceof String text) {
+      Object parsed = JsonUtils.parseToObject(text, Map.class);
+      if (!(parsed instanceof Map<?, ?> parsedMap)) {
+        throw new IllegalArgumentException("Relation field " + fieldName + " filter must be a JSON object");
+      }
+      filterMap = parsedMap;
+    } else {
+      throw new IllegalArgumentException("Relation field " + fieldName + " filter must be an object or JSON string");
+    }
+    Map<String, Object> filter = new LinkedHashMap<>();
+    for (Map.Entry<?, ?> entry : filterMap.entrySet()) {
+      filter.put(String.valueOf(entry.getKey()), entry.getValue());
+    }
+    return filter;
   }
 
   public static EnumDefinition toSchemaEnum(ModelParser.Enumeration idlEnum) {
@@ -274,8 +330,13 @@ public class ASTNodeConverter {
       case JSONField jsonField -> addDefaultAnnotation(idlField, jsonField.getDefaultValue());
       case ModelRefField relationField -> {
         ModelParser.Annotation relationAnno = new ModelParser.Annotation("relation");
-        relationAnno.parameters.put("localField", relationField.getLocalField());
-        relationAnno.parameters.put("foreignField", relationField.getForeignField());
+        if (!relationField.isConditionRelation()) {
+          relationAnno.parameters.put("localField", relationField.getLocalField());
+          relationAnno.parameters.put("foreignField", relationField.getForeignField());
+        }
+        if (relationField.getFilter() != null) {
+          relationAnno.parameters.put("filter", relationField.getFilter());
+        }
         relationAnno.parameters.put("cascadeDelete",
           String.valueOf(relationField.isCascadeDelete()));
         idlField.annotations.add(relationAnno);

@@ -1,9 +1,11 @@
 package dev.flexmodel.sql;
 
 import dev.flexmodel.ExpressionCalculatorException;
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.ModelDefinition;
 import dev.flexmodel.model.field.ModelRefField;
+import dev.flexmodel.model.field.RelationFilterSupport;
 import dev.flexmodel.model.field.ScalarType;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.query.Query;
@@ -121,28 +123,47 @@ public class SqlStatementBuilder extends BaseService {
         if (joiner.getJoinType() == INNER_JOIN) {
           joinCause.append("\ninner join ");
         }
+        ModelRefField relationField = null;
+        if (model instanceof EntityDefinition entity) {
+          relationField = findRelationField(entity, joiner).orElse(null);
+        }
         String localField = joiner.getLocalField();
         String foreignField = joiner.getForeignField();
-        ModelRefField relationField;
-        if (model instanceof EntityDefinition entity && (relationField = entity.findRelationByModelName(joiner.getFrom()).orElse(null)) != null) {
-          foreignField = relationField.getForeignField();
-          joinCause.append(joinTableName).append(" \n on \n").append(toFullColumnQuoteString(modelName, localField)).append("=").append(toFullColumnQuoteString(joiner.getAs(), foreignField));
-
-        } else {
-          joinCause.append(joinTableName).append(" \n on \n").append(toFullColumnQuoteString(modelName, localField)).append("=").append(toFullColumnQuoteString(joiner.getAs(), foreignField));
+        if (relationField != null) {
+          if (localField == null) {
+            localField = relationField.getLocalField();
+          }
+          if (foreignField == null) {
+            foreignField = relationField.getForeignField();
+          }
         }
-        StringBuilder joinCondition = new StringBuilder();
-        if (joiner.getFilter() != null) {
-          // 关联表的过滤条件使用关联表的模型解析器
+        String joinFilter = buildJoinFilter(modelName, relationField, joiner);
+        joinCause.append(joinTableName).append(" \n on \n");
+        if (localField != null && foreignField != null) {
+          joinCause.append(toFullColumnQuoteString(modelName, localField))
+            .append("=")
+            .append(toFullColumnQuoteString(joiner.getAs(), foreignField));
+        } else if (joinFilter != null) {
           Function<String, Set<String>> joinModelResolver = createModelResolver(joiner.getAs());
           if (prepared) {
-            SqlClauseResult leftSqlWhere = toSqlWhereClauseWithPrepared(joiner.getFilter(), joinModelResolver);
-            joinCondition.append(" and ").append(leftSqlWhere.sqlClause());
-            params.putAll(leftSqlWhere.args());
+            SqlClauseResult conditionResult = toSqlWhereClauseWithPrepared(joinFilter, joinModelResolver);
+            joinCause.append(conditionResult.sqlClause());
+            params.putAll(conditionResult.args());
           } else {
-            joinCondition.append(" and ").append(toSqlWhereClause(joiner.getFilter(), joinModelResolver));
+            joinCause.append(toSqlWhereClause(joinFilter, joinModelResolver));
           }
-          joinCause.append(joinCondition);
+        } else {
+          throw new IllegalArgumentException("Relation join " + joiner.getFrom() + " requires key fields or a filter");
+        }
+        if (localField != null && foreignField != null && joinFilter != null) {
+          Function<String, Set<String>> joinModelResolver = createModelResolver(joiner.getAs());
+          if (prepared) {
+            SqlClauseResult filterResult = toSqlWhereClauseWithPrepared(joinFilter, joinModelResolver);
+            joinCause.append(" and ").append(filterResult.sqlClause());
+            params.putAll(filterResult.args());
+          } else {
+            joinCause.append(" and ").append(toSqlWhereClause(joinFilter, joinModelResolver));
+          }
         }
       }
       sqlBuilder.append(joinCause);
@@ -176,6 +197,44 @@ public class SqlStatementBuilder extends BaseService {
       });
     }
     sqlBuilder.append(columns);
+  }
+
+  private String buildJoinFilter(String modelName, ModelRefField relationField, Query.Join joiner) {
+    Map<String, Object> modelFilter = null;
+    if (relationField != null
+      && relationField.getFilter() != null
+      && !relationField.getFilter().isEmpty()) {
+      modelFilter = RelationFilterSupport.replaceAliases(
+        relationField.getFilter(),
+        modelName,
+        relationField.getName(),
+        joiner.getAs()
+      );
+    }
+    Map<String, Object> callerFilter = joiner.getFilter() == null
+      ? null
+      : parseFilterMap(joiner.getFilter());
+    if (modelFilter == null && callerFilter == null) {
+      return null;
+    }
+    if (modelFilter == null) {
+      return JsonUtils.toJsonString(callerFilter);
+    }
+    if (callerFilter == null) {
+      return JsonUtils.toJsonString(modelFilter);
+    }
+    Map<String, Object> combined = new LinkedHashMap<>();
+    combined.put("_and", List.of(modelFilter, callerFilter));
+    return JsonUtils.toJsonString(combined);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> parseFilterMap(String filter) {
+    Map<String, Object> parsed = JsonUtils.parseToObject(filter, Map.class);
+    if (parsed == null) {
+      throw new IllegalArgumentException("Join filter must be a JSON object");
+    }
+    return parsed;
   }
 
   private String toSqlCall(Query.QueryCall queryCall) {

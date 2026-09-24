@@ -1,6 +1,7 @@
 package dev.flexmodel.sql.condition;
 
 import dev.flexmodel.condition.ConditionNode;
+import dev.flexmodel.condition.FieldReference;
 import dev.flexmodel.condition.ConditionOperator;
 import dev.flexmodel.condition.FieldConditionNode;
 import dev.flexmodel.condition.LogicalConditionNode;
@@ -61,6 +62,19 @@ public final class SqlConditionRenderer {
     PlaceholderHandler placeholderHandler = context.getPlaceholderHandler();
     Object value = field.getValue();
 
+    if (value instanceof FieldReference reference) {
+      String referencedColumn = context.formatFieldPath(reference.path());
+      return switch (field.getOperator()) {
+        case EQ -> column + " = " + referencedColumn;
+        case NE -> column + " <> " + referencedColumn;
+        case GT -> column + " > " + referencedColumn;
+        case GTE -> column + " >= " + referencedColumn;
+        case LT -> column + " < " + referencedColumn;
+        case LTE -> column + " <= " + referencedColumn;
+        default -> throw new IllegalArgumentException("Field references only support comparison operators");
+      };
+    }
+
     return switch (field.getOperator()) {
       case EQ -> column + " = " + placeholderHandler.handle(column, value);
       case NE -> column + " <> " + placeholderHandler.handle(column, value);
@@ -68,41 +82,43 @@ public final class SqlConditionRenderer {
       case GTE -> column + " >= " + placeholderHandler.handle(column, value);
       case LT -> column + " < " + placeholderHandler.handle(column, value);
       case LTE -> column + " <= " + placeholderHandler.handle(column, value);
-      case IN -> renderIn(column, value, false, placeholderHandler);
-      case NIN -> renderIn(column, value, true, placeholderHandler);
-      case BETWEEN -> renderBetween(column, value, placeholderHandler);
-      case CONTAINS -> renderContains(column, value, false, placeholderHandler);
-      case NOT_CONTAINS -> renderContains(column, value, true, placeholderHandler);
+      case IN -> renderIn(column, value, false, placeholderHandler, context);
+      case NIN -> renderIn(column, value, true, placeholderHandler, context);
+      case BETWEEN -> renderBetween(column, value, placeholderHandler, context);
+      case CONTAINS -> renderContains(column, value, false, placeholderHandler, context);
+      case NOT_CONTAINS -> renderContains(column, value, true, placeholderHandler, context);
       case STARTS_WITH -> renderLike(column, value, "suffix", false, placeholderHandler);
       case ENDS_WITH -> renderLike(column, value, "prefix", false, placeholderHandler);
       default -> throw new IllegalStateException("Unsupported operator: " + field.getOperator());
     };
   }
 
-  private static String renderIn(String column, Object value, boolean negate, PlaceholderHandler placeholderHandler) {
+  private static String renderIn(String column, Object value, boolean negate, PlaceholderHandler placeholderHandler, SqlRenderContext context) {
     Collection<?> collection = toCollection(value);
     if (collection.isEmpty()) {
       return negate ? "1=1" : "1=0";
     }
     StringJoiner joiner = new StringJoiner(", ", "(", ")");
     for (Object item : collection) {
-      joiner.add(placeholderHandler.handle(column, item));
+      joiner.add(item instanceof FieldReference reference
+        ? context.formatFieldPath(reference.path())
+        : placeholderHandler.handle(column, item));
     }
     return column + (negate ? " NOT IN " : " IN ") + joiner;
   }
 
-  private static String renderBetween(String column, Object value, PlaceholderHandler placeholderHandler) {
+  private static String renderBetween(String column, Object value, PlaceholderHandler placeholderHandler, SqlRenderContext context) {
     Collection<?> collection = toCollection(value);
     if (collection.size() != 2) {
       throw new IllegalArgumentException("_between operator expects exactly 2 values");
     }
     Object[] values = collection.toArray();
-    String start = placeholderHandler.handle(column + "_start", values[0]);
-    String end = placeholderHandler.handle(column + "_end", values[1]);
+    String start = operand(column, values[0], context, placeholderHandler, "_start");
+    String end = operand(column, values[1], context, placeholderHandler, "_end");
     return column + " BETWEEN " + start + " AND " + end;
   }
 
-  private static String renderContains(String column, Object value, boolean negate, PlaceholderHandler placeholderHandler) {
+  private static String renderContains(String column, Object value, boolean negate, PlaceholderHandler placeholderHandler, SqlRenderContext context) {
     Collection<?> collection = value instanceof Collection<?> ? (Collection<?>) value : null;
     if (collection != null) {
       if (collection.isEmpty()) {
@@ -110,13 +126,23 @@ public final class SqlConditionRenderer {
       }
       boolean simple = collection.stream().allMatch(item -> item instanceof String || item instanceof Number);
       if (simple) {
-        return renderIn(column, collection, negate, placeholderHandler);
+        return renderIn(column, collection, negate, placeholderHandler, context);
       }
       return collection.stream()
         .map(item -> renderLike(column, item, "both", negate, placeholderHandler))
         .collect(Collectors.joining(negate ? " AND " : " OR ", "(", ")"));
     }
     return renderLike(column, value, "both", negate, placeholderHandler);
+  }
+
+  private static String operand(String column,
+                                Object value,
+                                SqlRenderContext context,
+                                PlaceholderHandler placeholderHandler,
+                                String suffix) {
+    return value instanceof FieldReference reference
+      ? context.formatFieldPath(reference.path())
+      : placeholderHandler.handle(column + suffix, value);
   }
 
   private static String renderLike(String column, Object rawValue, String mode, boolean negate, PlaceholderHandler placeholderHandler) {
@@ -134,4 +160,3 @@ public final class SqlConditionRenderer {
     return column + (negate ? " NOT LIKE " : " LIKE ") + placeholder;
   }
 }
-

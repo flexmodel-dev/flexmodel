@@ -78,7 +78,7 @@ public final class ConditionParser {
       Object value = entry.getValue();
       if (key.startsWith("_")) {
         ConditionOperator operator = toOperator(key);
-        nodes.add(new FieldConditionNode(fieldPath, operator, value));
+        nodes.add(new FieldConditionNode(fieldPath, operator, parseOperatorValue(value)));
       } else {
         String nestedPath = fieldPath + "." + key;
         ConditionNode nested = parseFieldNode(nestedPath, value);
@@ -113,6 +113,28 @@ public final class ConditionParser {
       case "_ends_with" -> ConditionOperator.ENDS_WITH;
       default -> throw new IllegalArgumentException("Unsupported operator: " + key);
     };
+  }
+
+  private Object parseOperatorValue(Object value) {
+    if (isFieldReference(value)) {
+      Object referencedPath = ((Map<?, ?>) value).get("_field");
+      return new FieldReference(referencedPath.toString());
+    }
+    if (value instanceof Collection<?> collection) {
+      List<Object> parsed = new ArrayList<>(collection.size());
+      for (Object item : collection) {
+        parsed.add(parseOperatorValue(item));
+      }
+      return parsed;
+    }
+    return value;
+  }
+
+  private boolean isFieldReference(Object value) {
+    return value instanceof Map<?, ?> map
+      && map.size() == 1
+      && map.containsKey("_field")
+      && map.get("_field") != null;
   }
 
   @SuppressWarnings("unchecked")
@@ -163,4 +185,3 @@ public final class ConditionParser {
     return Collections.singleton(value);
   }
 }
-

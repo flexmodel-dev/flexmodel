@@ -2,10 +2,19 @@ package dev.flexmodel.mongodb;
 
 import org.bson.Document;
 import dev.flexmodel.ExpressionCalculator;
+import dev.flexmodel.JsonUtils;
+import dev.flexmodel.condition.ConditionNode;
+import dev.flexmodel.condition.ConditionParser;
+import dev.flexmodel.condition.FieldConditionNode;
+import dev.flexmodel.condition.FieldReference;
+import dev.flexmodel.condition.LogicalConditionNode;
+import dev.flexmodel.mongodb.condition.MongoConditionRenderer;
 import dev.flexmodel.ExpressionCalculatorException;
+import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.ModelDefinition;
 import dev.flexmodel.model.field.Field;
 import dev.flexmodel.model.field.ModelRefField;
+import dev.flexmodel.model.field.RelationFilterSupport;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.service.BaseService;
@@ -59,10 +68,10 @@ class MongoStatementBuilder extends BaseService {
         pipeline.add(new Document("$lookup", lookup));
 
         if (join.getJoinType() == INNER_JOIN) {
-          pipeline.add(new Document("$match", Map.of(join.getFrom(), Map.of("$ne", List.of()))));
+          pipeline.add(new Document("$match", Map.of(join.getAs(), Map.of("$ne", List.of()))));
         }
 
-        pipeline.add(new Document("$unwind", "$" + join.getFrom()));
+        pipeline.add(new Document("$unwind", "$" + join.getAs()));
       }
     }
   }
@@ -70,14 +79,99 @@ class MongoStatementBuilder extends BaseService {
   private Document createLookupDocument(List<Document> pipeline, ModelDefinition model, Query.Join join, String joinCollectionName) {
     Document lookup = new Document();
     lookup.append("from", joinCollectionName)
-      .append("localField", join.getLocalField())
-      .append("foreignField", join.getForeignField())
-      .append("as", join.getFrom());
+      .append("as", join.getAs());
 
-    if (join.getFilter() != null) {
-      lookup.append("pipeline", List.of(Document.parse(String.format("{ $match: %s }", getMongoCondition(join.getFilter())))));
+    ModelRefField relationField = null;
+    if (model instanceof EntityDefinition entity) {
+      relationField = findRelationField(entity, join).orElse(null);
     }
+
+    String callerFilter = join.getFilter();
+    Map<String, Object> modelFilter =
+      relationField == null || relationField.getFilter() == null || relationField.getFilter().isEmpty()
+        ? null
+        : relationField.getFilter();
+
+    String localField = join.getLocalField();
+    String foreignField = join.getForeignField();
+    if (relationField != null) {
+      localField = localField == null ? relationField.getLocalField() : localField;
+      foreignField = foreignField == null ? relationField.getForeignField() : foreignField;
+    }
+    boolean hasKeyFields = localField != null && foreignField != null;
+
+    if (hasKeyFields && modelFilter == null && callerFilter == null) {
+      lookup.append("localField", localField)
+        .append("foreignField", foreignField);
+      return lookup;
+    }
+
+    if (modelFilter == null && callerFilter == null) {
+      throw new IllegalArgumentException("Relation join " + join.getFrom() + " requires key fields or a filter");
+    }
+
+    Map<String, Object> let = new LinkedHashMap<>();
+    List<Document> matches = new ArrayList<>();
+    if (modelFilter != null) {
+      matches.add(buildRelationMatch(JsonUtils.toJsonString(modelFilter), let, relationField.getName()));
+    }
+    if (callerFilter != null) {
+      matches.add(buildTargetMatch(callerFilter));
+    }
+
+    Document match = matches.size() == 1
+      ? matches.getFirst()
+      : new Document("$and", matches);
+    if (!let.isEmpty()) {
+      lookup.append("let", new Document(let));
+    }
+    if (hasKeyFields) {
+      lookup.append("localField", localField)
+        .append("foreignField", foreignField);
+    }
+    lookup.append("pipeline", List.of(new Document("$match", match)));
     return lookup;
+  }
+
+  private Document buildRelationMatch(String filter, Map<String, Object> let, String relationFieldName) {
+    ConditionNode condition = new ConditionParser().parse(filter);
+    collectSourceVariables(condition, let, relationFieldName);
+    return Document.parse(MongoConditionRenderer.render(condition, relationFieldName));
+  }
+
+  private Document buildTargetMatch(String filter) {
+    ConditionNode condition = new ConditionParser().parse(filter);
+    return Document.parse(MongoConditionRenderer.render(condition, null));
+  }
+
+  private void collectSourceVariables(ConditionNode condition, Map<String, Object> let, String relationFieldName) {
+    if (condition instanceof LogicalConditionNode logical) {
+      logical.getChildren().forEach(child -> collectSourceVariables(child, let, relationFieldName));
+      return;
+    }
+    if (condition instanceof FieldConditionNode field
+      && !RelationFilterSupport.isRelationPath(field.getFieldPath(), relationFieldName)) {
+      let.put(FieldReference.variableName(field.getFieldPath()), "$" + field.getFieldPath());
+    }
+    if (condition instanceof FieldConditionNode field
+      && !RelationFilterSupport.isRelationPath(field.getFieldPath(), relationFieldName)) {
+      collectSourceVariablesFromValue(field.getValue(), let, relationFieldName);
+    }
+  }
+
+  private void collectSourceVariablesFromValue(Object value, Map<String, Object> let, String relationFieldName) {
+    if (value instanceof FieldReference reference
+      && !RelationFilterSupport.isRelationPath(reference.path(), relationFieldName)) {
+      let.put(reference.variableName(), "$" + reference.path());
+      return;
+    }
+    if (value instanceof Map<?, ?> map) {
+      map.values().forEach(item -> collectSourceVariablesFromValue(item, let, relationFieldName));
+      return;
+    }
+    if (value instanceof List<?> list) {
+      list.forEach(item -> collectSourceVariablesFromValue(item, let, relationFieldName));
+    }
   }
 
   private void addProjectionStage(List<Document> pipeline, ModelDefinition model, Query query) {

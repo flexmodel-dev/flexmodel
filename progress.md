@@ -1,5 +1,157 @@
 # Session Progress Log
 
+## Feature: ModelRef Filter 路径语法对齐（2026-09-24）
+
+**目标:** 按 existing query / GraphQL `where` 语法调整 relation filter，不再引入 `source.*` / `target.*` 专用前缀。
+
+**修改:**
+
+- relation filter 目标字段统一使用 `<relationField>.<field>`，例如 `activeStudents.status`。
+- `_field` 中引用当前表字段时直接使用裸路径，例如 `{ "_field": "id" }`。
+- `RelationFilterSupport` 负责路径识别、SQL alias 替换和懒加载目标过滤解析；支持 `_and` / `_or` 与反向字段比较。
+- SQL join、Mongo `$lookup` pipeline/let、嵌套查询与懒加载统一使用新路径规则；Mongo 显式 join filter 继续沿用旧查询 alias
+  语法。
+- 更新 FML 解析回归测试、SQL/Mongo 渲染测试、UI filter 提示与技术方案文档。
+- 同步 `flexmodel-website` 的 `records.md` 与 `modeling.md`：说明策略、filter 元数据、REST 展开行为、路径规则与当前 GraphQL
+  支持范围。
+- 网站教程进一步补充策略推断规则、条件关联谓词要求、反向路径写法、索引建议与执行支持边界。
+
+**验证:**
+
+- `mvn test -q -pl flexmodel-engine` 通过。
+- `mvn -pl flexmodel-engine/flexmodel-core test "-Dtest=ASTNodeConverterTest,RelationFilterTest"` 通过（11 tests，0
+  failures，0 errors）。
+- `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `git diff --check` 通过。
+- `flexmodel-website npm run build` 通过。
+- 2026-09-24 完整运行 `./init.sh`：全模块 clean compile 与 `flexmodel-engine` tests 通过；当前环境未安装 Node，UI E2E
+  按脚本跳过。
+
+**遗留/风险:**
+
+- Condition 关联依赖高频目标字段索引，索引提示仍待后续完善。
+
+## Hardening: ModelRef Filter 跨路径一致性修复（2026-09-24）
+
+**目标:** 修复 ModelRef filter 在 SQL、MongoDB、REST expand、懒加载和 UI 提交链路中的语义漂移，优先消除静默错数据与运行时错误。
+
+**修复:**
+
+- Mongo 手动 `join.where` 恢复为目标文档普通匹配；模型级 relation filter 与调用方 filter 分开渲染并以 `$and`
+  叠加，不再让调用方条件覆盖模型声明。
+- Mongo 普通查询中的 `_field` 渲染为文档字段 `$field`，不再生成未声明 `$$` 变量；源字段 `_between` 生成合法的
+  `$expr/$and/$gte/$lte` 聚合表达式。
+- `FOREIGN_KEY + 纯目标 filter` 的懒加载、expand 与 join 均应用 filter；expand 路径改为批量查询，避免常见场景 N+1。
+- UI 新建/编辑 ModelRef 完整透传 `strategy`、`filter`、`from`、`localField`、`foreignField`、`cascadeDelete` 与 `multiple`
+  ，编辑时不再丢失已保存 filter。
+- 源字段显式 `null` 可参与过滤；源数据缺少引用字段时抛出明确错误，不再触发 `Map.of` NPE。
+- SQL builder 不再修改共享 `Query.Join`，`replaceAliases` 幂等；`_in` / `_nin` 集合内 `_field` 在 SQL 与 Mongo 均可解析。
+- FML 对象字面量保留数字与布尔原始类型；`filter` 支持 JSON 字符串；FML 输出可 round-trip。
+- FML `filter` 支持同一对象中的多个顶层条件，语义等价于 `_and`；已补充解析回归测试并修正 `dev_test.fml` 的多条件示例。
+- `CONDITION` 解析阶段强制包含至少一个当前表字段与目标字段比较，拒绝仅有常量目标过滤的错误谓词。
+- 单数 condition/filter 关联在 expand 与懒加载中匹配多条均抛出明确错误；多个关系指向同一目标模型时要求使用关系字段名作为
+  alias，避免歧义。
+- GraphQL 关系 resolver 从 left join 调整为 inner join：复数关系无匹配返回空数组，有 N 条匹配返回 N 条，不再生成目标字段全为
+  null 的占位记录。
+
+**验证:**
+
+- `mvn -pl flexmodel-engine/flexmodel-core test "-Dtest=RelationFilterTest,ASTNodeConverterTest"` 通过（23 tests）。
+- `mvn test -q -pl flexmodel-engine` 通过。
+- `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `flexmodel-ui`：针对性 ESLint、`npx tsc --noEmit --pretty false`、`npm run build` 通过（仅既有 chunk size / Browserslist
+  警告）。
+- `flexmodel-website npm run build` 通过；根仓库、`flexmodel-ui`、`flexmodel-website` 的 `git diff --check` 通过。
+- `mvn test -q -pl flexmodel-engine/flexmodel-graphql "-Dtest=GraphQLProviderTest#relationWithNoRowsReturnsEmptyList"`
+  通过；用例同时断言空关系返回 `[]`、普通多条关系返回 2 条、filter 后关系返回 1 条。
+- `mvn test -q -pl flexmodel-engine/flexmodel-core "-Dtest=ASTNodeConverterTest"` 通过；
+  `mvn compile -q -pl flexmodel-server` 通过，确认 `dev_test.fml` 可解析。
+- `bash ./init.sh` 本次在 WSL 路径下编译 JavaCC 生成文件时失败；已改用原生 Windows Maven 执行同等 `mvn compile` 与
+  `mvn test -pl flexmodel-engine` 验证。`mvn clean compile` 曾被运行中的 Quarkus dev 进程锁定 target jar 阻断。
+
+**遗留/风险:**
+
+- 引用当前表字段的 `CONDITION` 关联在 expand 中仍按父行逐条查询；`FOREIGN_KEY + 纯目标 filter` 已批量优化。通用 condition
+  批量执行需要目标结果与父行谓词的内存匹配器，建议作为后续独立优化。
+- GraphQL relation resolver 统一接入尚未完成；当前覆盖 SQL / Mongo 查询构建、REST expand 与对象懒加载。
+- 字段存在性、类型兼容性与操作符合法性的完整 schema 校验仍待后续增强。
+
+## Refactor: ModelRef 策略值 KEY 重命名为 FOREIGN_KEY（2026-09-23）
+
+**目标:** 让策略值与语义一致，避免 `KEY` 被误解为主键或普通键。
+
+**修改:**
+
+- 后端 `RelationStrategy`、默认策略、解析赋值与回归测试统一改为 `FOREIGN_KEY`。
+- UI 策略类型、默认值、表单选项、条件判断与英文文案统一改为 `FOREIGN_KEY` / `Foreign key relation`。
+- `docs/plans/model-ref-filter-relation.md` 与功能清单中的策略值说明同步更新。
+
+**验证:**
+
+- `mvn test -q -pl flexmodel-engine` 通过。
+- `flexmodel-ui` 针对性 ESLint 通过；隔离无关未跟踪 UI 组件后的 TypeScript 项目检查通过；`npx vite build` 通过。
+- `git diff --check` 通过；代码中无残留 `RelationStrategy.KEY` 或表单 `KEY` 策略值。
+
+## Feature: ModelRef Filter 关联 UI 补齐（2026-09-23）
+
+**目标:** 在建模表单中显式选择 `FOREIGN_KEY` / `CONDITION` 关联策略，并提供 `filter` 编辑、校验与提交转换。
+
+**修改:**
+
+- `FieldForm.tsx` 新增策略选择器；`FOREIGN_KEY` 必填 `localField` / `foreignField`，`filter` 可选；`CONDITION` 必填
+  `filter`，隐藏并清理外键字段与 `cascadeDelete`。
+- `filter` 通过 JSON 文本编辑，提交前校验必须为 JSON 对象并转换为结构化 `filter`；`filter` 与 `cascadeDelete` 互斥并在表单内自动处理。
+- `FieldList.tsx` 的 ModelRef 提示展示策略、外键或 filter 配置。
+- `fieldFormConstants.ts`、`data-modeling.d.ts` 与中英文 i18n 补充策略、filter、校验文案。
+
+**验证:**
+
+-
+`npx eslint src/pages/DataModeling/components/FieldForm.tsx src/pages/DataModeling/components/FieldList.tsx src/pages/DataModeling/components/fieldFormConstants.ts`
+通过。
+- 中英文 locale JSON 解析通过；`git diff --check` 通过。
+- 使用临时 tsconfig 排除工作区既有未跟踪 UI 组件后，`npx tsc -p ...` 项目级类型检查通过。
+- `npx vite build` 通过；未隔离的 `npm run build` 仍被既有未跟踪 UI 组件的缺失依赖与类型错误阻断（`lucide-react`、Radix、
+  `sonner` 等）。
+
+## Feature: ModelRef - Filter 关联（2026-09-23）
+
+**目标:** 为 `@relation` 支持 `filter`，实现 FOREIGN_KEY 关联附加过滤与无外键的 CONDITION 关联。
+
+**修改:**
+
+- 新增 `RelationStrategy`、`FieldReference`、`RelationFilterSupport`。
+- `ModelRefField` 保存 `filter` 与 `strategy`；FML 注解支持对象字面量。
+- `ASTNodeConverter` 解析 `<relationField>.*` 目标字段与裸路径当前表字段 filter，校验 key/filter/cascadeDelete 组合。
+- `SqlStatementBuilder` 支持 FOREIGN_KEY+filter 与 condition-only join。
+- `MongoStatementBuilder` 支持 `$lookup` pipeline/let。
+- `BaseService` 嵌套查询与 `LazyLoadInterceptor` 支持当前表字段引用解析。
+- 新增 `RelationFilterTest` 和 `ASTNodeConverterTest` 回归用例。
+
+**验证:**
+
+- `mvn clean compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `mvn test -q -pl flexmodel-engine` 通过。
+- `mvn -pl flexmodel-engine/flexmodel-core test "-Dtest=ASTNodeConverterTest,RelationFilterTest"` 通过（10 tests, 0
+  failures）。
+
+**遗留/风险:**
+
+- Condition 关联没有物理外键，性能依赖目标字段索引；后续可在 UI/校验层补充索引提示。
+- 当前未增加 UI 表单配置入口，FML 已可直接使用新语法。
+
+## Doc - ModelRef Filter 关联技术方案（2026-09-23）
+
+**目标:** 为 `@relation` 增加 `filter` 语义，明确键关联、条件关联、cardinality、生命周期和跨库执行策略。
+
+**修改:**
+
+- 新增 `docs/plans/model-ref-filter-relation.md`，包含语法设计、元数据模型、解析器扩展、SQL/MongoDB/GraphQL 翻译规则、校验策略和实施阶段。
+- 明确 v1 中 `cascadeDelete` 与 `filter` 互斥，condition 关联不生成外键或 DDL。
+- 明确现有 `localField` / `foreignField` 关联保持兼容。
+
+**验证:** 文档已人工校对；本次为设计文档产出，未修改运行时代码。
+
 ## Feature: 去除 OpenTelemetry 并按功能归属日志（2026-08-31）
 
 **目标:** 移除 OpenTelemetry 运行时依赖，保留轻量 traceId 生成/传播；将各类日志迁移到所属功能包与前端功能路由下。

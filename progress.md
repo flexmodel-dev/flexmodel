@@ -1045,3 +1045,22 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 定向 `npx eslint src/pages/DataModeling/components/EnumForm.tsx` 通过。
 - `npm run build`（tsc -b + vite build）通过；既有 Monaco/Browserslist 提示与 chunk 大小警告不变。
 - flexmodel-ui 提交 `211df06`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。
+## Enum - 结构化元素字段统一为 elements（feat-018 跟进）(2026-09-28)
+
+**目标:** 将枚举 JSON 契约中的结构化 `elementDefinitions` 字段统一改为 `elements`，避免同一份元素定义拆成两个字段。
+
+**修改:**
+
+- `EnumDefinition` 序列化仅输出结构化 `elements`（`EnumElement[]`），不再输出 `elementDefinitions`；`getElements()` 名称视图保持内部兼容并从 JSON 中隐藏。
+- `setElements` 兼容三种输入：结构化对象、旧字符串数组、旧 `elementDefinitions` 字段，避免存量数据丢失编码/注释。
+- `JsonSerializeTest` 覆盖新输出格式、旧字符串输入与旧 `elementDefinitions` 输入。
+- `flexmodel-ui` 的 `Enum`/`EnumSchema` 类型、枚举 payload、枚举字段下拉统一改为结构化 `elements`。
+
+**验证:**
+
+- `mvn test -pl flexmodel-engine/flexmodel-core -Dtest=JsonSerializeTest` 通过（2 tests）。
+- `mvn test -q -pl flexmodel-engine` 通过。
+- `mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过；`mvn clean compile` 在 server clean 阶段被运行中 Quarkus dev jar 锁定，属既有环境问题，改用等价 compile 验证。
+- `mvn test -pl flexmodel-server -am -Dtest=RecordResourceTest "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（5 tests）。
+- `flexmodel-ui npx tsc --noEmit`、定向 `npx eslint`、`npm run build` 通过。
+- flexmodel-ui 提交 `d5d70aa`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。

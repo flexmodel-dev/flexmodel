@@ -76,9 +76,9 @@ public class JsonSerializeTest {
       new EnumElement("PAID", 2L, null)));
 
     String json = JsonUtils.toJsonString(definition);
-    // 兼容字段 elements 与结构化 elementDefinitions 同时序列化
-    Assertions.assertTrue(json.contains("\"elements\""));
-    Assertions.assertTrue(json.contains("\"elementDefinitions\""));
+    // 结构化枚举元素统一使用 elements 字段序列化
+    Assertions.assertTrue(json.contains("\"elements\":[{\"name\":\"PENDING\""));
+    Assertions.assertFalse(json.contains("\"elementDefinitions\""));
 
     EnumDefinition deserialized = JsonUtils.parseToObject(json, EnumDefinition.class);
     Assertions.assertEquals(List.of("PENDING", "PAID"), deserialized.getElements());
@@ -91,5 +91,11 @@ public class JsonSerializeTest {
     EnumDefinition legacy = JsonUtils.parseToObject(
       "{\"type\":\"Enum\",\"name\":\"PlainStatus\",\"elements\":[\"A\",\"B\"]}", EnumDefinition.class);
     Assertions.assertEquals(List.of("A", "B"), legacy.getElements());
+
+    EnumDefinition legacyStructured = JsonUtils.parseToObject(
+      "{\"type\":\"Enum\",\"name\":\"LegacyStatus\",\"elementDefinitions\":[{\"name\":\"A\",\"code\":1}]}",
+      EnumDefinition.class);
+    Assertions.assertEquals(List.of("A"), legacyStructured.getElements());
+    Assertions.assertEquals(1, ((Number) legacyStructured.getElementDefinitions().get(0).getCode()).intValue());
   }
 }

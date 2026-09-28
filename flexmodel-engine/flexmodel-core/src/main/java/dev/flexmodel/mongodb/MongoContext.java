@@ -34,7 +34,7 @@ public class MongoContext extends AbstractSessionContext {
     this.typeHandlerMap.put(ScalarType.DATE.getType(), new DateTypeHandler());
     this.typeHandlerMap.put(ScalarType.TIME.getType(), new TimeTypeHandler());
     this.typeHandlerMap.put(ScalarType.JSON.getType(), new JsonTypeHandler());
-    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumTypeHandler());
+    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumTypeHandler(modelRegistry, schemaName));
   }
 
   public MongoDatabase getMongoDatabase() {

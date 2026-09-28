@@ -2,9 +2,14 @@ package dev.flexmodel.validator;
 
 import dev.flexmodel.model.field.*;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.JsonUtils;
+
+import java.util.List;
 import dev.flexmodel.model.EntityDefinition;
+import dev.flexmodel.model.EnumDefinition;
+import dev.flexmodel.model.EnumElement;
 
 /**
  * @author cjbi
@@ -62,4 +67,29 @@ public class JsonSerializeTest {
     Assertions.assertNotNull(deSerializeEntity);
   }
 
+
+  @Test
+  void enumElementCodesSurviveJsonRoundTrip() {
+    EnumDefinition definition = new EnumDefinition("OrderStatus");
+    definition.setElementDefinitions(java.util.List.of(
+      new EnumElement("PENDING", 1L, "待支付"),
+      new EnumElement("PAID", 2L, null)));
+
+    String json = JsonUtils.toJsonString(definition);
+    // 兼容字段 elements 与结构化 elementDefinitions 同时序列化
+    Assertions.assertTrue(json.contains("\"elements\""));
+    Assertions.assertTrue(json.contains("\"elementDefinitions\""));
+
+    EnumDefinition deserialized = JsonUtils.parseToObject(json, EnumDefinition.class);
+    Assertions.assertEquals(List.of("PENDING", "PAID"), deserialized.getElements());
+    Assertions.assertEquals(2, deserialized.getElementDefinitions().size());
+    Assertions.assertEquals(1, ((Number) deserialized.getElementDefinitions().get(0).getCode()).intValue());
+    Assertions.assertEquals("待支付", deserialized.getElementDefinitions().get(0).getComment());
+    Assertions.assertEquals(2, ((Number) deserialized.getElementDefinitions().get(1).getCode()).intValue());
+
+    // 旧版纯字符串 elements 输入仍然可用
+    EnumDefinition legacy = JsonUtils.parseToObject(
+      "{\"type\":\"Enum\",\"name\":\"PlainStatus\",\"elements\":[\"A\",\"B\"]}", EnumDefinition.class);
+    Assertions.assertEquals(List.of("A", "B"), legacy.getElements());
+  }
 }

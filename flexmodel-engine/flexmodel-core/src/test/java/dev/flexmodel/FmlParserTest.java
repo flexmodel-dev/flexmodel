@@ -346,4 +346,42 @@ public class FmlParserTest {
             assertTrue(record.get("flow_model").toString().length() > 10, "flow_model should not be truncated");
         }
     }
+
+    @Test
+    void testParseEnumWithElementAnnotations() throws Exception {
+        String fmlString = """
+            enum OrderStatus {
+              PENDING @code(1) @comment("待支付"),
+              PAID @code(2),
+              CLOSED,
+              @system
+            }
+            """;
+
+        ModelParser parser = new ModelParser(new StringReader(fmlString));
+        List<ModelParser.ASTNode> ast = parser.CompilationUnit();
+
+        assertEquals(1, ast.size());
+        ModelParser.Enumeration enumeration = (ModelParser.Enumeration) ast.get(0);
+        assertEquals("OrderStatus", enumeration.name);
+        assertEquals(3, enumeration.elements.size());
+        assertEquals(List.of("PENDING", "PAID", "CLOSED"), enumeration.elements);
+
+        List<ModelParser.Annotation> pendingAnnotations = enumeration.elementAnnotations.get("PENDING");
+        assertEquals(2, pendingAnnotations.size());
+        assertEquals("code", pendingAnnotations.get(0).name);
+        assertEquals(1L, pendingAnnotations.get(0).parameters.get("value"));
+        assertEquals("comment", pendingAnnotations.get(1).name);
+        assertEquals("待支付", pendingAnnotations.get(1).parameters.get("value"));
+
+        List<ModelParser.Annotation> paidAnnotations = enumeration.elementAnnotations.get("PAID");
+        assertEquals(1, paidAnnotations.size());
+        assertEquals(2L, paidAnnotations.get(0).parameters.get("value"));
+
+        assertFalse(enumeration.elementAnnotations.containsKey("CLOSED"));
+
+        // 枚举级注解仍然正常解析
+        assertEquals(1, enumeration.annotations.size());
+        assertEquals("system", enumeration.annotations.get(0).name);
+    }
 }

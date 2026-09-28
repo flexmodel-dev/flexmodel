@@ -12,7 +12,7 @@ public class EnumDefinition implements SchemaObject {
 
     private String name;
     private String comment;
-    private List<String> elements = new ArrayList<>();
+    private List<EnumElement> elementDefinitions = new ArrayList<>();
     protected Map<String, Object> additionalProperties = new HashMap<>();
 
     public EnumDefinition(String name) {
@@ -34,18 +34,42 @@ public class EnumDefinition implements SchemaObject {
       return "Enum";
     }
 
+    public List<EnumElement> getElementDefinitions() {
+        return elementDefinitions;
+    }
+
+    public EnumDefinition setElementDefinitions(List<EnumElement> elementDefinitions) {
+        this.elementDefinitions = elementDefinitions == null ? new ArrayList<>() : new ArrayList<>(elementDefinitions);
+        return this;
+    }
+
+    public EnumDefinition addElementDefinition(EnumElement element) {
+        elementDefinitions.add(element);
+        return this;
+    }
+
+    /**
+     * 元素名列表（向后兼容视图）。
+     */
+    public List<String> getElements() {
+        return elementDefinitions.stream().map(EnumElement::getName).toList();
+    }
+
     public EnumDefinition setElements(List<String> elements) {
-        this.elements = elements;
+        List<String> incoming = elements == null ? List.of() : elements;
+        if (!elementDefinitions.isEmpty() && getElements().equals(incoming)) {
+            return this;
+        }
+        this.elementDefinitions = new ArrayList<>();
+        for (String element : incoming) {
+            this.elementDefinitions.add(new EnumElement(element));
+        }
         return this;
     }
 
     public EnumDefinition addElement(String element) {
-        elements.add(element);
+        elementDefinitions.add(new EnumElement(element));
         return this;
-    }
-
-    public List<String> getElements() {
-        return elements;
     }
 
     public String getComment() {

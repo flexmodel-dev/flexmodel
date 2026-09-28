@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
+import dev.flexmodel.model.EnumDefinition;
+import dev.flexmodel.model.EnumElement;
 import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.RelationStrategy;
 import dev.flexmodel.model.SchemaObject;
@@ -239,4 +241,68 @@ public class ASTNodeConverterTest {
     assertEquals("false", params.get("enabled"), "enabled 参数应以 String 形式存储");
   }
 
+
+  @Test
+  void enumCodeAndCommentRoundTrips() throws ParseException {
+    String fml = """
+      enum OrderStatus {
+        PENDING @code(1) @comment("待支付"),
+        PAID @code(2),
+        CLOSED @code(9),
+        @system
+      }
+      """;
+    List<SchemaObject> models = ASTNodeConverter.parseFML(fml).getModels();
+    EnumDefinition orderStatus = (EnumDefinition) models.getFirst();
+    assertEquals(List.of("PENDING", "PAID", "CLOSED"), orderStatus.getElements());
+    List<EnumElement> definitions = orderStatus.getElementDefinitions();
+    assertEquals(3, definitions.size());
+    assertEquals("PENDING", definitions.get(0).getName());
+    assertEquals(1L, definitions.get(0).getCode());
+    assertEquals("待支付", definitions.get(0).getComment());
+    assertEquals(2L, definitions.get(1).getCode());
+    assertNull(definitions.get(1).getComment());
+    assertEquals(9L, definitions.get(2).getCode());
+
+    String roundTrip = orderStatus.getFml();
+    assertTrue(roundTrip.contains("PENDING @code(1) @comment(\"待支付\")"),
+      "round-trip 必须保留元素注解，且整数编码不得退化为字符串字面量: " + roundTrip);
+    assertFalse(roundTrip.contains("@code(\"1\")"), "整数 @code 不得回写为字符串");
+    assertTrue(roundTrip.contains("@system"), "枚举级注解必须保留");
+  }
+
+  @Test
+  void enumRejectsPartialCodeAnnotations() {
+    String fml = """
+      enum OrderStatus {
+        PENDING @code(1),
+        PAID,
+        @system
+      }
+      """;
+    assertThrows(IllegalArgumentException.class, () -> ASTNodeConverter.parseFML(fml));
+  }
+
+  @Test
+  void enumRejectsDuplicateCodes() {
+    String fml = """
+      enum OrderStatus {
+        PENDING @code(1),
+        PAID @code(1)
+      }
+      """;
+    assertThrows(IllegalArgumentException.class, () -> ASTNodeConverter.parseFML(fml));
+  }
+
+  @Test
+  void enumRejectsEnumLevelCodeAnnotation() {
+    String fml = """
+      enum OrderStatus {
+        PENDING,
+        PAID,
+        @code(1)
+      }
+      """;
+    assertThrows(IllegalArgumentException.class, () -> ASTNodeConverter.parseFML(fml));
+  }
 }

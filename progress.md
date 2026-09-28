@@ -940,3 +940,25 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `mvn test -pl flexmodel-engine -q` 通过。
 - `flexmodel-ui npm run lint` 通过。
 - `flexmodel-ui npm run build` 通过（`tsc -b && vite build`）。
+
+## Enum - @code 落库编码与 @comment 元素注释 (2026-09-28)
+
+**目标:** 枚举元素支持可选的 @code（落库编码）与 @comment（展示注释）。@code 声明后，API/GraphQL/UI 层继续使用元素名，引擎在 SQL 边界自动完成 name→code 写入翻译与 code→name 读取翻译；@comment 由 codegen 写入生成 Java 枚举常量的 Javadoc。两者完全可选，未声明时行为与旧版一致。
+
+**修改:**
+
+- `ModelParser.jj`：新增枚举元素级注解文法（紧跟元素名的 `@code(...)` / `@comment(...)`），单整数参数以 `Long` 解析以保留字面量类型；`Enumeration` 新增 `elementAnnotations`，`toString()` 内联回写元素注解。
+- 新增 `dev.flexmodel.model.EnumElement`（name/code/comment/additionalProperties，实现 Serializable）。
+- `EnumDefinition`：内部元素结构化为 `elementDefinitions`，`getElements()` 保持名称视图向后兼容；`setElements` 对 Jackson 双字段反序列化做顺序无关防御。
+- `ASTNodeConverter`：`toSchemaEnum` 构建结构化元素并校验（code 必须全量声明、无重复、仅允许元素级；枚举级 `@code` 报错）；`fromSchemaEnum` round-trip 保留编码字面量类型（整数不加引号）。
+- `EnumTypeHandler`/`EnumSqlTypeHandler`：经 `ModelRegistry` 解析枚举定义，写入时 name→code（含 multiple、`Enum` 实例归一化、未知值抛错），读取时 code→name（含存量按名字落库数据回退）；`SqlContext`/`MongoContext` 注入 registry + schemaName。
+- Codegen：`EnumClass` 携带结构化元素；`EnumGenerator` 将 `@comment` 输出为常量 Javadoc（防 `*/` 注入），无注释时保持原紧凑格式，已生成代码零变更。
+
+**验证:**
+
+- flexmodel-core 定向测试：`FmlParserTest`、`ASTNodeConverterTest`（round-trip + 4 个校验用例）、`EnumTypeHandlerTest`（10 用例）、`JsonSerializeTest`（JSON 双向 + 旧版输入兼容）全部通过。
+- core+codegen 定向测试：`EnumGeneratorTest`、`GeneratorTest`、`GenerationToolTest` 通过。
+- `mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- core/codegen/graphql 三个引擎子模块 `mvn test` 全部通过。
+
+**遗留/风险:** 查询条件中的枚举值（where/`_eq`/ComparisonExp）尚未接入 name→code 翻译，声明编码的枚举按元素名过滤会查不到数据，待下一特性在条件渲染链路补齐；Mongo 读取结果暂未反向翻译（写入路径已翻译）；UI EnumForm/MCP `create_enum_model` 的编码编辑、DDL 按编码类型（TINYINT/INT）落列待后续；既有 `getFml()` 尾逗号与解析器不支持尾部裸逗号为存量问题，未在本特性内处理。

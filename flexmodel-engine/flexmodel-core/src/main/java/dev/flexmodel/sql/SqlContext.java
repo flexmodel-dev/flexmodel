@@ -59,7 +59,7 @@ public class SqlContext extends AbstractSessionContext {
       this.typeHandlerMap.put(ScalarType.TIME.getType(), new LegacyTimeSqlTypeHandler());
     }
     this.typeHandlerMap.put(ScalarType.JSON.getType(), new JsonSqlTypeHandler());
-    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumSqlTypeHandler());
+    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumSqlTypeHandler(mappedModels, schemaName));
   }
 
   @Override

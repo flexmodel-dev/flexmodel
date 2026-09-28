@@ -238,7 +238,7 @@ public class ASTNodeConverter {
             mAnno.parameters.isEmpty() ? true : mAnno.parameters);
         }
       }
-      anEnum.addElementDefinition(element);
+      anEnum.addElement(element);
     }
     for (ModelParser.Annotation mAnno : idlEnum.annotations) {
       switch (mAnno.name) {
@@ -254,12 +254,12 @@ public class ASTNodeConverter {
   }
 
   private static void validateEnumCodes(EnumDefinition anEnum) {
-    boolean anyCode = anEnum.getElementDefinitions().stream().anyMatch(e -> e.getCode() != null);
+    boolean anyCode = anEnum.getElements().stream().anyMatch(e -> e.getCode() != null);
     if (!anyCode) {
       return;
     }
     Set<String> codes = new HashSet<>();
-    for (EnumElement element : anEnum.getElementDefinitions()) {
+    for (EnumElement element : anEnum.getElements()) {
       if (element.getCode() == null) {
         throw new IllegalArgumentException(
           "@code must be declared on all elements of enum " + anEnum.getName() + ", missing on " + element.getName());
@@ -402,7 +402,7 @@ public class ASTNodeConverter {
 
   public static ModelParser.Enumeration fromSchemaEnum(EnumDefinition schemaEnum) {
     ModelParser.Enumeration enumeration = new ModelParser.Enumeration(schemaEnum.getName());
-    for (EnumElement element : schemaEnum.getElementDefinitions()) {
+    for (EnumElement element : schemaEnum.getElements()) {
       enumeration.addElement(element.getName());
       if (element.getCode() != null) {
         ModelParser.Annotation codeAnno = new ModelParser.Annotation("code");

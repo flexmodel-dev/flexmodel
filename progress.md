@@ -1051,9 +1051,9 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 **修改:**
 
-- `EnumDefinition` 序列化仅输出结构化 `elements`（`EnumElement[]`），不再输出 `elementDefinitions`；`getElements()` 名称视图保持内部兼容并从 JSON 中隐藏。
-- `setElements` 兼容三种输入：结构化对象、旧字符串数组、旧 `elementDefinitions` 字段，避免存量数据丢失编码/注释。
-- `JsonSerializeTest` 覆盖新输出格式、旧字符串输入与旧 `elementDefinitions` 输入。
+- `EnumDefinition` 使用单一结构化 `elements` 字段，`getElements()` 直接返回 `EnumElement[]`。
+- `setElements` 仅接受结构化 `EnumElement[]`；按用户要求不保留旧字符串数组或旧 `elementDefinitions` 输入兼容。
+- `JsonSerializeTest` 仅覆盖结构化 `elements` 输出与 round-trip，并断言不再出现 `elementDefinitions`。
 - `flexmodel-ui` 的 `Enum`/`EnumSchema` 类型、枚举 payload、枚举字段下拉统一改为结构化 `elements`。
 
 **验证:**
@@ -1064,3 +1064,4 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `mvn test -pl flexmodel-server -am -Dtest=RecordResourceTest "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（5 tests）。
 - `flexmodel-ui npx tsc --noEmit`、定向 `npx eslint`、`npm run build` 通过。
 - flexmodel-ui 提交 `d5d70aa`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。
+- 后续按用户反馈移除 `EnumDefinition` 的历史输入兼容逻辑，调用方与测试同步改为结构化 `EnumElement` API。

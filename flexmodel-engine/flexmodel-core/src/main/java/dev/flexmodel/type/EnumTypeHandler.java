@@ -84,7 +84,7 @@ public class EnumTypeHandler implements TypeHandler<Object> {
 
   private static boolean hasCodes(EnumDefinition enumDefinition) {
     return enumDefinition != null
-      && enumDefinition.getElementDefinitions().stream().anyMatch(e -> e.getCode() != null);
+      && enumDefinition.getElements().stream().anyMatch(e -> e.getCode() != null);
   }
 
   private static Collection<?> toCollection(Object value) {
@@ -102,7 +102,7 @@ public class EnumTypeHandler implements TypeHandler<Object> {
     if (name == null) {
       return null;
     }
-    for (EnumElement element : enumDefinition.getElementDefinitions()) {
+    for (EnumElement element : enumDefinition.getElements()) {
       if (element.getName().equals(name)) {
         Object code = element.getCode();
         return code != null ? code : name;
@@ -117,13 +117,13 @@ public class EnumTypeHandler implements TypeHandler<Object> {
     if (key == null) {
       return null;
     }
-    for (EnumElement element : enumDefinition.getElementDefinitions()) {
+    for (EnumElement element : enumDefinition.getElements()) {
       if (element.getCode() != null && String.valueOf(element.getCode()).equals(key)) {
         return element.getName();
       }
     }
     // 兼容声明编码前按名字落库的存量数据
-    for (EnumElement element : enumDefinition.getElementDefinitions()) {
+    for (EnumElement element : enumDefinition.getElements()) {
       if (element.getName().equals(key)) {
         return key;
       }

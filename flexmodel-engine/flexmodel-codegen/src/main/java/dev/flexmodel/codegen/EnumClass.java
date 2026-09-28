@@ -25,7 +25,7 @@ public class EnumClass extends AbstractClass<EnumClass> {
 
     enumClass.setFullClassName(enumClass.getPackageName() + "." + ftName);
     enumClass.setVariableName(StringUtils.uncapitalize(ftName));
-    enumClass.setElementDefinitions(anEnum.getElementDefinitions());
+    enumClass.setElementDefinitions(anEnum.getElements());
     enumClass.setComment(anEnum.getComment());
     enumClass.setOriginal(anEnum);
     return enumClass;

@@ -71,31 +71,19 @@ public class JsonSerializeTest {
   @Test
   void enumElementCodesSurviveJsonRoundTrip() {
     EnumDefinition definition = new EnumDefinition("OrderStatus");
-    definition.setElementDefinitions(java.util.List.of(
+    definition.setElements(List.of(
       new EnumElement("PENDING", 1L, "待支付"),
       new EnumElement("PAID", 2L, null)));
 
     String json = JsonUtils.toJsonString(definition);
-    // 结构化枚举元素统一使用 elements 字段序列化
     Assertions.assertTrue(json.contains("\"elements\":[{\"name\":\"PENDING\""));
     Assertions.assertFalse(json.contains("\"elementDefinitions\""));
 
     EnumDefinition deserialized = JsonUtils.parseToObject(json, EnumDefinition.class);
-    Assertions.assertEquals(List.of("PENDING", "PAID"), deserialized.getElements());
-    Assertions.assertEquals(2, deserialized.getElementDefinitions().size());
-    Assertions.assertEquals(1, ((Number) deserialized.getElementDefinitions().get(0).getCode()).intValue());
-    Assertions.assertEquals("待支付", deserialized.getElementDefinitions().get(0).getComment());
-    Assertions.assertEquals(2, ((Number) deserialized.getElementDefinitions().get(1).getCode()).intValue());
-
-    // 旧版纯字符串 elements 输入仍然可用
-    EnumDefinition legacy = JsonUtils.parseToObject(
-      "{\"type\":\"Enum\",\"name\":\"PlainStatus\",\"elements\":[\"A\",\"B\"]}", EnumDefinition.class);
-    Assertions.assertEquals(List.of("A", "B"), legacy.getElements());
-
-    EnumDefinition legacyStructured = JsonUtils.parseToObject(
-      "{\"type\":\"Enum\",\"name\":\"LegacyStatus\",\"elementDefinitions\":[{\"name\":\"A\",\"code\":1}]}",
-      EnumDefinition.class);
-    Assertions.assertEquals(List.of("A"), legacyStructured.getElements());
-    Assertions.assertEquals(1, ((Number) legacyStructured.getElementDefinitions().get(0).getCode()).intValue());
+    Assertions.assertEquals(2, deserialized.getElements().size());
+    Assertions.assertEquals("PENDING", deserialized.getElements().get(0).getName());
+    Assertions.assertEquals(1, ((Number) deserialized.getElements().get(0).getCode()).intValue());
+    Assertions.assertEquals("待支付", deserialized.getElements().get(0).getComment());
+    Assertions.assertEquals(2, ((Number) deserialized.getElements().get(1).getCode()).intValue());
   }
 }

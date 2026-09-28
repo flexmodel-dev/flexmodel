@@ -254,8 +254,8 @@ public class ASTNodeConverterTest {
       """;
     List<SchemaObject> models = ASTNodeConverter.parseFML(fml).getModels();
     EnumDefinition orderStatus = (EnumDefinition) models.getFirst();
-    assertEquals(List.of("PENDING", "PAID", "CLOSED"), orderStatus.getElements());
-    List<EnumElement> definitions = orderStatus.getElementDefinitions();
+    assertEquals(List.of("PENDING", "PAID", "CLOSED"), orderStatus.getElements().stream().map(EnumElement::getName).toList());
+    List<EnumElement> definitions = orderStatus.getElements();
     assertEquals(3, definitions.size());
     assertEquals("PENDING", definitions.get(0).getName());
     assertEquals(1L, definitions.get(0).getCode());

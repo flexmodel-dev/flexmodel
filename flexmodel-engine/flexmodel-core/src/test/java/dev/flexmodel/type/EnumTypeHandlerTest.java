@@ -66,7 +66,7 @@ public class EnumTypeHandlerTest {
 
   private static EnumDefinition codedEnum() {
     EnumDefinition definition = new EnumDefinition("OrderStatus");
-    definition.setElementDefinitions(List.of(
+    definition.setElements(List.of(
       new EnumElement("PENDING", 1L, "待支付"),
       new EnumElement("PAID", 2L, null)));
     return definition;
@@ -141,7 +141,7 @@ public class EnumTypeHandlerTest {
   @Test
   void passesThroughWhenEnumHasNoCodes() {
     EnumDefinition definition = new EnumDefinition("PlainStatus");
-    definition.setElements(List.of("ACTIVE", "INACTIVE"));
+    definition.setElements(List.of(new EnumElement("ACTIVE"), new EnumElement("INACTIVE")));
     EnumTypeHandler handler = handler(definition);
     Field field = field(false);
     assertEquals("ACTIVE", handler.convertParameter(field, "ACTIVE"));

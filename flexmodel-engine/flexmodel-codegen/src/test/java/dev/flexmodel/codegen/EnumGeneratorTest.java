@@ -27,7 +27,7 @@ public class EnumGeneratorTest {
   @Test
   void writesElementCommentsAsJavadoc() {
     EnumDefinition definition = new EnumDefinition("OrderStatus");
-    definition.setElementDefinitions(List.of(
+    definition.setElements(List.of(
       new EnumElement("PENDING", 1L, "待支付"),
       new EnumElement("PAID", 2L, "已支付"),
       new EnumElement("CLOSED", 9L, null)));
@@ -45,7 +45,7 @@ public class EnumGeneratorTest {
   @Test
   void keepsCompactLayoutWithoutComments() {
     EnumDefinition definition = new EnumDefinition("PlainStatus");
-    definition.setElements(List.of("ACTIVE", "INACTIVE", "PENDING"));
+    definition.setElements(List.of(new EnumElement("ACTIVE"), new EnumElement("INACTIVE"), new EnumElement("PENDING")));
     String generated = generate(definition);
 
     assertTrue(generated.contains("    ACTIVE, INACTIVE, PENDING\n"),

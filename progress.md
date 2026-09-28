@@ -994,3 +994,22 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 **验证:**
 
 - `mvn test -pl flexmodel-server -am -Dtest=RecordResourceTest "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（5 tests）。测试启动时 `TestDataInitializer` 会应用 `dev_test.fml`，覆盖 FML 解析、枚举校验与 Student 种子记录写入。
+
+## Enum - 前端布局优化（feat-018 跟进）(2026-09-28)
+
+**目标:** 优化建模页枚举表单在宽面板和抽屉中的布局层级，让查看态更像只读详情，编辑态更聚焦且操作更少干扰。
+
+**修改（flexmodel-ui）:**
+
+- `EnumForm` 编辑态限制内容宽度为 760px，避免在右侧宽面板中横向拉满；名称与注释改为紧凑双列。
+- 枚举元素收进“枚举元素”卡片，列头与输入行使用同一 Grid（名称/编码/注释/删除操作），编码列固定 88px，注释列获得更多可用宽度。
+- 合并“向上/向下添加”为卡片右上角单个“添加元素”操作，减少按钮噪声；删除操作保留行尾。
+- 查看态不再渲染 borderless 输入框，改为只读 `Descriptions` + `Table`，名称/注释与元素名/编码/注释层级更清晰。
+- 新增 `enum_elements`、`add_element` 中英文文案。
+
+**验证:**
+
+- `npx tsc --noEmit --pretty false` 通过。
+- 定向 `npx eslint src/pages/DataModeling/components/EnumForm.tsx` 通过。
+- `npm run build`（tsc -b + vite build）通过；既有 Monaco/Browserslist 提示与 chunk 大小警告不变。
+- flexmodel-ui 提交 `498a789`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。

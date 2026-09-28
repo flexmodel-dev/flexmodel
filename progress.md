@@ -1030,3 +1030,18 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 定向 `npx eslint src/pages/DataModeling/components/EnumForm.tsx src/types/data-modeling.d.ts` 通过。
 - `npm run build`（tsc -b + vite build）通过；既有 Monaco/Browserslist 提示与 chunk 大小警告不变。
 - flexmodel-ui 提交 `2385c10`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。
+## Enum - 接口描述按钮改为纯图标（feat-018 跟进）(2026-09-28)
+
+**目标:** 根据反馈将枚举详情页的“接口描述”入口改为纯图标按钮，减少文字占位。
+
+**修改（flexmodel-ui）:**
+
+- `EnumForm` 的接口描述入口仅保留代码图标，移除按钮文字；保留 `aria-label` 作为可访问性名称。
+- Popover 交互、FML 展示与复制能力保持不变。
+
+**验证:**
+
+- `npx tsc --noEmit --pretty false` 通过。
+- 定向 `npx eslint src/pages/DataModeling/components/EnumForm.tsx` 通过。
+- `npm run build`（tsc -b + vite build）通过；既有 Monaco/Browserslist 提示与 chunk 大小警告不变。
+- flexmodel-ui 提交 `211df06`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。

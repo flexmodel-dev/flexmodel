@@ -42,15 +42,15 @@ model Course {
   @comment("课程")
 }
 enum UserGender {
-  UNKNOWN,
-  MALE,
-  FEMALE
+  UNKNOWN @comment("未知"),
+  MALE @comment("男"),
+  FEMALE @comment("女")
 }
 enum user_interest {
-  chang,
-  tiao,
-  rap,
-  daLanQiu
+  chang @code(1) @comment("唱"),
+  tiao @code(2) @comment("跳"),
+  rap @code(3) @comment("说唱"),
+  daLanQiu @code(4) @comment("篮球")
 }
 
 // ==============================

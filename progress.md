@@ -981,3 +981,16 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 定向 `npx eslint`（EnumForm/ModelForm/FieldInput/enumPayload/data-modeling.d.ts）0 错误 0 警告。
 - `npm run build`（tsc -b + vite build）通过；既有 Monaco chunk 大小警告不变。
 - flexmodel-ui 提交 `7f776ff`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，未纳入提交。
+
+## Enum - dev_test 示例接入 @code/@comment（feat-018 跟进）(2026-09-28)
+
+**目标:** 在 `dev_test.fml` 中实际使用新增枚举元素配置，验证 FML 解析、结构化枚举校验和种子数据 TypeHandler 写入链路。
+
+**修改:**
+
+- `UserGender` 为全部元素补充可选 `@comment`（未知/男/女）；暂不声明 `@code`，因为 `studentsMale/studentsFemale` 关联 filter 仍按元素名过滤，避免触发查询条件枚举值翻译的已知遗留问题。
+- `user_interest` 为全部元素补充 `@code` 与 `@comment`（1/2/3/4）；种子数据仍使用元素名，写入 SQL 边界时由 EnumTypeHandler 自动翻译为编码值。
+
+**验证:**
+
+- `mvn test -pl flexmodel-server -am -Dtest=RecordResourceTest "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（5 tests）。测试启动时 `TestDataInitializer` 会应用 `dev_test.fml`，覆盖 FML 解析、枚举校验与 Student 种子记录写入。

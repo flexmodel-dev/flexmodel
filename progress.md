@@ -1013,3 +1013,20 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 定向 `npx eslint src/pages/DataModeling/components/EnumForm.tsx` 通过。
 - `npm run build`（tsc -b + vite build）通过；既有 Monaco/Browserslist 提示与 chunk 大小警告不变。
 - flexmodel-ui 提交 `498a789`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。
+
+## Enum - 接口描述按钮（feat-018 跟进）(2026-09-28)
+
+**目标:** 枚举详情页提供与实体页一致的“接口描述”入口，可查看并复制枚举 FML。
+
+**修改（flexmodel-ui）:**
+
+- `EnumForm` 查看态在基础信息区右上角增加“接口描述”按钮；存在 `model.fml` 时显示。
+- 点击按钮用 Popover 展示 FML，内容支持复制，交互与 `EntityView` 保持一致。
+- `Enum` 类型补充可选 `fml` 字段，与后端 `SchemaObject.getFml()` 返回契约对齐。
+
+**验证:**
+
+- `npx tsc --noEmit --pretty false` 通过。
+- 定向 `npx eslint src/pages/DataModeling/components/EnumForm.tsx src/types/data-modeling.d.ts` 通过。
+- `npm run build`（tsc -b + vite build）通过；既有 Monaco/Browserslist 提示与 chunk 大小警告不变。
+- flexmodel-ui 提交 `2385c10`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。

@@ -962,3 +962,22 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - core/codegen/graphql 三个引擎子模块 `mvn test` 全部通过。
 
 **遗留/风险:** 查询条件中的枚举值（where/`_eq`/ComparisonExp）尚未接入 name→code 翻译，声明编码的枚举按元素名过滤会查不到数据，待下一特性在条件渲染链路补齐；Mongo 读取结果暂未反向翻译（写入路径已翻译）；UI EnumForm/MCP `create_enum_model` 的编码编辑、DDL 按编码类型（TINYINT/INT）落列待后续；既有 `getFml()` 尾逗号与解析器不支持尾部裸逗号为存量问题，未在本特性内处理。
+
+## Enum - 前端枚举编辑支持 @code/@comment（feat-018 跟进）(2026-09-28)
+
+**目标:** 建模 UI 的枚举编辑支持逐元素配置可选的落库编码（@code）与展示注释（@comment），与后端 elementDefinitions 结构化契约对齐，同时保持旧版纯字符串 elements 的加载兼容。
+
+**修改（flexmodel-ui）:**
+
+- `EnumForm`：元素列表改为三列（名称/编码/注释），名称必填；列表级校验对齐后端规则——至少 2 个元素、名称唯一、编码全量或全空、编码唯一；编辑态优先从 `elementDefinitions` 加载（code/comment 回填），旧版仅有 `elements` 时降级为名称行；新增/删除行与查看态布局同步调整。
+- 新增 `enumPayload.ts`：`buildEnumPayload` 同时输出 `elements`（名称数组）与 `elementDefinitions`（结构化对象），编码输入按字面量归一（纯整数转 number，其余为 string）；`EnumForm` 保存与 `ModelForm` 创建入口共用，提交契约一致。
+- `FieldInput`：EnumRef 字段下拉的 label 优先显示元素 `@comment`（无注释时显示元素名），value 仍为元素名，数据写入语义不变。
+- `data-modeling.d.ts`：新增 `EnumElement` 接口，`Enum`/`EnumSchema` 增加可选 `elementDefinitions`。
+- `zh/en` 文案：新增元素列名与 4 条校验提示。
+
+**验证:**
+
+- `npx tsc --noEmit` 通过。
+- 定向 `npx eslint`（EnumForm/ModelForm/FieldInput/enumPayload/data-modeling.d.ts）0 错误 0 警告。
+- `npm run build`（tsc -b + vite build）通过；既有 Monaco chunk 大小警告不变。
+- flexmodel-ui 提交 `7f776ff`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，未纳入提交。

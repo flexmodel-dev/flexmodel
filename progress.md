@@ -1065,3 +1065,70 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `flexmodel-ui npx tsc --noEmit`、定向 `npx eslint`、`npm run build` 通过。
 - flexmodel-ui 提交 `d5d70aa`；仓库既有暂存项 `src/icons.ts`（AD 状态）不属于本特性，已保持原状。
 - 后续按用户反馈移除 `EnumDefinition` 的历史输入兼容逻辑，调用方与测试同步改为结构化 `EnumElement` API。
+
+## Apps UI - 登录接口接入（feat-019） (2026-10-08)
+
+**目标：**
+
+- 将 `flexmodel-apps-ui` 的登录页从纯前端跳转改为调用 Flexmodel 真实认证接口。
+- 保持“记住登录”语义，并让受保护页面在未登录时回跳登录页。
+
+**修改（flexmodel-apps-ui）：**
+
+- 新增 `src/services/auth.ts`：封装 `POST /api/auth/login`、响应校验、localStorage/sessionStorage 会话存储与清理。
+- `src/pages/Login.tsx`：默认密码改为服务端测试凭据 `admin123`；提交时禁用按钮并展示登录中/错误状态；成功后返回来源页面。
+- `vite.config.ts`：开发环境将 `/api` 代理到 `http://localhost:8080`。
+- `src/main.tsx`：新增 `RequireAuth` 路由守卫，未登录访问业务页面跳转 `/login`。
+- `src/components/layout/TopHeaderShell.tsx`：展示登录接口返回的用户，退出登录时清理会话。
+
+**验证：**
+
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
+- `mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- 真实服务 `POST http://localhost:8080/api/auth/login` 返回 `Admin`、`expiresIn=300000`、1 项权限。
+- Vite 代理 `POST http://localhost:5181/api/auth/login` 返回同样结果；错误密码返回 401 与 `message`。
+- Playwright 浏览器验证：正确凭据提交后进入 `#/dashboard/home`，头部显示 `Admin`；错误凭据显示
+  `Wrong username or password`。
+- `./init.sh` 在 clean 阶段失败：运行中的 `flexmodel-server/target/flexmodel-server-dev.jar`
+  被锁定，无法删除；这是用户要求保持服务在线导致的环境限制。已用非 clean 全模块编译等价验证，停止 Quarkus dev 服务后可恢复标准
+  `./init.sh`。
+
+**遗留：**
+
+- 登录成功后的业务数据仍使用 mock 状态，本特性只接入认证接口与会话控制。
+- 仓库存在与本特性无关的既有修改（`deploy/docker-compose/001-mysql-single/.env`、服务配置文件、`flexmodel-ui` 嵌套仓库）与未跟踪的
+  `.agents/skills` 目录，已保持原状。
+
+## Apps Backend - 应用管理基础 CRUD（feat-020） (2026-10-08)
+
+**目标：**
+
+- 在 `flexmodel-server` 的 `dev.flexmodel.apps` 包实现应用管理基础 CRUD。
+- 应用与项目一一对齐：应用 ID 等于项目 ID，不新增独立应用表。
+- 应用展示配置存储在 `f_project.metadata.app`，并保留其他 metadata 节点。
+
+**修改（flexmodel-server）：**
+
+- 新增 `AppResource`：提供 `GET /api/apps`、`GET /api/apps/{appId}`、`POST /api/apps`、`PUT /api/apps/{appId}`、
+  `DELETE /api/apps/{appId}`。
+- 新增 `AppService`：
+  - 应用列表复用 `ProjectService.findTopLevelProjects()`，仅暴露顶级且启用的项目。
+  - 创建应用时未传 `projectId` 则自动生成唯一合法项目 ID，并复用 `ProjectService.createProject()` 初始化项目生命周期。
+  - 更新应用时仅合并 `metadata.app`，保留 `logSettings` 等其他 metadata 字段。
+  - 删除应用复用 `ProjectService.deleteProject()`，联动清理项目、分支、Schema、Pages、GraphQL 与调度资源。
+- 新增 DTO：`AppCreateRequest`、`AppUpdateRequest`、`AppResponse`。
+- 扩展 `dev.flexmodel.apps.package-info`，说明应用与项目一一对齐。
+- 新增 `AppResourceTest`，覆盖列表、详情、创建、更新、删除、参数校验、未认证访问与 metadata 保留。
+
+**验证：**
+
+- `mvn test -pl flexmodel-server -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（10 tests，0
+  failures）。
+- `mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `./init.sh` 通过（全模块编译与引擎测试）。
+- 为释放 `flexmodel-server/target/flexmodel-server-dev.jar` 的文件锁，停止了正在运行的 Quarkus dev 进程后重新执行标准验证。
+
+**遗留：**
+
+- V1 不实现业务对象、审批流程、触发器或菜单管理。
+- V1 不修改 `flexmodel-apps-ui`，前端仍使用本地 mock 数据。

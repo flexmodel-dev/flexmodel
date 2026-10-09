@@ -24,6 +24,10 @@
   ITEM；没有子项时保留空态页面。
 - 关联项内置页面选项收敛为工作台、文件、审批中心；动态、通讯录、通知不再出现在菜单关联项下拉中。
 - 关联项下拉移除“未关联”选项；未选择时仅显示占位提示，保存仍要求 ITEM 必须绑定关联项。
+- 应用管理列表在大屏下改为一行四列；应用卡片移除“业务对象 n 个”，改为展示“所有者：owner”。应用接口响应新增 owner 字段，取项目
+  ownerId。
+- 应用接口返回的 createdAt / updatedAt 在前端统一格式化为 yyyy-MM-dd HH:mm:ss，应用管理和应用设置不再展示 ISO 时间与纳秒精度。
+- 应用管理卡片按应用自身的 primaryColor 渲染图标底色、文字色和悬停边框，不再统一使用全局主色。
 - `AppHome` 与 `AppLayout` 共用同一个后端驱动的菜单编辑弹窗；应用页顶部与左侧导航根据后端菜单渲染，避免出现 mock 菜单。
 - 后端取消 `GROUP` 仅能位于根级的限制，支持根级分组与嵌套分组，匹配原始 UI 的左侧分组/分组内菜单结构；排序接口递归校验并重建全部分组子级。
 - `AppMenuResourceTest` 增加嵌套分组、分组内菜单、递归排序、删除级联和内置页面路由生成覆盖。
@@ -37,6 +41,9 @@
 - 空顶部菜单修复后复跑 `flexmodel-apps-ui npm run build` 通过。
 - 移除关联项选项后复跑 AppMenuResourceTest 验证 targets 仅返回 3 个内置页面。
 - 移除“未关联”选项后复跑 `flexmodel-apps-ui npm run build` 通过。
+- 应用管理四列与所有者展示修改后，`flexmodel-apps-ui npm run build` 与 `AppResourceTest` 通过。
+- 日期格式化修改后复跑 `flexmodel-apps-ui npm run build` 通过。
+- 应用卡片主色样式修改后复跑 `flexmodel-apps-ui npm run build` 通过。
 - 层级修复后复跑 `flexmodel-apps-ui npm run build` 通过。
 
 **遗留/风险:**

@@ -1,5 +1,49 @@
 # Session Progress Log
 
+## Follow-up: 应用菜单弹窗接入真实接口与内置页面关联（2026-10-09）
+
+**目标:** 保持原始 `MenuEditorDialog` UI 与交互不变，将应用菜单从 mock 数据切换为 `/api/apps/{appId}/menus`
+真实接口；空菜单打开弹窗时不显示任何 mock 数据，新增一级菜单时后端保存为 `GROUP`。
+
+**修改:**
+
+- `MenuEditorDialog` 在应用上下文中异步加载后端菜单，空列表保持空态；一级菜单创建提交 `type: GROUP`
+  ，左侧菜单/分组/分组内菜单的增删改和拖拽排序均调用真实接口。
+- `MenuLinkPicker` 在应用上下文加载 `/menus/targets`，继续使用原有关联项选择交互；`ITEM` 必须绑定 `BUILT_IN` 或 `ENTITY`
+  目标。
+- 菜单叶子类型统一从 MENU 迁移为 ITEM，后端校验、响应、前端请求与路由判断均已同步；按需求不做历史数据兼容。
+- 内置页面关联已打通：`BUILT_IN:dashboard / feeds / files / approval / contacts / notifications` 保存后生成
+  `/apps/{appId}/{menuId}`，点击菜单进入 `AppMenuPage` 并渲染对应的 Dashboard、动态、文件、审批中心、通讯录或通知页面。
+- 修复关联项下拉浮层层级：`SelectContent` 从 `z-50` 提升到 `z-[1050]`，高于菜单编辑弹窗的 `z-[1041]`，选项不再被弹窗遮挡。
+- 修复无 menuId 时的默认选中：访问 /apps/{appId} 会加载菜单并重定向到第一个 ITEM 的 pageRoute；没有任何 ITEM 时保留空态。
+- 菜单编辑支持跨分组拖拽：ITEM 可从分组内拖到分组外，也可从分组外拖入分组；移动后更新父级并保存排序。
+- 应用列表、应用详情、应用菜单和关联项改为会话内缓存，并合并并发请求；同一应用内点击菜单不再重复请求
+  /api/apps、应用详情和菜单接口，菜单写操作后按应用失效缓存。
+- 登录、退出登录和认证会话解析失败时统一清空应用数据缓存，避免跨用户读取旧数据。
+- 修复空顶部菜单回落到第一个顶部菜单的问题：空顶部菜单跳转 `/apps/{appId}?top={topId}`，AppHome 仅在当前顶部菜单内查找首个
+  ITEM；没有子项时保留空态页面。
+- 关联项内置页面选项收敛为工作台、文件、审批中心；动态、通讯录、通知不再出现在菜单关联项下拉中。
+- 关联项下拉移除“未关联”选项；未选择时仅显示占位提示，保存仍要求 ITEM 必须绑定关联项。
+- `AppHome` 与 `AppLayout` 共用同一个后端驱动的菜单编辑弹窗；应用页顶部与左侧导航根据后端菜单渲染，避免出现 mock 菜单。
+- 后端取消 `GROUP` 仅能位于根级的限制，支持根级分组与嵌套分组，匹配原始 UI 的左侧分组/分组内菜单结构；排序接口递归校验并重建全部分组子级。
+- `AppMenuResourceTest` 增加嵌套分组、分组内菜单、递归排序、删除级联和内置页面路由生成覆盖。
+
+**验证:**
+
+- `mvn test -pl flexmodel-server -am "-Dtest=AppMenuResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（8
+  tests，0 failures，0 errors，含 ITEM 从嵌套分组移出到分组外的用例）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- 请求缓存修复后复跑 `flexmodel-apps-ui npm run build` 通过。
+- 空顶部菜单修复后复跑 `flexmodel-apps-ui npm run build` 通过。
+- 移除关联项选项后复跑 AppMenuResourceTest 验证 targets 仅返回 3 个内置页面。
+- 移除“未关联”选项后复跑 `flexmodel-apps-ui npm run build` 通过。
+- 层级修复后复跑 `flexmodel-apps-ui npm run build` 通过。
+
+**遗留/风险:**
+
+- 业务实体页面记录仍为 mock，待后续接入真实模型字段与记录接口。
+- 完整 `flexmodel-server` 测试套件仍存在项目文档标注的已知失败，本次以菜单集成测试和前端构建验证为准。
+
 ## Feature: Apps 应用菜单管理（2026-10-09）
 
 **目标:** 应用点击后进入 `/apps/{appId}`；顶部菜单与左侧导航在应用页保持为空，右侧空态区域点击后打开原始
@@ -8,7 +52,7 @@
 **修改:**
 
 - 后端新增 `AppMenuResource` / `AppMenuService` 与 DTO，菜单持久化到项目 `metadata.app.menus`，提供列表、目标项、创建、更新、删除和排序接口。
-- 菜单模型支持 `GROUP` / `MENU` 两级结构、`BUILT_IN` / `ENTITY` 关联项校验，`MENU` 自动生成 `/apps/{appId}/{menuId}` 页面路由。
+- 菜单模型支持 `GROUP` / `ITEM` 结构、`BUILT_IN` / `ENTITY` 关联项校验，`ITEM` 自动生成 `/apps/{appId}/{menuId}` 页面路由。
 - `AppService.updateApp` 保留既有 `metadata.app.menus`，避免应用设置保存时丢失菜单。
 - 前端应用页点击右侧空白区域直接打开原始 `MenuEditorDialog`；`AppLayout` 在应用页将顶部菜单和左侧导航保持为空。
 - `AppHome` 不再自动重定向，也不渲染菜单列表；点击右侧空白区域直接打开原始 `MenuEditorDialog`。

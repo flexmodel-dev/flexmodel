@@ -46,12 +46,164 @@ public class AppMenuResourceTest {
       .get(BASE_PATH + "/targets")
       .then()
       .statusCode(200)
-      .body("builtIn.size()", equalTo(6))
+      .body("builtIn.size()", equalTo(3))
       .body("builtIn.id", hasItem("dashboard"))
+      .body("builtIn.id", not(hasItem("feeds")))
+      .body("builtIn.id", not(hasItem("contacts")))
+      .body("builtIn.id", not(hasItem("notifications")))
       .body("entities.size()", greaterThanOrEqualTo(1))
       .body("entities.id", hasItem("Student"));
   }
 
+  @Test
+  void testCreateBuiltInMenuGeneratesPageRoute() {
+    String groupId = createMenu("""
+      {
+        "type": "GROUP",
+        "name": "内置页面分组-%s"
+      }
+      """.formatted(TEST_SUFFIX), 201);
+    String menuId = createMenu("""
+      {
+        "type": "ITEM",
+        "name": "工作台-%s",
+        "parentId": "%s",
+        "target": {"type": "BUILT_IN", "id": "dashboard"}
+      }
+      """.formatted(TEST_SUFFIX, groupId), 201);
+
+    try {
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH)
+        .then()
+        .statusCode(200)
+        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.target.type".formatted(groupId, menuId),
+          equalTo("BUILT_IN"))
+        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.target.id".formatted(groupId, menuId),
+          equalTo("dashboard"))
+        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.pageRoute".formatted(groupId, menuId),
+          equalTo("/apps/dev_test/" + menuId));
+    } finally {
+      deleteMenuQuietly(groupId);
+    }
+  }
+
+  @Test
+  void testMoveItemBetweenGroups() {
+    String sourceGroupId = createMenu("""
+      {
+        "type": "GROUP",
+        "name": "移动源分组-%s"
+      }
+      """.formatted(TEST_SUFFIX), 201);
+    String targetGroupId = createMenu("""
+      {
+        "type": "GROUP",
+        "name": "移动目标分组-%s"
+      }
+      """.formatted(TEST_SUFFIX), 201);
+    String itemId = createMenu("""
+      {
+        "type": "ITEM",
+        "name": "移动菜单-%s",
+        "parentId": "%s",
+        "target": {"type": "BUILT_IN", "id": "dashboard"}
+      }
+      """.formatted(TEST_SUFFIX, sourceGroupId), 201);
+
+    try {
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "type": "ITEM",
+            "name": "移动菜单-%s",
+            "parentId": "%s",
+            "target": {"type": "BUILT_IN", "id": "dashboard"}
+          }
+          """.formatted(TEST_SUFFIX, targetGroupId))
+        .when()
+        .put(BASE_PATH + "/" + itemId)
+        .then()
+        .statusCode(200)
+        .body("parentId", equalTo(targetGroupId));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH)
+        .then()
+        .statusCode(200)
+        .body("find { it.id == '%s' }.children.collect { it.id }".formatted(sourceGroupId),
+          not(hasItem(itemId)))
+        .body("find { it.id == '%s' }.children.collect { it.id }".formatted(targetGroupId),
+          hasItem(itemId));
+    } finally {
+      deleteMenuQuietly(sourceGroupId);
+      deleteMenuQuietly(targetGroupId);
+    }
+  }
+
+  @Test
+  void testMoveItemOutOfGroup() {
+    String rootGroupId = createMenu("""
+      {
+        "type": "GROUP",
+        "name": "移出根分组-%s"
+      }
+      """.formatted(TEST_SUFFIX), 201);
+    String nestedGroupId = createMenu("""
+      {
+        "type": "GROUP",
+        "name": "移出嵌套分组-%s",
+        "parentId": "%s"
+      }
+      """.formatted(TEST_SUFFIX, rootGroupId), 201);
+    String itemId = createMenu("""
+      {
+        "type": "ITEM",
+        "name": "移出菜单-%s",
+        "parentId": "%s",
+        "target": {"type": "BUILT_IN", "id": "dashboard"}
+      }
+      """.formatted(TEST_SUFFIX, nestedGroupId), 201);
+
+    try {
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "type": "ITEM",
+            "name": "移出菜单-%s",
+            "parentId": "%s",
+            "target": {"type": "BUILT_IN", "id": "dashboard"}
+          }
+          """.formatted(TEST_SUFFIX, rootGroupId))
+        .when()
+        .put(BASE_PATH + "/" + itemId)
+        .then()
+        .statusCode(200)
+        .body("parentId", equalTo(rootGroupId));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH)
+        .then()
+        .statusCode(200)
+        .body("find { it.id == '%s' }.children.collect { it.id }".formatted(nestedGroupId),
+          not(hasItem(itemId)))
+        .body("find { it.id == '%s' }.children.collect { it.id }".formatted(rootGroupId),
+          hasItem(itemId));
+    } finally {
+      deleteMenuQuietly(rootGroupId);
+      deleteMenuQuietly(nestedGroupId);
+    }
+  }
   @Test
   void testMenuCrudOrderAndAppUpdatePreservesMenus() {
     String groupId = createMenu("""
@@ -63,16 +215,33 @@ public class AppMenuResourceTest {
       """.formatted(TEST_SUFFIX), 201);
     String childId = createMenu("""
       {
-        "type": "MENU",
+        "type": "ITEM",
         "name": "菜单测试学生-%s",
         "iconName": "User",
         "parentId": "%s",
         "target": {"type": "ENTITY", "id": "Student"}
       }
       """.formatted(TEST_SUFFIX, groupId), 201);
+    String nestedGroupId = createMenu("""
+      {
+        "type": "GROUP",
+        "name": "菜单测试嵌套分组-%s",
+        "iconName": "Folder",
+        "parentId": "%s"
+      }
+      """.formatted(TEST_SUFFIX, groupId), 201);
+    String nestedChildId = createMenu("""
+      {
+        "type": "ITEM",
+        "name": "菜单测试嵌套学生-%s",
+        "iconName": "User",
+        "parentId": "%s",
+        "target": {"type": "ENTITY", "id": "Student"}
+      }
+      """.formatted(TEST_SUFFIX, nestedGroupId), 201);
     String builtInId = createMenu("""
       {
-        "type": "MENU",
+        "type": "ITEM",
         "name": "菜单测试工作台-%s",
         "iconName": "Home",
         "target": {"type": "BUILT_IN", "id": "dashboard"}
@@ -89,13 +258,21 @@ public class AppMenuResourceTest {
         .body("find { it.id == '%s' }.name".formatted(groupId), equalTo("菜单测试分组-" + TEST_SUFFIX))
         .body("find { it.id == '%s' }.children[0].pageRoute".formatted(groupId),
           equalTo("/apps/dev_test/" + childId));
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH)
+        .then()
+        .statusCode(200)
+        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.children[0].pageRoute".formatted(groupId, nestedGroupId),
+          equalTo("/apps/dev_test/" + nestedChildId));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .contentType(ContentType.JSON)
         .body("""
             {
-              "type": "MENU",
+              "type": "ITEM",
           "name": "菜单测试学生更新-%s",
               "iconName": "BookUser",
               "parentId": "%s",
@@ -116,7 +293,10 @@ public class AppMenuResourceTest {
         .contentType(ContentType.JSON)
         .body(Map.of(
           "root", List.of(builtInId, groupId),
-          "children", Map.of(groupId, List.of(childId))
+          "children", Map.of(
+            groupId, List.of(childId, nestedGroupId),
+            nestedGroupId, List.of(nestedChildId)
+          )
         ))
         .when()
         .put(BASE_PATH + "/order")
@@ -179,7 +359,7 @@ public class AppMenuResourceTest {
   void testCreateMenuValidations() {
     createMenu("""
       {
-        "type": "MENU",
+        "type": "ITEM",
         "name": "缺少关联项",
         "iconName": "Home"
       }
@@ -193,7 +373,7 @@ public class AppMenuResourceTest {
       """, 400);
     createMenu("""
       {
-        "type": "MENU",
+        "type": "ITEM",
         "name": "父级不存在",
         "parentId": "not_exists",
         "target": {"type": "BUILT_IN", "id": "dashboard"}
@@ -201,7 +381,7 @@ public class AppMenuResourceTest {
       """, 400);
     createMenu("""
       {
-        "type": "MENU",
+        "type": "ITEM",
         "name": "非法图标",
         "iconName": "NotExists",
         "target": {"type": "BUILT_IN", "id": "dashboard"}
@@ -209,14 +389,14 @@ public class AppMenuResourceTest {
       """, 400);
     createMenu("""
       {
-        "type": "MENU",
+        "type": "ITEM",
         "name": "非法内置项",
         "target": {"type": "BUILT_IN", "id": "not_exists"}
       }
       """, 400);
     createMenu("""
       {
-        "type": "MENU",
+        "type": "ITEM",
         "name": "非法实体",
         "target": {"type": "ENTITY", "id": "not_exists"}
       }

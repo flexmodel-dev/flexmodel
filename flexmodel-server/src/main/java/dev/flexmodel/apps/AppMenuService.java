@@ -38,7 +38,7 @@ import java.util.UUID;
 public class AppMenuService {
 
   private static final String GROUP_TYPE = "GROUP";
-  private static final String MENU_TYPE = "MENU";
+  private static final String ITEM_TYPE = "ITEM";
   private static final String BUILT_IN_TARGET_TYPE = "BUILT_IN";
   private static final String ENTITY_TARGET_TYPE = "ENTITY";
   private static final String METADATA_APP_KEY = "app";
@@ -129,7 +129,7 @@ public class AppMenuService {
 
   private AppMenuRecord validatedMenu(AppMenuSaveRequest request, String appId, AppMenuRecord existing) {
     String type = request.type();
-    if (!GROUP_TYPE.equals(type) && !MENU_TYPE.equals(type)) {
+    if (!GROUP_TYPE.equals(type) && !ITEM_TYPE.equals(type)) {
       throw new ValidationException("菜单类型不合法: " + type);
     }
     if (isBlank(request.name())) {
@@ -144,12 +144,8 @@ public class AppMenuService {
     }
 
     String parentId = isBlank(request.parentId()) ? null : request.parentId();
-    if (GROUP_TYPE.equals(type) && parentId != null) {
-      throw new ValidationException("分组必须位于根级");
-    }
-
     AppMenuTargetRecord target = null;
-    if (MENU_TYPE.equals(type)) {
+    if (ITEM_TYPE.equals(type)) {
       AppMenuTargetRequest targetRequest = request.target();
       if (targetRequest == null || isBlank(targetRequest.type()) || isBlank(targetRequest.id())) {
         throw new ValidationException("菜单必须选择关联项后才能绑定页面");
@@ -190,13 +186,7 @@ public class AppMenuService {
     }
 
     Map<String, List<String>> expectedChildren = new LinkedHashMap<>();
-    menus.forEach(menu -> {
-      if (GROUP_TYPE.equals(menu.type())) {
-        expectedChildren.put(menu.id(), menu.children() == null
-          ? List.of()
-          : menu.children().stream().map(AppMenuRecord::id).toList());
-      }
-    });
+    collectExpectedChildren(menus, expectedChildren);
     if (!childrenOrder.keySet().equals(expectedChildren.keySet())) {
       throw new ValidationException("菜单排序必须包含且仅包含所有分组");
     }
@@ -214,15 +204,40 @@ public class AppMenuService {
     for (String rootId : rootIds) {
       AppMenuRecord menu = nodesById.get(rootId);
       if (GROUP_TYPE.equals(menu.type())) {
-        List<AppMenuRecord> children = childrenOrder.get(menu.id()).stream()
-          .map(nodesById::get)
-          .toList();
-        result.add(withChildren(menu, children));
+        result.add(withChildren(menu, orderedChildren(menu.id(), childrenOrder, nodesById)));
       } else {
         result.add(menu);
       }
     }
     return result;
+  }
+
+  private void collectExpectedChildren(
+    List<AppMenuRecord> menus,
+    Map<String, List<String>> expectedChildren
+  ) {
+    for (AppMenuRecord menu : menus) {
+      if (GROUP_TYPE.equals(menu.type())) {
+        expectedChildren.put(menu.id(), menu.children() == null
+          ? List.of()
+          : menu.children().stream().map(AppMenuRecord::id).toList());
+        if (menu.children() != null) collectExpectedChildren(menu.children(), expectedChildren);
+      }
+    }
+  }
+
+  private List<AppMenuRecord> orderedChildren(
+    String parentId,
+    Map<String, List<String>> childrenOrder,
+    Map<String, AppMenuRecord> nodesById
+  ) {
+    List<String> orderedIds = childrenOrder.getOrDefault(parentId, List.of());
+    return orderedIds.stream()
+      .map(nodesById::get)
+      .map(child -> GROUP_TYPE.equals(child.type())
+        ? withChildren(child, orderedChildren(child.id(), childrenOrder, nodesById))
+        : child)
+      .toList();
   }
 
   private List<AppMenuResponse> saveMenus(String appId, Project project, List<AppMenuRecord> menus) {
@@ -285,7 +300,7 @@ public class AppMenuService {
       menu.iconName(),
       menu.parentId(),
       targetResponse,
-      MENU_TYPE.equals(menu.type()) ? "/apps/" + appId + "/" + menu.id() : null,
+      ITEM_TYPE.equals(menu.type()) ? "/apps/" + appId + "/" + menu.id() : null,
       menu.children() == null
         ? List.of()
         : menu.children().stream().map(child -> toResponse(appId, child, entityLabels)).toList());
@@ -471,11 +486,8 @@ public class AppMenuService {
   private static Map<String, String> builtInTargets() {
     Map<String, String> result = new LinkedHashMap<>();
     result.put("dashboard", "工作台");
-    result.put("feeds", "动态");
     result.put("files", "文件");
     result.put("approval", "审批中心");
-    result.put("contacts", "通讯录");
-    result.put("notifications", "通知");
     return result;
   }
 }

@@ -92,9 +92,10 @@ public class AppService {
     }
 
     Map<String, Object> metadata = metadataMap(project);
-    metadata.put(METADATA_APP_KEY, appMetadata(
-      iconName(project, request.iconName()),
-      primaryColor(project, request.primaryColor())));
+    Map<String, Object> app = appNode(project);
+    app.put("iconName", iconName(project, request.iconName()));
+    app.put("primaryColor", primaryColor(project, request.primaryColor()));
+    metadata.put(METADATA_APP_KEY, app);
     project.setMetadata(metadata);
 
     project.setUpdatedBy(currentUserId());
@@ -188,6 +189,7 @@ public class AppService {
     Map<String, Object> app = new LinkedHashMap<>();
     app.put("iconName", iconName == null ? DEFAULT_ICON_NAME : iconName);
     app.put("primaryColor", primaryColor == null ? DEFAULT_PRIMARY_COLOR : primaryColor);
+    app.put("menus", List.of());
     return app;
   }
 

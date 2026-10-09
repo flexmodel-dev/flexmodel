@@ -12,7 +12,9 @@
       "id": "feat-002",
       "name": "Auth - RBAC 权限与多租户",
       "description": "基于角色的访问控制、多租户隔离、JWT 安全验证",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/auth 特性包已实现"
     },
@@ -20,7 +22,9 @@
       "id": "feat-003",
       "name": "Flow - 可视化流程编排",
       "description": "流程定义、实例管理、执行引擎、插件系统、校验，低代码后端扩展",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/flow 特性包已实现，FlowService 已按职责拆分为三个服务类"
     },
@@ -28,7 +32,9 @@
       "id": "feat-004",
       "name": "API - API 管理与 GraphQL",
       "description": "API 定义、运行时执行、文档生成、GraphQL 支持",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/api 和 flexmodel-engine/graphql 模块已实现"
     },
@@ -36,7 +42,9 @@
       "id": "feat-005",
       "name": "Job - 分布式任务调度",
       "description": "内置触发器、作业执行的任务调度系统",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/scheduling 特性包已实现；TriggerResourceTest e2e 用例已完善，通过注入的 Scheduler 直接校验 Quartz JobDetail/Trigger 的创建/移除/状态（create/update/patch/delete），16 个用例全部通过 (mvn -pl flexmodel-server -am test -Dtest=TriggerResourceTest)。附带修复 TriggerService.create 对 state=false 的 SCHEDULED 触发器不再误注册 Quartz 作业。"
     },
@@ -54,7 +62,9 @@
       "id": "feat-007",
       "name": "MCP Server - AI 工具集成",
       "description": "基于 Quarkus MCP Server 扩展实现 MCP 协议，通过 @Tool 注解暴露 P0 核心工具（Project/Modeling/Data），支持 AI 客户端直接管理项目、建模和数据",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/mcp 特性包已实现，15 个 MCP Tools（ProjectTools/ModelingTools/DataTools）已通过编译验证"
     },
@@ -62,7 +72,11 @@
       "id": "feat-008",
       "name": "前端 UI 完善",
       "description": "基于 React + Ant Design v6 的前端界面持续优化和功能完善",
-      "dependencies": ["feat-002", "feat-003", "feat-004"],
+      "dependencies": [
+        "feat-002",
+        "feat-003",
+        "feat-004"
+      ],
       "status": "in-progress",
       "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中。2026-08-31 移除 OpenTelemetry 依赖与运行时，改用轻量 trace 上下文；日志按功能归属迁移到后端 feature 包与 UI 路由（API/数据/边缘函数/任务调度）。同日移除前端链路追踪页面、API、路由和跳转，仅保留日志 traceId 元数据。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；ApiLogResourceTest + TriggerResourceTest 18 tests 通过；npx tsc --noEmit 通过。2026-09-08 清理 APILog/AuditLog/Functions/JobExecutionLogList 中未使用导入与变量，flexmodel-ui npm run build 通过；全模块 Maven 编译与 flexmodel-engine 测试通过。"
     },
@@ -81,7 +95,9 @@
       "id": "feat-009",
       "name": "文档站建设",
       "description": "基于 Docusaurus 的文档站内容完善，包含 API 文档和教程",
-      "dependencies": ["feat-004"],
+      "dependencies": [
+        "feat-004"
+      ],
       "status": "in-progress",
       "evidence": "flexmodel-website 模块已有基础结构，docs/api 和 docs/tutorial 目录已有内容"
     },
@@ -89,7 +105,10 @@
       "id": "feat-010",
       "name": "Functions - 边缘函数 (Flexmodel Functions)",
       "description": "对标 Supabase Functions 的边缘函数能力。Deno Functions Runtime (Hono.js) + Worker 隔离执行，file:// URL 加载 + 原生相对 import。Java 后端简化 CRUD (ACTIVE/FAILED)，项目级资源无分支维度。多文件源文件直接存储 JSON，模板系统支持快速创建。",
-      "dependencies": ["feat-001", "feat-002"],
+      "dependencies": [
+        "feat-001",
+        "feat-002"
+      ],
       "status": "in-progress",
       "evidence": "重构完成: 数据模型简化 (去除 f_function_version 表/branch字段/TriggerType.HTTP)，Java 后端简化 (14 files — 删除4个版本/内部资源文件，重写Service/Resource/Invoker/DTO)，Deno Functions Runtime 重写 (file:// 部署模式替代 lazy load)，前端重写 (Supabase-style 多文件编辑器+模板选择+简化API)。Java 424 files + TypeScript 0 errors 编译通过。待: 端到端集成测试 + Deno 运行时验证。"
     },
@@ -138,7 +157,9 @@
       "id": "feat-018",
       "name": "Enum - @code 落库编码与 @comment 元素注释",
       "description": "FML 枚举元素支持可选的 @code（落库编码）与 @comment（展示注释）：API/GraphQL/UI 层使用元素名，TypeHandler 在 SQL 写入/读取时自动完成 name↔code 双向翻译；codegen 将 @comment 写入生成枚举常量的 Javadoc。两者完全可选，未声明时行为与旧版一致。",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "ModelParser.jj 新增枚举元素级注解文法（PENDING @code(1) @comment(\"待支付\")，整数编码以 Long 保留字面量类型）；EnumDefinition 元素结构化为 EnumElement{name, code, comment}，当前 getElements() 直接返回结构化 EnumElement[]，JSON 仅序列化结构化 elements；toSchemaEnum 校验 code 全量声明/无重复/仅元素级可用，fromSchemaEnum round-trip 保留编码字面量类型（整数不加引号）；EnumTypeHandler/EnumSqlTypeHandler 经 ModelRegistry 解析枚举定义，实现 name→code 写入翻译与 code→name 读取翻译（含 multiple、Enum 实例归一化、未知值抛错、存量名字数据读取回退），SqlContext/MongoContext 完成接线；EnumGenerator 将 @comment 输出为枚举常量 Javadoc（防 */ 注入），无注释时保持原有紧凑格式零变更。验证：flexmodel-core 定向测试（FmlParserTest/ASTNodeConverterTest/EnumTypeHandlerTest/JsonSerializeTest）通过；core+codegen 定向测试（EnumGeneratorTest/GeneratorTest/GenerationToolTest）通过；mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；core/codegen/graphql 三个引擎子模块 mvn test 全部通过。遗留：查询条件（where/ComparisonExp）中的枚举值暂未做 name→code 翻译；Mongo 读取结果暂未反向翻译（写入已翻译）；MCP create_enum_model 的编码编辑与 DDL 按编码类型（TINYINT/INT）落列待后续。2026-09-28 前端跟进：EnumForm 逐元素编辑名称/@code/@comment（均可选，编码全量或全空、名称/编码唯一校验；编辑态读取结构化 elements；提交输出结构化 elements）；ModelForm 创建入口复用 enumPayload 构建器；FieldInput 枚举下拉以 @comment 作为展示标签（value 仍为元素名）；zh/en 文案补齐。验证：flexmodel-ui npx tsc --noEmit、定向 eslint、npm run build 通过；flexmodel-ui 提交 7f776ff。2026-09-28 dev_test 接入：UserGender 元素补充 @comment（暂不加 @code，避免关联 filter 的既有枚举条件翻译遗留问题）；user_interest 元素补充 @code(1-4) 与 @comment，种子数据按元素名写入并由 TypeHandler 翻译落库；mvn test -pl flexmodel-server -am -Dtest=RecordResourceTest \"-Dsurefire.failIfNoSpecifiedTests=false\" 通过（5 tests），测试启动覆盖 dev_test.fml 应用与 Student 种子记录写入。2026-09-28 前端布局优化：EnumForm 编辑态限制 760px 内容宽度，名称/注释双列展示；元素区改为枚举元素卡片，统一名称/编码/注释/操作 Grid 布局，编码列固定宽度，合并上下添加为单个添加元素操作；查看态改为只读 Descriptions + Table。验证：npx tsc --noEmit、定向 eslint、npm run build 通过；flexmodel-ui 提交 498a789。2026-09-28 接口描述按钮：EnumForm 查看态基础信息区右上角新增接口描述按钮，存在 model.fml 时显示，Popover 展示并支持复制 FML，交互与 EntityView 对齐；Enum 类型补充可选 fml 字段。验证：npx tsc --noEmit、定向 eslint、npm run build 通过；flexmodel-ui 提交 2385c10。2026-09-28 按用户反馈将入口改为纯代码图标按钮，保留 aria-label 与 Popover 内容；验证：npx tsc --noEmit、定向 eslint、npm run build 通过；flexmodel-ui 提交 211df06。2026-09-28 契约调整：结构化枚举元素统一为 elements，不再输出 elementDefinitions，也不保留旧字符串 elements/旧 elementDefinitions 输入兼容；EnumDefinition 与调用方统一使用 EnumElement[]，UI 类型/payload/字段下拉同步使用结构化 elements。验证：JsonSerializeTest、engine 全量测试、全模块 compile、RecordResourceTest、UI tsc/eslint/build 通过；flexmodel-ui 提交 d5d70aa。"
     },
@@ -172,6 +193,18 @@
       ],
       "status": "done",
       "evidence": "新增 flexmodel-apps-ui/src/services/apps.ts：封装 GET /api/apps、GET /api/apps/{appId}、POST /api/apps、PUT /api/apps/{appId}、DELETE /api/apps/{appId}，并复用认证 token 与统一响应错误；AppManagement 改为异步加载列表，创建/更新成功后刷新列表，删除成功后刷新并展示加载、提交、失败状态；AppSettings 改为异步加载应用详情，保存后同步后端返回值，删除成功后返回应用管理；AppForm/AppSettings 表单保留现有图标与主色交互。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-022",
+      "name": "Apps - 应用菜单管理",
+      "description": "在 flexmodel-server 的 dev.flexmodel.apps 包实现应用菜单后端；应用页顶部与左侧导航保持为空，点击右侧空白区域打开最初的 MenuEditorDialog。",
+      "dependencies": [
+        "feat-002",
+        "feat-020",
+        "feat-021"
+      ],
+      "status": "done",
+      "evidence": "新增 AppMenuResource/AppMenuService 与菜单 DTO，菜单保存到项目 metadata.app.menus，提供 GET /apps/{appId}/menus、GET /apps/{appId}/menus/targets、POST /apps/{appId}/menus、PUT /apps/{appId}/menus/{menuId}、DELETE /apps/{appId}/menus/{menuId}、PUT /apps/{appId}/menus/order；MENU 强制选择 BUILT_IN 或 ENTITY 目标并自动生成 /apps/{appId}/{menuId}，GROUP 仅支持根级，排序要求覆盖全部根菜单与分组子菜单，AppService 更新保留 menus。前端应用页右侧展示精致空态卡片：图标、说明“当前分组没有应用项，创建或从其他分组移动应用项”和“新增菜单”按钮；点击按钮或左侧菜单底部设置按钮均打开原始 MenuEditorDialog，顶部菜单与左侧导航保持为空，且左侧不展示任何空态按钮。验证：AppMenuResourceTest 通过（5 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过。遗留：业务实体页面记录仍为 mock，待后续接入真实模型与记录接口。"
     }
   ]
 }

@@ -1,5 +1,34 @@
 # Session Progress Log
 
+## Feature: Apps 应用菜单管理（2026-10-09）
+
+**目标:** 应用点击后进入 `/apps/{appId}`；顶部菜单与左侧导航在应用页保持为空，右侧空态区域点击后打开原始
+`MenuEditorDialog`；菜单支持分组与一级子菜单、内置模块和业务实体关联、绑定后自动生成页面路由，并提供增删改查与排序接口。
+
+**修改:**
+
+- 后端新增 `AppMenuResource` / `AppMenuService` 与 DTO，菜单持久化到项目 `metadata.app.menus`，提供列表、目标项、创建、更新、删除和排序接口。
+- 菜单模型支持 `GROUP` / `MENU` 两级结构、`BUILT_IN` / `ENTITY` 关联项校验，`MENU` 自动生成 `/apps/{appId}/{menuId}` 页面路由。
+- `AppService.updateApp` 保留既有 `metadata.app.menus`，避免应用设置保存时丢失菜单。
+- 前端应用页点击右侧空白区域直接打开原始 `MenuEditorDialog`；`AppLayout` 在应用页将顶部菜单和左侧导航保持为空。
+- `AppHome` 不再自动重定向，也不渲染菜单列表；点击右侧空白区域直接打开原始 `MenuEditorDialog`。
+- 左侧菜单不再展示“暂无菜单”按钮，只保持空白区域。
+- 路由统一为 `/apps/:appId`、`/apps/:appId/:menuId` 与记录查看路由，实体页面仍使用演示数据。
+- 修正 `AppMenuResourceTest` 中子菜单请求 `formatted(TEST_SUFFIX, groupId)` 参数顺序，解决父菜单 ID 误传问题。
+
+**验证:**
+
+- `mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（5
+  tests，0 failures，0 errors）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- 停止占用 `flexmodel-server-dev.jar` 的 Quarkus dev 进程后，`bash ./init.sh` 通过全模块 clean compile 与
+  `flexmodel-engine` 测试；脚本内 UI E2E 因 WSL 未检测到 Node 按脚本跳过。
+
+**遗留/风险:**
+
+- 业务实体页面当前仍使用 mock 记录数据，后续需要接入真实模型字段与记录接口。
+- 完整 `flexmodel-server` 测试套件仍存在项目文档标注的已知失败，本次以菜单集成测试与标准 `init.sh` 验证为准。
+
 ## Feature: ModelRef Filter 路径语法对齐（2026-09-24）
 
 **目标:** 按 existing query / GraphQL `where` 语法调整 relation filter，不再引入 `source.*` / `target.*` 专用前缀。

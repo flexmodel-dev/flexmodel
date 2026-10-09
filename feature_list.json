@@ -161,6 +161,17 @@
       ],
       "status": "done",
       "evidence": "新增 AppResource/AppService/AppCreateRequest/AppUpdateRequest/AppResponse，并扩展 package-info 说明应用与项目一一对齐。应用列表复用 ProjectService.findTopLevelProjects，仅暴露顶级且启用的项目；创建应用时未传 projectId 则自动生成唯一合法项目 ID，创建后复用 ProjectService.createProject 初始化 Schema、分支、GraphQL 和 Pages；更新应用时只合并 metadata.app 并保留 logSettings 等其他 metadata 节点；删除应用复用 ProjectService.deleteProject 完成项目、分支、Schema、Pages、GraphQL 和调度清理。验证：mvn test -pl flexmodel-server -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests，0 failures）；mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；./init.sh 通过（全模块编译与引擎测试）。"
+    },
+    {
+      "id": "feat-021",
+      "name": "Apps UI - 应用管理接口接入",
+      "description": "将 flexmodel-apps-ui 的应用管理 CRUD 从本地 mock 切换为 /api/apps 真实接口。",
+      "dependencies": [
+        "feat-002",
+        "feat-020"
+      ],
+      "status": "done",
+      "evidence": "新增 flexmodel-apps-ui/src/services/apps.ts：封装 GET /api/apps、GET /api/apps/{appId}、POST /api/apps、PUT /api/apps/{appId}、DELETE /api/apps/{appId}，并复用认证 token 与统一响应错误；AppManagement 改为异步加载列表，创建/更新成功后刷新列表，删除成功后刷新并展示加载、提交、失败状态；AppSettings 改为异步加载应用详情，保存后同步后端返回值，删除成功后返回应用管理；AppForm/AppSettings 表单保留现有图标与主色交互。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
     }
   ]
 }

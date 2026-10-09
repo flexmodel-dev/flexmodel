@@ -1132,3 +1132,34 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - V1 不实现业务对象、审批流程、触发器或菜单管理。
 - V1 不修改 `flexmodel-apps-ui`，前端仍使用本地 mock 数据。
+
+## Apps UI - 应用管理接口接入（feat-021） (2026-10-08)
+
+**目标：**
+
+- 将 `flexmodel-apps-ui` 的应用管理增删改查从本地 mock 切换为 `/api/apps` 真实接口。
+- 复用现有登录 token，保持当前应用表单、图标选择器与主色选择交互。
+
+**修改（flexmodel-apps-ui）：**
+
+- 新增 `src/services/apps.ts`：
+  - 封装列表、详情、创建、更新、删除五个接口。
+  - 通过 `getAuthToken()` 携带 `Authorization: Bearer ...`。
+  - 统一解析错误 `message`，并将后端响应规范化为前端 `App` 类型。
+- 修改 `src/pages/AppManagement.tsx`：
+  - 列表异步加载，展示加载与失败状态。
+  - 新建/编辑调用真实接口，成功后刷新列表。
+  - 删除调用真实接口，成功后刷新列表；操作期间禁用按钮并展示错误。
+- 修改 `src/pages/AppSettings.tsx`：
+  - 使用路由中的 `appId` 异步加载应用详情。
+  - 保存调用真实接口并同步返回值，删除成功后返回应用管理。
+  - 补充加载、提交、删除与错误状态。
+
+**验证：**
+
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
+
+**遗留：**
+
+- 应用卡片上的业务对象数量仍来自 `src/data/mock.ts` 的本地统计。
+- 应用管理之外的业务对象、审批流程、触发器等页面仍使用现有 mock 数据。

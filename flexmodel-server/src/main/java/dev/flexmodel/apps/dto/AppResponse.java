@@ -15,6 +15,7 @@ import java.util.Objects;
  * @param iconName     应用图标
  * @param primaryColor 应用主色
  * @param enabled      是否启用
+ * @param owner        所有者
  * @param createdAt    创建时间
  * @param updatedAt    更新时间
  */
@@ -26,6 +27,7 @@ public record AppResponse(
   String iconName,
   String primaryColor,
   Boolean enabled,
+  String owner,
   LocalDateTime createdAt,
   LocalDateTime updatedAt
 ) {
@@ -39,6 +41,7 @@ public record AppResponse(
       iconName,
       primaryColor,
       Objects.requireNonNullElse(project.getEnabled(), true),
+      Objects.requireNonNullElse(project.getOwnerId(), "admin"),
       project.getCreatedAt(),
       project.getUpdatedAt());
   }

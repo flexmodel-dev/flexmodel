@@ -36,7 +36,8 @@ public class AppResourceTest {
       .statusCode(200)
       .body("size()", greaterThanOrEqualTo(1))
       .body("id", hasItem("dev_test"))
-      .body("projectId", hasItem("dev_test"));
+      .body("projectId", hasItem("dev_test"))
+      .body("owner", hasItem(notNullValue()));
   }
 
   @Test
@@ -52,7 +53,8 @@ public class AppResourceTest {
       .body("name", notNullValue())
       .body("iconName", equalTo("Boxes"))
       .body("primaryColor", equalTo("indigo"))
-      .body("enabled", equalTo(true));
+      .body("enabled", equalTo(true))
+      .body("owner", notNullValue());
   }
 
   @Test

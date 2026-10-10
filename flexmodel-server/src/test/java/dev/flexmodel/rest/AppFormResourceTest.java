@@ -164,7 +164,17 @@ public class AppFormResourceTest {
         .body("fields.label", hasItems("客户名称", "金额", "选项", "关联表单"))
         .body("fields.find { it.label == '客户名称' }.required", equalTo(true))
         .body("fields.find { it.label == '金额' }.type", equalTo("DECIMAL"))
-        .body("fields.find { it.label == '选项' }.options.size()", equalTo(2));
+        .body("fields.find { it.label == '选项' }.options.size()", equalTo(2))
+        .body("fields.find { it.label == '关联表单' }.referenceForm", equalTo(formName));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH)
+        .then()
+        .statusCode(200)
+        .body("find { it.name == '%s' }.fields.find { it.label == '关联表单' }.referenceForm".formatted(formName),
+          equalTo(formName));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -515,6 +525,64 @@ public class AppFormResourceTest {
         .delete(BASE_PATH + "/" + childName + "/fields/" + referenceField)
         .then()
         .statusCode(204);
+    } finally {
+      deleteFormQuietly(childName);
+      deleteFormQuietly(mainName);
+    }
+  }
+
+  @Test
+  void testFormLayoutSubformAllowsAnyBusinessField() {
+    String mainName = "subform_any_main_" + TEST_SUFFIX;
+    String childName = "subform_any_child_" + TEST_SUFFIX;
+    createForm("""
+      {
+        "label": "Any field main form",
+        "name": "%s",
+        "description": "Main form",
+        "createNameField": true
+      }
+      """.formatted(mainName), 201);
+    createForm("""
+      {
+        "label": "Any field child form",
+        "name": "%s",
+        "description": "Child form",
+        "createNameField": true
+      }
+      """.formatted(childName), 201);
+    Response linkField = createField(childName, """
+      {
+        "label": "Main record link",
+        "type": "TEXT",
+        "required": false
+      }
+      """, 201);
+    String fieldName = linkField.body().path("name");
+
+    try {
+      String subformId = "$SUBFORM$-" + TEST_SUFFIX;
+      Response layoutResponse = given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "fields": ["name", "%s"],
+            "widths": {"name": 50, "%s": 100},
+            "properties": {},
+            "subforms": {
+              "%s": {"formName": "%s", "referenceField": "%s"}
+            },
+            "advanced": {}
+          }
+          """.formatted(subformId, subformId, subformId, childName, fieldName))
+        .when()
+        .put(BASE_PATH + "/" + mainName + "/layout");
+      layoutResponse.then().statusCode(200);
+      @SuppressWarnings("unchecked")
+      Map<String, Map<String, String>> subforms = layoutResponse.body().path("layout.subforms");
+      org.junit.jupiter.api.Assertions.assertEquals(
+        fieldName, subforms.get(subformId).get("referenceField"));
     } finally {
       deleteFormQuietly(childName);
       deleteFormQuietly(mainName);

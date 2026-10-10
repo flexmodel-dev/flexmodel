@@ -1565,3 +1565,44 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 **验证：**
 
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps UI - 子表单引用字段候选刷新 (2026-10-10)
+
+**修改：**
+
+- FormDesign 在选择子表单后调用 `getAppForm` 获取该子表单最新详情，并基于详情中的 `REFERENCE` 且 `referenceForm`
+  等于当前表单的字段生成候选列表。
+- AppFormResourceTest 增加表单列表接口 `referenceForm` 断言，确认列表响应不会丢失引用目标。
+
+**验证：**
+
+- mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests）。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps - 子表单关联字段放开限制 (2026-10-10)
+
+**修改：**
+
+- FormDesign 子表单“关联字段”候选展示子表单全部非内置字段。
+- AppFormService 保存子表单布局时仅校验字段存在，不再限制字段类型和 referenceForm。
+- AppRecordService 对显式 `referenceField` 仅校验非内置字段；该字段用于保存主记录 ID 并进行列表过滤、归属校验。
+- 不选择关联字段时的自动创建逻辑保持不变，仍创建指向当前表单的 REFERENCE 字段。
+- 新增 TEXT 字段作为关联字段的后端布局测试与记录上下文测试。
+
+**验证：**
+
+- mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest,AppRecordResourceTest
+  -Dsurefire.failIfNoSpecifiedTests=false 通过（12 tests）。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps UI - 子表单标题简化 (2026-10-10)
+
+**修改：**
+
+- AppSubformRecords 左侧标题仅展示子表单名称 `form.label`，缺失时回退 `formName`。
+- 移除左侧标题下方的“子表单名称 · 数量”副标题。
+- 清理不再使用的子表单布局项 `label` 参数。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。

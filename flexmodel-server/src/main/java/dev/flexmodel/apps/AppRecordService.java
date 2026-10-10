@@ -95,7 +95,7 @@ public class AppRecordService {
     Map<String, Object> values = sanitizeInput(form.response(), input, true, context);
     LocalDateTime now = LocalDateTime.now();
     String userId = currentUserId();
-    values.put("id", UUID.randomUUID().toString());
+//    values.put("id", UUID.randomUUID().toString());
     values.put("created_by", userId);
     values.put("updated_by", userId);
     values.put("created_at", now);
@@ -186,8 +186,9 @@ public class AppRecordService {
       .toList();
     if (referenceField != null && !referenceField.isBlank()) {
       String normalized = referenceField.trim();
-      return candidates.stream()
+      return childForm.fields().stream()
         .filter(field -> field.name().equals(normalized))
+        .filter(field -> !field.builtin())
         .findFirst()
         .orElseThrow(() -> new ValidationException("子表单引用字段不合法: " + normalized))
         .name();

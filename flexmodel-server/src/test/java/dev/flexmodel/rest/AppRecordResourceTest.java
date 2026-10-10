@@ -302,6 +302,79 @@ public class AppRecordResourceTest {
     }
   }
 
+  @Test
+  void testSubformRecordContextAllowsAnyBusinessField() {
+    String mainName = "subform_text_main_" + TEST_SUFFIX;
+    String childName = "subform_text_child_" + TEST_SUFFIX;
+    createForm("""
+      {
+        "label": "Text main form",
+        "name": "%s",
+        "description": "Main form",
+        "createNameField": true
+      }
+      """.formatted(mainName), 201);
+    createForm("""
+      {
+        "label": "Text child form",
+        "name": "%s",
+        "description": "Child form",
+        "createNameField": true
+      }
+      """.formatted(childName), 201);
+    Response linkField = createField(childName, """
+      {
+        "label": "Main record link",
+        "type": "TEXT",
+        "required": false
+      }
+      """, 201);
+    String fieldName = linkField.body().path("name");
+    String mainRecordsPath = BASE_PATH + "/" + mainName + "/records";
+    String childRecordsPath = BASE_PATH + "/" + childName + "/records";
+
+    try {
+      Response mainRecord = given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"name": "Main record"}
+          """)
+        .when()
+        .post(mainRecordsPath)
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
+      String mainRecordId = mainRecord.body().path("id");
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"name": "Child record"}
+          """)
+        .when()
+        .post(childRecordsPath + "?mainFormName=" + mainName + "&mainRecordId=" + mainRecordId
+          + "&referenceField=" + fieldName)
+        .then()
+        .statusCode(201)
+        .body(fieldName, equalTo(mainRecordId));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(childRecordsPath + "?mainFormName=" + mainName + "&mainRecordId=" + mainRecordId
+          + "&referenceField=" + fieldName)
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(1));
+    } finally {
+      deleteFormQuietly(childName);
+      deleteFormQuietly(mainName);
+    }
+  }
+
   private Response createForm(String body, int expectedStatus) {
     Response response = given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())

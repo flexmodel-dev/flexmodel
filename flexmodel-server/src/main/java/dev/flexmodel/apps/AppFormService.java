@@ -717,7 +717,7 @@ public class AppFormService {
       .filter(item -> item.name().equals(subform.referenceField().trim()))
       .findFirst()
       .orElse(null);
-    if (field == null || !"REFERENCE".equals(field.type()) || !mainFormName.equals(field.referenceForm())) {
+    if (field == null) {
       throw new ValidationException("子表单引用字段不合法: " + subform.referenceField());
     }
   }

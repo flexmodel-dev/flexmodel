@@ -327,6 +327,38 @@
       ],
       "status": "done",
       "evidence": "FormSettings 加载当前应用表单列表；字段类型选择“引用”后展示“引用表单”下拉框，选择后写入 referenceForm 并允许保存。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-035",
+      "name": "Apps UI - 子表单引用字段候选刷新",
+      "description": "添加子表单时，选择子表单后重新获取其最新字段，确保指向当前表单的引用字段可以出现在候选列表中。",
+      "dependencies": [
+        "feat-033",
+        "feat-034"
+      ],
+      "status": "done",
+      "evidence": "FormDesign 在子表单选择变化后调用 getAppForm 获取最新子表单详情，并以该详情计算指向当前表单的 REFERENCE 字段候选，避免应用表单列表缓存导致候选字段缺失；AppFormResourceTest 增加表单列表接口 referenceForm 断言。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-036",
+      "name": "Apps - 子表单关联字段放开限制",
+      "description": "子表单关联字段可选择子表单中任意业务字段，不再强制必须是 REFERENCE 且指向当前表单。",
+      "dependencies": [
+        "feat-033",
+        "feat-035"
+      ],
+      "status": "done",
+      "evidence": "FormDesign 关联字段候选展示子表单全部非内置字段；AppFormService 保存布局时仅校验字段存在；AppRecordService 对显式 referenceField 仅校验为非内置字段并用于保存/过滤主记录 ID，自动创建逻辑仍使用指向当前表单的 REFERENCE 字段。新增 AppFormResourceTest 与 AppRecordResourceTest 用 TEXT 字段验证布局保存与记录上下文。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest,AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（12 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-037",
+      "name": "Apps UI - 子表单标题简化",
+      "description": "记录详情中的子表单列表左侧标题仅展示子表单名称，移除副标题。",
+      "dependencies": [
+        "feat-036"
+      ],
+      "status": "done",
+      "evidence": "AppSubformRecords 左侧标题展示 form.label（缺失时回退 formName），移除记录数量副标题；同步移除不再使用的 label 参数。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
     }
   ]
 }

@@ -28,6 +28,8 @@
   ownerId。
 - 应用接口返回的 createdAt / updatedAt 在前端统一格式化为 yyyy-MM-dd HH:mm:ss，应用管理和应用设置不再展示 ISO 时间与纳秒精度。
 - 应用管理卡片按应用自身的 primaryColor 渲染图标底色、文字色和悬停边框，不再统一使用全局主色。
+- 用户界面概念统一为“表单”：应用设置、菜单关联项、记录页、审批筛选和管理后台中原“业务对象/实体/数据表”文案均已替换；底层接口类型仍保留
+  ENTITY，技术实现仍为实体。
 - `AppHome` 与 `AppLayout` 共用同一个后端驱动的菜单编辑弹窗；应用页顶部与左侧导航根据后端菜单渲染，避免出现 mock 菜单。
 - 后端取消 `GROUP` 仅能位于根级的限制，支持根级分组与嵌套分组，匹配原始 UI 的左侧分组/分组内菜单结构；排序接口递归校验并重建全部分组子级。
 - `AppMenuResourceTest` 增加嵌套分组、分组内菜单、递归排序、删除级联和内置页面路由生成覆盖。
@@ -44,6 +46,7 @@
 - 应用管理四列与所有者展示修改后，`flexmodel-apps-ui npm run build` 与 `AppResourceTest` 通过。
 - 日期格式化修改后复跑 `flexmodel-apps-ui npm run build` 通过。
 - 应用卡片主色样式修改后复跑 `flexmodel-apps-ui npm run build` 通过。
+- 界面术语最终统一为“表单”后复跑 `flexmodel-apps-ui npm run build` 通过。
 - 层级修复后复跑 `flexmodel-apps-ui npm run build` 通过。
 
 **遗留/风险:**
@@ -1243,3 +1246,20 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - 应用卡片上的业务对象数量仍来自 `src/data/mock.ts` 的本地统计。
 - 应用管理之外的业务对象、审批流程、触发器等页面仍使用现有 mock 数据。
+
+## Apps UI - 表单管理菜单命名调整 (2026-10-09)
+
+**目标：**
+
+- 将界面中的“表单”菜单入口命名为“表单管理”，避免与具体表单设计、表单字段等业务文案混淆。
+- 底层实现与 API 目标类型继续保留实体 / `ENTITY` 语义，不扩大改动范围。
+
+**修改：**
+
+- `AppSettings` 设置导航中的 `business-objects` 入口显示为“表单管理”。
+- `MenuLinkPicker` 与 `AppMenuManager` 的关联项下拉分组标题显示为“表单管理”。
+- `AdminBusinessObjects` 空态标题显示为“表单管理”。
+
+**验证：**
+
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。

@@ -51,8 +51,9 @@ public class AppMenuResourceTest {
       .body("builtIn.id", not(hasItem("feeds")))
       .body("builtIn.id", not(hasItem("contacts")))
       .body("builtIn.id", not(hasItem("notifications")))
-      .body("entities.size()", greaterThanOrEqualTo(1))
-      .body("entities.id", hasItem("Student"));
+      .body("forms.size()", greaterThanOrEqualTo(1))
+      .body("forms.id", hasItem("Student"))
+      .body("forms.label", hasItem("学生"));
   }
 
   @Test
@@ -219,7 +220,7 @@ public class AppMenuResourceTest {
         "name": "菜单测试学生-%s",
         "iconName": "User",
         "parentId": "%s",
-        "target": {"type": "ENTITY", "id": "Student"}
+        "target": {"type": "FORM", "id": "Student"}
       }
       """.formatted(TEST_SUFFIX, groupId), 201);
     String nestedGroupId = createMenu("""
@@ -236,7 +237,7 @@ public class AppMenuResourceTest {
         "name": "菜单测试嵌套学生-%s",
         "iconName": "User",
         "parentId": "%s",
-        "target": {"type": "ENTITY", "id": "Student"}
+        "target": {"type": "FORM", "id": "Student"}
       }
       """.formatted(TEST_SUFFIX, nestedGroupId), 201);
     String builtInId = createMenu("""
@@ -276,7 +277,7 @@ public class AppMenuResourceTest {
           "name": "菜单测试学生更新-%s",
               "iconName": "BookUser",
               "parentId": "%s",
-              "target": {"type": "ENTITY", "id": "Student"}
+              "target": {"type": "FORM", "id": "Student"}
             }
           """.formatted(TEST_SUFFIX, groupId))
         .when()
@@ -286,6 +287,8 @@ public class AppMenuResourceTest {
         .body("id", equalTo(childId))
         .body("name", equalTo("菜单测试学生更新-" + TEST_SUFFIX))
         .body("target.id", equalTo("Student"))
+        .body("target.label", equalTo("学生"))
+        .body("target.type", equalTo("FORM"))
         .body("pageRoute", equalTo("/apps/dev_test/" + childId));
 
       given()
@@ -397,8 +400,8 @@ public class AppMenuResourceTest {
     createMenu("""
       {
         "type": "ITEM",
-        "name": "非法实体",
-        "target": {"type": "ENTITY", "id": "not_exists"}
+        "name": "非法表单",
+        "target": {"type": "FORM", "id": "not_exists"}
       }
       """, 400);
   }

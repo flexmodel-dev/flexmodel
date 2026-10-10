@@ -1,6 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppMenuOrderRequest;
 import dev.flexmodel.apps.dto.AppMenuRecord;
 import dev.flexmodel.apps.dto.AppMenuResponse;
@@ -13,8 +14,6 @@ import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
-import dev.flexmodel.model.EntityDefinition;
-import dev.flexmodel.modeling.ModelingService;
 import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -29,6 +28,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import static java.util.stream.Collectors.toMap;
+
 /**
  * 应用菜单服务，菜单存储在项目 metadata 的 app.menus 节点。
  *
@@ -40,7 +41,7 @@ public class AppMenuService {
   private static final String GROUP_TYPE = "GROUP";
   private static final String ITEM_TYPE = "ITEM";
   private static final String BUILT_IN_TARGET_TYPE = "BUILT_IN";
-  private static final String ENTITY_TARGET_TYPE = "ENTITY";
+  private static final String FORM_TARGET_TYPE = "FORM";
   private static final String METADATA_APP_KEY = "app";
   private static final Set<String> MENU_ICON_NAMES = Set.of(
     "Home", "User", "TrendingUp", "ShoppingCart", "PieChart", "Folder", "BookUser",
@@ -51,23 +52,24 @@ public class AppMenuService {
   ProjectService projectService;
 
   @Inject
-  ModelingService modelingService;
+  AppFormService appFormService;
 
   @Inject
   SessionContext sessionContext;
 
   public List<AppMenuResponse> findMenus(String appId) {
     Project project = requireAppProject(appId);
-    return toResponses(appId, menuRecords(project), entityLabels(appId));
+    return toResponses(appId, menuRecords(project), formLabels(appId));
   }
 
   public AppMenuTargetsResponse findTargets(String appId) {
     requireAppProject(appId);
-    return new AppMenuTargetsResponse(builtInResponses(), entityResponses(appId));
+    return new AppMenuTargetsResponse(builtInResponses(), formResponses(appId));
   }
 
   public AppMenuResponse createMenu(String appId, AppMenuSaveRequest request) {
     Project project = requireAppProject(appId);
+    Map<String, String> formLabels = formLabels(appId);
     List<AppMenuRecord> menus = menuRecords(project);
     AppMenuRecord menu = validatedMenu(request, appId, null);
 
@@ -83,12 +85,13 @@ public class AppMenuService {
     } else {
       nextMenus = replaceNode(nextMenus, withChildren(parent, appended(parent.children(), menu)));
     }
-    saveMenus(appId, project, nextMenus);
-    return toResponse(appId, menu, entityLabels(appId));
+    saveMenus(appId, project, nextMenus, formLabels);
+    return toResponse(appId, menu, formLabels);
   }
 
   public AppMenuResponse updateMenu(String appId, String menuId, AppMenuSaveRequest request) {
     Project project = requireAppProject(appId);
+    Map<String, String> formLabels = formLabels(appId);
     List<AppMenuRecord> menus = menuRecords(project);
     AppMenuRecord existing = requireMenu(menus, menuId);
     if (!Objects.equals(existing.type(), request.type())) {
@@ -109,22 +112,24 @@ public class AppMenuService {
     } else {
       nextMenus = replaceNode(nextMenus, withChildren(parent, appended(parent.children(), menu)));
     }
-    saveMenus(appId, project, nextMenus);
-    return toResponse(appId, menu, entityLabels(appId));
+    saveMenus(appId, project, nextMenus, formLabels);
+    return toResponse(appId, menu, formLabels);
   }
 
   public void deleteMenu(String appId, String menuId) {
     Project project = requireAppProject(appId);
+    Map<String, String> formLabels = formLabels(appId);
     List<AppMenuRecord> menus = menuRecords(project);
     requireMenu(menus, menuId);
-    saveMenus(appId, project, removeNode(menus, menuId));
+    saveMenus(appId, project, removeNode(menus, menuId), formLabels);
   }
 
   public List<AppMenuResponse> reorderMenus(String appId, AppMenuOrderRequest request) {
     Project project = requireAppProject(appId);
+    Map<String, String> formLabels = formLabels(appId);
     List<AppMenuRecord> menus = menuRecords(project);
     List<AppMenuRecord> nextMenus = orderedMenus(menus, request);
-    return saveMenus(appId, project, nextMenus);
+    return saveMenus(appId, project, nextMenus, formLabels);
   }
 
   private AppMenuRecord validatedMenu(AppMenuSaveRequest request, String appId, AppMenuRecord existing) {
@@ -150,16 +155,20 @@ public class AppMenuService {
       if (targetRequest == null || isBlank(targetRequest.type()) || isBlank(targetRequest.id())) {
         throw new ValidationException("菜单必须选择关联项后才能绑定页面");
       }
-      if (!BUILT_IN_TARGET_TYPE.equals(targetRequest.type()) && !ENTITY_TARGET_TYPE.equals(targetRequest.type())) {
+      if (!BUILT_IN_TARGET_TYPE.equals(targetRequest.type())
+        && !FORM_TARGET_TYPE.equals(targetRequest.type())) {
         throw new ValidationException("菜单关联类型不合法: " + targetRequest.type());
       }
       if (BUILT_IN_TARGET_TYPE.equals(targetRequest.type()) && !BUILT_IN_TARGETS.containsKey(targetRequest.id())) {
         throw new ValidationException("内置模块不存在: " + targetRequest.id());
       }
-      if (ENTITY_TARGET_TYPE.equals(targetRequest.type()) && !entityLabels(appId).containsKey(targetRequest.id())) {
-        throw new ValidationException("实体不存在: " + targetRequest.id());
+      if (BUILT_IN_TARGET_TYPE.equals(targetRequest.type())) {
+        target = new AppMenuTargetRecord(BUILT_IN_TARGET_TYPE, targetRequest.id());
       }
-      target = new AppMenuTargetRecord(targetRequest.type(), targetRequest.id());
+      if (FORM_TARGET_TYPE.equals(targetRequest.type())) {
+        requireFormName(appId, targetRequest.id());
+        target = new AppMenuTargetRecord(FORM_TARGET_TYPE, targetRequest.id());
+      }
     } else if (request.target() != null) {
       throw new ValidationException("分组不能绑定关联项");
     }
@@ -240,7 +249,12 @@ public class AppMenuService {
       .toList();
   }
 
-  private List<AppMenuResponse> saveMenus(String appId, Project project, List<AppMenuRecord> menus) {
+  private List<AppMenuResponse> saveMenus(
+    String appId,
+    Project project,
+    List<AppMenuRecord> menus,
+    Map<String, String> formLabels
+  ) {
     Map<String, Object> metadata = metadataMap(project);
     Map<String, Object> app = appNode(project);
     app.put("menus", menus);
@@ -249,7 +263,7 @@ public class AppMenuService {
     project.setUpdatedBy(currentUserId());
     project.setUpdatedAt(LocalDateTime.now());
     Project updated = projectService.updateProject(project);
-    return toResponses(appId, menuRecords(updated), entityLabels(appId));
+    return toResponses(appId, menuRecords(updated), formLabels);
   }
 
   private List<AppMenuRecord> menuRecords(Project project) {
@@ -274,25 +288,20 @@ public class AppMenuService {
   private List<AppMenuResponse> toResponses(
     String appId,
     List<AppMenuRecord> menus,
-    Map<String, String> entityLabels
-  ) {
+    Map<String, String> formLabels) {
     return menus.stream()
-      .map(menu -> toResponse(appId, menu, entityLabels))
+      .map(menu -> toResponse(appId, menu, formLabels))
       .toList();
   }
 
-  private AppMenuResponse toResponse(
-    String appId,
-    AppMenuRecord menu,
-    Map<String, String> entityLabels
-  ) {
+  private AppMenuResponse toResponse(String appId, AppMenuRecord menu, Map<String, String> formLabels) {
     AppMenuTargetRecord target = menu.target();
     AppMenuTargetResponse targetResponse = target == null ? null : new AppMenuTargetResponse(
-      target.type(),
+      BUILT_IN_TARGET_TYPE.equals(target.type()) ? BUILT_IN_TARGET_TYPE : FORM_TARGET_TYPE,
       target.id(),
       BUILT_IN_TARGET_TYPE.equals(target.type())
         ? BUILT_IN_TARGETS.get(target.id())
-        : entityLabels.get(target.id()));
+        : formLabels.getOrDefault(target.id(), target.id()));
     return new AppMenuResponse(
       menu.id(),
       menu.type(),
@@ -303,7 +312,7 @@ public class AppMenuService {
       ITEM_TYPE.equals(menu.type()) ? "/apps/" + appId + "/" + menu.id() : null,
       menu.children() == null
         ? List.of()
-        : menu.children().stream().map(child -> toResponse(appId, child, entityLabels)).toList());
+        : menu.children().stream().map(child -> toResponse(appId, child, formLabels)).toList());
   }
 
   private AppMenuRecord requireMenu(List<AppMenuRecord> menus, String menuId) {
@@ -409,14 +418,20 @@ public class AppMenuService {
     }
   }
 
-  private Map<String, String> entityLabels(String appId) {
-    Map<String, String> result = new LinkedHashMap<>();
-    modelingService.findModels(appId).forEach(model -> {
-      if (model instanceof EntityDefinition entity) {
-        result.put(entity.getName(), isBlank(entity.getComment()) ? entity.getName() : entity.getComment());
-      }
-    });
-    return result;
+  private Map<String, String> formLabels(String appId) {
+    return appFormService.findForms(appId).stream()
+      .collect(toMap(
+        AppFormResponse::name,
+        AppFormResponse::label,
+        (left, right) -> right,
+        LinkedHashMap::new));
+  }
+
+  private void requireFormName(String appId, String formName) {
+    appFormService.findForms(appId).stream()
+      .filter(form -> form.name().equals(formName))
+      .findFirst()
+      .orElseThrow(() -> new ValidationException("表单不存在: " + formName));
   }
 
   private List<AppMenuTargetResponse> builtInResponses() {
@@ -425,9 +440,9 @@ public class AppMenuService {
       .toList();
   }
 
-  private List<AppMenuTargetResponse> entityResponses(String appId) {
-    return entityLabels(appId).entrySet().stream()
-      .map(entry -> new AppMenuTargetResponse(ENTITY_TARGET_TYPE, entry.getKey(), entry.getValue()))
+  private List<AppMenuTargetResponse> formResponses(String appId) {
+    return appFormService.findForms(appId).stream()
+      .map(form -> new AppMenuTargetResponse(FORM_TARGET_TYPE, form.name(), form.label()))
       .toList();
   }
 

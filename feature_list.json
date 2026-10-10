@@ -225,6 +225,17 @@
       ],
       "status": "done",
       "evidence": "AppMenuManager 的 MenuRow 在拖拽时于行底部渲染不可交互的 primary 色分割线；分割线位于当前行容器内，因此根级菜单与分组内菜单分别继承各自缩进和宽度，实现层级对齐。验证：bash ./init.sh 通过（全模块编译与 flexmodel-engine 测试）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-025",
+      "name": "Apps - 表单管理",
+      "description": "在 flexmodel-server 的 dev.flexmodel.apps 包实现应用表单 CRUD 与字段 CRUD，底层映射 Flexmodel 实体；flexmodel-apps-ui 仅暴露表单、表单字段、FORM、name/label 与 referenceForm 概念。",
+      "dependencies": [
+        "feat-021",
+        "feat-022"
+      ],
+      "status": "done",
+      "evidence": "新增 AppFormResource/AppFormService 与表单 DTO，提供 /api/apps/{appId}/forms、/forms/{name}、/forms/{name}/fields 及字段更新删除接口；表单契约使用 name（英文标识，创建后不可编辑）与 label（展示名），字段契约同样返回 name 与 label，创建时自动生成 id、created_by、updated_by、created_at、updated_at 系统字段，可选创建 name 主显字段并建立非唯一索引；UI 字段类型由服务端映射为底层实体字段，REFERENCE 使用 referenceForm；表单被菜单绑定时禁止删除。前端新增 appForms 服务与真实表单列表、创建弹窗、基本信息、字段管理和表单设计接入；应用设置路由统一为 /admin/apps/{appId}/forms/{name}/{section}，菜单关联目标统一为 BUILT_IN/FORM 且 targets.forms 返回 name/label；表单与字段详情展示只读 name；UI 层搜索确认不存在 entityName、ENTITY、entities、referenceEntity 与实体文案。验证：mvn test-compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。遗留：表单记录数据页尚未实现，绑定表单的菜单先显示开发中提示并提供表单管理入口。"
     }
   ]
 }

@@ -1167,6 +1167,16 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 **验证：**
 
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
+
+## Apps UI - FormDesign Hooks 顺序修复 (2026-10-10)
+
+**修改：**
+
+- 将 `FormDesign` 中处理拖拽列宽的 `useEffect` 移动到加载状态与空表单提前返回之前，保证 Hooks 调用顺序稳定。
+
+**验证：**
+
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
 - `mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
 - 真实服务 `POST http://localhost:8080/api/auth/login` 返回 `Admin`、`expiresIn=300000`、1 项权限。
 - Vite 代理 `POST http://localhost:5181/api/auth/login` 返回同样结果；错误密码返回 401 与 `message`。
@@ -1283,6 +1293,40 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
 - `git diff --check` 通过。
 
+## Apps - 表单管理 (2026-10-10)
+
+**目标：**
+
+- flexmodel-server 提供应用表单与表单字段 CRUD，底层复用 Flexmodel 实体能力。
+- UI/API 只暴露“表单”概念，统一使用 `formName`、`FORM`、`referenceForm`，不出现实体命名或类型。
+
+**修改：**
+
+- 新增 `AppFormResource`、`AppFormService` 与 `AppForm*` DTO：
+  - 表单接口：列表、详情、创建、更新、删除。
+  - 字段接口：创建、更新、删除。
+  - 创建时自动生成 `id`、`created_by`、`updated_by`、`created_at`、`updated_at`；可选创建 `name` 主显字段并建立非唯一索引。
+  - UI 字段类型由服务端映射为实体字段，`REFERENCE` 对外使用 `referenceForm`。
+- 菜单关联目标统一为 `BUILT_IN | FORM`，`/menus/targets` 返回 `forms`；表单被菜单绑定时禁止删除。
+- flexmodel-apps-ui 新增 `appForms` 服务与真实接口缓存：
+  - 表单列表支持创建弹窗与真实数据卡片。
+  - 新增 `FormSettings`，支持基本信息编辑/删除和业务字段增删改。
+  - `FormDesign` 改为按应用和表单名加载真实字段，添加字段时调用后端并保留原布局交互。
+  - 应用设置与表单二级路由统一为 `/admin/apps/:appId/forms/:formName/{section}`。
+- UI 层已确认不存在 `entityName`、`ENTITY`、`entities`、`referenceEntity` 与“实体”文案。
+
+**验证：**
+
+- `mvn test-compile -pl flexmodel-server -am -DskipTests` 通过。
+- `mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（6 tests）。
+- `mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（8 tests）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
+- `git diff --check` 通过。
+
+**遗留：**
+
+- 表单记录数据页尚未实现；绑定表单的菜单先显示开发中提示并提供表单管理入口。
+
 ## Apps UI - 菜单拖拽层级指示线 (2026-10-10)
 
 **目标：**
@@ -1301,3 +1345,23 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   `flexmodel-engine` 测试）。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
 - `git diff --check` 通过。
+
+## Apps - 表单 name/label 契约调整 (2026-10-10)
+
+**目标：**
+
+- 表单与字段统一使用 `label` 表示用户输入名称，使用 `name` 表示英文标识。
+- 详情页展示只读 `name`，编辑仅允许修改 `label` 与描述。
+
+**修改：**
+
+- 后端 `AppForm*` DTO 拆分为 `name` / `label`；创建校验 `name` 唯一且符合英文标识格式，更新保留原 `name`。
+- 表单路径与字段引用统一使用英文 `name`；菜单 FORM 目标同样提交与返回 `name`，展示名使用 `label`。
+- 前端创建弹窗分别输入表单名称与英文名称；表单详情、编辑弹窗和字段编辑弹窗展示只读 `name`。
+- 表单卡片、详情、设计页、删除提示与路由跳转全部改为 `label` 展示、`name` 寻址。
+
+**验证：**
+
+- `mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（6 tests）。
+- `mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（8 tests）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。

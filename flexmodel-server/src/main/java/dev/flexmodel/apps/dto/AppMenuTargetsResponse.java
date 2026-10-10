@@ -6,10 +6,10 @@ import java.util.List;
  * 应用菜单可选关联项响应。
  *
  * @param builtIn  内置模块
- * @param entities 实体
+ * @param forms  应用表单
  */
 public record AppMenuTargetsResponse(
   List<AppMenuTargetResponse> builtIn,
-  List<AppMenuTargetResponse> entities
+  List<AppMenuTargetResponse> forms
 ) {
 }

@@ -205,6 +205,26 @@
       ],
       "status": "done",
       "evidence": "新增 AppMenuResource/AppMenuService 与菜单 DTO，菜单保存到项目 metadata.app.menus，提供 GET /apps/{appId}/menus、GET /apps/{appId}/menus/targets、POST /apps/{appId}/menus、PUT /apps/{appId}/menus/{menuId}、DELETE /apps/{appId}/menus/{menuId}、PUT /apps/{appId}/menus/order；ITEM 强制选择 BUILT_IN 或 ENTITY 目标并自动生成 /apps/{appId}/{menuId}，GROUP 支持根级与嵌套分组以匹配原始左侧分组/分组内菜单交互，排序递归覆盖全部分组，ITEM 支持在分组内外跨层级拖拽并更新父级。现有 MenuEditorDialog 保持原 UI 与交互：打开时调用后端菜单列表，空数据不再显示 mock；新增一级菜单提交 type=GROUP；左侧菜单、分组、分组内菜单的增删改、图标与关联项均调用真实接口；关联项来自 /menus/targets，ENTITY 分组在界面中显示为“表单管理”；AppHome 与 AppLayout 共用该弹窗，应用页顶部和左侧导航从后端菜单渲染。内置页面关联已打通：BUILT_IN 目标选项为工作台、文件、审批中心，保存后生成 /apps/{appId}/{menuId}，点击菜单进入 AppMenuPage 并渲染对应的 Dashboard、文件或审批中心页面；动态、通讯录、通知不再出现在关联项下拉中，关联项下拉也不提供“未关联”选项，未选择时仅显示占位提示。访问 /apps/{appId} 且缺少 menuId 时自动重定向到第一个 ITEM 的 pageRoute，没有 ITEM 时保留空态；点击没有子项的顶部菜单会保留该顶部菜单并展示空态，不再回落到第一个顶部菜单的 ITEM。前端对应用列表、应用详情、菜单和关联项做会话内缓存并合并并发请求，同一应用内点击菜单不再重复请求，菜单写操作按应用失效缓存，登录/退出统一清空缓存。验证：mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests，0 failures，0 errors，含嵌套分组、排序、内置页面路由生成与 ITEM 移出分组）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。遗留：表单页面记录仍为 mock，待后续接入真实模型与记录接口。"
+    },
+    {
+      "id": "feat-023",
+      "name": "Apps UI - 表单配置页面入口",
+      "description": "应用设置中的表单卡片进入当前实体对应的管理配置页，并保留基本信息、字段管理、表单设计、自定义操作、记录锁定、高级配置二级菜单。",
+      "dependencies": [
+        "feat-021"
+      ],
+      "status": "done",
+      "evidence": "BusinessObjectManagementContent 表单卡片改为跳转 /admin/business-object/{currentBusinessObject}/base；新增 BusinessObjectSettings 页面承载基本信息、字段管理、自定义操作、记录锁定与高级配置的页面骨架；主路由补齐 /admin/business-object/:businessObject/base、fields、easy-action、record-alerts、advanced，表单设计继续复用现有 FormDesign 页面；AdminLayout 依据路径中的 currentBusinessObject 渲染既有表单二级菜单。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-024",
+      "name": "Apps UI - 菜单拖拽层级指示线",
+      "description": "应用设置菜单管理的拖拽排序中，拖动项底部显示占位分割线，并与当前根级或分组内菜单层级对齐。",
+      "dependencies": [
+        "feat-022"
+      ],
+      "status": "done",
+      "evidence": "AppMenuManager 的 MenuRow 在拖拽时于行底部渲染不可交互的 primary 色分割线；分割线位于当前行容器内，因此根级菜单与分组内菜单分别继承各自缩进和宽度，实现层级对齐。验证：bash ./init.sh 通过（全模块编译与 flexmodel-engine 测试）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
     }
   ]
 }

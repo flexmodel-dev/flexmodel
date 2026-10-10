@@ -1263,3 +1263,41 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 **验证：**
 
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
+
+## Apps UI - 表单配置页面入口 (2026-10-10)
+
+**目标：**
+
+- 应用设置中的表单卡片进入当前实体对应的管理配置页。
+- 保留 `AdminLayout` 中定义的表单二级菜单：基本信息、字段管理、表单设计、自定义操作、记录锁定、高级配置。
+
+**修改（flexmodel-apps-ui）：**
+
+- `BusinessObjectManagementContent` 表单卡片跳转 `/admin/business-object/{businessObject.name}/base`。
+- 新增 `BusinessObjectSettings` 页面骨架，承接基本信息、字段管理、自定义操作、记录锁定与高级配置路由。
+- `main.tsx` 补齐五个表单配置子路由；`form-design` 继续复用现有 `FormDesign`。
+- `AdminLayout` 继续根据路径中的 `currentBusinessObject` 渲染二级菜单，未改动原有布局。
+
+**验证：**
+
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
+- `git diff --check` 通过。
+
+## Apps UI - 菜单拖拽层级指示线 (2026-10-10)
+
+**目标：**
+
+- 菜单管理拖拽排序时，拖动项底部显示占位分割线。
+- 分割线与拖动项所在层级对齐，根级菜单与分组内菜单分别继承对应缩进和宽度。
+
+**修改（flexmodel-apps-ui）：**
+
+- `AppMenuManager` 的 `MenuRow` 增加 `relative` 定位。
+- 拖拽状态下在行底部渲染不可交互的 `primary` 色分割线，且不参与指针事件。
+
+**验证：**
+
+- 修复运行中的 Quarkus dev 进程对 `flexmodel-server-dev.jar` 的锁定后，`bash ./init.sh` 通过（全模块编译与
+  `flexmodel-engine` 测试）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
+- `git diff --check` 通过。

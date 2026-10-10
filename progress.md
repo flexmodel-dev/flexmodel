@@ -1497,3 +1497,39 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
 - git diff --check 通过。
+
+## Apps UI - 记录详情布局修复 (2026-10-10)
+
+**修改：**
+
+- 记录详情顶部去掉 form.label 副标题，仅展示主显字段值。
+- 顶部区域为抽屉关闭按钮预留右侧空间，避免与编辑、删除按钮重叠。
+- 分栏标题恢复 ChevronDown 折叠交互，点击可展开或收起分栏内容。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+- git diff --check 通过。
+
+## Apps UI - 记录详情分栏样式优化 (2026-10-10)
+
+**修改：**
+
+- 详情字段改为单个卡片容器承载，避免每个分栏单独嵌套卡片导致布局割裂。
+- 分栏标题去掉横向分割线，文字使用 font-semibold 加粗。
+- 分栏标题最左侧增加主题色竖向强调条，并保留 ChevronDown 展开/收起交互。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+- git diff --check 通过。
+
+## Apps UI - 记录详情折叠图标位置 (2026-10-10)
+
+**修改：**
+
+- 分栏标题保持左侧主题色竖杠与加粗文字，ChevronDown 折叠图标移动到分栏文字右侧。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。

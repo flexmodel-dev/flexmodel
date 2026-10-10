@@ -296,6 +296,16 @@
       ],
       "status": "done",
       "evidence": "RecordList 基于 displayField 提取主显字段并强制置于第一列，重复列自动去重；主显字段单元格渲染为蓝色链接，点击打开详情抽屉，详情标题沿用 AppRecordDetail 中的主显字段值。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-032",
+      "name": "Apps UI - 记录详情布局修复",
+      "description": "记录详情去掉表单副标题，避免关闭按钮与操作按钮重叠，并恢复分栏折叠交互。",
+      "dependencies": [
+        "feat-031"
+      ],
+      "status": "done",
+      "evidence": "AppRecordDetail 顶部仅保留主显字段标题，并预留抽屉关闭按钮空间；详情字段统一放在单个卡片容器内，分栏标题去掉横向分割线、使用 font-semibold 加粗，并在最左侧展示主题色竖向强调条；折叠 ChevronDown 图标位于分栏文字右侧，支持展开/收起。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
     }
   ]
 }

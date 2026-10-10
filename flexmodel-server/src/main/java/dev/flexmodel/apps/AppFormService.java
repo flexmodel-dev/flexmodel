@@ -153,13 +153,29 @@ public class AppFormService {
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
     AppFormRecord current = resolved.record() == null ? defaultRecord(project, entity) : resolved.record();
+    String displayField = current.displayField();
+    String searchField = current.searchField();
+    if (request.displayField() != null) {
+      String requestedDisplayField = request.displayField().trim();
+      if (requestedDisplayField.isBlank()) {
+        displayField = null;
+        searchField = null;
+      } else {
+        requireField(entity, requestedDisplayField);
+        if (BUILTIN_FIELDS.contains(requestedDisplayField)) {
+          throw new ValidationException("主显字段不能是内置字段: " + requestedDisplayField);
+        }
+        displayField = requestedDisplayField;
+        searchField = requestedDisplayField;
+      }
+    }
     AppFormRecord updated = new AppFormRecord(
       current.entityName(),
       current.name(),
       request.label().trim(),
       request.description() == null ? current.description() : request.description(),
-      current.nameField(),
-      current.searchField(),
+      displayField,
+      searchField,
       current.createdAt(),
       LocalDateTime.now(),
       current.fields());
@@ -296,14 +312,14 @@ public class AppFormService {
       List<AppFormFieldRecord> fields = current.fields().stream()
         .filter(item -> !item.name().equals(fieldName))
         .toList();
-      String nameField = NAME_FIELD.equals(fieldName) ? null : current.nameField();
-      String searchField = NAME_FIELD.equals(fieldName) ? null : current.searchField();
+      String displayField = fieldName.equals(current.displayField()) ? null : current.displayField();
+      String searchField = fieldName.equals(current.searchField()) ? null : current.searchField();
       saveFormRecord(project, new AppFormRecord(
         current.entityName(),
         current.name(),
         current.label(),
         current.description(),
-        nameField,
+        displayField,
         searchField,
         current.createdAt(),
         LocalDateTime.now(),
@@ -470,14 +486,14 @@ public class AppFormService {
     String formName = record == null ? formName(entity) : record.name();
     String label = record == null ? blankToDefault(entity.getComment(), entity.getName()) : record.label();
     String description = record == null ? "" : blankToDefault(record.description(), "");
-    String nameField = record == null ? defaultNameField(entity) : record.nameField();
-    String searchField = record == null ? nameField : record.searchField();
+    String displayField = record == null ? defaultDisplayField(entity) : record.displayField();
+    String searchField = record == null ? displayField : record.searchField();
     AppFormLayoutRecord layout = formLayouts(project).get(formName);
     return new AppFormResponse(
       formName,
       label,
       description,
-      nameField,
+      displayField,
       searchField,
       record != null,
       record == null ? project.getCreatedAt() : record.createdAt(),
@@ -525,20 +541,20 @@ public class AppFormService {
   }
 
   private AppFormRecord defaultRecord(Project project, EntityDefinition entity) {
-    String nameField = defaultNameField(entity);
+    String displayField = defaultDisplayField(entity);
     return new AppFormRecord(
       entity.getName(),
       formName(entity),
       blankToDefault(entity.getComment(), entity.getName()),
       "",
-      nameField,
-      nameField,
+      displayField,
+      displayField,
       project.getCreatedAt(),
       project.getUpdatedAt(),
       entity.getFields().stream().map(field -> toFieldRecord(field, null)).toList());
   }
 
-  private String defaultNameField(EntityDefinition entity) {
+  private String defaultDisplayField(EntityDefinition entity) {
     return entity.getField(NAME_FIELD) == null ? null : NAME_FIELD;
   }
 
@@ -548,7 +564,7 @@ public class AppFormService {
       record.name(),
       record.label(),
       record.description(),
-      record.nameField(),
+      record.displayField(),
       record.searchField(),
       record.createdAt(),
       LocalDateTime.now(),

@@ -250,12 +250,12 @@
     {
       "id": "feat-027",
       "name": "Apps UI - 表单设计隐藏系统字段",
-      "description": "表单设计页面不展示系统字段，仅保留业务字段与分栏参与布局设计。",
+      "description": "表单设计页面默认不布局内置字段，但字段列表可选择内置字段并加入布局。",
       "dependencies": [
         "feat-025"
       ],
       "status": "done",
-      "evidence": "FormDesign 的表单数据转换层过滤 system 字段，布局画布、右侧字段列表、重置布局与高级控制均只使用业务字段；服务端字段定义与记录提交逻辑不受影响。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+      "evidence": "FormDesign 保留全部字段用于字段列表与可选布局；无服务端布局和重置布局时默认仅使用非 builtin 字段，用户可从右侧字段列表选择内置字段加入画布，保存布局保留所选内置字段。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
     },
     {
       "id": "feat-028",
@@ -266,6 +266,36 @@
       ],
       "status": "done",
       "evidence": "AppFormFieldRecord 与 AppFormFieldResponse 使用 boolean builtin；metadata 读取保留 system 作为兼容别名，序列化与 API 输出使用 builtin；AppFormService/AppRecordService 按内置字段保护修改、删除、写入与排序；前端字段类型与记录、设计、字段管理逻辑统一使用 builtin，字段管理徽标文案改为内置。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-029",
+      "name": "Apps UI - 表单详情左侧标题展示",
+      "description": "表单详情左侧菜单顶部标题展示 form.label，路由仍使用 form.name。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "AdminLayout 根据 appId/formName 加载表单详情，移动端表单导航与桌面左侧菜单顶部标题均展示 form.label；加载失败时回退展示路由中的 form.name，不影响路由寻址。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-030",
+      "name": "Apps - 主显字段契约重命名",
+      "description": "表单主显字段契约统一使用 displayField，旧 nameField 数据与请求保持兼容读取。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "AppFormRecord、AppFormResponse 与 AppFormUpdateRequest 统一使用 displayField；AppFormRecord 和 AppFormUpdateRequest 通过 JsonAlias(nameField) 兼容旧 metadata 与旧请求；AppFormService、前端类型、表单设置、表单设计、记录详情与引用记录标签统一使用 displayField。新增表单编辑可设置主显字段，更新时校验字段存在且不能选择内置字段，删除当前主显字段时同步清空 displayField/searchField。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-031",
+      "name": "Apps UI - 记录列表主显字段链接",
+      "description": "记录列表始终将主显字段放在第一列，并以蓝色链接打开详情；详情标题展示主显字段值。",
+      "dependencies": [
+        "feat-030"
+      ],
+      "status": "done",
+      "evidence": "RecordList 基于 displayField 提取主显字段并强制置于第一列，重复列自动去重；主显字段单元格渲染为蓝色链接，点击打开详情抽屉，详情标题沿用 AppRecordDetail 中的主显字段值。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
     }
   ]
 }

@@ -39,7 +39,7 @@ public class AppFormResourceTest {
   }
 
   @Test
-  void testCreateFormWithNameField() {
+  void testCreateFormWithDisplayField() {
     Response response = createForm("""
       {
         "label": "名称字段表单-%s",
@@ -54,7 +54,7 @@ public class AppFormResourceTest {
       response.then()
         .body("name", equalTo("name_form_" + TEST_SUFFIX))
         .body("label", equalTo("名称字段表单-" + TEST_SUFFIX))
-        .body("nameField", equalTo("name"))
+        .body("displayField", equalTo("name"))
         .body("searchField", equalTo("name"))
         .body("managed", equalTo(true))
         .body("fields.name", hasItems("id", "created_by", "updated_by", "created_at", "updated_at", "name"))
@@ -83,7 +83,7 @@ public class AppFormResourceTest {
   }
 
   @Test
-  void testCreateFormWithoutNameField() {
+  void testCreateFormWithoutDisplayField() {
     Response response = createForm("""
       {
         "label": "无名称字段表单-%s",
@@ -97,7 +97,7 @@ public class AppFormResourceTest {
       response.then()
         .body("name", equalTo("plain_form_" + TEST_SUFFIX))
         .body("label", equalTo("无名称字段表单-" + TEST_SUFFIX))
-        .body("nameField", nullValue())
+        .body("displayField", nullValue())
         .body("searchField", nullValue())
         .body("fields.name", not(hasItem("name")))
         .body("layout.fields", not(hasItem("name")));
@@ -275,7 +275,7 @@ public class AppFormResourceTest {
         .get(BASE_PATH + "/" + formName)
         .then()
         .statusCode(200)
-        .body("nameField", nullValue())
+        .body("displayField", nullValue())
         .body("searchField", nullValue())
         .body("fields.name", not(hasItem("name")))
         .body("layout.fields", not(hasItem("name")));
@@ -314,6 +314,47 @@ public class AppFormResourceTest {
         .body("label", equalTo("更新后表单-" + TEST_SUFFIX))
         .extract()
         .response();
+      Response displayField = createField(formName, """
+        {
+          "label": "主显字段",
+          "type": "TEXT",
+          "required": false
+        }
+        """, 201);
+      String displayFieldName = displayField.body().path("name");
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "label": "更新后表单-%s",
+            "description": "更新后的表单",
+            "displayField": "%s"
+          }
+          """.formatted(TEST_SUFFIX, displayFieldName))
+        .when()
+        .put(BASE_PATH + "/" + formName)
+        .then()
+        .statusCode(200)
+        .body("displayField", equalTo(displayFieldName))
+        .body("searchField", equalTo(displayFieldName));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "label": "更新后表单-%s",
+            "description": "更新后的表单",
+            "displayField": "id"
+          }
+          """.formatted(TEST_SUFFIX))
+        .when()
+        .put(BASE_PATH + "/" + formName)
+        .then()
+        .statusCode(400);
+
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .when()

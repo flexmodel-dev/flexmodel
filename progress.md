@@ -1444,3 +1444,56 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）。
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps UI - 表单设计内置字段默认布局调整 (2026-10-10)
+
+**修改：**
+
+- FormDesign 保留全部字段，确保右侧字段列表可以选择内置字段。
+- 无服务端布局和重置布局时，默认仅布局非 builtin 字段。
+- 用户选择内置字段后可正常加入画布，保存布局保留该字段。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps UI - 表单详情左侧标题展示 (2026-10-10)
+
+**修改：**
+
+- AdminLayout 依据 appId 与 formName 加载表单详情。
+- 桌面左侧菜单顶部标题与移动端表单导航展示 form.label。
+- 路由和接口请求继续使用 form.name，加载失败时回退显示 form.name。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps - 主显字段契约重命名 (2026-10-10)
+
+**修改：**
+
+- 表单主显字段契约从 nameField 统一重命名为 displayField。
+- AppFormRecord 与 AppFormUpdateRequest 保留 JsonAlias (nameField)，兼容旧 metadata 与旧请求。
+- 表单编辑弹窗支持选择主显字段；服务端校验字段存在且不允许选择内置字段。
+- 删除当前主显字段时同步清空 displayField 与 searchField。
+- 前端表单设置、表单设计、记录详情与引用记录标签统一使用 displayField。
+
+**验证：**
+
+- mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+- git diff --check 通过。
+
+## Apps UI - 记录列表主显字段链接 (2026-10-10)
+
+**修改：**
+
+- RecordList 将 displayField 对应字段强制放在第一列，若布局中已有该字段则去重后前置。
+- 主显字段单元格渲染为蓝色链接，点击打开详情抽屉；整行点击仍保留原有详情行为。
+- 详情标题展示主显字段值，空值时列表显示占位符 -。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+- git diff --check 通过。

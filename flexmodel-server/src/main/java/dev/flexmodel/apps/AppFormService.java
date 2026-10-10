@@ -67,7 +67,7 @@ public class AppFormService {
   private static final String FORM_DIVIDER_PREFIX = "$DIVIDER$-";
   private static final Set<Integer> FIELD_WIDTHS = Set.of(25, 33, 50, 66, 75, 100);
   private static final String NAME_FIELD = "name";
-  private static final Set<String> SYSTEM_FIELDS = Set.of(
+  private static final Set<String> BUILTIN_FIELDS = Set.of(
     "id", "created_by", "updated_by", "created_at", "updated_at");
   private static final Set<String> FIELD_TYPES = Set.of(
     "TEXT", "NTEXT", "PHONE", "EMAIL", "URL", "SERIES", "PICKLIST", "SELECT",
@@ -244,8 +244,8 @@ public class AppFormService {
     EntityDefinition entity = resolved.entity();
     String entityName = entity.getName();
     TypedField<?, ?> field = requireField(entity, fieldName);
-    if (SYSTEM_FIELDS.contains(fieldName)) {
-      throw new ValidationException("系统字段不允许修改");
+    if (BUILTIN_FIELDS.contains(fieldName)) {
+      throw new ValidationException("内置字段不允许修改");
     }
     String currentType = java.util.Optional.ofNullable(resolved.record())
       .flatMap(record -> record.fields().stream()
@@ -284,8 +284,8 @@ public class AppFormService {
     EntityDefinition entity = resolved.entity();
     String entityName = entity.getName();
     requireField(entity, fieldName);
-    if (SYSTEM_FIELDS.contains(fieldName)) {
-      throw new ValidationException("系统字段不允许删除");
+    if (BUILTIN_FIELDS.contains(fieldName)) {
+      throw new ValidationException("内置字段不允许删除");
     }
     entity.getIndexes().stream()
       .filter(index -> index.containsField(fieldName))
@@ -495,7 +495,7 @@ public class AppFormService {
       record == null ? blankToDefault(field.getComment(), field.getName()) : record.label(),
       type,
       record == null ? !field.isNullable() : record.required(),
-      SYSTEM_FIELDS.contains(field.getName()) || (record != null && record.system()),
+      BUILTIN_FIELDS.contains(field.getName()) || (record != null && record.builtin()),
       record == null ? null : record.options(),
       record == null ? null : record.referenceForm());
   }
@@ -507,7 +507,7 @@ public class AppFormService {
       record == null ? blankToDefault(field.getComment(), field.getName()) : record.label(),
       type,
       record == null ? !field.isNullable() : record.required(),
-      SYSTEM_FIELDS.contains(field.getName()) || (record != null && record.system()),
+      BUILTIN_FIELDS.contains(field.getName()) || (record != null && record.builtin()),
       record == null ? null : record.options(),
       record == null ? null : record.referenceForm());
   }
@@ -782,7 +782,7 @@ public class AppFormService {
     do {
       candidate = "field_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)
         .toLowerCase(Locale.ROOT);
-    } while (existing.contains(candidate) || SYSTEM_FIELDS.contains(candidate) || NAME_FIELD.equals(candidate));
+    } while (existing.contains(candidate) || BUILTIN_FIELDS.contains(candidate) || NAME_FIELD.equals(candidate));
     return candidate;
   }
 

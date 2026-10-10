@@ -58,7 +58,7 @@ public class AppFormResourceTest {
         .body("searchField", equalTo("name"))
         .body("managed", equalTo(true))
         .body("fields.name", hasItems("id", "created_by", "updated_by", "created_at", "updated_at", "name"))
-        .body("fields.find { it.name == 'id' }.system", equalTo(true))
+        .body("fields.find { it.name == 'id' }.builtin", equalTo(true))
         .body("fields.find { it.name == 'name' }.required", equalTo(true));
 
       given()

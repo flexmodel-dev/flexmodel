@@ -8,8 +8,6 @@ import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.data.DataService;
-import dev.flexmodel.model.Direction;
-import dev.flexmodel.query.Query;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -27,7 +25,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class AppRecordService {
 
-  private static final Set<String> SYSTEM_FIELDS = Set.of(
+  private static final Set<String> BUILTIN_FIELDS = Set.of(
     "id", "created_by", "updated_by", "created_at", "updated_at");
   private static final Set<String> SEARCHABLE_TYPES = Set.of(
     "TEXT", "NTEXT", "PHONE", "EMAIL", "URL", "SERIES", "PICKLIST", "SELECT",
@@ -55,13 +53,11 @@ public class AppRecordService {
   ) {
     ResolvedForm form = resolveForm(appId, formName);
     int normalizedPage = Math.max(page, 1);
-    int normalizedSize = Math.min(Math.max(size, 1), MAX_SIZE);
+    int normalizedSize = Math.clamp(size, 1, MAX_SIZE);
     String filter = buildSearchFilter(form.response(), search);
     String sort = buildSort(form.response(), sortField, sortOrder);
-    List<Map<String, Object>> records = dataService.findPagingRecords(
+    return dataService.findPagingRecords(
       appId, form.entityName(), normalizedPage, normalizedSize, filter, sort, null);
-    long total = dataService.countRecords(appId, form.entityName(), filter);
-    return new PageDTO<>(records, total);
   }
 
   public Map<String, Object> findRecord(String appId, String formName, String recordId) {
@@ -130,8 +126,8 @@ public class AppRecordService {
       if (field == null) {
         throw new ValidationException("记录字段不存在: " + name);
       }
-      if (field.system()) {
-        throw new ValidationException("系统字段不允许写入: " + name);
+      if (field.builtin()) {
+        throw new ValidationException("内置字段不允许写入: " + name);
       }
       if (field.required() && isEmpty(value)) {
         throw new ValidationException("必填字段不能为空: " + field.label());
@@ -140,7 +136,7 @@ public class AppRecordService {
     });
     if (creating) {
       fields.values().forEach(field -> {
-        if (!field.system() && field.required() && isEmpty(values.get(field.name()))) {
+        if (!field.builtin() && field.required() && isEmpty(values.get(field.name()))) {
           throw new ValidationException("必填字段不能为空: " + field.label());
         }
       });
@@ -158,7 +154,7 @@ public class AppRecordService {
     }
     List<Object> conditions = new ArrayList<>();
     form.fields().stream()
-      .filter(field -> !field.system() && SEARCHABLE_TYPES.contains(field.type()))
+      .filter(field -> !field.builtin() && SEARCHABLE_TYPES.contains(field.type()))
       .forEach(field -> {
         Map<String, Object> condition = new LinkedHashMap<>();
         condition.put(field.name(), Map.of("_contains", keyword));
@@ -175,17 +171,17 @@ public class AppRecordService {
   private String buildSort(AppFormResponse form, String sortField, String sortOrder) {
     String normalizedSortOrder = normalizeSortOrder(sortOrder);
     String normalizedSortField = sortField == null || sortField.isBlank() ? "created_at" : sortField.trim();
-    if (!SYSTEM_FIELDS.contains(normalizedSortField)) {
+    if (!BUILTIN_FIELDS.contains(normalizedSortField)) {
       boolean exists = form.fields().stream()
         .anyMatch(field -> field.name().equals(normalizedSortField));
       if (!exists) {
         throw new ValidationException("排序字段不存在: " + normalizedSortField);
       }
     }
-    Query.OrderBy.Sort sort = new Query.OrderBy.Sort();
-    sort.setField(normalizedSortField);
-    sort.setOrder(Direction.valueOf(normalizedSortOrder));
-    return JsonUtils.toJsonString(List.of(sort));
+    return JsonUtils.toJsonString(List.of(Map.of(
+      "field", normalizedSortField,
+      "order", normalizedSortOrder
+    )));
   }
 
   private String normalizeSortOrder(String sortOrder) {

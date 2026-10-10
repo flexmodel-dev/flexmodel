@@ -1396,3 +1396,51 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `mvn test -pl flexmodel-server -am '-Dtest=AppFormResourceTest' '-Dsurefire.failIfNoSpecifiedTests=false'` 通过（6
   tests）。
 - `flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示）。
+
+## Apps - 表单记录管理 (2026-10-10)
+
+**目标：**
+
+- 菜单绑定表单后展示真实记录列表，支持记录分页、搜索、排序、详情与 CRUD。
+- UI/API 仅使用 formName，服务端内部映射实体名并复用 Flexmodel 数据能力。
+
+**修改：**
+
+- 后端新增 AppRecordService 与 AppRecordResource，提供 /api/apps/{appId}/forms/{formName}/records 及记录 CRUD 接口。
+- 创建记录时写入 id、created_by、updated_by、created_at、updated_at；更新时刷新 updated_by 与 updated_at。
+- 列表支持分页、字符串类业务字段搜索、字段排序；排序 JSON 修正为 {field, order}，避免 DataService 反序列化失败。
+- AppFormService 新增 resolveEntityName，用于服务端内部表单名到实体名映射。
+- 前端新增 appRecords 服务、记录表单弹窗与详情组件；RecordList 支持真实分页、搜索、排序、行选择、批量删除、新建、编辑与详情抽屉。
+- AppMenuPage 的 FORM 菜单目标改为渲染 RecordList，AppRecordView 承接记录详情路由。
+
+**验证：**
+
+- mvn test -pl flexmodel-server -am -Dtest=AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests）。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+- git diff --check 通过。
+
+## Apps UI - 表单设计隐藏系统字段 (2026-10-10)
+
+**修改：**
+
+- FormDesign 的表单数据转换层过滤 system 字段。
+- 布局画布、右侧字段列表、重置布局与高级控制仅使用业务字段和分栏；名称字段仍按普通业务字段展示。
+- 服务端字段定义与记录提交逻辑不受影响。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps - 内置字段契约统一 (2026-10-10)
+
+**修改：**
+
+- 表单字段响应与 metadata 存储契约统一使用 boolean builtin。
+- 旧 metadata 的 system 字段通过 JsonAlias (system) 兼容读取，后续保存输出 builtin。
+- 内置字段修改、删除、写入与排序保护逻辑同步使用 builtin；相关错误提示改为内置字段。
+- 前端 AppFormField 类型、表单设计、字段管理、记录列表、记录详情与记录表单统一读取 builtin；字段管理徽标文案改为内置。
+
+**验证：**
+
+- mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。

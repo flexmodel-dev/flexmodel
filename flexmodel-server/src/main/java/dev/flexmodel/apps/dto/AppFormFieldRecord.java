@@ -1,5 +1,7 @@
 package dev.flexmodel.apps.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 import java.util.List;
 
 /**
@@ -9,7 +11,7 @@ import java.util.List;
  * @param label         展示名称
  * @param type          表单字段类型
  * @param required      是否必填
- * @param system        是否系统字段
+ * @param builtin       是否内置字段
  * @param options       选项
  * @param referenceForm 引用表单
  */
@@ -18,7 +20,7 @@ public record AppFormFieldRecord(
   String label,
   String type,
   boolean required,
-  boolean system,
+  @JsonAlias("system") boolean builtin,
   List<AppFormFieldOptionResponse> options,
   String referenceForm
 ) {

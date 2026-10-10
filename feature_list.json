@@ -236,6 +236,36 @@
       ],
       "status": "done",
       "evidence": "新增 AppFormResource/AppFormService 与表单 DTO，提供 /api/apps/{appId}/forms、/forms/{name}、/forms/{name}/fields 及字段更新删除接口；表单契约使用 name（英文标识，创建后不可编辑）与 label（展示名），字段契约同样返回 name 与 label，创建时自动生成 id、created_by、updated_by、created_at、updated_at 系统字段，可选创建 name 主显字段并建立非唯一索引；UI 字段类型由服务端映射为底层实体字段，REFERENCE 使用 referenceForm；表单被菜单绑定时禁止删除。前端新增 appForms 服务与真实表单列表、创建弹窗、基本信息、字段管理和表单设计接入；应用设置路由统一为 /admin/apps/{appId}/forms/{name}/{section}，菜单关联目标统一为 BUILT_IN/FORM 且 targets.forms 返回 name/label；表单与字段详情展示只读 name；UI 层搜索确认不存在 entityName、ENTITY、entities、referenceEntity 与实体文案。验证：mvn test-compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。遗留：表单记录数据页尚未实现，绑定表单的菜单先显示开发中提示并提供表单管理入口。"
+    },
+    {
+      "id": "feat-026",
+      "name": "Apps - 表单记录管理",
+      "description": "菜单绑定表单后展示真实记录列表，并提供记录分页、搜索、排序、详情、创建、更新与删除能力；服务端仅暴露 formName，内部映射为实体操作。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "新增 /api/apps/{appId}/forms/{formName}/records 及记录 CRUD 接口；创建写入 id、created_by、updated_by、created_at、updated_at，更新刷新 updated_by/updated_at；列表支持分页、字符串字段搜索、字段排序并修正排序 JSON 为 {field, order}；RecordList、AppRecordView、AppRecordDetail、AppRecordFormModal 与 appRecords 服务接入真实数据，菜单 FORM 目标渲染 RecordList。验证：mvn test -pl flexmodel-server -am -Dtest=AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-027",
+      "name": "Apps UI - 表单设计隐藏系统字段",
+      "description": "表单设计页面不展示系统字段，仅保留业务字段与分栏参与布局设计。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "FormDesign 的表单数据转换层过滤 system 字段，布局画布、右侧字段列表、重置布局与高级控制均只使用业务字段；服务端字段定义与记录提交逻辑不受影响。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-028",
+      "name": "Apps - 内置字段契约统一",
+      "description": "表单字段契约使用 boolean builtin 标识内置字段，页面文案统一展示为内置。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "AppFormFieldRecord 与 AppFormFieldResponse 使用 boolean builtin；metadata 读取保留 system 作为兼容别名，序列化与 API 输出使用 builtin；AppFormService/AppRecordService 按内置字段保护修改、删除、写入与排序；前端字段类型与记录、设计、字段管理逻辑统一使用 builtin，字段管理徽标文案改为内置。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
     }
   ]
 }

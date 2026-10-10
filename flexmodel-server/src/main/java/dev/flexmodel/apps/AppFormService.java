@@ -2,6 +2,9 @@ package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormCreateRequest;
+import dev.flexmodel.apps.dto.AppFormItemPropertiesRecord;
+import dev.flexmodel.apps.dto.AppFormLayoutRecord;
+import dev.flexmodel.apps.dto.AppFormLayoutRequest;
 import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
 import dev.flexmodel.apps.dto.AppFormFieldOptionResponse;
 import dev.flexmodel.apps.dto.AppFormFieldRecord;
@@ -60,6 +63,9 @@ public class AppFormService {
 
   private static final String METADATA_APP_KEY = "app";
   private static final String METADATA_FORMS_KEY = "forms";
+  private static final String METADATA_FORM_LAYOUTS_KEY = "formLayouts";
+  private static final String FORM_DIVIDER_PREFIX = "$DIVIDER$-";
+  private static final Set<Integer> FIELD_WIDTHS = Set.of(25, 33, 50, 66, 75, 100);
   private static final String NAME_FIELD = "name";
   private static final Set<String> SYSTEM_FIELDS = Set.of(
     "id", "created_by", "updated_by", "created_at", "updated_at");
@@ -98,6 +104,11 @@ public class AppFormService {
     Project project = requireAppProject(appId);
     ResolvedForm form = requireForm(project, appId, formName);
     return toResponse(project, form.entity(), form.record());
+  }
+
+  public String resolveEntityName(String appId, String formName) {
+    Project project = requireAppProject(appId);
+    return requireForm(project, appId, formName).entity().getName();
   }
 
   public AppFormResponse createForm(String appId, AppFormCreateRequest request) {
@@ -154,6 +165,22 @@ public class AppFormService {
       current.fields());
     saveFormRecord(project, updated);
     return toResponse(project, entity, updated);
+  }
+
+  public AppFormResponse saveFormLayout(
+    String appId,
+    String formName,
+    AppFormLayoutRequest request
+  ) {
+    Project project = requireAppProject(appId);
+    ResolvedForm resolved = requireForm(project, appId, formName);
+    EntityDefinition entity = resolved.entity();
+    AppFormLayoutRecord layout = normalizeLayout(entity, request);
+    String canonicalFormName = resolved.record() == null ? formName(entity) : resolved.record().name();
+    Map<String, AppFormLayoutRecord> layouts = formLayouts(project);
+    layouts.put(canonicalFormName, layout);
+    persistFormLayouts(project, layouts);
+    return toResponse(project, entity, resolved.record());
   }
 
   public void deleteForm(String appId, String formName) {
@@ -260,6 +287,10 @@ public class AppFormService {
     if (SYSTEM_FIELDS.contains(fieldName)) {
       throw new ValidationException("系统字段不允许删除");
     }
+    entity.getIndexes().stream()
+      .filter(index -> index.containsField(fieldName))
+      .toList()
+      .forEach(index -> modelingService.dropIndex(appId, entityName, index.getName()));
     modelingService.dropField(appId, entityName, fieldName);
     java.util.Optional.ofNullable(resolved.record()).ifPresent(current -> {
       List<AppFormFieldRecord> fields = current.fields().stream()
@@ -278,6 +309,13 @@ public class AppFormService {
         LocalDateTime.now(),
         fields));
     });
+    String canonicalFormName = resolved.record() == null ? formName(entity) : resolved.record().name();
+    Map<String, AppFormLayoutRecord> layouts = formLayouts(project);
+    AppFormLayoutRecord layout = layouts.get(canonicalFormName);
+    if (layout != null) {
+      layouts.put(canonicalFormName, removeLayoutField(layout, fieldName));
+      persistFormLayouts(project, layouts);
+    }
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
@@ -434,6 +472,7 @@ public class AppFormService {
     String description = record == null ? "" : blankToDefault(record.description(), "");
     String nameField = record == null ? defaultNameField(entity) : record.nameField();
     String searchField = record == null ? nameField : record.searchField();
+    AppFormLayoutRecord layout = formLayouts(project).get(formName);
     return new AppFormResponse(
       formName,
       label,
@@ -445,7 +484,8 @@ public class AppFormService {
       record == null ? project.getUpdatedAt() : record.updatedAt(),
       entity.getFields().stream()
         .map(field -> toFieldResponse(field, findFieldRecord(record, field.getName()).orElse(null)))
-        .toList());
+        .toList(),
+      layout);
   }
 
   private AppFormFieldResponse toFieldResponse(TypedField<?, ?> field, AppFormFieldRecord record) {
@@ -549,6 +589,125 @@ public class AppFormService {
       })
       .toList();
     app.put(METADATA_FORMS_KEY, converted);
+    metadata.put(METADATA_APP_KEY, app);
+    project.setMetadata(metadata);
+    project.setUpdatedBy(currentUserId());
+    project.setUpdatedAt(LocalDateTime.now());
+    projectService.updateProject(project);
+  }
+
+  private AppFormLayoutRecord normalizeLayout(EntityDefinition entity, AppFormLayoutRequest request) {
+    if (request.fields() == null) {
+      throw new ValidationException("表单布局字段不能为空");
+    }
+    Set<String> fieldNames = entity.getFields().stream()
+      .map(TypedField::getName)
+      .collect(Collectors.toSet());
+    LinkedHashSet<String> orderedFields = new LinkedHashSet<>();
+    for (String fieldName : request.fields()) {
+      if (isBlank(fieldName)) {
+        throw new ValidationException("表单布局字段不能为空");
+      }
+      if (!fieldNames.contains(fieldName) && !fieldName.startsWith(FORM_DIVIDER_PREFIX)) {
+        throw new ValidationException("表单布局字段不存在: " + fieldName);
+      }
+      if (!orderedFields.add(fieldName)) {
+        throw new ValidationException("表单布局字段重复: " + fieldName);
+      }
+    }
+    return new AppFormLayoutRecord(
+      List.copyOf(orderedFields),
+      normalizeWidths(orderedFields, request.widths()),
+      normalizeProperties(orderedFields, request.properties()),
+      request.advanced() == null ? Map.of() : request.advanced());
+  }
+
+  private AppFormLayoutRecord removeLayoutField(AppFormLayoutRecord layout, String fieldName) {
+    List<String> fields = layout.fields() == null
+      ? List.of()
+      : layout.fields().stream().filter(name -> !name.equals(fieldName)).toList();
+    Map<String, Integer> widths = new LinkedHashMap<>(layout.widths() == null ? Map.of() : layout.widths());
+    widths.remove(fieldName);
+    Map<String, AppFormItemPropertiesRecord> properties = new LinkedHashMap<>(
+      layout.properties() == null ? Map.of() : layout.properties());
+    properties.remove(fieldName);
+    return new AppFormLayoutRecord(fields, widths, properties, layout.advanced());
+  }
+
+  private Map<String, Integer> normalizeWidths(Set<String> fieldNames, Map<String, Integer> widths) {
+    if (widths == null) {
+      return Map.of();
+    }
+    Map<String, Integer> result = new LinkedHashMap<>();
+    widths.forEach((fieldName, width) -> {
+      if (!fieldNames.contains(fieldName)) {
+        throw new ValidationException("字段宽度配置不存在: " + fieldName);
+      }
+      if (width == null || !FIELD_WIDTHS.contains(width)) {
+        throw new ValidationException("字段宽度不合法: " + fieldName);
+      }
+      result.put(fieldName, width);
+    });
+    return result;
+  }
+
+  private Map<String, AppFormItemPropertiesRecord> normalizeProperties(
+    Set<String> fieldNames,
+    Map<String, AppFormItemPropertiesRecord> properties
+  ) {
+    if (properties == null) {
+      return Map.of();
+    }
+    Map<String, AppFormItemPropertiesRecord> result = new LinkedHashMap<>();
+    properties.forEach((fieldName, property) -> {
+      if (!fieldNames.contains(fieldName)) {
+        throw new ValidationException("字段属性配置不存在: " + fieldName);
+      }
+      if (property == null) {
+        throw new ValidationException("字段属性不能为空: " + fieldName);
+      }
+      result.put(fieldName, new AppFormItemPropertiesRecord(
+        normalizeLayoutText(property.label()),
+        normalizeLayoutText(property.tip()),
+        property.required(),
+        property.readonly(),
+        property.hidden()));
+    });
+    return result;
+  }
+
+  private String normalizeLayoutText(String value) {
+    if (value == null) {
+      return null;
+    }
+    String normalized = value.trim();
+    return normalized.isEmpty() ? null : normalized;
+  }
+
+  private Map<String, AppFormLayoutRecord> formLayouts(Project project) {
+    Object value = appNode(project).get(METADATA_FORM_LAYOUTS_KEY);
+    if (!(value instanceof Map<?, ?> layouts)) {
+      return new LinkedHashMap<>();
+    }
+    Map<String, AppFormLayoutRecord> result = new LinkedHashMap<>();
+    layouts.forEach((key, layout) -> {
+      if (layout != null) {
+        result.put(String.valueOf(key), JsonUtils.convertValue(layout, AppFormLayoutRecord.class));
+      }
+    });
+    return result;
+  }
+
+  private void persistFormLayouts(Project project, Map<String, AppFormLayoutRecord> layouts) {
+    Map<String, Object> metadata = metadataMap(project);
+    Map<String, Object> app = appNode(project);
+    Map<String, Object> converted = new LinkedHashMap<>();
+    layouts.forEach((formName, layout) -> {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> value = JsonUtils.convertValue(layout, Map.class);
+      converted.put(formName, value);
+    });
+    app.put(METADATA_FORM_LAYOUTS_KEY, converted);
     metadata.put(METADATA_APP_KEY, app);
     project.setMetadata(metadata);
     project.setUpdatedBy(currentUserId());

@@ -1365,3 +1365,34 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（6 tests）。
 - `mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（8 tests）。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
+
+## Apps - 名称字段可编辑与可删除 (2026-10-10)
+
+**修改：**
+
+- `AppFormService` 仅继续保护真正的系统字段；名称字段允许修改与删除。
+- 删除名称字段时同步清空 `nameField` / `searchField`，并在删除字段前清理引用该字段的索引。
+- `FormSettings` 字段管理对名称字段展示编辑与删除操作，删除后同步清理本地主显字段状态。
+- `AppFormResourceTest` 增加名称字段修改、删除及删除后主显字段清空的断言。
+
+**验证：**
+
+- `mvn test -pl flexmodel-server -am '-Dtest=AppFormResourceTest' '-Dsurefire.failIfNoSpecifiedTests=false'` 通过（6
+  tests）。
+- `flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示）。
+
+## Apps - 表单设计布局服务端保存 (2026-10-10)
+
+**修改：**
+
+- 后端新增 `PUT /api/apps/{appId}/forms/{formName}/layout`，布局保存到应用项目 metadata。
+- `AppFormResponse` 返回 `layout`，包含字段顺序、宽度、展示属性与 `advanced` 高级控制扩展位。
+- `FormDesign` 改为从服务端加载布局并异步保存布局，保存时禁用按钮并展示错误。
+- 删除表单字段时同步清理服务端布局中的字段、宽度与属性，避免遗留失效字段。
+- `AppFormResourceTest` 覆盖布局保存、读取、高级扩展位与字段删除后的布局清理。
+
+**验证：**
+
+- `mvn test -pl flexmodel-server -am '-Dtest=AppFormResourceTest' '-Dsurefire.failIfNoSpecifiedTests=false'` 通过（6
+  tests）。
+- `flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示）。

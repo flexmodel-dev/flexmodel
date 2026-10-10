@@ -25,6 +25,7 @@ public record AppFormResponse(
   boolean managed,
   LocalDateTime createdAt,
   LocalDateTime updatedAt,
-  List<AppFormFieldResponse> fields
+  List<AppFormFieldResponse> fields,
+  AppFormLayoutRecord layout
 ) {
 }

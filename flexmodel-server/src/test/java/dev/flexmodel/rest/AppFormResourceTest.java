@@ -99,7 +99,8 @@ public class AppFormResourceTest {
         .body("label", equalTo("无名称字段表单-" + TEST_SUFFIX))
         .body("nameField", nullValue())
         .body("searchField", nullValue())
-        .body("fields.name", not(hasItem("name")));
+        .body("fields.name", not(hasItem("name")))
+        .body("layout.fields", not(hasItem("name")));
     } finally {
       deleteFormQuietly(formName);
     }
@@ -215,6 +216,36 @@ public class AppFormResourceTest {
         .delete(BASE_PATH + "/" + formName + "/fields/id")
         .then()
         .statusCode(400);
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "fields": ["name"],
+            "widths": {"name": 50},
+            "properties": {
+              "name": {"label": "表单名称", "tip": "请输入名称", "required": true, "readonly": false, "hidden": false}
+            },
+            "advanced": {"reserved": true}
+          }
+          """)
+        .when()
+        .put(BASE_PATH + "/" + formName + "/layout")
+        .then()
+        .statusCode(200)
+        .body("layout.fields", contains("name"))
+        .body("layout.widths.name", equalTo(50))
+        .body("layout.properties.name.label", equalTo("表单名称"))
+        .body("layout.advanced.reserved", equalTo(true));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH + "/" + formName)
+        .then()
+        .statusCode(200)
+        .body("layout.fields", contains("name"));
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .contentType(ContentType.JSON)
@@ -246,7 +277,8 @@ public class AppFormResourceTest {
         .statusCode(200)
         .body("nameField", nullValue())
         .body("searchField", nullValue())
-        .body("fields.name", not(hasItem("name")));
+        .body("fields.name", not(hasItem("name")))
+        .body("layout.fields", not(hasItem("name")));
     } finally {
       deleteFormQuietly(formName);
     }

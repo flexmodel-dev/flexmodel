@@ -1,6 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.apps.dto.AppFormCreateRequest;
+import dev.flexmodel.apps.dto.AppFormLayoutRequest;
 import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.dto.AppFormFieldUpdateRequest;
@@ -78,6 +79,18 @@ public class AppFormResource {
   public Response delete(@PathParam("appId") String appId, @PathParam("formName") String formName) {
     appFormService.deleteForm(appId, formName);
     return Response.noContent().build();
+  }
+
+  @Parameter(name = "formName", description = "表单名称", in = ParameterIn.PATH, required = true)
+  @Operation(summary = "保存表单设计布局")
+  @PUT
+  @Path("/{formName}/layout")
+  public AppFormResponse saveLayout(
+    @PathParam("appId") String appId,
+    @PathParam("formName") String formName,
+    @Valid AppFormLayoutRequest request
+  ) {
+    return appFormService.saveFormLayout(appId, formName, request);
   }
 
   @Operation(summary = "创建表单字段")

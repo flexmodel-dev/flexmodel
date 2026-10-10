@@ -10,6 +10,7 @@ import dev.flexmodel.apps.dto.AppFormFieldOptionResponse;
 import dev.flexmodel.apps.dto.AppFormFieldRecord;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.dto.AppFormFieldUpdateRequest;
+import dev.flexmodel.apps.dto.AppFormSubformRecord;
 import dev.flexmodel.apps.dto.AppFormRecord;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppFormUpdateRequest;
@@ -65,6 +66,7 @@ public class AppFormService {
   private static final String METADATA_FORMS_KEY = "forms";
   private static final String METADATA_FORM_LAYOUTS_KEY = "formLayouts";
   private static final String FORM_DIVIDER_PREFIX = "$DIVIDER$-";
+  private static final String FORM_SUBFORM_PREFIX = "$SUBFORM$-";
   private static final Set<Integer> FIELD_WIDTHS = Set.of(25, 33, 50, 66, 75, 100);
   private static final String NAME_FIELD = "name";
   private static final Set<String> BUILTIN_FIELDS = Set.of(
@@ -191,8 +193,8 @@ public class AppFormService {
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
-    AppFormLayoutRecord layout = normalizeLayout(entity, request);
     String canonicalFormName = resolved.record() == null ? formName(entity) : resolved.record().name();
+    AppFormLayoutRecord layout = normalizeLayout(project, appId, canonicalFormName, entity, request);
     Map<String, AppFormLayoutRecord> layouts = formLayouts(project);
     layouts.put(canonicalFormName, layout);
     persistFormLayouts(project, layouts);
@@ -202,15 +204,23 @@ public class AppFormService {
   public void deleteForm(String appId, String formName) {
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
-    String entityName = resolved.entity().getName();
+    EntityDefinition entity = resolved.entity();
+    String entityName = entity.getName();
     if (isBoundToMenu(project, formName)) {
       throw new ValidationException("表单已被菜单绑定，请先解除菜单关联");
     }
+    if (isFormUsedAsSubform(project, formName)) {
+      throw new ValidationException("表单已被子表单引用，请先移除相关子表单布局");
+    }
+    String canonicalFormName = resolved.record() == null ? formName(entity) : resolved.record().name();
     modelingService.dropModel(appId, entityName);
     List<AppFormRecord> records = formRecords(project).stream()
       .filter(record -> !record.entityName().equals(entityName))
       .toList();
     persistFormRecords(project, records);
+    Map<String, AppFormLayoutRecord> layouts = formLayouts(project);
+    layouts.remove(canonicalFormName);
+    persistFormLayouts(project, layouts);
   }
 
   public AppFormFieldResponse createField(
@@ -269,6 +279,18 @@ public class AppFormService {
         .findFirst())
       .map(AppFormFieldRecord::type)
       .orElseGet(() -> inferFieldType(field));
+    String currentReferenceForm = resolved.record() == null
+      ? null
+      : resolved.record().fields().stream()
+      .filter(item -> item.name().equals(fieldName))
+      .findFirst()
+      .map(AppFormFieldRecord::referenceForm)
+      .orElse(null);
+    if (isFieldUsedAsSubform(project, formName, fieldName)
+      && request.referenceForm() != null
+      && !request.referenceForm().trim().equals(currentReferenceForm)) {
+      throw new ValidationException("子表单引用字段不允许修改引用表单");
+    }
     List<AppFormFieldOptionResponse> options = normalizeOptions(currentType, request.options());
     String referenceForm = normalizeReferenceForm(appId, currentType, request.referenceForm());
     field.setComment(request.label().trim());
@@ -302,6 +324,9 @@ public class AppFormService {
     requireField(entity, fieldName);
     if (BUILTIN_FIELDS.contains(fieldName)) {
       throw new ValidationException("内置字段不允许删除");
+    }
+    if (isFieldUsedAsSubform(project, formName, fieldName)) {
+      throw new ValidationException("字段已被子表单引用，请先移除相关子表单布局");
     }
     entity.getIndexes().stream()
       .filter(index -> index.containsField(fieldName))
@@ -612,7 +637,13 @@ public class AppFormService {
     projectService.updateProject(project);
   }
 
-  private AppFormLayoutRecord normalizeLayout(EntityDefinition entity, AppFormLayoutRequest request) {
+  private AppFormLayoutRecord normalizeLayout(
+    Project project,
+    String appId,
+    String formName,
+    EntityDefinition entity,
+    AppFormLayoutRequest request
+  ) {
     if (request.fields() == null) {
       throw new ValidationException("表单布局字段不能为空");
     }
@@ -624,18 +655,85 @@ public class AppFormService {
       if (isBlank(fieldName)) {
         throw new ValidationException("表单布局字段不能为空");
       }
-      if (!fieldNames.contains(fieldName) && !fieldName.startsWith(FORM_DIVIDER_PREFIX)) {
+      if (!fieldNames.contains(fieldName)
+        && !fieldName.startsWith(FORM_DIVIDER_PREFIX)
+        && !fieldName.startsWith(FORM_SUBFORM_PREFIX)) {
         throw new ValidationException("表单布局字段不存在: " + fieldName);
+      }
+      if (fieldName.startsWith(FORM_SUBFORM_PREFIX)
+        && (request.subforms() == null || !request.subforms().containsKey(fieldName))) {
+        throw new ValidationException("子表单布局配置不存在: " + fieldName);
       }
       if (!orderedFields.add(fieldName)) {
         throw new ValidationException("表单布局字段重复: " + fieldName);
       }
     }
+    Map<String, AppFormSubformRecord> subforms = normalizeSubforms(
+      project, appId, formName, orderedFields, request.subforms());
     return new AppFormLayoutRecord(
       List.copyOf(orderedFields),
       normalizeWidths(orderedFields, request.widths()),
       normalizeProperties(orderedFields, request.properties()),
+      subforms,
       request.advanced() == null ? Map.of() : request.advanced());
+  }
+
+  private Map<String, AppFormSubformRecord> normalizeSubforms(
+    Project project,
+    String appId,
+    String mainFormName,
+    Set<String> fieldNames,
+    Map<String, AppFormSubformRecord> subforms
+  ) {
+    if (subforms == null || subforms.isEmpty()) {
+      return Map.of();
+    }
+    Map<String, AppFormSubformRecord> result = new LinkedHashMap<>();
+    subforms.forEach((id, subform) -> {
+      if (!fieldNames.contains(id) || !id.startsWith(FORM_SUBFORM_PREFIX)) {
+        throw new ValidationException("子表单布局配置不存在: " + id);
+      }
+      if (subform == null || isBlank(subform.formName()) || isBlank(subform.referenceField())) {
+        throw new ValidationException("子表单配置不完整: " + id);
+      }
+      requireSubform(project, appId, mainFormName, subform);
+      result.put(id, new AppFormSubformRecord(
+        subform.formName().trim(),
+        subform.referenceField().trim()));
+    });
+    return result;
+  }
+
+  private void requireSubform(
+    Project project,
+    String appId,
+    String mainFormName,
+    AppFormSubformRecord subform
+  ) {
+    ResolvedForm child = requireForm(project, appId, subform.formName().trim());
+    AppFormFieldRecord field = child.record() == null
+      ? null
+      : child.record().fields().stream()
+      .filter(item -> item.name().equals(subform.referenceField().trim()))
+      .findFirst()
+      .orElse(null);
+    if (field == null || !"REFERENCE".equals(field.type()) || !mainFormName.equals(field.referenceForm())) {
+      throw new ValidationException("子表单引用字段不合法: " + subform.referenceField());
+    }
+  }
+
+  private boolean isFormUsedAsSubform(Project project, String formName) {
+    return formLayouts(project).values().stream()
+      .flatMap(layout -> layout.subforms() == null ? java.util.stream.Stream.empty() : layout.subforms().values().stream())
+      .anyMatch(subform -> subform != null && formName.equals(subform.formName()));
+  }
+
+  private boolean isFieldUsedAsSubform(Project project, String formName, String fieldName) {
+    return formLayouts(project).values().stream()
+      .flatMap(layout -> layout.subforms() == null ? java.util.stream.Stream.empty() : layout.subforms().values().stream())
+      .anyMatch(subform -> subform != null
+        && formName.equals(subform.formName())
+        && fieldName.equals(subform.referenceField()));
   }
 
   private AppFormLayoutRecord removeLayoutField(AppFormLayoutRecord layout, String fieldName) {
@@ -647,7 +745,10 @@ public class AppFormService {
     Map<String, AppFormItemPropertiesRecord> properties = new LinkedHashMap<>(
       layout.properties() == null ? Map.of() : layout.properties());
     properties.remove(fieldName);
-    return new AppFormLayoutRecord(fields, widths, properties, layout.advanced());
+    Map<String, AppFormSubformRecord> subforms = new LinkedHashMap<>(
+      layout.subforms() == null ? Map.of() : layout.subforms());
+    subforms.keySet().removeIf(fields::contains);
+    return new AppFormLayoutRecord(fields, widths, properties, subforms, layout.advanced());
   }
 
   private Map<String, Integer> normalizeWidths(Set<String> fieldNames, Map<String, Integer> widths) {

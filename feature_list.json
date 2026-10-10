@@ -306,6 +306,27 @@
       ],
       "status": "done",
       "evidence": "AppRecordDetail 顶部仅保留主显字段标题，并预留抽屉关闭按钮空间；详情字段统一放在单个卡片容器内，分栏标题去掉横向分割线、使用 font-semibold 加粗，并在最左侧展示主题色竖向强调条；折叠 ChevronDown 图标位于分栏文字右侧，支持展开/收起。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-033",
+      "name": "Apps - 表单子表单",
+      "description": "表单设计支持添加子表单，可选择已有子表单和引用字段；记录接口通过主表上下文查询和维护子表记录。",
+      "dependencies": [
+        "feat-025",
+        "feat-026"
+      ],
+      "status": "done",
+      "evidence": "AppFormLayout 新增 subforms 配置，FormDesign 支持添加、编辑、拖拽和移除子表单，未选择引用字段时自动创建指向当前表单的 REFERENCE 字段；AppRecordService/AppRecordResource 在现有 /records 接口上支持 mainFormName、mainRecordId 与 referenceField 查询参数，列表自动按主记录过滤，新增强制写入归属，详情/更新/删除校验归属；AppRecordDetail 下方渲染子表单列表并支持新增、编辑、删除与空态。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest,AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-034",
+      "name": "Apps UI - 引用字段关联表单选择",
+      "description": "字段管理中引用类型字段可选择关联表单，修复无法选择引用字段目标导致保存被禁用的问题。",
+      "dependencies": [
+        "feat-033"
+      ],
+      "status": "done",
+      "evidence": "FormSettings 加载当前应用表单列表；字段类型选择“引用”后展示“引用表单”下拉框，选择后写入 referenceForm 并允许保存。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
     }
   ]
 }

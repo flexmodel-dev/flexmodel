@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -420,6 +421,104 @@ public class AppFormResourceTest {
       .delete(BASE_PATH + "/not_exists")
       .then()
       .statusCode(404);
+  }
+
+  @Test
+  void testFormLayoutSubform() {
+    String mainName = "subform_main_" + TEST_SUFFIX;
+    String childName = "subform_child_" + TEST_SUFFIX;
+    Response main = createForm("""
+      {
+        "label": "主表单-%s",
+        "name": "%s",
+        "description": "子表单主表单",
+        "createNameField": true
+      }
+      """.formatted(TEST_SUFFIX, mainName), 201);
+    Response child = createForm("""
+      {
+        "label": "子表单-%s",
+        "name": "%s",
+        "description": "子表单子表",
+        "createNameField": true
+      }
+      """.formatted(TEST_SUFFIX, childName), 201);
+    Response reference = createField(childName, """
+      {
+        "label": "主表单引用",
+        "type": "REFERENCE",
+        "referenceForm": "%s",
+        "required": false
+      }
+      """.formatted(mainName), 201);
+    String referenceField = reference.body().path("name");
+
+    try {
+      String subformId = "$SUBFORM$-" + TEST_SUFFIX;
+      Response layoutResponse = given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "fields": ["name", "%s"],
+            "widths": {"name": 50, "%s": 100},
+            "properties": {"%s": {"label": "子表记录"}},
+            "subforms": {
+              "%s": {"formName": "%s", "referenceField": "%s"}
+            },
+            "advanced": {}
+          }
+          """.formatted(subformId, subformId, subformId, subformId, childName, referenceField))
+        .when()
+        .put(BASE_PATH + "/" + mainName + "/layout");
+      layoutResponse.then().statusCode(200);
+      @SuppressWarnings("unchecked")
+      Map<String, Map<String, String>> subforms = layoutResponse.body().path("layout.subforms");
+      org.junit.jupiter.api.Assertions.assertEquals(childName, subforms.get(subformId).get("formName"));
+      org.junit.jupiter.api.Assertions.assertEquals(referenceField, subforms.get(subformId).get("referenceField"));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .delete(BASE_PATH + "/" + childName)
+        .then()
+        .statusCode(400);
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .delete(BASE_PATH + "/" + childName + "/fields/" + referenceField)
+        .then()
+        .statusCode(400);
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "fields": ["name"],
+            "widths": {"name": 50},
+            "properties": {},
+            "subforms": {},
+            "advanced": {}
+          }
+          """)
+        .when()
+        .put(BASE_PATH + "/" + mainName + "/layout")
+        .then()
+        .statusCode(200)
+        .body("layout.subforms", anEmptyMap());
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .delete(BASE_PATH + "/" + childName + "/fields/" + referenceField)
+        .then()
+        .statusCode(204);
+    } finally {
+      deleteFormQuietly(childName);
+      deleteFormQuietly(mainName);
+    }
   }
 
   private Response createForm(String body, int expectedStatus) {

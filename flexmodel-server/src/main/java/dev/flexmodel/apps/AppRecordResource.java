@@ -42,9 +42,14 @@ public class AppRecordResource {
     @QueryParam("size") @DefaultValue("20") int size,
     @QueryParam("search") String search,
     @QueryParam("sortField") String sortField,
-    @QueryParam("sortOrder") String sortOrder
+    @QueryParam("sortOrder") String sortOrder,
+    @QueryParam("mainFormName") String mainFormName,
+    @QueryParam("mainRecordId") String mainRecordId,
+    @QueryParam("referenceField") String referenceField
   ) {
-    return appRecordService.findRecords(appId, formName, page, size, search, sortField, sortOrder);
+    return appRecordService.findRecords(
+      appId, formName, page, size, search, sortField, sortOrder,
+      mainFormName, mainRecordId, referenceField);
   }
 
   @Parameter(name = "recordId", description = "记录ID", in = ParameterIn.PATH, required = true)
@@ -54,9 +59,13 @@ public class AppRecordResource {
   public Map<String, Object> get(
     @PathParam("appId") String appId,
     @PathParam("formName") String formName,
-    @PathParam("recordId") String recordId
+    @PathParam("recordId") String recordId,
+    @QueryParam("mainFormName") String mainFormName,
+    @QueryParam("mainRecordId") String mainRecordId,
+    @QueryParam("referenceField") String referenceField
   ) {
-    return appRecordService.findRecord(appId, formName, recordId);
+    return appRecordService.findRecord(
+      appId, formName, recordId, mainFormName, mainRecordId, referenceField);
   }
 
   @Operation(summary = "创建表单记录")
@@ -64,10 +73,14 @@ public class AppRecordResource {
   public Response create(
     @PathParam("appId") String appId,
     @PathParam("formName") String formName,
-    Map<String, Object> record
+    Map<String, Object> record,
+    @QueryParam("mainFormName") String mainFormName,
+    @QueryParam("mainRecordId") String mainRecordId,
+    @QueryParam("referenceField") String referenceField
   ) {
     return Response.status(Response.Status.CREATED)
-      .entity(appRecordService.createRecord(appId, formName, record))
+      .entity(appRecordService.createRecord(
+        appId, formName, record, mainFormName, mainRecordId, referenceField))
       .build();
   }
 
@@ -79,9 +92,13 @@ public class AppRecordResource {
     @PathParam("appId") String appId,
     @PathParam("formName") String formName,
     @PathParam("recordId") String recordId,
-    Map<String, Object> record
+    Map<String, Object> record,
+    @QueryParam("mainFormName") String mainFormName,
+    @QueryParam("mainRecordId") String mainRecordId,
+    @QueryParam("referenceField") String referenceField
   ) {
-    return appRecordService.updateRecord(appId, formName, recordId, record);
+    return appRecordService.updateRecord(
+      appId, formName, recordId, record, mainFormName, mainRecordId, referenceField);
   }
 
   @Parameter(name = "recordId", description = "记录ID", in = ParameterIn.PATH, required = true)
@@ -91,9 +108,13 @@ public class AppRecordResource {
   public Response delete(
     @PathParam("appId") String appId,
     @PathParam("formName") String formName,
-    @PathParam("recordId") String recordId
+    @PathParam("recordId") String recordId,
+    @QueryParam("mainFormName") String mainFormName,
+    @QueryParam("mainRecordId") String mainRecordId,
+    @QueryParam("referenceField") String referenceField
   ) {
-    appRecordService.deleteRecord(appId, formName, recordId);
+    appRecordService.deleteRecord(
+      appId, formName, recordId, mainFormName, mainRecordId, referenceField);
     return Response.noContent().build();
   }
 }

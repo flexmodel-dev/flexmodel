@@ -1533,3 +1533,35 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 **验证：**
 
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+- git diff --check 通过。
+
+## Apps - 表单子表单 (2026-10-10)
+
+**修改：**
+
+- AppFormLayout 契约新增 `subforms`，布局项使用 `$SUBFORM$-` 前缀。
+- FormDesign 支持“子表单”添加、编辑、拖拽、重命名与移除；可选择已有子表单和指向当前表单的引用字段，未选择时自动创建引用字段。
+- 现有 `/records` 接口新增可选 `mainFormName`、`mainRecordId`、`referenceField` 查询参数；列表按主记录过滤，新增自动写入归属，详情、更新和删除校验归属。
+- AppRecordDetail 在主字段下方渲染子表单列表，支持搜索、分页、新增、编辑、删除和空态。
+- 服务端校验子表单引用字段，禁止删除被引用的子表单或引用字段，删除表单时同步清理布局。
+
+**验证：**
+
+- mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest,AppRecordResourceTest
+  -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+- mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过（全模块编译）。
+- mvn test -pl flexmodel-engine 通过（按 init.sh 中的引擎模块命令）。
+- bash init.sh 在 maven-clean 阶段被当前运行中的 quarkus:dev 进程占用 flexmodel-server-dev.jar 阻断；已在不中断开发服务的前提下改用上述无
+  clean 编译与测试命令完成验证。如需完整 clean 基线，可先停止 8080 对应的 quarkus:dev 进程后重新执行 bash init.sh。
+
+## Apps UI - 引用字段关联表单选择 (2026-10-10)
+
+**修改：**
+
+- FormSettings 加载当前应用的表单列表。
+- 字段类型选择“引用”后，展示“引用表单”下拉框；选择目标表单后写入 `referenceForm`，解除保存按钮禁用问题。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。

@@ -161,6 +161,147 @@ public class AppRecordResourceTest {
       .statusCode(401);
   }
 
+  @Test
+  void testSubformRecordContext() {
+    String mainName = "subform_record_main_" + TEST_SUFFIX;
+    String childName = "subform_record_child_" + TEST_SUFFIX;
+    Response main = createForm("""
+      {
+        "label": "主记录表单-%s",
+        "name": "%s",
+        "description": "主记录表单",
+        "createNameField": true
+      }
+      """.formatted(TEST_SUFFIX, mainName), 201);
+    Response child = createForm("""
+      {
+        "label": "子记录表单-%s",
+        "name": "%s",
+        "description": "子记录表单",
+        "createNameField": true
+      }
+      """.formatted(TEST_SUFFIX, childName), 201);
+    Response reference = createField(childName, """
+      {
+        "label": "主表单引用",
+        "type": "REFERENCE",
+        "referenceForm": "%s",
+        "required": false
+      }
+      """.formatted(mainName), 201);
+    String referenceField = reference.body().path("name");
+    String mainRecordsPath = BASE_PATH + "/" + mainName + "/records";
+    String childRecordsPath = BASE_PATH + "/" + childName + "/records";
+
+    try {
+      Response mainRecord = given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"name": "主记录-%s"}
+          """.formatted(TEST_SUFFIX))
+        .when()
+        .post(mainRecordsPath)
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
+      String mainRecordId = mainRecord.body().path("id");
+
+      Response childRecord = given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"name": "子记录-%s"}
+          """.formatted(TEST_SUFFIX))
+        .when()
+        .post(childRecordsPath + "?mainFormName=" + mainName + "&mainRecordId=" + mainRecordId
+          + "&referenceField=" + referenceField)
+        .then()
+        .statusCode(201)
+        .body(referenceField, equalTo(mainRecordId))
+        .extract()
+        .response();
+      String childRecordId = childRecord.body().path("id");
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"name": "未关联子记录-%s"}
+          """.formatted(TEST_SUFFIX))
+        .when()
+        .post(childRecordsPath)
+        .then()
+        .statusCode(201);
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(childRecordsPath + "?mainFormName=" + mainName + "&mainRecordId=" + mainRecordId
+          + "&referenceField=" + referenceField)
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(1))
+        .body("list[0].id", equalTo(childRecordId));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "name": "子记录-%s",
+            "%s": "not-main-record"
+          }
+          """.formatted(TEST_SUFFIX, referenceField))
+        .when()
+        .post(childRecordsPath + "?mainFormName=" + mainName + "&mainRecordId=" + mainRecordId
+          + "&referenceField=" + referenceField)
+        .then()
+        .statusCode(400);
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(childRecordsPath + "/" + childRecordId + "?mainFormName=" + mainName
+          + "&mainRecordId=not-main-record&referenceField=" + referenceField)
+        .then()
+        .statusCode(404);
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"name": "子记录更新-%s"}
+          """.formatted(TEST_SUFFIX))
+        .when()
+        .put(childRecordsPath + "/" + childRecordId + "?mainFormName=" + mainName
+          + "&mainRecordId=" + mainRecordId + "&referenceField=" + referenceField)
+        .then()
+        .statusCode(200)
+        .body("name", equalTo("子记录更新-" + TEST_SUFFIX));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .delete(childRecordsPath + "/" + childRecordId + "?mainFormName=" + mainName
+          + "&mainRecordId=not-main-record&referenceField=" + referenceField)
+        .then()
+        .statusCode(404);
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .delete(childRecordsPath + "/" + childRecordId + "?mainFormName=" + mainName
+          + "&mainRecordId=" + mainRecordId + "&referenceField=" + referenceField)
+        .then()
+        .statusCode(204);
+    } finally {
+      deleteFormQuietly(childName);
+      deleteFormQuietly(mainName);
+    }
+  }
+
   private Response createForm(String body, int expectedStatus) {
     Response response = given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -168,6 +309,17 @@ public class AppRecordResourceTest {
       .body(body)
       .when()
       .post(BASE_PATH);
+    response.then().statusCode(expectedStatus);
+    return response;
+  }
+
+  private Response createField(String formName, String body, int expectedStatus) {
+    Response response = given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body(body)
+      .when()
+      .post(BASE_PATH + "/" + formName + "/fields");
     response.then().statusCode(expectedStatus);
     return response;
   }

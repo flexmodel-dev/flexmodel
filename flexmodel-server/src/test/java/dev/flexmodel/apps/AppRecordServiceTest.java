@@ -87,14 +87,6 @@ class AppRecordServiceTest {
       return forms.get(formName);
     }
 
-    @Override
-    public String resolveEntityName(String appId, String formName) {
-      return switch (formName) {
-        case "orders" -> "order_entity";
-        case "customer" -> "customer_entity";
-        default -> "unknown_entity";
-      };
-    }
   }
 
   private static final class RecordingDataService extends DataService {
@@ -126,14 +118,14 @@ class AppRecordServiceTest {
       String sort,
       List<String> expand
     ) {
-      if ("order_entity".equals(modelName)) {
+      if ("orders".equals(modelName)) {
         Map<String, Object> record = new LinkedHashMap<>();
         record.put("id", "order-1");
         record.put("name", "Order One");
         record.put("customer_id", "customer-1");
         return new PageDTO<>(List.of(record), 1L);
       }
-      if ("customer_entity".equals(modelName)) {
+      if ("customer".equals(modelName)) {
         Map<String, Object> record = new LinkedHashMap<>();
         record.put("id", "customer-1");
         record.put("name", "Customer One");

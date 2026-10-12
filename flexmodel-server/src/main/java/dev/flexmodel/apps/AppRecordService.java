@@ -157,8 +157,7 @@ public class AppRecordService {
 
   private ResolvedForm resolveForm(String appId, String formName) {
     AppFormResponse response = appFormService.findForm(appId, formName);
-    String entityName = appFormService.resolveEntityName(appId, formName);
-    return new ResolvedForm(response, entityName);
+    return new ResolvedForm(response, response.name());
   }
 
   private RecordContext resolveRecordContext(

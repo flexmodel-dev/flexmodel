@@ -101,7 +101,7 @@ public class AppFormResourceTest {
         .body("displayField", nullValue())
         .body("searchField", nullValue())
         .body("fields.name", not(hasItem("name")))
-        .body("layout.fields", not(hasItem("name")));
+        .body("layout.items", empty());
     } finally {
       deleteFormQuietly(formName);
     }
@@ -151,10 +151,6 @@ public class AppFormResourceTest {
         }
         """.formatted(formName), 201);
       String referenceField = reference.body().path("name");
-      reference.then()
-        .body("type", equalTo("REFERENCE"))
-        .body("referenceForm", equalTo(formName));
-
       Response fields = given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .when()
@@ -166,6 +162,12 @@ public class AppFormResourceTest {
         .body("fields.find { it.label == '金额' }.type", equalTo("DECIMAL"))
         .body("fields.find { it.label == '选项' }.options.size()", equalTo(2))
         .body("fields.find { it.label == '关联表单' }.referenceForm", equalTo(formName));
+      String customerField = fields.body().path("fields.find { it.label == '客户名称' }.name");
+      String amountField = fields.body().path("fields.find { it.label == '金额' }.name");
+      String optionField = fields.body().path("fields.find { it.label == '选项' }.name");
+      reference.then()
+        .body("type", equalTo("REFERENCE"))
+        .body("referenceForm", equalTo(formName));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -233,22 +235,25 @@ public class AppFormResourceTest {
         .contentType(ContentType.JSON)
         .body("""
           {
-            "fields": ["name"],
-            "widths": {"name": 50},
-            "properties": {
-              "name": {"label": "表单名称", "tip": "请输入名称", "required": true, "readonly": false, "hidden": false}
-            },
-            "advanced": {"reserved": true}
+            "items": [
+              {"type": "SECTION", "label": "基础信息", "width": "FULL"},
+              {"type": "FIELD", "name": "name", "label": "表单名称", "tip": "请输入名称", "width": "HALF"},
+              {"type": "FIELD", "name": "%s", "width": "HALF"},
+              {"type": "FIELD", "name": "%s", "width": "THIRD"},
+              {"type": "FIELD", "name": "%s", "width": "QUARTER"}
+            ]
           }
-          """)
+          """.formatted(customerField, amountField, optionField))
         .when()
         .put(BASE_PATH + "/" + formName + "/layout")
         .then()
         .statusCode(200)
-        .body("layout.fields", contains("name"))
-        .body("layout.widths.name", equalTo(50))
-        .body("layout.properties.name.label", equalTo("表单名称"))
-        .body("layout.advanced.reserved", equalTo(true));
+        .body("layout.items[0].type", equalTo("SECTION"))
+        .body("layout.items[0].label", equalTo("基础信息"))
+        .body("layout.items[1].type", equalTo("FIELD"))
+        .body("layout.items[1].name", equalTo("name"))
+        .body("layout.items[1].label", equalTo("表单名称"))
+        .body("layout.items[1].width", equalTo("HALF"));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -256,7 +261,7 @@ public class AppFormResourceTest {
         .get(BASE_PATH + "/" + formName)
         .then()
         .statusCode(200)
-        .body("layout.fields", contains("name"));
+        .body("layout.items.name", hasItem("name"));
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .contentType(ContentType.JSON)
@@ -289,7 +294,7 @@ public class AppFormResourceTest {
         .body("displayField", nullValue())
         .body("searchField", nullValue())
         .body("fields.name", not(hasItem("name")))
-        .body("layout.fields", not(hasItem("name")));
+        .body("layout.items.name", not(hasItem("name")));
     } finally {
       deleteFormQuietly(formName);
     }
@@ -434,10 +439,57 @@ public class AppFormResourceTest {
   }
 
   @Test
+  void testFormLayoutValidation() {
+    String formName = "layout_validation_" + TEST_SUFFIX;
+    createForm("""
+      {
+        "label": "布局校验表单",
+        "name": "%s",
+        "createNameField": true
+      }
+      """.formatted(formName), 201);
+
+    try {
+      saveLayout(formName, "{\"items\": []}", 400);
+      saveLayout(formName, "{\"items\": [{\"type\": \"UNKNOWN\", \"label\": \"未知\"}]}", 400);
+      saveLayout(formName, "{\"items\": [{\"type\": \"FIELD\", \"name\": \"name\", \"width\": \"50\"}]}", 400);
+      saveLayout(formName, "{\"items\": [{\"type\": \"FIELD\"}]}", 400);
+      saveLayout(formName, "{\"items\": [{\"type\": \"SUBFORM\", \"referenceField\": \"name\"}]}", 400);
+    } finally {
+      deleteFormQuietly(formName);
+    }
+  }
+
+  @Test
+  void testFormLayoutFieldReference() {
+    String formName = "layout_field_" + TEST_SUFFIX;
+    createForm("""
+      {
+        "label": "布局字段校验表单",
+        "name": "%s",
+        "createNameField": true
+      }
+      """.formatted(formName), 201);
+
+    try {
+      saveLayout(formName, "{\"items\": [{\"type\": \"FIELD\", \"name\": \"not_exists\"}]}", 400);
+      saveLayout(formName, """
+        {"items": [
+          {"type": "FIELD", "name": "name"},
+          {"type": "FIELD", "name": "name"}
+        ]}
+        """, 400);
+      saveLayout(formName, "{\"items\": [{\"type\": \"SECTION\", \"label\": \"基础信息\"}]}", 400);
+    } finally {
+      deleteFormQuietly(formName);
+    }
+  }
+
+  @Test
   void testFormLayoutSubform() {
     String mainName = "subform_main_" + TEST_SUFFIX;
     String childName = "subform_child_" + TEST_SUFFIX;
-    Response main = createForm("""
+    createForm("""
       {
         "label": "主表单-%s",
         "name": "%s",
@@ -445,7 +497,7 @@ public class AppFormResourceTest {
         "createNameField": true
       }
       """.formatted(TEST_SUFFIX, mainName), 201);
-    Response child = createForm("""
+    createForm("""
       {
         "label": "子表单-%s",
         "name": "%s",
@@ -456,36 +508,32 @@ public class AppFormResourceTest {
     Response reference = createField(childName, """
       {
         "label": "主表单引用",
-        "type": "REFERENCE",
-        "referenceForm": "%s",
+        "type": "TEXT",
         "required": false
       }
-      """.formatted(mainName), 201);
+      """, 201);
     String referenceField = reference.body().path("name");
 
     try {
-      String subformId = "$SUBFORM$-" + TEST_SUFFIX;
-      Response layoutResponse = given()
-        .header("Authorization", testTokenHelper.getAuthorizationHeader())
-        .contentType(ContentType.JSON)
-        .body("""
-          {
-            "fields": ["name", "%s"],
-            "widths": {"name": 50, "%s": 100},
-            "properties": {"%s": {"label": "子表记录"}},
-            "subforms": {
-              "%s": {"formName": "%s", "referenceField": "%s"}
-            },
-            "advanced": {}
-          }
-          """.formatted(subformId, subformId, subformId, subformId, childName, referenceField))
-        .when()
-        .put(BASE_PATH + "/" + mainName + "/layout");
-      layoutResponse.then().statusCode(200);
-      @SuppressWarnings("unchecked")
-      Map<String, Map<String, String>> subforms = layoutResponse.body().path("layout.subforms");
-      org.junit.jupiter.api.Assertions.assertEquals(childName, subforms.get(subformId).get("formName"));
-      org.junit.jupiter.api.Assertions.assertEquals(referenceField, subforms.get(subformId).get("referenceField"));
+      saveLayout(mainName, """
+        {"items": [
+          {"type": "FIELD", "name": "name"},
+          {"type": "SUBFORM", "formName": "%s", "referenceField": "%s"},
+          {"type": "SUBFORM", "formName": "%s", "referenceField": "%s"}
+        ]}
+        """.formatted(childName, referenceField, childName, referenceField), 400);
+
+      Response layoutResponse = saveLayout(mainName, """
+        {"items": [
+          {"type": "SECTION", "label": "基础信息", "width": "FULL"},
+          {"type": "FIELD", "name": "name", "width": "HALF"},
+          {"type": "SUBFORM", "label": "子表记录", "formName": "%s", "referenceField": "%s", "width": "FULL"}
+        ]}
+        """.formatted(childName, referenceField), 200);
+      layoutResponse.then()
+        .body("layout.items.type", contains("SECTION", "FIELD", "SUBFORM"))
+        .body("layout.items.find { it.type == 'SUBFORM' }.formName", equalTo(childName))
+        .body("layout.items.find { it.type == 'SUBFORM' }.referenceField", equalTo(referenceField));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -501,23 +549,9 @@ public class AppFormResourceTest {
         .then()
         .statusCode(400);
 
-      given()
-        .header("Authorization", testTokenHelper.getAuthorizationHeader())
-        .contentType(ContentType.JSON)
-        .body("""
-          {
-            "fields": ["name"],
-            "widths": {"name": 50},
-            "properties": {},
-            "subforms": {},
-            "advanced": {}
-          }
-          """)
-        .when()
-        .put(BASE_PATH + "/" + mainName + "/layout")
+      saveLayout(mainName, "{\"items\": [{\"type\": \"FIELD\", \"name\": \"name\"}]}", 200)
         .then()
-        .statusCode(200)
-        .body("layout.subforms", anEmptyMap());
+        .body("layout.items.type", contains("FIELD"));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -532,60 +566,52 @@ public class AppFormResourceTest {
   }
 
   @Test
-  void testFormLayoutSubformAllowsAnyBusinessField() {
-    String mainName = "subform_any_main_" + TEST_SUFFIX;
-    String childName = "subform_any_child_" + TEST_SUFFIX;
+  void testCreateFormBindsExistingModel() {
+    String formName = "bind_model_" + TEST_SUFFIX;
     createForm("""
       {
-        "label": "Any field main form",
+        "label": "绑定实体表单",
         "name": "%s",
-        "description": "Main form",
         "createNameField": true
       }
-      """.formatted(mainName), 201);
-    createForm("""
-      {
-        "label": "Any field child form",
-        "name": "%s",
-        "description": "Child form",
-        "createNameField": true
-      }
-      """.formatted(childName), 201);
-    Response linkField = createField(childName, """
-      {
-        "label": "Main record link",
-        "type": "TEXT",
-        "required": false
-      }
-      """, 201);
-    String fieldName = linkField.body().path("name");
+      """.formatted(formName), 201);
 
     try {
-      String subformId = "$SUBFORM$-" + TEST_SUFFIX;
-      Response layoutResponse = given()
+      given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .contentType(ContentType.JSON)
-        .body("""
-          {
-            "fields": ["name", "%s"],
-            "widths": {"name": 50, "%s": 100},
-            "properties": {},
-            "subforms": {
-              "%s": {"formName": "%s", "referenceField": "%s"}
-            },
-            "advanced": {}
-          }
-          """.formatted(subformId, subformId, subformId, childName, fieldName))
+        .body("{\"name\": \"绑定记录\"}")
         .when()
-        .put(BASE_PATH + "/" + mainName + "/layout");
-      layoutResponse.then().statusCode(200);
-      @SuppressWarnings("unchecked")
-      Map<String, Map<String, String>> subforms = layoutResponse.body().path("layout.subforms");
-      org.junit.jupiter.api.Assertions.assertEquals(
-        fieldName, subforms.get(subformId).get("referenceField"));
+        .post(BASE_PATH + "/" + formName + "/records")
+        .then()
+        .statusCode(201)
+        .body("name", equalTo("绑定记录"));
     } finally {
-      deleteFormQuietly(childName);
-      deleteFormQuietly(mainName);
+      deleteFormQuietly(formName);
+    }
+  }
+
+  @Test
+  void testCreateFormDuplicateRecord() {
+    String formName = "duplicate_form_" + TEST_SUFFIX;
+    createForm("""
+      {
+        "label": "重复表单",
+        "name": "%s",
+        "createNameField": true
+      }
+      """.formatted(formName), 201);
+
+    try {
+      createForm("""
+        {
+          "label": "重复表单",
+          "name": "%s",
+          "createNameField": true
+        }
+        """.formatted(formName), 400);
+    } finally {
+      deleteFormQuietly(formName);
     }
   }
 
@@ -607,6 +633,17 @@ public class AppFormResourceTest {
       .body(body)
       .when()
       .post(BASE_PATH + "/" + formName + "/fields");
+    response.then().statusCode(expectedStatus);
+    return response;
+  }
+
+  private Response saveLayout(String formName, String body, int expectedStatus) {
+    Response response = given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body(body)
+      .when()
+      .put(BASE_PATH + "/" + formName + "/layout");
     response.then().statusCode(expectedStatus);
     return response;
   }

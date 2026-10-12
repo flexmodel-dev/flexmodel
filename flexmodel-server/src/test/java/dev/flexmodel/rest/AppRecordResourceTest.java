@@ -306,7 +306,7 @@ public class AppRecordResourceTest {
           + "&referenceField=" + referenceField)
         .then()
         .statusCode(201)
-        .body(referenceField, equalTo(mainRecordId))
+        .body(referenceField + ".id", equalTo(mainRecordId))
         .extract()
         .response();
       String childRecordId = childRecord.body().path("id");

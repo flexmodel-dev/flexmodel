@@ -9,10 +9,10 @@
 
 - `MenuEditorDialog` 在应用上下文中异步加载后端菜单，空列表保持空态；一级菜单创建提交 `type: GROUP`
   ，左侧菜单/分组/分组内菜单的增删改和拖拽排序均调用真实接口。
-- `MenuLinkPicker` 在应用上下文加载 `/menus/targets`，继续使用原有关联项选择交互；`ITEM` 必须绑定 `BUILT_IN` 或 `ENTITY`
+- `MenuLinkPicker` 在应用上下文加载 `/menus/targets`，继续使用原有关联项选择交互；`ITEM` 必须绑定 `BUILTIN` 或 `ENTITY`
   目标。
 - 菜单叶子类型统一从 MENU 迁移为 ITEM，后端校验、响应、前端请求与路由判断均已同步；按需求不做历史数据兼容。
-- 内置页面关联已打通：`BUILT_IN:dashboard / feeds / files / approval / contacts / notifications` 保存后生成
+- 内置页面关联已打通：`BUILTIN:dashboard / feeds / files / approval / contacts / notifications` 保存后生成
   `/apps/{appId}/{menuId}`，点击菜单进入 `AppMenuPage` 并渲染对应的 Dashboard、动态、文件、审批中心、通讯录或通知页面。
 - 修复关联项下拉浮层层级：`SelectContent` 从 `z-50` 提升到 `z-[1050]`，高于菜单编辑弹窗的 `z-[1041]`，选项不再被弹窗遮挡。
 - 修复无 menuId 时的默认选中：访问 /apps/{appId} 会加载菜单并重定向到第一个 ITEM 的 pageRoute；没有任何 ITEM 时保留空态。
@@ -62,7 +62,7 @@
 **修改:**
 
 - 后端新增 `AppMenuResource` / `AppMenuService` 与 DTO，菜单持久化到项目 `metadata.app.menus`，提供列表、目标项、创建、更新、删除和排序接口。
-- 菜单模型支持 `GROUP` / `ITEM` 结构、`BUILT_IN` / `ENTITY` 关联项校验，`ITEM` 自动生成 `/apps/{appId}/{menuId}` 页面路由。
+- 菜单模型支持 `GROUP` / `ITEM` 结构、`BUILTIN` / `ENTITY` 关联项校验，`ITEM` 自动生成 `/apps/{appId}/{menuId}` 页面路由。
 - `AppService.updateApp` 保留既有 `metadata.app.menus`，避免应用设置保存时丢失菜单。
 - 前端应用页点击右侧空白区域直接打开原始 `MenuEditorDialog`；`AppLayout` 在应用页将顶部菜单和左侧导航保持为空。
 - `AppHome` 不再自动重定向，也不渲染菜单列表；点击右侧空白区域直接打开原始 `MenuEditorDialog`。
@@ -1307,7 +1307,7 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   - 字段接口：创建、更新、删除。
   - 创建时自动生成 `id`、`created_by`、`updated_by`、`created_at`、`updated_at`；可选创建 `name` 主显字段并建立非唯一索引。
   - UI 字段类型由服务端映射为实体字段，`REFERENCE` 对外使用 `referenceForm`。
-- 菜单关联目标统一为 `BUILT_IN | FORM`，`/menus/targets` 返回 `forms`；表单被菜单绑定时禁止删除。
+- 菜单关联目标统一为 `BUILTIN | FORM`，`/menus/targets` 返回 `forms`；表单被菜单绑定时禁止删除。
 - flexmodel-apps-ui 新增 `appForms` 服务与真实接口缓存：
   - 表单列表支持创建弹窗与真实数据卡片。
   - 新增 `FormSettings`，支持基本信息编辑/删除和业务字段增删改。
@@ -1654,3 +1654,80 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 **验证：**
 
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps - 表单 Schema Items 重构 (2026-10-12)
+
+**修改：**
+
+- 新增 `AppFormItemRecord`；`AppFormLayoutRecord` / `AppFormLayoutRequest` 改为仅保存 `items`，布局节点支持 `FIELD` /
+  `SECTION` / `SUBFORM` 与语义化宽度枚举。
+- 删除 `AppFormItemPropertiesRecord` / `AppFormSubformRecord` 与 `$DIVIDER$` / `$SUBFORM$` 哨兵前缀；`required`
+  等字段定义属性只保留在 `fields` 中。
+- `AppFormRecord` 移除 `entityName` 并内嵌 `layout`；表单 `name` 同时作为底层实体名，创建表单前校验全部 `SchemaObject`
+  名称冲突。
+- `AppFormService` 校验布局项类型、必填属性、非法属性、字段引用、内置字段限制和“所有业务字段必须出现一次”；字段新增/删除自动追加/移除
+  FIELD 节点，保存表单 metadata 时清理旧 `app.formLayouts`。
+- `AppRecordService` 直接使用 `AppFormResponse.name` 作为实体名；前端契约、`form-items` 工具、表单设计器、记录表单、详情、子表单和列表均改为消费
+  `layout.items`。
+- `AppFormResourceTest` 覆盖布局校验、字段引用、子表单、表单绑定既有模型和重复表单名；记录相关测试同步表单名直连实体与服务端引用渲染契约。
+- 修复 `FormDesign` 布局拖拽目标位置偏差：原逻辑在换算“移除拖拽项后的索引”后又做了一次错误的位置回退，导致跨行/跨多项拖拽时目标位置偏移一位；改为直接返回
+  `withoutDraggingIndex` 或 `withoutDraggingIndex + 1`。
+- 布局渲染改为按宽度累计分组为独立行，行内剩余空间不再被后续字段自动填充；右侧宽度拖拽柄逻辑保持原行为。
+
+**验证：**
+
+- `mvn test-compile -pl flexmodel-server -DskipTests` 通过。
+- `mvn test -pl flexmodel-server -am "-Dtest=AppFormResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（11
+  tests，0 failures，0 errors）。
+-
+`mvn test -pl flexmodel-server -am "-Dtest=AppRecordServiceTest,AppRecordResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"`
+通过（7 tests，0 failures，0 errors）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- `bash ./init.sh` 通过（全模块 clean compile + `flexmodel-engine` 测试）。
+- `git diff --check` 通过。
+
+**遗留/风险：**
+
+- 本次按方案执行破坏性契约变更，不迁移旧 `app.formLayouts`；存量应用如存在旧布局 metadata，需要重建布局或手工转换。
+
+## Apps UI - FormDesigner 独立组件修复 (2026-10-12)
+
+**修改：**
+
+- 将 `FormDesign.tsx` 拆分为页面容器与 `components/biz/FormDesigner.tsx`
+  独立设计器组件；页面负责路由参数、表单加载、空态和返回导航，设计器负责布局编辑、字段添加、子表单、显示控制与保存。
+- 设计器直接消费 `form.layout.items`，通过 `initialForm`、`onFormChange`、`onSaved` 与页面解耦，并保留 `FIELD` / `SECTION` /
+  `SUBFORM` 与语义化宽度契约。
+- 修复新增字段后被父级表单同步重置导致布局节点丢失的问题：创建字段时同步更新 `fields` 与 `layout.items`，父级刷新后仍保留新增
+  FIELD 节点。
+- 增强拖放到画布空白区域的能力，避免只能落在已有节点上；宽度选择按钮阻止 pointer 事件冒泡，避免触发父级拖拽。
+- 修复拖拽落点不稳定：占位符重排会移动原目标元素，导致 drop 索引在旧实现中来回跳变；现改为拖拽开始时记录原始节点坐标，并用指针位置基于稳定坐标计算插入索引，拖到前方时组件会真正落位。
+- 修复宽度填充柄：行满时不再隐藏柄，缩放过程中强制保持可见；填充柄禁用原生拖拽并阻止 dragstart 冒泡，避免被父级布局拖拽抢占，同时保留
+  pointer 缩放。
+- 填充柄保持悬浮显示行为：默认隐藏，鼠标悬浮组件时显示；缩放过程中强制保持可见，避免拖动途中因行重排丢失。
+- 保存成功提示恢复为操作区内“保存”按钮左侧的绿色文本与勾选图标，移除独立浮层提示。
+- 子表单自动创建引用字段后同步更新当前详情缓存，关联字段下拉立即可见；重置布局统一补齐 `HALF` 宽度。
+
+**验证：**
+
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- `mvn test -pl flexmodel-server -am "-Dtest=AppFormResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（11
+  tests，0 failures，0 errors）。
+
+**补充：**
+
+- `FormDesigner` 独立组件已纳入 `feat-041` 证据链，页面与设计器职责分离。
+
+## MCP AppTools 技术方案 (2026-10-12)
+
+**产出：**
+
+- 新增 `docs/plans/app-tools-mcp.md`，定义 `AppTools` 的完整技术方案。
+- 方案覆盖查询工具、创建工具、输入契约、AI 编排顺序、错误处理、测试用例与验收标准。
+- 明确第一版采用分步 MCP 工具、扁平 `layout.items`、显式 mock 记录，不做复杂布局和全局事务。
+- `feature_list.json` 新增 `feat-042`，状态为 `in-progress`；当前仅完成方案设计，代码实现待开始。
+
+**验证：**
+
+- `node` 解析 `feature_list.json` 通过。
+- `git diff --check` 通过。

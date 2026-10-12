@@ -2,7 +2,7 @@ package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormCreateRequest;
-import dev.flexmodel.apps.dto.AppFormItemPropertiesRecord;
+import dev.flexmodel.apps.dto.AppFormItemRecord;
 import dev.flexmodel.apps.dto.AppFormLayoutRecord;
 import dev.flexmodel.apps.dto.AppFormLayoutRequest;
 import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
@@ -10,7 +10,6 @@ import dev.flexmodel.apps.dto.AppFormFieldOptionResponse;
 import dev.flexmodel.apps.dto.AppFormFieldRecord;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.dto.AppFormFieldUpdateRequest;
-import dev.flexmodel.apps.dto.AppFormSubformRecord;
 import dev.flexmodel.apps.dto.AppFormRecord;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppFormUpdateRequest;
@@ -64,10 +63,11 @@ public class AppFormService {
 
   private static final String METADATA_APP_KEY = "app";
   private static final String METADATA_FORMS_KEY = "forms";
-  private static final String METADATA_FORM_LAYOUTS_KEY = "formLayouts";
-  private static final String FORM_DIVIDER_PREFIX = "$DIVIDER$-";
-  private static final String FORM_SUBFORM_PREFIX = "$SUBFORM$-";
-  private static final Set<Integer> FIELD_WIDTHS = Set.of(25, 33, 50, 66, 75, 100);
+  private static final String METADATA_LEGACY_FORM_LAYOUTS_KEY = "formLayouts";
+  private static final int MAX_LAYOUT_ITEMS = 500;
+  private static final Set<String> FORM_ITEM_TYPES = Set.of("FIELD", "SECTION", "SUBFORM");
+  private static final Set<String> FORM_ITEM_WIDTHS = Set.of(
+    "QUARTER", "THIRD", "HALF", "TWO_THIRDS", "THREE_QUARTERS", "FULL");
   private static final String NAME_FIELD = "name";
   private static final Set<String> BUILTIN_FIELDS = Set.of(
     "id", "created_by", "updated_by", "created_at", "updated_at");
@@ -95,7 +95,7 @@ public class AppFormService {
   public List<AppFormResponse> findForms(String appId) {
     Project project = requireAppProject(appId);
     Map<String, AppFormRecord> records = formRecords(project).stream()
-      .collect(Collectors.toMap(AppFormRecord::entityName, Function.identity(), (left, right) -> right,
+      .collect(Collectors.toMap(AppFormRecord::name, Function.identity(), (left, right) -> right,
         LinkedHashMap::new));
     return entities(appId).stream()
       .map(entity -> toResponse(project, entity, records.get(entity.getName())))
@@ -108,17 +108,11 @@ public class AppFormService {
     return toResponse(project, form.entity(), form.record());
   }
 
-  public String resolveEntityName(String appId, String formName) {
-    Project project = requireAppProject(appId);
-    return requireForm(project, appId, formName).entity().getName();
-  }
-
   public AppFormResponse createForm(String appId, AppFormCreateRequest request) {
     Project project = requireAppProject(appId);
     String formName = request.name().trim();
     ensureUniqueFormName(project, appId, formName);
-    String entityName = generateEntityName(appId);
-    EntityDefinition entity = new EntityDefinition(entityName);
+    EntityDefinition entity = new EntityDefinition(formName);
     entity.setComment(request.label().trim());
     systemFields().forEach(entity::addField);
     if (request.createNameField()) {
@@ -126,13 +120,12 @@ public class AppFormService {
         .setLength(255)
         .setComment("名称")
         .setNullable(false));
-      entity.addIndex(new IndexDefinition(entityName, "idx_" + entityName + "_name")
+      entity.addIndex(new IndexDefinition(formName, "idx_" + formName + "_name")
         .addField(NAME_FIELD));
     }
 
     modelingService.createModel(appId, entity);
     AppFormRecord record = new AppFormRecord(
-      entityName,
       formName,
       request.label().trim(),
       request.description() == null ? "" : request.description(),
@@ -140,11 +133,12 @@ public class AppFormService {
       request.createNameField() ? NAME_FIELD : null,
       LocalDateTime.now(),
       LocalDateTime.now(),
-      entity.getFields().stream().map(field -> toFieldRecord(field, null)).toList());
+      entity.getFields().stream().map(field -> toFieldRecord(field, null)).toList(),
+      defaultLayout(entity));
     try {
       saveFormRecord(project, record);
     } catch (RuntimeException caught) {
-      modelingService.dropModel(appId, entityName);
+      modelingService.dropModel(appId, formName);
       throw caught;
     }
     return toResponse(project, entity, record);
@@ -172,7 +166,6 @@ public class AppFormService {
       }
     }
     AppFormRecord updated = new AppFormRecord(
-      current.entityName(),
       current.name(),
       request.label().trim(),
       request.description() == null ? current.description() : request.description(),
@@ -180,7 +173,8 @@ public class AppFormService {
       searchField,
       current.createdAt(),
       LocalDateTime.now(),
-      current.fields());
+      current.fields(),
+      current.layout());
     saveFormRecord(project, updated);
     return toResponse(project, entity, updated);
   }
@@ -193,12 +187,11 @@ public class AppFormService {
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
-    String canonicalFormName = resolved.record() == null ? formName(entity) : resolved.record().name();
-    AppFormLayoutRecord layout = normalizeLayout(project, appId, canonicalFormName, entity, request);
-    Map<String, AppFormLayoutRecord> layouts = formLayouts(project);
-    layouts.put(canonicalFormName, layout);
-    persistFormLayouts(project, layouts);
-    return toResponse(project, entity, resolved.record());
+    AppFormRecord current = resolved.record() == null ? defaultRecord(project, entity) : resolved.record();
+    AppFormLayoutRecord layout = normalizeLayoutItems(project, appId, entity, request);
+    AppFormRecord updated = withLayout(current, layout);
+    saveFormRecord(project, updated);
+    return toResponse(project, entity, updated);
   }
 
   public void deleteForm(String appId, String formName) {
@@ -212,15 +205,11 @@ public class AppFormService {
     if (isFormUsedAsSubform(project, formName)) {
       throw new ValidationException("表单已被子表单引用，请先移除相关子表单布局");
     }
-    String canonicalFormName = resolved.record() == null ? formName(entity) : resolved.record().name();
     modelingService.dropModel(appId, entityName);
     List<AppFormRecord> records = formRecords(project).stream()
-      .filter(record -> !record.entityName().equals(entityName))
+      .filter(record -> !record.name().equals(entityName))
       .toList();
     persistFormRecords(project, records);
-    Map<String, AppFormLayoutRecord> layouts = formLayouts(project);
-    layouts.remove(canonicalFormName);
-    persistFormLayouts(project, layouts);
   }
 
   public AppFormFieldResponse createField(
@@ -251,7 +240,12 @@ public class AppFormService {
       AppFormRecord current = findFormRecord(project, entityName).orElseGet(() -> defaultRecord(project, entity));
       List<AppFormFieldRecord> fields = new ArrayList<>(current.fields());
       fields.add(fieldRecord);
-      saveFormRecord(project, withFields(current, fields));
+      AppFormLayoutRecord layout = current.layout() == null ? defaultLayout(entity) : current.layout();
+      List<AppFormItemRecord> items = new ArrayList<>(layout.items() == null ? List.of() : layout.items());
+      if (findLayoutFieldItem(layout, fieldName).isEmpty()) {
+        items.add(new AppFormItemRecord("FIELD", fieldName, null, null, null, null, null, null, null));
+      }
+      saveFormRecord(project, withLayout(withFields(current, fields), new AppFormLayoutRecord(items)));
     } catch (RuntimeException caught) {
       modelingService.dropField(appId, entityName, fieldName);
       throw caught;
@@ -340,7 +334,6 @@ public class AppFormService {
       String displayField = fieldName.equals(current.displayField()) ? null : current.displayField();
       String searchField = fieldName.equals(current.searchField()) ? null : current.searchField();
       saveFormRecord(project, new AppFormRecord(
-        current.entityName(),
         current.name(),
         current.label(),
         current.description(),
@@ -348,15 +341,9 @@ public class AppFormService {
         searchField,
         current.createdAt(),
         LocalDateTime.now(),
-        fields));
+        fields,
+        withoutLayoutField(current.layout(), fieldName)));
     });
-    String canonicalFormName = resolved.record() == null ? formName(entity) : resolved.record().name();
-    Map<String, AppFormLayoutRecord> layouts = formLayouts(project);
-    AppFormLayoutRecord layout = layouts.get(canonicalFormName);
-    if (layout != null) {
-      layouts.put(canonicalFormName, removeLayoutField(layout, fieldName));
-      persistFormLayouts(project, layouts);
-    }
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
@@ -366,7 +353,7 @@ public class AppFormService {
       .findFirst()
       .orElse(null);
     if (record != null) {
-      return new ResolvedForm(requireEntity(appId, record.entityName()), record);
+      return new ResolvedForm(requireEntity(appId, record.name()), record);
     }
     EntityDefinition entity = entities(appId).stream()
       .filter(item -> formName(item).equals(formName))
@@ -513,7 +500,9 @@ public class AppFormService {
     String description = record == null ? "" : blankToDefault(record.description(), "");
     String displayField = record == null ? defaultDisplayField(entity) : record.displayField();
     String searchField = record == null ? displayField : record.searchField();
-    AppFormLayoutRecord layout = formLayouts(project).get(formName);
+    AppFormLayoutRecord layout = record == null || record.layout() == null
+      ? defaultLayout(entity)
+      : record.layout();
     return new AppFormResponse(
       formName,
       label,
@@ -554,7 +543,7 @@ public class AppFormService {
     }
     String targetEntityName = refField.getFrom();
     return formRecords(project).stream()
-      .filter(record -> record.entityName().equals(targetEntityName))
+      .filter(record -> record.name().equals(targetEntityName))
       .findFirst()
       .map(AppFormRecord::name)
       .orElse(targetEntityName);
@@ -588,14 +577,14 @@ public class AppFormService {
     String displayField = defaultDisplayField(entity);
     return new AppFormRecord(
       entity.getName(),
-      formName(entity),
       blankToDefault(entity.getComment(), entity.getName()),
       "",
       displayField,
       displayField,
       project.getCreatedAt(),
       project.getUpdatedAt(),
-      entity.getFields().stream().map(field -> toFieldRecord(field, null)).toList());
+      entity.getFields().stream().map(field -> toFieldRecord(field, null)).toList(),
+      defaultLayout(entity));
   }
 
   private String defaultDisplayField(EntityDefinition entity) {
@@ -604,7 +593,6 @@ public class AppFormService {
 
   private AppFormRecord withFields(AppFormRecord record, List<AppFormFieldRecord> fields) {
     return new AppFormRecord(
-      record.entityName(),
       record.name(),
       record.label(),
       record.description(),
@@ -612,12 +600,13 @@ public class AppFormService {
       record.searchField(),
       record.createdAt(),
       LocalDateTime.now(),
-      fields);
+      fields,
+      record.layout());
   }
 
-  private java.util.Optional<AppFormRecord> findFormRecord(Project project, String entityName) {
+  private java.util.Optional<AppFormRecord> findFormRecord(Project project, String formName) {
     return formRecords(project).stream()
-      .filter(record -> record.entityName().equals(entityName))
+      .filter(record -> record.name().equals(formName))
       .findFirst();
   }
 
@@ -632,7 +621,7 @@ public class AppFormService {
 
   private void saveFormRecord(Project project, AppFormRecord replacement) {
     List<AppFormRecord> records = formRecords(project).stream()
-      .filter(record -> !record.entityName().equals(replacement.entityName()))
+      .filter(record -> !record.name().equals(replacement.name()))
       .collect(Collectors.toCollection(ArrayList::new));
     records.add(replacement);
     persistFormRecords(project, records);
@@ -649,6 +638,7 @@ public class AppFormService {
       })
       .toList();
     app.put(METADATA_FORMS_KEY, converted);
+    app.remove(METADATA_LEGACY_FORM_LAYOUTS_KEY);
     metadata.put(METADATA_APP_KEY, app);
     project.setMetadata(metadata);
     project.setUpdatedBy(currentUserId());
@@ -656,160 +646,200 @@ public class AppFormService {
     projectService.updateProject(project);
   }
 
-  private AppFormLayoutRecord normalizeLayout(
+  private AppFormLayoutRecord normalizeLayoutItems(
     Project project,
     String appId,
-    String formName,
     EntityDefinition entity,
     AppFormLayoutRequest request
   ) {
-    if (request.fields() == null) {
-      throw new ValidationException("表单布局字段不能为空");
+    if (request.items() == null || request.items().isEmpty() || request.items().size() > MAX_LAYOUT_ITEMS) {
+      throw new ValidationException("表单布局项数量不合法");
     }
     Set<String> fieldNames = entity.getFields().stream()
+      .filter(field -> !BUILTIN_FIELDS.contains(field.getName()))
       .map(TypedField::getName)
       .collect(Collectors.toSet());
-    LinkedHashSet<String> orderedFields = new LinkedHashSet<>();
-    for (String fieldName : request.fields()) {
-      if (isBlank(fieldName)) {
-        throw new ValidationException("表单布局字段不能为空");
-      }
-      if (!fieldNames.contains(fieldName)
-        && !fieldName.startsWith(FORM_DIVIDER_PREFIX)
-        && !fieldName.startsWith(FORM_SUBFORM_PREFIX)) {
-        throw new ValidationException("表单布局字段不存在: " + fieldName);
-      }
-      if (fieldName.startsWith(FORM_SUBFORM_PREFIX)
-        && (request.subforms() == null || !request.subforms().containsKey(fieldName))) {
-        throw new ValidationException("子表单布局配置不存在: " + fieldName);
-      }
-      if (!orderedFields.add(fieldName)) {
-        throw new ValidationException("表单布局字段重复: " + fieldName);
+    LinkedHashSet<String> usedFieldNames = new LinkedHashSet<>();
+    Set<String> subformKeys = new LinkedHashSet<>();
+    List<AppFormItemRecord> items = request.items().stream()
+      .map(item -> normalizeLayoutItem(
+        project, appId, fieldNames, item, usedFieldNames, subformKeys))
+      .toList();
+    for (String fieldName : fieldNames) {
+      if (!usedFieldNames.contains(fieldName)) {
+        throw new ValidationException("字段未上版: " + fieldName);
       }
     }
-    Map<String, AppFormSubformRecord> subforms = normalizeSubforms(
-      project, appId, formName, orderedFields, request.subforms());
-    return new AppFormLayoutRecord(
-      List.copyOf(orderedFields),
-      normalizeWidths(orderedFields, request.widths()),
-      normalizeProperties(orderedFields, request.properties()),
-      subforms,
-      request.advanced() == null ? Map.of() : request.advanced());
+    return new AppFormLayoutRecord(items);
   }
 
-  private Map<String, AppFormSubformRecord> normalizeSubforms(
+  private AppFormItemRecord normalizeLayoutItem(
     Project project,
     String appId,
-    String mainFormName,
     Set<String> fieldNames,
-    Map<String, AppFormSubformRecord> subforms
+    AppFormItemRecord item,
+    Set<String> usedFieldNames,
+    Set<String> subformKeys
   ) {
-    if (subforms == null || subforms.isEmpty()) {
-      return Map.of();
+    String type = item == null ? null : item.type();
+    if (!FORM_ITEM_TYPES.contains(type)) {
+      throw new ValidationException("表单项类型不合法: " + type);
     }
-    Map<String, AppFormSubformRecord> result = new LinkedHashMap<>();
-    subforms.forEach((id, subform) -> {
-      if (!fieldNames.contains(id) || !id.startsWith(FORM_SUBFORM_PREFIX)) {
-        throw new ValidationException("子表单布局配置不存在: " + id);
+    if (item.width() != null && !FORM_ITEM_WIDTHS.contains(item.width())) {
+      throw new ValidationException("字段宽度类型不合法: " + item.width());
+    }
+    return switch (type) {
+      case "FIELD" -> {
+        if (!isBlank(item.formName()) || !isBlank(item.referenceField())) {
+          throw new ValidationException("布局项配置不合法");
+        }
+        String fieldName = item.name() == null ? null : item.name().trim();
+        if (isBlank(fieldName) || !fieldNames.contains(fieldName)) {
+          throw new ValidationException("布局字段不存在: " + item.name());
+        }
+        if (!usedFieldNames.add(fieldName)) {
+          throw new ValidationException("布局字段重复: " + fieldName);
+        }
+        yield new AppFormItemRecord(
+          "FIELD",
+          fieldName,
+          normalizeLayoutText(item.label()),
+          normalizeLayoutText(item.tip()),
+          item.width(),
+          item.hidden(),
+          item.readonly(),
+          null,
+          null);
       }
-      if (subform == null || isBlank(subform.formName()) || isBlank(subform.referenceField())) {
-        throw new ValidationException("子表单配置不完整: " + id);
+      case "SECTION" -> {
+        if (!isBlank(item.name()) || !isBlank(item.formName()) || !isBlank(item.referenceField())) {
+          throw new ValidationException("布局项配置不合法");
+        }
+        String label = normalizeLayoutText(item.label());
+        if (label == null) {
+          throw new ValidationException("分栏名称不能为空");
+        }
+        yield new AppFormItemRecord(
+          "SECTION",
+          null,
+          label,
+          null,
+          item.width(),
+          null,
+          null,
+          null,
+          null);
       }
-      requireSubform(project, appId, mainFormName, subform);
-      result.put(id, new AppFormSubformRecord(
-        subform.formName().trim(),
-        subform.referenceField().trim()));
-    });
-    return result;
+      default -> {
+        if (!isBlank(item.name())) {
+          throw new ValidationException("布局项字段名不合法");
+        }
+        if (isBlank(item.formName())) {
+          throw new ValidationException("子表单不存在: " + item.formName());
+        }
+        if (isBlank(item.referenceField())) {
+          throw new ValidationException("子表单引用字段不合法: " + item.referenceField());
+        }
+        String formName = item.formName().trim();
+        String referenceField = item.referenceField().trim();
+        validateSubformItem(project, appId, formName, referenceField);
+        if (!subformKeys.add(formName + '\0' + referenceField)) {
+          throw new ValidationException("子表单重复");
+        }
+        yield new AppFormItemRecord(
+          "SUBFORM",
+          null,
+          normalizeLayoutText(item.label()),
+          null,
+          item.width(),
+          null,
+          null,
+          formName,
+          referenceField);
+      }
+    };
   }
 
-  private void requireSubform(
+  private void validateSubformItem(
     Project project,
     String appId,
-    String mainFormName,
-    AppFormSubformRecord subform
+    String formName,
+    String referenceField
   ) {
-    ResolvedForm child = requireForm(project, appId, subform.formName().trim());
-    AppFormFieldRecord field = child.record() == null
-      ? null
-      : child.record().fields().stream()
-      .filter(item -> item.name().equals(subform.referenceField().trim()))
-      .findFirst()
-      .orElse(null);
-    if (field == null) {
-      throw new ValidationException("子表单引用字段不合法: " + subform.referenceField());
+    ResolvedForm child;
+    try {
+      child = requireForm(project, appId, formName);
+    } catch (NotFoundException caught) {
+      throw new ValidationException("子表单不存在: " + formName);
+    }
+    boolean referenceFieldExists = child.entity().getFields().stream()
+      .map(TypedField::getName)
+      .anyMatch(name -> name.equals(referenceField) && !BUILTIN_FIELDS.contains(name));
+    if (!referenceFieldExists) {
+      throw new ValidationException("子表单引用字段不合法: " + referenceField);
     }
   }
 
   private boolean isFormUsedAsSubform(Project project, String formName) {
-    return formLayouts(project).values().stream()
-      .flatMap(layout -> layout.subforms() == null ? java.util.stream.Stream.empty() : layout.subforms().values().stream())
-      .anyMatch(subform -> subform != null && formName.equals(subform.formName()));
+    return formRecords(project).stream()
+      .flatMap(record -> layoutItems(record.layout()).stream())
+      .anyMatch(item -> "SUBFORM".equals(item.type()) && formName.equals(item.formName()));
   }
 
   private boolean isFieldUsedAsSubform(Project project, String formName, String fieldName) {
-    return formLayouts(project).values().stream()
-      .flatMap(layout -> layout.subforms() == null ? java.util.stream.Stream.empty() : layout.subforms().values().stream())
-      .anyMatch(subform -> subform != null
-        && formName.equals(subform.formName())
-        && fieldName.equals(subform.referenceField()));
+    return formRecords(project).stream()
+      .flatMap(record -> layoutItems(record.layout()).stream())
+      .anyMatch(item -> "SUBFORM".equals(item.type())
+        && formName.equals(item.formName())
+        && fieldName.equals(item.referenceField()));
   }
 
-  private AppFormLayoutRecord removeLayoutField(AppFormLayoutRecord layout, String fieldName) {
-    List<String> fields = layout.fields() == null
-      ? List.of()
-      : layout.fields().stream().filter(name -> !name.equals(fieldName)).toList();
-    Map<String, Integer> widths = new LinkedHashMap<>(layout.widths() == null ? Map.of() : layout.widths());
-    widths.remove(fieldName);
-    Map<String, AppFormItemPropertiesRecord> properties = new LinkedHashMap<>(
-      layout.properties() == null ? Map.of() : layout.properties());
-    properties.remove(fieldName);
-    Map<String, AppFormSubformRecord> subforms = new LinkedHashMap<>(
-      layout.subforms() == null ? Map.of() : layout.subforms());
-    subforms.keySet().removeIf(fields::contains);
-    return new AppFormLayoutRecord(fields, widths, properties, subforms, layout.advanced());
+  private AppFormLayoutRecord defaultLayout(EntityDefinition entity) {
+    return new AppFormLayoutRecord(entity.getFields().stream()
+      .filter(field -> !BUILTIN_FIELDS.contains(field.getName()))
+      .map(field -> new AppFormItemRecord(
+        "FIELD",
+        field.getName(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null))
+      .toList());
   }
 
-  private Map<String, Integer> normalizeWidths(Set<String> fieldNames, Map<String, Integer> widths) {
-    if (widths == null) {
-      return Map.of();
-    }
-    Map<String, Integer> result = new LinkedHashMap<>();
-    widths.forEach((fieldName, width) -> {
-      if (!fieldNames.contains(fieldName)) {
-        throw new ValidationException("字段宽度配置不存在: " + fieldName);
-      }
-      if (width == null || !FIELD_WIDTHS.contains(width)) {
-        throw new ValidationException("字段宽度不合法: " + fieldName);
-      }
-      result.put(fieldName, width);
-    });
-    return result;
+  private AppFormRecord withLayout(AppFormRecord record, AppFormLayoutRecord layout) {
+    return new AppFormRecord(
+      record.name(),
+      record.label(),
+      record.description(),
+      record.displayField(),
+      record.searchField(),
+      record.createdAt(),
+      LocalDateTime.now(),
+      record.fields(),
+      layout);
   }
 
-  private Map<String, AppFormItemPropertiesRecord> normalizeProperties(
-    Set<String> fieldNames,
-    Map<String, AppFormItemPropertiesRecord> properties
+  private java.util.Optional<AppFormItemRecord> findLayoutFieldItem(
+    AppFormLayoutRecord layout,
+    String fieldName
   ) {
-    if (properties == null) {
-      return Map.of();
-    }
-    Map<String, AppFormItemPropertiesRecord> result = new LinkedHashMap<>();
-    properties.forEach((fieldName, property) -> {
-      if (!fieldNames.contains(fieldName)) {
-        throw new ValidationException("字段属性配置不存在: " + fieldName);
-      }
-      if (property == null) {
-        throw new ValidationException("字段属性不能为空: " + fieldName);
-      }
-      result.put(fieldName, new AppFormItemPropertiesRecord(
-        normalizeLayoutText(property.label()),
-        normalizeLayoutText(property.tip()),
-        property.required(),
-        property.readonly(),
-        property.hidden()));
-    });
-    return result;
+    return layoutItems(layout).stream()
+      .filter(item -> "FIELD".equals(item.type()) && fieldName.equals(item.name()))
+      .findFirst();
+  }
+
+  private AppFormLayoutRecord withoutLayoutField(AppFormLayoutRecord layout, String fieldName) {
+    return new AppFormLayoutRecord(layoutItems(layout).stream()
+      .filter(item -> !"FIELD".equals(item.type()) || !fieldName.equals(item.name()))
+      .toList());
+  }
+
+  private List<AppFormItemRecord> layoutItems(AppFormLayoutRecord layout) {
+    return layout == null || layout.items() == null ? List.of() : layout.items();
   }
 
   private String normalizeLayoutText(String value) {
@@ -818,37 +848,6 @@ public class AppFormService {
     }
     String normalized = value.trim();
     return normalized.isEmpty() ? null : normalized;
-  }
-
-  private Map<String, AppFormLayoutRecord> formLayouts(Project project) {
-    Object value = appNode(project).get(METADATA_FORM_LAYOUTS_KEY);
-    if (!(value instanceof Map<?, ?> layouts)) {
-      return new LinkedHashMap<>();
-    }
-    Map<String, AppFormLayoutRecord> result = new LinkedHashMap<>();
-    layouts.forEach((key, layout) -> {
-      if (layout != null) {
-        result.put(String.valueOf(key), JsonUtils.convertValue(layout, AppFormLayoutRecord.class));
-      }
-    });
-    return result;
-  }
-
-  private void persistFormLayouts(Project project, Map<String, AppFormLayoutRecord> layouts) {
-    Map<String, Object> metadata = metadataMap(project);
-    Map<String, Object> app = appNode(project);
-    Map<String, Object> converted = new LinkedHashMap<>();
-    layouts.forEach((formName, layout) -> {
-      @SuppressWarnings("unchecked")
-      Map<String, Object> value = JsonUtils.convertValue(layout, Map.class);
-      converted.put(formName, value);
-    });
-    app.put(METADATA_FORM_LAYOUTS_KEY, converted);
-    metadata.put(METADATA_APP_KEY, app);
-    project.setMetadata(metadata);
-    project.setUpdatedBy(currentUserId());
-    project.setUpdatedAt(LocalDateTime.now());
-    projectService.updateProject(project);
   }
 
   private List<AppFormRecord> formRecords(Project project) {
@@ -887,25 +886,13 @@ public class AppFormService {
     return menu.children() != null && menu.children().stream().anyMatch(child -> containsFormTarget(child, formName));
   }
 
-  private String generateEntityName(String appId) {
-    Set<String> existing = entities(appId).stream()
-      .map(SchemaObject::getName)
-      .collect(Collectors.toSet());
-    String candidate;
-    do {
-      candidate = "Form_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)
-        .toLowerCase(Locale.ROOT);
-    } while (existing.contains(candidate));
-    return candidate;
-  }
-
   private void ensureUniqueFormName(Project project, String appId, String formName) {
     boolean metadataExists = formRecords(project).stream()
       .anyMatch(record -> record.name().equals(formName));
-    boolean modelExists = entities(appId).stream()
-      .map(this::formName)
+    boolean schemaObjectExists = modelingService.findModels(appId).stream()
+      .map(SchemaObject::getName)
       .anyMatch(formName::equals);
-    if (metadataExists || modelExists) {
+    if (metadataExists || schemaObjectExists) {
       throw new ValidationException("表单内部标识已存在: " + formName);
     }
   }

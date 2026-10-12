@@ -204,7 +204,7 @@
         "feat-021"
       ],
       "status": "done",
-      "evidence": "新增 AppMenuResource/AppMenuService 与菜单 DTO，菜单保存到项目 metadata.app.menus，提供 GET /apps/{appId}/menus、GET /apps/{appId}/menus/targets、POST /apps/{appId}/menus、PUT /apps/{appId}/menus/{menuId}、DELETE /apps/{appId}/menus/{menuId}、PUT /apps/{appId}/menus/order；ITEM 强制选择 BUILT_IN 或 ENTITY 目标并自动生成 /apps/{appId}/{menuId}，GROUP 支持根级与嵌套分组以匹配原始左侧分组/分组内菜单交互，排序递归覆盖全部分组，ITEM 支持在分组内外跨层级拖拽并更新父级。现有 MenuEditorDialog 保持原 UI 与交互：打开时调用后端菜单列表，空数据不再显示 mock；新增一级菜单提交 type=GROUP；左侧菜单、分组、分组内菜单的增删改、图标与关联项均调用真实接口；关联项来自 /menus/targets，ENTITY 分组在界面中显示为“表单管理”；AppHome 与 AppLayout 共用该弹窗，应用页顶部和左侧导航从后端菜单渲染。内置页面关联已打通：BUILT_IN 目标选项为工作台、文件、审批中心，保存后生成 /apps/{appId}/{menuId}，点击菜单进入 AppMenuPage 并渲染对应的 Dashboard、文件或审批中心页面；动态、通讯录、通知不再出现在关联项下拉中，关联项下拉也不提供“未关联”选项，未选择时仅显示占位提示。访问 /apps/{appId} 且缺少 menuId 时自动重定向到第一个 ITEM 的 pageRoute，没有 ITEM 时保留空态；点击没有子项的顶部菜单会保留该顶部菜单并展示空态，不再回落到第一个顶部菜单的 ITEM。前端对应用列表、应用详情、菜单和关联项做会话内缓存并合并并发请求，同一应用内点击菜单不再重复请求，菜单写操作按应用失效缓存，登录/退出统一清空缓存。验证：mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests，0 failures，0 errors，含嵌套分组、排序、内置页面路由生成与 ITEM 移出分组）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。遗留：表单页面记录仍为 mock，待后续接入真实模型与记录接口。"
+      "evidence": "新增 AppMenuResource/AppMenuService 与菜单 DTO，菜单保存到项目 metadata.app.menus，提供 GET /apps/{appId}/menus、GET /apps/{appId}/menus/targets、POST /apps/{appId}/menus、PUT /apps/{appId}/menus/{menuId}、DELETE /apps/{appId}/menus/{menuId}、PUT /apps/{appId}/menus/order；ITEM 强制选择 BUILTIN 或 ENTITY 目标并自动生成 /apps/{appId}/{menuId}，GROUP 支持根级与嵌套分组以匹配原始左侧分组/分组内菜单交互，排序递归覆盖全部分组，ITEM 支持在分组内外跨层级拖拽并更新父级。现有 MenuEditorDialog 保持原 UI 与交互：打开时调用后端菜单列表，空数据不再显示 mock；新增一级菜单提交 type=GROUP；左侧菜单、分组、分组内菜单的增删改、图标与关联项均调用真实接口；关联项来自 /menus/targets，ENTITY 分组在界面中显示为“表单管理”；AppHome 与 AppLayout 共用该弹窗，应用页顶部和左侧导航从后端菜单渲染。内置页面关联已打通：BUILTIN 目标选项为工作台、文件、审批中心，保存后生成 /apps/{appId}/{menuId}，点击菜单进入 AppMenuPage 并渲染对应的 Dashboard、文件或审批中心页面；动态、通讯录、通知不再出现在关联项下拉中，关联项下拉也不提供“未关联”选项，未选择时仅显示占位提示。访问 /apps/{appId} 且缺少 menuId 时自动重定向到第一个 ITEM 的 pageRoute，没有 ITEM 时保留空态；点击没有子项的顶部菜单会保留该顶部菜单并展示空态，不再回落到第一个顶部菜单的 ITEM。前端对应用列表、应用详情、菜单和关联项做会话内缓存并合并并发请求，同一应用内点击菜单不再重复请求，菜单写操作按应用失效缓存，登录/退出统一清空缓存。验证：mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests，0 failures，0 errors，含嵌套分组、排序、内置页面路由生成与 ITEM 移出分组）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。遗留：表单页面记录仍为 mock，待后续接入真实模型与记录接口。"
     },
     {
       "id": "feat-023",
@@ -235,7 +235,7 @@
         "feat-022"
       ],
       "status": "done",
-      "evidence": "新增 AppFormResource/AppFormService 与表单 DTO，提供 /api/apps/{appId}/forms、/forms/{name}、/forms/{name}/fields 及字段更新删除接口；表单契约使用 name（英文标识，创建后不可编辑）与 label（展示名），字段契约同样返回 name 与 label，创建时自动生成 id、created_by、updated_by、created_at、updated_at 系统字段，可选创建 name 主显字段并建立非唯一索引；UI 字段类型由服务端映射为底层实体字段，REFERENCE 使用 referenceForm；表单被菜单绑定时禁止删除。前端新增 appForms 服务与真实表单列表、创建弹窗、基本信息、字段管理和表单设计接入；应用设置路由统一为 /admin/apps/{appId}/forms/{name}/{section}，菜单关联目标统一为 BUILT_IN/FORM 且 targets.forms 返回 name/label；表单与字段详情展示只读 name；UI 层搜索确认不存在 entityName、ENTITY、entities、referenceEntity 与实体文案。验证：mvn test-compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。遗留：表单记录数据页尚未实现，绑定表单的菜单先显示开发中提示并提供表单管理入口。"
+      "evidence": "新增 AppFormResource/AppFormService 与表单 DTO，提供 /api/apps/{appId}/forms、/forms/{name}、/forms/{name}/fields 及字段更新删除接口；表单契约使用 name（英文标识，创建后不可编辑）与 label（展示名），字段契约同样返回 name 与 label，创建时自动生成 id、created_by、updated_by、created_at、updated_at 系统字段，可选创建 name 主显字段并建立非唯一索引；UI 字段类型由服务端映射为底层实体字段，REFERENCE 使用 referenceForm；表单被菜单绑定时禁止删除。前端新增 appForms 服务与真实表单列表、创建弹窗、基本信息、字段管理和表单设计接入；应用设置路由统一为 /admin/apps/{appId}/forms/{name}/{section}，菜单关联目标统一为 BUILTIN/FORM 且 targets.forms 返回 name/label；表单与字段详情展示只读 name；UI 层搜索确认不存在 entityName、ENTITY、entities、referenceEntity 与实体文案。验证：mvn test-compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。遗留：表单记录数据页尚未实现，绑定表单的菜单先显示开发中提示并提供表单管理入口。"
     },
     {
       "id": "feat-026",
@@ -390,6 +390,29 @@
       ],
       "status": "done",
       "evidence": "RecordList 表头右侧新增“操作”列，行内提供编辑、删除按钮；编辑复用现有 AppRecordFormModal，删除复用 deleteAppRecord 并同步清理选中态与详情抽屉；操作列尺寸、图标和悬停色已与 AppSubformRecords 统一。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-041",
+      "name": "Apps - 表单 Schema Items 重构",
+      "description": "将应用表单布局从平行 map 与哨兵前缀重构为 fields + layout.items 有序节点，统一表单名与实体名，并同步服务端校验与前端设计、记录渲染；表单设计器已拆分为独立组件并适配该结构。",
+      "dependencies": [
+        "feat-025",
+        "feat-033",
+        "feat-036"
+      ],
+      "status": "done",
+      "evidence": "新增 AppFormItemRecord，AppFormLayout 仅保留 items，支持 FIELD/SECTION/SUBFORM 与语义化宽度；AppFormRecord 移除 entityName 并内嵌 layout，表单 name 直接作为实体名，创建表单校验 SchemaObject 名称冲突；AppFormService 校验布局项类型、字段引用、必填属性、非法属性、内置字段限制和全部业务字段必须出现一次，字段增删自动同步布局，保存表单 metadata 时清理旧 app.formLayouts；前端契约、form-items 工具、FormDesign、记录表单、详情、子表单和列表均改为消费 layout.items；修复 FormDesign 布局拖拽目标位置偏差：原逻辑在换算“移除拖拽项后的索引”后又做了一次错误回退，导致跨行/跨多项拖拽偏移一位，现改为直接返回 withoutDraggingIndex 或 withoutDraggingIndex + 1；布局渲染按宽度累计分组为独立行，行内剩余空间不再被后续字段自动填充，同时保留原右侧宽度拖拽柄行为。验证：mvn test-compile -pl flexmodel-server -DskipTests 通过；mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（11 tests）；mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest,AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-042",
+      "name": "MCP - AppTools 应用创建工具链",
+      "description": "新增 AppTools，按创建应用、创建表单与字段、保存扁平布局、创建并绑定菜单、创建显式 mock 数据的顺序，通过 MCP 暴露 Apps 能力给 AI 客户端。",
+      "dependencies": [
+        "feat-007",
+        "feat-041"
+      ],
+      "status": "in-progress",
+      "evidence": "技术方案文档 docs/plans/app-tools-mcp.md 已完成，覆盖工具清单、输入契约、编排顺序、错误处理、测试与验收标准；feature_list.json 通过 JSON 解析校验，git diff --check 通过；实现待开始。"
     }
   ]
 }

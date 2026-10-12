@@ -256,7 +256,7 @@ public class AppFormService {
       modelingService.dropField(appId, entityName, fieldName);
       throw caught;
     }
-    return toFieldResponse(field, fieldRecord);
+    return toFieldResponse(project, field, fieldRecord);
   }
 
   public AppFormFieldResponse updateField(
@@ -313,7 +313,7 @@ public class AppFormService {
       fields.add(updatedRecord);
     }
     saveFormRecord(project, withFields(current, fields));
-    return toFieldResponse(field, updatedRecord);
+    return toFieldResponse(project, field, updatedRecord);
   }
 
   public void deleteField(String appId, String formName, String fieldName) {
@@ -524,13 +524,20 @@ public class AppFormService {
       record == null ? project.getCreatedAt() : record.createdAt(),
       record == null ? project.getUpdatedAt() : record.updatedAt(),
       entity.getFields().stream()
-        .map(field -> toFieldResponse(field, findFieldRecord(record, field.getName()).orElse(null)))
+        .map(field -> toFieldResponse(project, field, findFieldRecord(record, field.getName()).orElse(null)))
         .toList(),
       layout);
   }
 
-  private AppFormFieldResponse toFieldResponse(TypedField<?, ?> field, AppFormFieldRecord record) {
+  private AppFormFieldResponse toFieldResponse(
+    Project project,
+    TypedField<?, ?> field,
+    AppFormFieldRecord record
+  ) {
     String type = record == null ? inferFieldType(field) : record.type();
+    String referenceForm = record != null && !isBlank(record.referenceForm())
+      ? record.referenceForm()
+      : referenceForm(project, field);
     return new AppFormFieldResponse(
       field.getName(),
       record == null ? blankToDefault(field.getComment(), field.getName()) : record.label(),
@@ -538,7 +545,19 @@ public class AppFormService {
       record == null ? !field.isNullable() : record.required(),
       BUILTIN_FIELDS.contains(field.getName()) || (record != null && record.builtin()),
       record == null ? null : record.options(),
-      record == null ? null : record.referenceForm());
+      referenceForm);
+  }
+
+  private String referenceForm(Project project, TypedField<?, ?> field) {
+    if (!(field instanceof ModelRefField refField)) {
+      return null;
+    }
+    String targetEntityName = refField.getFrom();
+    return formRecords(project).stream()
+      .filter(record -> record.entityName().equals(targetEntityName))
+      .findFirst()
+      .map(AppFormRecord::name)
+      .orElse(targetEntityName);
   }
 
   private AppFormFieldRecord toFieldRecord(TypedField<?, ?> field, AppFormFieldRecord record) {

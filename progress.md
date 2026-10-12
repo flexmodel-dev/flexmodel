@@ -1631,6 +1631,7 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `AppReferenceValue` 直接消费服务端渲染结果，列表和详情立即展示主显字段；点击引用值打开对应表单的记录详情，并保留旧版 raw ID / expanded record 响应兼容。
 - 补充子表单详情读取：当上下文引用字段被展开为对象或数组时，优先取其中的 `id` 再做主记录归属校验，避免详情接口误判记录不存在。
 - 详情标题与编辑弹窗兼容服务端渲染后的引用对象，分别优先读取 `displayValue` 和 `id`，避免出现 `[object Object]`。
+- 表单元数据会从 `ModelRefField` 推导目标表单名，历史引用字段的 `referenceForm` 为空时也能正确参与服务端渲染。
 - 新增服务层与 REST 集成测试，验证列表和详情接口均返回可点击展示所需的完整引用契约。
 
 **验证：**

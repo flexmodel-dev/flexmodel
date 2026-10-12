@@ -1731,3 +1731,16 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - `node` 解析 `feature_list.json` 通过。
 - `git diff --check` 通过。
+
+## Apps UI - 记录删除二次确认 (2026-10-12)
+
+**修改：**
+
+- `RecordList` 的单行删除和批量删除均改为先打开确认弹窗。
+- 确认后才调用删除接口；单行删除保留当前分页位置，批量删除成功后回到第一页。
+- 删除成功后同步清理选中状态、详情抽屉和关联记录抽屉；失败时在确认弹窗中展示错误并允许重试或取消。
+
+**验证：**
+
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- 基线 `bash ./init.sh` 首次运行因 Quarkus dev 进程占用 `flexmodel-server-dev.jar` 清理失败；已停止占用进程并重跑，结果待确认。

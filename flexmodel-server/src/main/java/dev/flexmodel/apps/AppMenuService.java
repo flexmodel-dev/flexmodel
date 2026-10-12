@@ -105,6 +105,11 @@ public class AppMenuService {
     }
     requireUniqueName(menus, menu, menu.id());
 
+    if (Objects.equals(normalizeParent(existing.parentId()), normalizeParent(menu.parentId()))) {
+      saveMenus(appId, project, replaceNode(menus, menu), formLabels);
+      return toResponse(appId, menu, formLabels);
+    }
+
     List<AppMenuRecord> nextMenus = removeNode(menus, menu.id());
     AppMenuRecord parent = menu.parentId() == null ? null : requireParent(nextMenus, menu.parentId());
     if (parent == null) {

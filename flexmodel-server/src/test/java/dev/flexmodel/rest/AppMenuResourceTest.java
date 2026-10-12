@@ -293,6 +293,14 @@ public class AppMenuResourceTest {
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH)
+        .then()
+        .statusCode(200)
+        .body("find { it.id == '%s' }.children[0].id".formatted(groupId), equalTo(childId));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .contentType(ContentType.JSON)
         .body(Map.of(
           "root", List.of(builtInId, groupId),

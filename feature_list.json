@@ -379,6 +379,17 @@
       ],
       "status": "done",
       "evidence": "新增 AppReferenceValueResponse 契约（id/displayValue/referenceForm）；AppRecordService 对列表、详情、创建和更新返回的 REFERENCE 字段做批量渲染，目标记录缺失或主显字段为空时回退记录 ID；AppReferenceValue 直接消费服务端渲染值并保留旧格式兼容。验证：mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests）；mvn test -pl flexmodel-server -am -Dtest='AppRecordResourceTest#testReferenceValueRendering' -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash init.sh 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-040",
+      "name": "Apps UI - 记录列表操作列",
+      "description": "记录列表右侧新增固定操作列，支持单行编辑和删除。",
+      "dependencies": [
+        "feat-038",
+        "feat-039"
+      ],
+      "status": "done",
+      "evidence": "RecordList 表头右侧新增“操作”列，行内提供编辑、删除按钮；编辑复用现有 AppRecordFormModal，删除复用 deleteAppRecord 并同步清理选中态与详情抽屉；操作列尺寸、图标和悬停色已与 AppSubformRecords 统一。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
     }
   ]
 }

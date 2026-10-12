@@ -1641,3 +1641,16 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
 - bash init.sh 通过（全模块编译 + flexmodel-engine 测试）。
 - git diff --check 通过。
+
+## Apps UI - 记录列表操作列 (2026-10-12)
+
+**修改：**
+
+- `RecordList` 右侧新增固定“操作”列。
+- 行内提供编辑、删除按钮；编辑复用现有记录表单弹窗，删除复用现有删除接口。
+- 删除成功后同步清理选中状态、详情抽屉和关联记录抽屉，并刷新列表。
+- 操作列宽度、按钮尺寸、图标尺寸和删除悬停色已与子表单列表样式统一。
+
+**验证：**
+
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。

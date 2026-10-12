@@ -383,13 +383,13 @@
     {
       "id": "feat-040",
       "name": "Apps UI - 记录列表操作列",
-      "description": "记录列表右侧新增固定操作列，支持单行编辑和删除。",
+      "description": "记录列表右侧新增固定操作列，支持单行编辑和删除；单行与批量删除均需二次确认。",
       "dependencies": [
         "feat-038",
         "feat-039"
       ],
       "status": "done",
-      "evidence": "RecordList 表头右侧新增“操作”列，行内提供编辑、删除按钮；编辑复用现有 AppRecordFormModal，删除复用 deleteAppRecord 并同步清理选中态与详情抽屉；操作列尺寸、图标和悬停色已与 AppSubformRecords 统一。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+      "evidence": "RecordList 表头右侧新增“操作”列，行内提供编辑、删除按钮；编辑复用现有 AppRecordFormModal，删除复用 deleteAppRecord 并同步清理选中态与详情抽屉；单行与批量删除均先弹窗二次确认，确认后才执行删除；操作列尺寸、图标和悬停色已与 AppSubformRecords 统一。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
     },
     {
       "id": "feat-041",

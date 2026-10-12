@@ -1,6 +1,7 @@
 package dev.flexmodel.apps.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * 表单布局节点。
@@ -16,6 +17,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
  * @param referenceField 子表单引用字段
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = false)
 public record AppFormItemRecord(
   String type,
   String name,

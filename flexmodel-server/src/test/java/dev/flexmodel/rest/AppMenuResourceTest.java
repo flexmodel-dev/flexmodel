@@ -69,7 +69,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "工作台-%s",
         "parentId": "%s",
-        "target": {"type": "BUILT_IN", "id": "dashboard"}
+        "target": {"type": "BUILTIN", "id": "dashboard"}
       }
       """.formatted(TEST_SUFFIX, groupId), 201);
 
@@ -81,7 +81,7 @@ public class AppMenuResourceTest {
         .then()
         .statusCode(200)
         .body("find { it.id == '%s' }.children.find { it.id == '%s' }.target.type".formatted(groupId, menuId),
-          equalTo("BUILT_IN"))
+          equalTo("BUILTIN"))
         .body("find { it.id == '%s' }.children.find { it.id == '%s' }.target.id".formatted(groupId, menuId),
           equalTo("dashboard"))
         .body("find { it.id == '%s' }.children.find { it.id == '%s' }.pageRoute".formatted(groupId, menuId),
@@ -110,7 +110,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "移动菜单-%s",
         "parentId": "%s",
-        "target": {"type": "BUILT_IN", "id": "dashboard"}
+        "target": {"type": "BUILTIN", "id": "dashboard"}
       }
       """.formatted(TEST_SUFFIX, sourceGroupId), 201);
 
@@ -123,7 +123,7 @@ public class AppMenuResourceTest {
             "type": "ITEM",
             "name": "移动菜单-%s",
             "parentId": "%s",
-            "target": {"type": "BUILT_IN", "id": "dashboard"}
+            "target": {"type": "BUILTIN", "id": "dashboard"}
           }
           """.formatted(TEST_SUFFIX, targetGroupId))
         .when()
@@ -168,7 +168,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "移出菜单-%s",
         "parentId": "%s",
-        "target": {"type": "BUILT_IN", "id": "dashboard"}
+        "target": {"type": "BUILTIN", "id": "dashboard"}
       }
       """.formatted(TEST_SUFFIX, nestedGroupId), 201);
 
@@ -181,7 +181,7 @@ public class AppMenuResourceTest {
             "type": "ITEM",
             "name": "移出菜单-%s",
             "parentId": "%s",
-            "target": {"type": "BUILT_IN", "id": "dashboard"}
+            "target": {"type": "BUILTIN", "id": "dashboard"}
           }
           """.formatted(TEST_SUFFIX, rootGroupId))
         .when()
@@ -245,7 +245,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "菜单测试工作台-%s",
         "iconName": "Home",
-        "target": {"type": "BUILT_IN", "id": "dashboard"}
+        "target": {"type": "BUILTIN", "id": "dashboard"}
       }
       """.formatted(TEST_SUFFIX), 201);
 
@@ -371,7 +371,7 @@ public class AppMenuResourceTest {
       {
         "type": "GROUP",
         "name": "分组不能关联",
-        "target": {"type": "BUILT_IN", "id": "dashboard"}
+        "target": {"type": "BUILTIN", "id": "dashboard"}
       }
       """, 400);
     createMenu("""
@@ -379,7 +379,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "父级不存在",
         "parentId": "not_exists",
-        "target": {"type": "BUILT_IN", "id": "dashboard"}
+        "target": {"type": "BUILTIN", "id": "dashboard"}
       }
       """, 400);
     createMenu("""
@@ -387,14 +387,14 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "非法图标",
         "iconName": "NotExists",
-        "target": {"type": "BUILT_IN", "id": "dashboard"}
+        "target": {"type": "BUILTIN", "id": "dashboard"}
       }
       """, 400);
     createMenu("""
       {
         "type": "ITEM",
         "name": "非法内置项",
-        "target": {"type": "BUILT_IN", "id": "not_exists"}
+        "target": {"type": "BUILTIN", "id": "not_exists"}
       }
       """, 400);
     createMenu("""

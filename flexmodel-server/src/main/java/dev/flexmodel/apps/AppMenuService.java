@@ -40,13 +40,13 @@ public class AppMenuService {
 
   private static final String GROUP_TYPE = "GROUP";
   private static final String ITEM_TYPE = "ITEM";
-  private static final String BUILT_IN_TARGET_TYPE = "BUILT_IN";
+  private static final String BUILTIN_TARGET_TYPE = "BUILTIN";
   private static final String FORM_TARGET_TYPE = "FORM";
   private static final String METADATA_APP_KEY = "app";
   private static final Set<String> MENU_ICON_NAMES = Set.of(
     "Home", "User", "TrendingUp", "ShoppingCart", "PieChart", "Folder", "BookUser",
     "ClipboardCheck", "Shapes", "Tags", "Boxes", "Banknote");
-  private static final Map<String, String> BUILT_IN_TARGETS = builtInTargets();
+  private static final Map<String, String> BUILTIN_TARGETS = builtInTargets();
 
   @Inject
   ProjectService projectService;
@@ -155,15 +155,15 @@ public class AppMenuService {
       if (targetRequest == null || isBlank(targetRequest.type()) || isBlank(targetRequest.id())) {
         throw new ValidationException("菜单必须选择关联项后才能绑定页面");
       }
-      if (!BUILT_IN_TARGET_TYPE.equals(targetRequest.type())
+      if (!BUILTIN_TARGET_TYPE.equals(targetRequest.type())
         && !FORM_TARGET_TYPE.equals(targetRequest.type())) {
         throw new ValidationException("菜单关联类型不合法: " + targetRequest.type());
       }
-      if (BUILT_IN_TARGET_TYPE.equals(targetRequest.type()) && !BUILT_IN_TARGETS.containsKey(targetRequest.id())) {
+      if (BUILTIN_TARGET_TYPE.equals(targetRequest.type()) && !BUILTIN_TARGETS.containsKey(targetRequest.id())) {
         throw new ValidationException("内置模块不存在: " + targetRequest.id());
       }
-      if (BUILT_IN_TARGET_TYPE.equals(targetRequest.type())) {
-        target = new AppMenuTargetRecord(BUILT_IN_TARGET_TYPE, targetRequest.id());
+      if (BUILTIN_TARGET_TYPE.equals(targetRequest.type())) {
+        target = new AppMenuTargetRecord(BUILTIN_TARGET_TYPE, targetRequest.id());
       }
       if (FORM_TARGET_TYPE.equals(targetRequest.type())) {
         requireFormName(appId, targetRequest.id());
@@ -297,10 +297,10 @@ public class AppMenuService {
   private AppMenuResponse toResponse(String appId, AppMenuRecord menu, Map<String, String> formLabels) {
     AppMenuTargetRecord target = menu.target();
     AppMenuTargetResponse targetResponse = target == null ? null : new AppMenuTargetResponse(
-      BUILT_IN_TARGET_TYPE.equals(target.type()) ? BUILT_IN_TARGET_TYPE : FORM_TARGET_TYPE,
+      BUILTIN_TARGET_TYPE.equals(target.type()) ? BUILTIN_TARGET_TYPE : FORM_TARGET_TYPE,
       target.id(),
-      BUILT_IN_TARGET_TYPE.equals(target.type())
-        ? BUILT_IN_TARGETS.get(target.id())
+      BUILTIN_TARGET_TYPE.equals(target.type())
+        ? BUILTIN_TARGETS.get(target.id())
         : formLabels.getOrDefault(target.id(), target.id()));
     return new AppMenuResponse(
       menu.id(),
@@ -435,8 +435,8 @@ public class AppMenuService {
   }
 
   private List<AppMenuTargetResponse> builtInResponses() {
-    return BUILT_IN_TARGETS.entrySet().stream()
-      .map(entry -> new AppMenuTargetResponse(BUILT_IN_TARGET_TYPE, entry.getKey(), entry.getValue()))
+    return BUILTIN_TARGETS.entrySet().stream()
+      .map(entry -> new AppMenuTargetResponse(BUILTIN_TARGET_TYPE, entry.getKey(), entry.getValue()))
       .toList();
   }
 

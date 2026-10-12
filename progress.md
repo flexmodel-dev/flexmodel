@@ -1431,6 +1431,21 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
 
+## Apps - 记录列表引用字段展开 (2026-10-12)
+
+**修改：**
+
+- `AppRecordService.findRecords` 从表单定义中收集所有 `REFERENCE` 类型字段，并将字段名列表传入
+  `DataService.findPagingRecords` 的 `expand` 参数，不再传 `null`。
+- 新增 `AppRecordServiceTest.findRecordsExpandsReferenceFields`，验证引用字段会传入 expand，普通字段不会被传入。
+
+**验证：**
+
+- `mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false`
+  通过（1 test）。
+- `bash ./init.sh` 通过（全模块编译与 `flexmodel-engine` 测试）。
+- `git diff --check` 通过。
+
 ## Apps - 内置字段契约统一 (2026-10-10)
 
 **修改：**

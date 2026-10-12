@@ -62,7 +62,8 @@ public class AppRecordService {
     String filter = buildFilter(form.response(), search, context);
     String sort = buildSort(form.response(), sortField, sortOrder);
     return dataService.findPagingRecords(
-      appId, form.entityName(), normalizedPage, normalizedSize, filter, sort, null);
+      appId, form.entityName(), normalizedPage, normalizedSize, filter, sort,
+      referenceFields(form.response()));
   }
 
   public Map<String, Object> findRecord(
@@ -200,6 +201,13 @@ public class AppRecordService {
       throw new ValidationException("子表单缺少指向主表单的引用字段");
     }
     throw new ValidationException("子表单存在多个引用字段，请指定referenceField");
+  }
+
+  private List<String> referenceFields(AppFormResponse form) {
+    return form.fields().stream()
+      .filter(field -> "REFERENCE".equals(field.type()))
+      .map(AppFormFieldResponse::name)
+      .toList();
   }
 
   private Map<String, Object> sanitizeInput(

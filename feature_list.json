@@ -359,6 +359,16 @@
       ],
       "status": "done",
       "evidence": "AppSubformRecords 左侧标题展示 form.label（缺失时回退 formName），移除记录数量副标题；同步移除不再使用的 label 参数。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-038",
+      "name": "Apps - 记录列表引用字段展开",
+      "description": "应用表单记录列表查询时，将表单中的引用字段传入数据层 expand 参数。",
+      "dependencies": [
+        "feat-036"
+      ],
+      "status": "done",
+      "evidence": "AppRecordService.findRecords 从表单字段中收集所有 REFERENCE 字段并传给 DataService.findPagingRecords；新增 AppRecordServiceTest 验证 expand 只包含引用字段。验证：mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test）；bash init.sh 通过（全模块编译 + flexmodel-engine 测试）；git diff --check 通过。"
     }
   ]
 }

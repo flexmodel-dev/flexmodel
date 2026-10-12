@@ -3,6 +3,7 @@ package dev.flexmodel.apps;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.dto.AppFormResponse;
+import dev.flexmodel.apps.dto.AppReferenceValueResponse;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
@@ -14,6 +15,7 @@ import jakarta.inject.Inject;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,9 +63,10 @@ public class AppRecordService {
     int normalizedSize = Math.clamp(size, 1, MAX_SIZE);
     String filter = buildFilter(form.response(), search, context);
     String sort = buildSort(form.response(), sortField, sortOrder);
-    return dataService.findPagingRecords(
+    PageDTO<Map<String, Object>> result = dataService.findPagingRecords(
       appId, form.entityName(), normalizedPage, normalizedSize, filter, sort,
       referenceFields(form.response()));
+    return renderReferenceValues(appId, form.response(), result);
   }
 
   public Map<String, Object> findRecord(
@@ -77,9 +80,11 @@ public class AppRecordService {
     ResolvedForm form = resolveForm(appId, formName);
     RecordContext context = resolveRecordContext(
       appId, form, mainFormName, mainRecordId, referenceField);
-    return context == null
-      ? requireRecord(appId, form.entityName(), recordId)
-      : requireSubformRecord(appId, form.entityName(), recordId, context);
+    List<String> expand = referenceFields(form.response());
+    Map<String, Object> record = context == null
+      ? requireRecord(appId, form.entityName(), recordId, expand)
+      : requireSubformRecord(appId, form.entityName(), recordId, context, expand);
+    return renderReferenceRecord(appId, form.response(), record);
   }
 
   public Map<String, Object> createRecord(
@@ -102,7 +107,8 @@ public class AppRecordService {
     values.put("created_at", now);
     values.put("updated_at", now);
     dataService.createRecord(appId, form.entityName(), values);
-    return requireRecord(appId, form.entityName(), String.valueOf(values.get("id")));
+    return renderReferenceRecord(appId, form.response(), requireRecord(
+      appId, form.entityName(), String.valueOf(values.get("id")), referenceFields(form.response())));
   }
 
   public Map<String, Object> updateRecord(
@@ -120,13 +126,14 @@ public class AppRecordService {
     if (context == null) {
       requireRecord(appId, form.entityName(), recordId);
     } else {
-      requireSubformRecord(appId, form.entityName(), recordId, context);
+      requireSubformRecord(appId, form.entityName(), recordId, context, null);
     }
     Map<String, Object> values = sanitizeInput(form.response(), input, false, context);
     values.put("updated_by", currentUserId());
     values.put("updated_at", LocalDateTime.now());
     dataService.updateRecord(appId, form.entityName(), recordId, values);
-    return requireRecord(appId, form.entityName(), recordId);
+    return renderReferenceRecord(appId, form.response(), requireRecord(
+      appId, form.entityName(), recordId, referenceFields(form.response())));
   }
 
   public void deleteRecord(
@@ -143,7 +150,7 @@ public class AppRecordService {
     if (context == null) {
       requireRecord(appId, form.entityName(), recordId);
     } else {
-      requireSubformRecord(appId, form.entityName(), recordId, context);
+      requireSubformRecord(appId, form.entityName(), recordId, context, null);
     }
     dataService.deleteRecord(appId, form.entityName(), recordId);
   }
@@ -208,6 +215,150 @@ public class AppRecordService {
       .filter(field -> "REFERENCE".equals(field.type()))
       .map(AppFormFieldResponse::name)
       .toList();
+  }
+
+  private PageDTO<Map<String, Object>> renderReferenceValues(
+    String appId,
+    AppFormResponse form,
+    PageDTO<Map<String, Object>> page
+  ) {
+    if (page == null || page.list() == null || page.list().isEmpty()) {
+      return page;
+    }
+    form.fields().stream()
+      .filter(field -> "REFERENCE".equals(field.type()))
+      .filter(field -> field.referenceForm() != null && !field.referenceForm().isBlank())
+      .forEach(field -> renderReferenceField(appId, field, page.list()));
+    return page;
+  }
+
+  private Map<String, Object> renderReferenceRecord(
+    String appId,
+    AppFormResponse form,
+    Map<String, Object> record
+  ) {
+    renderReferenceValues(appId, form, new PageDTO<>(List.of(record), 1L));
+    return record;
+  }
+
+  private void renderReferenceField(
+    String appId,
+    AppFormFieldResponse field,
+    List<Map<String, Object>> records
+  ) {
+    ResolvedForm referenceForm = resolveForm(appId, field.referenceForm());
+    Map<Object, Map<String, Object>> referenceRecords = new LinkedHashMap<>();
+    records.forEach(record -> collectExpandedReferenceRecords(
+      record.get(field.name()), referenceRecords));
+
+    LinkedHashSet<Object> missingIds = new LinkedHashSet<>();
+    records.forEach(record -> collectMissingReferenceIds(
+      record.get(field.name()), referenceRecords, missingIds));
+    if (!missingIds.isEmpty()) {
+      String filter = JsonUtils.toJsonString(Map.of(
+        "id", Map.of("_in", List.copyOf(missingIds))));
+      PageDTO<Map<String, Object>> referencePage = dataService.findPagingRecords(
+        appId, referenceForm.entityName(), 1, missingIds.size(), filter, null, null);
+      referencePage.list().forEach(record -> {
+        if (record.get("id") != null) {
+          referenceRecords.put(record.get("id"), record);
+        }
+      });
+    }
+
+    records.forEach(record -> record.put(
+      field.name(), referenceValue(field, referenceForm, record.get(field.name()), referenceRecords)));
+  }
+
+  private void collectExpandedReferenceRecords(
+    Object value,
+    Map<Object, Map<String, Object>> referenceRecords
+  ) {
+    if (value instanceof Map<?, ?> record) {
+      Object id = record.get("id");
+      if (id != null) {
+        Map<String, Object> typedRecord = new LinkedHashMap<>();
+        record.forEach((key, entryValue) -> typedRecord.put(String.valueOf(key), entryValue));
+        referenceRecords.put(id, typedRecord);
+      }
+      return;
+    }
+    if (value instanceof List<?> values) {
+      values.forEach(item -> collectExpandedReferenceRecords(item, referenceRecords));
+    }
+  }
+
+  private void collectMissingReferenceIds(
+    Object value,
+    Map<Object, Map<String, Object>> referenceRecords,
+    LinkedHashSet<Object> missingIds
+  ) {
+    if (value == null || value instanceof Map<?, ?>) {
+      return;
+    }
+    if (value instanceof List<?> values) {
+      values.forEach(item -> collectMissingReferenceIds(item, referenceRecords, missingIds));
+      return;
+    }
+    if (!value.toString().isBlank() && !referenceRecords.containsKey(value)) {
+      missingIds.add(value);
+    }
+  }
+
+  private Object referenceValue(
+    AppFormFieldResponse field,
+    ResolvedForm referenceForm,
+    Object value,
+    Map<Object, Map<String, Object>> referenceRecords
+  ) {
+    if (value == null || value.equals("")) {
+      return value;
+    }
+    if (value instanceof List<?> values) {
+      return values.stream()
+        .map(item -> referenceValue(field, referenceForm, item, referenceRecords))
+        .toList();
+    }
+
+    Map<String, Object> targetRecord;
+    Object id;
+    if (value instanceof Map<?, ?> expandedRecord) {
+      targetRecord = new LinkedHashMap<>();
+      expandedRecord.forEach((key, entryValue) -> targetRecord.put(String.valueOf(key), entryValue));
+      id = expandedRecord.get("id");
+    } else {
+      id = value;
+      targetRecord = referenceRecords.get(value);
+    }
+    if (id == null) {
+      return null;
+    }
+    return new AppReferenceValueResponse(
+      String.valueOf(id),
+      displayValue(targetRecord, referenceForm.response(), id),
+      field.referenceForm());
+  }
+
+  private String displayValue(
+    Map<String, Object> record,
+    AppFormResponse form,
+    Object id
+  ) {
+    if (record == null) {
+      return String.valueOf(id);
+    }
+    String displayField = form.displayField();
+    if (displayField == null || displayField.isBlank()) {
+      return String.valueOf(record.getOrDefault("id", id));
+    }
+    Object value = record.get(displayField);
+    if (value == null || value.equals("") || (value instanceof String text && text.isBlank())) {
+      return String.valueOf(record.getOrDefault("id", id));
+    }
+    if (value instanceof Map<?, ?> referencedRecord && referencedRecord.get("id") != null) {
+      return String.valueOf(referencedRecord.get("id"));
+    }
+    return String.valueOf(value);
   }
 
   private Map<String, Object> sanitizeInput(
@@ -328,18 +479,46 @@ public class AppRecordService {
     return record;
   }
 
+  private Map<String, Object> requireRecord(
+    String appId,
+    String entityName,
+    String recordId,
+    List<String> expand
+  ) {
+    Map<String, Object> record = dataService.findOneRecord(appId, entityName, recordId, expand);
+    if (record == null) {
+      throw new NotFoundException("记录不存在: " + recordId);
+    }
+    return record;
+  }
+
   private Map<String, Object> requireSubformRecord(
     String appId,
     String entityName,
     String recordId,
-    RecordContext context
+    RecordContext context,
+    List<String> expand
   ) {
-    Map<String, Object> record = requireRecord(appId, entityName, recordId);
+    Map<String, Object> record = requireRecord(appId, entityName, recordId, expand);
     Object value = record.get(context.referenceField());
-    if (!context.mainRecordId().equals(value == null ? null : String.valueOf(value))) {
+    if (!context.mainRecordId().equals(referenceRecordId(value))) {
       throw new NotFoundException("记录不存在: " + recordId);
     }
     return record;
+  }
+
+  private String referenceRecordId(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof List<?> values && !values.isEmpty()) {
+      return referenceRecordId(values.getFirst());
+    }
+    if (value instanceof Map<?, ?> record) {
+      Object id = record.get("id");
+      return id == null ? null : String.valueOf(id);
+    }
+    return String.valueOf(value);
   }
 
   private boolean isEmpty(Object value) {

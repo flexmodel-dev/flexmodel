@@ -158,7 +158,94 @@ public class AppRecordResourceTest {
       .when()
       .get(BASE_PATH + "/not_exists/records")
       .then()
-      .statusCode(401);
+        .statusCode(401);
+  }
+
+  @Test
+  void testReferenceValueRendering() {
+    String targetName = "reference_target_" + TEST_SUFFIX;
+    String sourceName = "reference_source_" + TEST_SUFFIX;
+    createForm("""
+      {
+        "label": "引用目标表单-%s",
+        "name": "%s",
+        "createNameField": true
+      }
+      """.formatted(TEST_SUFFIX, targetName), 201);
+    createForm("""
+      {
+        "label": "引用来源表单-%s",
+        "name": "%s",
+        "createNameField": true
+      }
+      """.formatted(TEST_SUFFIX, sourceName), 201);
+    Response referenceField = createField(sourceName, """
+      {
+        "label": "引用目标",
+        "type": "REFERENCE",
+        "required": false,
+        "referenceForm": "%s"
+      }
+      """.formatted(targetName), 201);
+    String fieldName = referenceField.body().path("name");
+    String targetRecordsPath = BASE_PATH + "/" + targetName + "/records";
+    String sourceRecordsPath = BASE_PATH + "/" + sourceName + "/records";
+
+    try {
+      Response targetRecord = given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"name": "引用目标记录-%s"}
+          """.formatted(TEST_SUFFIX))
+        .when()
+        .post(targetRecordsPath)
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
+      String targetRecordId = targetRecord.body().path("id");
+
+      Response sourceRecord = given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "name": "引用来源记录-%s",
+            "%s": "%s"
+          }
+          """.formatted(TEST_SUFFIX, fieldName, targetRecordId))
+        .when()
+        .post(sourceRecordsPath)
+        .then()
+        .statusCode(201)
+        .extract()
+        .response();
+      String sourceRecordId = sourceRecord.body().path("id");
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(sourceRecordsPath)
+        .then()
+        .statusCode(200)
+        .body("list[0]." + fieldName + ".id", equalTo(targetRecordId))
+        .body("list[0]." + fieldName + ".displayValue", equalTo("引用目标记录-" + TEST_SUFFIX))
+        .body("list[0]." + fieldName + ".referenceForm", equalTo(targetName));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(sourceRecordsPath + "/" + sourceRecordId)
+        .then()
+        .statusCode(200)
+        .body(fieldName + ".id", equalTo(targetRecordId))
+        .body(fieldName + ".displayValue", equalTo("引用目标记录-" + TEST_SUFFIX))
+        .body(fieldName + ".referenceForm", equalTo(targetName));
+    } finally {
+      deleteFormQuietly(sourceName);
+      deleteFormQuietly(targetName);
+    }
   }
 
   @Test

@@ -1621,3 +1621,22 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 **验证：**
 
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+## Apps - 引用字段服务端渲染与可点击展示 (2026-10-12)
+
+**修改：**
+
+- 新增引用字段响应契约 `AppReferenceValueResponse`，字段返回 `{id, displayValue, referenceForm}`；多条引用返回对象数组。
+- `AppRecordService` 对记录列表、详情、创建和更新响应中的 `REFERENCE` 字段进行服务端渲染，优先使用引用表单主显字段，目标缺失或主显字段为空时回退记录 ID。
+- `AppReferenceValue` 直接消费服务端渲染结果，列表和详情立即展示主显字段；点击引用值打开对应表单的记录详情，并保留旧版 raw ID / expanded record 响应兼容。
+- 补充子表单详情读取：当上下文引用字段被展开为对象或数组时，优先取其中的 `id` 再做主记录归属校验，避免详情接口误判记录不存在。
+- 详情标题与编辑弹窗兼容服务端渲染后的引用对象，分别优先读取 `displayValue` 和 `id`，避免出现 `[object Object]`。
+- 新增服务层与 REST 集成测试，验证列表和详情接口均返回可点击展示所需的完整引用契约。
+
+**验证：**
+
+- mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests）。
+- mvn test -pl flexmodel-server -am -Dtest='AppRecordResourceTest#testReferenceValueRendering' -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test）。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+- bash init.sh 通过（全模块编译 + flexmodel-engine 测试）。
+- git diff --check 通过。

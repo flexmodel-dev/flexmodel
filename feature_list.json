@@ -369,6 +369,16 @@
       ],
       "status": "done",
       "evidence": "AppRecordService.findRecords 从表单字段中收集所有 REFERENCE 字段并传给 DataService.findPagingRecords；新增 AppRecordServiceTest 验证 expand 只包含引用字段。验证：mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test）；bash init.sh 通过（全模块编译 + flexmodel-engine 测试）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-039",
+      "name": "Apps - 引用字段服务端渲染与可点击展示",
+      "description": "应用表单记录列表与详情中的引用字段由服务端渲染为主显字段值，前端展示可点击链接并打开引用记录详情。",
+      "dependencies": [
+        "feat-038"
+      ],
+      "status": "done",
+      "evidence": "新增 AppReferenceValueResponse 契约（id/displayValue/referenceForm）；AppRecordService 对列表、详情、创建和更新返回的 REFERENCE 字段做批量渲染，目标记录缺失或主显字段为空时回退记录 ID；AppReferenceValue 直接消费服务端渲染值并保留旧格式兼容。验证：mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests）；mvn test -pl flexmodel-server -am -Dtest='AppRecordResourceTest#testReferenceValueRendering' -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash init.sh 通过；git diff --check 通过。"
     }
   ]
 }

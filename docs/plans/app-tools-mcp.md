@@ -114,7 +114,7 @@ Flexmodel Apps 已具备应用、表单、菜单和记录的完整服务端能�
 - `label`
 - `name`
 - `description`
-- `createNameField`
+- `createDisplayField`
 - `fieldsJson`
 
 `fieldsJson` 是字段数组 JSON 字符串，每项结构与 `AppFormFieldCreateRequest` 对齐：

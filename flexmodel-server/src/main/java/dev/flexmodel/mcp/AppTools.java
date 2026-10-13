@@ -142,7 +142,7 @@ public class AppTools {
     @ToolArg(description = "Human-readable form label") String label,
     @ToolArg(description = "Form name matching ^[a-z][a-z0-9_]{0,63}$") String name,
     @ToolArg(description = "Form description") String description,
-    @ToolArg(description = "Whether to create the built-in name field") boolean createNameField,
+    @ToolArg(description = "Whether to create the built-in name field") boolean createDisplayField,
     @ToolArg(description = """
       JSON array string of fields, for example: \
       [{"label":"Amount","type":"DECIMAL","required":true}]. \
@@ -150,24 +150,14 @@ public class AppTools {
       """) String fieldsJson
   ) {
     log.info("create_app_form called, appId={}, name={}", appId, name);
-    AppFormResponse createdForm = null;
     try {
       List<AppFormFieldCreateRequest> fields = JsonUtils.parseToList(
         fieldsJson, AppFormFieldCreateRequest.class);
-      createdForm = appFormService.createForm(appId, new AppFormCreateRequest(
-        label, name, description, createNameField));
-      for (AppFormFieldCreateRequest field : fields) {
-        appFormService.createField(appId, createdForm.name(), field);
-      }
-      return JsonUtils.toJsonString(appFormService.findForm(appId, createdForm.name()));
+      return JsonUtils.toJsonString(appFormService.createFormWithFields(
+        appId,
+        new AppFormCreateRequest(label, name, description, createDisplayField),
+        fields));
     } catch (Exception exception) {
-      if (createdForm != null) {
-        try {
-          appFormService.deleteForm(appId, createdForm.name());
-        } catch (Exception cleanupException) {
-          exception.addSuppressed(cleanupException);
-        }
-      }
       log.error("create_app_form failed, appId={}, name={}", appId, name, exception);
       return "Error: create_app_form failed - " + exception.getMessage();
     }

@@ -1,5 +1,7 @@
 package dev.flexmodel.apps.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 /**
  * 表单字段选项。
  *
@@ -14,4 +16,9 @@ public record AppFormFieldOptionResponse(
   String color,
   Boolean defaultSelected
 ) {
+
+  @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+  public static AppFormFieldOptionResponse fromText(String text) {
+    return new AppFormFieldOptionResponse(text, text, null, false);
+  }
 }

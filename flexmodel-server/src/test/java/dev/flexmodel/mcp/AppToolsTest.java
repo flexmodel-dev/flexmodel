@@ -148,6 +148,40 @@ class AppToolsTest {
   }
 
   @Test
+  void createsAllCustomFieldsAndAcceptsStringOptions() {
+    String appId = "app_tools_batch_" + SUFFIX;
+    String formName = "batch_form_" + SUFFIX;
+    try {
+      createApp(appId);
+      AppFormResponse form = JsonUtils.parseToObject(appTools.create_app_form(
+        appId, "Categories", formName, "Category form", false, """
+          [
+            {"label":"Category name","type":"TEXT","required":true},
+            {"label":"Gender","type":"SELECT","options":["Male","Female"]},
+            {"label":"Description","type":"NTEXT"}
+          ]
+          """), AppFormResponse.class);
+
+      assertEquals(formName, form.name());
+      assertEquals(8, form.fields().size());
+      assertEquals(3, form.layout().items().size());
+      var genderField = fieldByName(form, "Gender");
+      assertEquals(2, genderField.options().size());
+      assertEquals("Male", genderField.options().getFirst().id());
+      assertEquals("Male", genderField.options().getFirst().text());
+      assertNotNull(fieldByName(form, "Category name").name());
+      assertNotNull(fieldByName(form, "Description").name());
+      AppFormResponse[] forms = JsonUtils.parseToObject(
+        appTools.list_app_forms(appId), AppFormResponse[].class);
+      assertEquals(1, forms.length);
+      assertEquals(form.fields(), forms[0].fields());
+      assertEquals(form.layout(), forms[0].layout());
+    } finally {
+      deleteAppQuietly(appId);
+    }
+  }
+
+  @Test
   void stopsMockRecordCreationAndKeepsSuccessfulRecords() {
     String appId = "app_tools_records_" + SUFFIX;
     String formName = "record_form_" + SUFFIX;

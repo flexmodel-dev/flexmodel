@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
  * @param label           表单展示名
  * @param name            表单英文名称
  * @param description     表单描述
- * @param createNameField 是否创建名称字段
+ * @param createDisplayField 是否创建主显字段
  */
 public record AppFormCreateRequest(
   @NotBlank(message = "表单名称不能为空")
@@ -22,6 +22,6 @@ public record AppFormCreateRequest(
   String name,
   @Size(max = 500, message = "表单描述长度不能超过500个字符")
   String description,
-  boolean createNameField
+  boolean createDisplayField
 ) {
 }

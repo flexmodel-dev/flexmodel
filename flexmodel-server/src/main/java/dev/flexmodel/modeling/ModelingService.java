@@ -36,8 +36,13 @@ public class ModelingService {
   EventBus eventBus;
 
   private String resolveDatabaseName(String projectId) {
-    String databaseName = sessionContext.getProjectDatabaseName();
-    return databaseName != null ? databaseName : projectService.resolveDatabaseName(projectId);
+    if (projectId != null && projectId.equals(sessionContext.getProjectId())) {
+      String databaseName = sessionContext.getProjectDatabaseName();
+      if (databaseName != null) {
+        return databaseName;
+      }
+    }
+    return projectService.resolveDatabaseName(projectId);
   }
 
   public List<SchemaObject> findModels(String projectId) {

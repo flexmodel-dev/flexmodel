@@ -411,8 +411,8 @@
         "feat-007",
         "feat-041"
       ],
-      "status": "in-progress",
-      "evidence": "技术方案文档 docs/plans/app-tools-mcp.md 已完成，覆盖工具清单、输入契约、编排顺序、错误处理、测试与验收标准；feature_list.json 通过 JSON 解析校验，git diff --check 通过；实现待开始。"
+      "status": "done",
+      "evidence": "AppTools 已按方案暴露应用与表单工具链；create_app_form 改为一次构建包含内置字段与自定义字段的实体模型，并在持久化前完成字段校验，metadata 保存失败时回滚已创建模型；字段不再按名称反查刚创建的表单，避免 read-your-writes 失败导致半成品；options 兼容字符串数组；ModelingService 仅在请求项目与当前项目一致时复用项目数据库缓存，避免跨项目读取落入错误 schema。验证：mvn test -pl flexmodel-server -am -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 通过（5 tests）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。"
     }
   ]
 }

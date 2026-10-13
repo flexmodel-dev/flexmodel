@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -64,6 +65,7 @@ public class AppFormService {
   private static final String METADATA_APP_KEY = "app";
   private static final String METADATA_FORMS_KEY = "forms";
   private static final String METADATA_LEGACY_FORM_LAYOUTS_KEY = "formLayouts";
+  private static final Pattern FORM_NAME_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{0,63}$");
   private static final int MAX_LAYOUT_ITEMS = 500;
   private static final Set<String> FORM_ITEM_TYPES = Set.of("FIELD", "SECTION", "SUBFORM");
   private static final Set<String> FORM_ITEM_WIDTHS = Set.of(
@@ -109,13 +111,54 @@ public class AppFormService {
   }
 
   public AppFormResponse createForm(String appId, AppFormCreateRequest request) {
+    return createFormWithFields(appId, request, List.of());
+  }
+
+  public AppFormResponse createFormWithFields(
+    String appId,
+    AppFormCreateRequest request,
+    List<AppFormFieldCreateRequest> fields
+  ) {
     Project project = requireAppProject(appId);
-    String formName = request.name().trim();
+    String formName = validateFormName(request.name());
+    String label = validateFormLabel(request.label());
+    List<PreparedField> preparedFields = prepareFields(appId, fields);
     ensureUniqueFormName(project, appId, formName);
+    EntityDefinition entity = buildFormEntity(formName, label, request.createDisplayField());
+    Map<String, AppFormFieldRecord> fieldRecords = addPreparedFields(
+      formName, entity, preparedFields);
+
+    modelingService.createModel(appId, entity);
+    AppFormRecord record = new AppFormRecord(
+      formName,
+      label,
+      request.description() == null ? "" : request.description(),
+      request.createDisplayField() ? NAME_FIELD : null,
+      request.createDisplayField() ? NAME_FIELD : null,
+      LocalDateTime.now(),
+      LocalDateTime.now(),
+      entity.getFields().stream()
+        .map(field -> toFieldRecord(field, fieldRecords.get(field.getName())))
+        .toList(),
+      defaultLayout(entity));
+    try {
+      saveFormRecord(project, record);
+    } catch (RuntimeException caught) {
+      try {
+        modelingService.dropModel(appId, formName);
+      } catch (RuntimeException cleanupException) {
+        caught.addSuppressed(cleanupException);
+      }
+      throw caught;
+    }
+    return toResponse(project, entity, record);
+  }
+
+  private EntityDefinition buildFormEntity(String formName, String label, boolean createDisplayField) {
     EntityDefinition entity = new EntityDefinition(formName);
-    entity.setComment(request.label().trim());
+    entity.setComment(label);
     systemFields().forEach(entity::addField);
-    if (request.createNameField()) {
+    if (createDisplayField) {
       entity.addField(new StringField(NAME_FIELD)
         .setLength(255)
         .setComment("名称")
@@ -123,25 +166,75 @@ public class AppFormService {
       entity.addIndex(new IndexDefinition(formName, "idx_" + formName + "_name")
         .addField(NAME_FIELD));
     }
+    return entity;
+  }
 
-    modelingService.createModel(appId, entity);
-    AppFormRecord record = new AppFormRecord(
-      formName,
-      request.label().trim(),
-      request.description() == null ? "" : request.description(),
-      request.createNameField() ? NAME_FIELD : null,
-      request.createNameField() ? NAME_FIELD : null,
-      LocalDateTime.now(),
-      LocalDateTime.now(),
-      entity.getFields().stream().map(field -> toFieldRecord(field, null)).toList(),
-      defaultLayout(entity));
-    try {
-      saveFormRecord(project, record);
-    } catch (RuntimeException caught) {
-      modelingService.dropModel(appId, formName);
-      throw caught;
+  private Map<String, AppFormFieldRecord> addPreparedFields(
+    String entityName,
+    EntityDefinition entity,
+    List<PreparedField> preparedFields
+  ) {
+    Map<String, AppFormFieldRecord> fieldRecords = new LinkedHashMap<>();
+    for (PreparedField preparedField : preparedFields) {
+      String fieldName = generateFieldName(entity);
+      TypedField<?, ?> field = buildField(
+        entityName, fieldName, preparedField.type(), preparedField.label(), preparedField.required());
+      entity.addField(field);
+      fieldRecords.put(fieldName, new AppFormFieldRecord(
+        fieldName,
+        preparedField.label(),
+        preparedField.type(),
+        preparedField.required(),
+        false,
+        preparedField.options(),
+        preparedField.referenceForm()));
     }
-    return toResponse(project, entity, record);
+    return fieldRecords;
+  }
+
+  private String validateFormName(String name) {
+    if (isBlank(name)) {
+      throw new ValidationException("表单名称不能为空");
+    }
+    String formName = name.trim();
+    if (!FORM_NAME_PATTERN.matcher(formName).matches()) {
+      throw new ValidationException("表单名称只能以小写字母开头，并包含小写字母、数字或下划线");
+    }
+    return formName;
+  }
+
+  private String validateFormLabel(String label) {
+    if (isBlank(label)) {
+      throw new ValidationException("表单名称不能为空");
+    }
+    return label.trim();
+  }
+
+  private List<PreparedField> prepareFields(
+    String appId,
+    List<AppFormFieldCreateRequest> fields
+  ) {
+    if (fields == null) {
+      return List.of();
+    }
+    return fields.stream().map(field -> {
+      if (field == null) {
+        throw new ValidationException("字段定义不能为空");
+      }
+      if (isBlank(field.label())) {
+        throw new ValidationException("字段名称不能为空");
+      }
+      if (isBlank(field.type())) {
+        throw new ValidationException("字段类型不能为空");
+      }
+      validateFieldType(field.type());
+      return new PreparedField(
+        field.label().trim(),
+        field.type(),
+        field.required(),
+        normalizeOptions(field.type(), field.options()),
+        normalizeReferenceForm(appId, field.type(), field.referenceForm()));
+    }).toList();
   }
 
   public AppFormResponse updateForm(String appId, String formName, AppFormUpdateRequest request) {
@@ -367,6 +460,15 @@ public class AppFormService {
   }
 
   private record ResolvedForm(EntityDefinition entity, AppFormRecord record) {
+  }
+
+  private record PreparedField(
+    String label,
+    String type,
+    boolean required,
+    List<AppFormFieldOptionResponse> options,
+    String referenceForm
+  ) {
   }
 
   private List<EntityDefinition> entities(String appId) {

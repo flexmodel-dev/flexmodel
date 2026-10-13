@@ -43,10 +43,10 @@ public class AppFormResourceTest {
   void testCreateFormWithDisplayField() {
     Response response = createForm("""
       {
-        "label": "名称字段表单-%s",
+        "label": "主显字段表单-%s",
         "name": "name_form_%s",
-        "description": "创建名称字段",
-        "createNameField": true
+        "description": "创建主显字段",
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
     String formName = response.body().path("name");
@@ -54,7 +54,7 @@ public class AppFormResourceTest {
     try {
       response.then()
         .body("name", equalTo("name_form_" + TEST_SUFFIX))
-        .body("label", equalTo("名称字段表单-" + TEST_SUFFIX))
+        .body("label", equalTo("主显字段表单-" + TEST_SUFFIX))
         .body("displayField", equalTo("name"))
         .body("searchField", equalTo("name"))
         .body("managed", equalTo(true))
@@ -77,7 +77,7 @@ public class AppFormResourceTest {
         .then()
         .statusCode(200)
         .body("forms.id", hasItem(formName))
-        .body("forms.label", hasItem("名称字段表单-" + TEST_SUFFIX));
+        .body("forms.label", hasItem("主显字段表单-" + TEST_SUFFIX));
     } finally {
       deleteFormQuietly(formName);
     }
@@ -87,9 +87,9 @@ public class AppFormResourceTest {
   void testCreateFormWithoutDisplayField() {
     Response response = createForm("""
       {
-        "label": "无名称字段表单-%s",
+        "label": "无主显字段表单-%s",
         "name": "plain_form_%s",
-        "createNameField": false
+        "createDisplayField": false
       }
       """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
     String formName = response.body().path("name");
@@ -97,7 +97,7 @@ public class AppFormResourceTest {
     try {
       response.then()
         .body("name", equalTo("plain_form_" + TEST_SUFFIX))
-        .body("label", equalTo("无名称字段表单-" + TEST_SUFFIX))
+        .body("label", equalTo("无主显字段表单-" + TEST_SUFFIX))
         .body("displayField", nullValue())
         .body("searchField", nullValue())
         .body("fields.name", not(hasItem("name")))
@@ -113,7 +113,7 @@ public class AppFormResourceTest {
       {
         "label": "字段映射表单-%s",
         "name": "field_form_%s",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
     String formName = form.body().path("name");
@@ -306,7 +306,7 @@ public class AppFormResourceTest {
       {
         "label": "更新表单-%s",
         "name": "update_form_%s",
-        "createNameField": false
+        "createDisplayField": false
       }
       """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
     String formName = form.body().path("name");
@@ -445,7 +445,7 @@ public class AppFormResourceTest {
       {
         "label": "布局校验表单",
         "name": "%s",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(formName), 201);
 
@@ -467,7 +467,7 @@ public class AppFormResourceTest {
       {
         "label": "布局字段校验表单",
         "name": "%s",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(formName), 201);
 
@@ -494,7 +494,7 @@ public class AppFormResourceTest {
         "label": "主表单-%s",
         "name": "%s",
         "description": "子表单主表单",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, mainName), 201);
     createForm("""
@@ -502,7 +502,7 @@ public class AppFormResourceTest {
         "label": "子表单-%s",
         "name": "%s",
         "description": "子表单子表",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, childName), 201);
     Response reference = createField(childName, """
@@ -572,7 +572,7 @@ public class AppFormResourceTest {
       {
         "label": "绑定实体表单",
         "name": "%s",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(formName), 201);
 
@@ -598,7 +598,7 @@ public class AppFormResourceTest {
       {
         "label": "重复表单",
         "name": "%s",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(formName), 201);
 
@@ -607,7 +607,7 @@ public class AppFormResourceTest {
         {
           "label": "重复表单",
           "name": "%s",
-          "createNameField": true
+          "createDisplayField": true
         }
         """.formatted(formName), 400);
     } finally {

@@ -30,7 +30,7 @@ public class AppRecordResourceTest {
       {
         "label": "记录表单-%s",
         "name": "record_form_%s",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
     String formName = form.body().path("name");
@@ -169,14 +169,14 @@ public class AppRecordResourceTest {
       {
         "label": "引用目标表单-%s",
         "name": "%s",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, targetName), 201);
     createForm("""
       {
         "label": "引用来源表单-%s",
         "name": "%s",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, sourceName), 201);
     Response referenceField = createField(sourceName, """
@@ -257,7 +257,7 @@ public class AppRecordResourceTest {
         "label": "主记录表单-%s",
         "name": "%s",
         "description": "主记录表单",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, mainName), 201);
     Response child = createForm("""
@@ -265,7 +265,7 @@ public class AppRecordResourceTest {
         "label": "子记录表单-%s",
         "name": "%s",
         "description": "子记录表单",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(TEST_SUFFIX, childName), 201);
     Response reference = createField(childName, """
@@ -398,7 +398,7 @@ public class AppRecordResourceTest {
         "label": "Text main form",
         "name": "%s",
         "description": "Main form",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(mainName), 201);
     createForm("""
@@ -406,7 +406,7 @@ public class AppRecordResourceTest {
         "label": "Text child form",
         "name": "%s",
         "description": "Child form",
-        "createNameField": true
+        "createDisplayField": true
       }
       """.formatted(childName), 201);
     Response linkField = createField(childName, """

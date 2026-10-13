@@ -1366,14 +1366,14 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（8 tests）。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`；仅既有 chunk 体积提示）。
 
-## Apps - 名称字段可编辑与可删除 (2026-10-10)
+## Apps - 主显字段可编辑与可删除 (2026-10-10)
 
 **修改：**
 
-- `AppFormService` 仅继续保护真正的系统字段；名称字段允许修改与删除。
-- 删除名称字段时同步清空 `nameField` / `searchField`，并在删除字段前清理引用该字段的索引。
-- `FormSettings` 字段管理对名称字段展示编辑与删除操作，删除后同步清理本地主显字段状态。
-- `AppFormResourceTest` 增加名称字段修改、删除及删除后主显字段清空的断言。
+- `AppFormService` 仅继续保护真正的系统字段；主显字段允许修改与删除。
+- 删除主显字段时同步清空 `nameField` / `searchField`，并在删除字段前清理引用该字段的索引。
+- `FormSettings` 字段管理对主显字段展示编辑与删除操作，删除后同步清理本地主显字段状态。
+- `AppFormResourceTest` 增加主显字段修改、删除及删除后主显字段清空的断言。
 
 **验证：**
 
@@ -1424,7 +1424,7 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 **修改：**
 
 - FormDesign 的表单数据转换层过滤 system 字段。
-- 布局画布、右侧字段列表、重置布局与高级控制仅使用业务字段和分栏；名称字段仍按普通业务字段展示。
+- 布局画布、右侧字段列表、重置布局与高级控制仅使用业务字段和分栏；主显字段仍按普通业务字段展示。
 - 服务端字段定义与记录提交逻辑不受影响。
 
 **验证：**
@@ -1744,3 +1744,21 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
 - 基线 `bash ./init.sh` 首次运行因 Quarkus dev 进程占用 `flexmodel-server-dev.jar` 清理失败；已停止占用进程并重跑，结果待确认。
+
+## MCP AppTools 表单批量创建修复 (2026-10-12)
+
+**修改：**
+
+- create_app_form 改为调用 AppFormService.createFormWithFields，一次构建包含内置字段、主显字段和自定义字段的
+  EntityDefinition，避免“先建表单、再逐字段按名称反查”的 read-your-writes 失败链路。
+- 自定义字段、options 和引用在唯一性校验与持久化之前统一完成校验；metadata 保存失败时清理已创建模型，避免留下只有内置字段的半成品。
+- AppFormFieldOptionResponse 增加字符串委托构造，字符串 options 会规范化为对象选项。
+- ModelingService.resolveDatabaseName 仅在显式项目 ID 与当前会话项目 ID 一致时复用项目数据库缓存，防止 MCP 跨项目调用读到旧项目的
+  system schema。
+- 临时引擎诊断改动已完全移除，最终修复不涉及 flexmodel-engine。
+
+**验证：**
+
+- mvn test -pl flexmodel-server -am -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 通过（5 tests，0
+  failures，0 errors）。
+- bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。

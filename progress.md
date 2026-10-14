@@ -1839,3 +1839,9 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 新增 `AppFormSectionTitle` 共用组件，详情页与新增/编辑记录弹窗复用同一主色竖条和标题样式。
 - 表单弹窗分栏标题移除普通底边线，字段标签改为详情页同款浅色小字号，栅格横向间距统一为 32px。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+
+**左侧菜单分组项图标修复 (2026-10-14)：**
+
+- 修复展开分组后的子菜单项只显示文字、不显示配置图标的问题。
+- 折叠侧边栏时的分组弹层同样展示子菜单图标，并保持图标与文字的对齐和截断规则。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。

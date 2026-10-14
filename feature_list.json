@@ -457,6 +457,14 @@
       "dependencies": [],
       "status": "done",
       "evidence": "新增 AppFormSectionTitle 共用分栏标题组件，详情页与记录表单弹窗复用同一主色竖条与标题样式；表单弹窗分栏不再使用普通底边线，字段标签改为详情页同款浅色小字号，栅格横向间距由 24px 调整为 32px。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-048",
+      "name": "Apps - 左侧菜单分组项图标展示",
+      "description": "修复左侧菜单分组内的子菜单项不展示图标的问题。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "展开分组后的子菜单项渲染 child.icon，图标与文字使用同一 flex 布局并保持截断；折叠侧边栏时的分组弹层同步展示图标。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
     }
   ]
 }

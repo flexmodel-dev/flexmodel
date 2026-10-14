@@ -1762,3 +1762,52 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - mvn test -pl flexmodel-server -am -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 通过（5 tests，0
   failures，0 errors）。
 - bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。
+
+## Apps 菜单链接关联与 iframe 展示 (2026-10-14)
+
+**修改：**
+
+- `AppMenuService` 新增 `LINK` 关联类型，复用 `target.id` 保存 URL；服务端校验链接为 `http` / `https`、主机名非空且长度不超过
+  2048，`AppMenuResponse` 对链接返回原始 `target.type` 与 URL label，`pageRoute` 仍为内部菜单路由。
+- `AppMenuManager`、`MenuLinkPicker` 与 `MenuEditorDialog` 均支持选择“自定义链接”并输入 URL；前端使用与后端一致的 URL
+  校验，多个链接菜单项可并存并继续参与分组、排序和删除。
+- `AppMenuPage` 在 `target.type === LINK` 时渲染右侧全高 iframe，保留应用 Header 与左侧菜单，iframe 使用 `no-referrer`。
+- `AppTools.create_app_menu` 的 MCP 工具描述同步声明 `targetType=LINK` 时 `targetId` 为 `http/https` URL。
+
+**验证：**
+
+- `mvn test -pl flexmodel-server -am "-Dtest=AppMenuResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（9
+  tests，0 failures，0 errors）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- `bash ./init.sh` 通过（全模块 clean compile + `flexmodel-engine` 测试）。
+- `git diff --check` 通过。
+
+**遗留/风险：**
+
+- 外部站点可通过 `X-Frame-Options` 或 CSP 拒绝 iframe 嵌入，此时浏览器会展示空白或失败状态；这是目标站点安全策略，不做绕过。
+
+**后续修复 (2026-10-14)：**
+
+- 修复在应用页内打开菜单编辑器新增菜单后，点击左侧新菜单仍提示“菜单不存在或已被删除”的问题。
+- 根因是 AppMenuPage 的菜单加载 effect 仅依赖 appId，路由中的 menuId 变化时组件复用且继续使用旧菜单列表；现已将 menuId
+  纳入依赖，切换菜单时重新读取缓存中的最新菜单数据。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+**删除确认修复 (2026-10-14)：**
+
+- 修复删除当前访问菜单后，确认弹窗关闭时菜单编辑器也被关闭的问题。
+- 根因是删除成功后立即路由跳转，导致 AppLayout 重新挂载并丢失菜单编辑器打开状态；现移除该跳转，仅同步顶部菜单选中状态和最新菜单数据，编辑器保持打开。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+**顶部菜单刷新修复 (2026-10-14)：**
+
+- 修复刷新菜单详情页后顶部菜单选中状态丢失的问题。
+- 根因是 AppLayout 只根据 top 查询参数恢复顶部菜单，未根据当前 menuId 反查所属顶部菜单，导致刷新后回退到第一项。
+- 新增 findTopMenuIdForMenu，并在应用路由刷新和切换时根据 menuId 定位所属顶部菜单，保持 Header 与左侧菜单同步。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+**刷新加载态优化 (2026-10-14)：**
+
+- 修复刷新应用页时标题先显示“销售管理”再变为正确应用名的问题；应用数据加载期间标题改为“应用加载中…”。
+- 修复菜单数据未返回时顶部菜单先选中第一项再跳到正确项的问题；加载期间不再回退到第一项，解析到当前 menuId 后直接选中所属顶部菜单。
+- flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。

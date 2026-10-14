@@ -195,7 +195,8 @@ public class AppTools {
   @Tool(description = """
     Create an app menu entry. This is step 4 of the app creation flow. \
     menuType allows GROUP or ITEM. GROUP must not bind a target. ITEM must bind \
-    targetType BUILTIN or FORM. Use targetId=formName when binding a form. \
+    targetType BUILTIN, FORM, or LINK. Use targetId=formName when binding a form, \
+    or targetId=http/https URL when binding a link. \
     iconName allows Home, User, TrendingUp, ShoppingCart, PieChart, Folder, \
     BookUser, ClipboardCheck, Shapes, Tags, Boxes, or Banknote.\
     """)
@@ -205,8 +206,8 @@ public class AppTools {
     @ToolArg(description = "Menu display name") String name,
     @ToolArg(description = "Menu icon name") String iconName,
     @ToolArg(description = "Parent menu ID, only for a nested ITEM") String parentId,
-    @ToolArg(description = "Target type: BUILTIN or FORM, required for ITEM") String targetType,
-    @ToolArg(description = "BUILTIN page ID or form name, required for ITEM") String targetId
+    @ToolArg(description = "Target type: BUILTIN, FORM, or LINK, required for ITEM") String targetType,
+    @ToolArg(description = "BUILTIN page ID, form name, or http/https URL, required for ITEM") String targetId
   ) {
     log.info("create_app_menu called, appId={}, menuType={}, name={}", appId, menuType, name);
     try {

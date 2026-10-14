@@ -18,6 +18,7 @@ import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,6 +43,7 @@ public class AppMenuService {
   private static final String ITEM_TYPE = "ITEM";
   private static final String BUILTIN_TARGET_TYPE = "BUILTIN";
   private static final String FORM_TARGET_TYPE = "FORM";
+  private static final String LINK_TARGET_TYPE = "LINK";
   private static final String METADATA_APP_KEY = "app";
   private static final Set<String> MENU_ICON_NAMES = Set.of(
     "Home", "User", "TrendingUp", "ShoppingCart", "PieChart", "Folder", "BookUser",
@@ -161,7 +163,8 @@ public class AppMenuService {
         throw new ValidationException("菜单必须选择关联项后才能绑定页面");
       }
       if (!BUILTIN_TARGET_TYPE.equals(targetRequest.type())
-        && !FORM_TARGET_TYPE.equals(targetRequest.type())) {
+        && !FORM_TARGET_TYPE.equals(targetRequest.type())
+        && !LINK_TARGET_TYPE.equals(targetRequest.type())) {
         throw new ValidationException("菜单关联类型不合法: " + targetRequest.type());
       }
       if (BUILTIN_TARGET_TYPE.equals(targetRequest.type()) && !BUILTIN_TARGETS.containsKey(targetRequest.id())) {
@@ -173,6 +176,9 @@ public class AppMenuService {
       if (FORM_TARGET_TYPE.equals(targetRequest.type())) {
         requireFormName(appId, targetRequest.id());
         target = new AppMenuTargetRecord(FORM_TARGET_TYPE, targetRequest.id());
+      }
+      if (LINK_TARGET_TYPE.equals(targetRequest.type())) {
+        target = new AppMenuTargetRecord(LINK_TARGET_TYPE, requireLinkUrl(targetRequest.id()));
       }
     } else if (request.target() != null) {
       throw new ValidationException("分组不能绑定关联项");
@@ -302,11 +308,9 @@ public class AppMenuService {
   private AppMenuResponse toResponse(String appId, AppMenuRecord menu, Map<String, String> formLabels) {
     AppMenuTargetRecord target = menu.target();
     AppMenuTargetResponse targetResponse = target == null ? null : new AppMenuTargetResponse(
-      BUILTIN_TARGET_TYPE.equals(target.type()) ? BUILTIN_TARGET_TYPE : FORM_TARGET_TYPE,
+      target.type(),
       target.id(),
-      BUILTIN_TARGET_TYPE.equals(target.type())
-        ? BUILTIN_TARGETS.get(target.id())
-        : formLabels.getOrDefault(target.id(), target.id()));
+      targetLabel(target, formLabels));
     return new AppMenuResponse(
       menu.id(),
       menu.type(),
@@ -318,6 +322,16 @@ public class AppMenuService {
       menu.children() == null
         ? List.of()
         : menu.children().stream().map(child -> toResponse(appId, child, formLabels)).toList());
+  }
+
+  private String targetLabel(AppMenuTargetRecord target, Map<String, String> formLabels) {
+    if (BUILTIN_TARGET_TYPE.equals(target.type())) {
+      return BUILTIN_TARGETS.get(target.id());
+    }
+    if (FORM_TARGET_TYPE.equals(target.type())) {
+      return formLabels.getOrDefault(target.id(), target.id());
+    }
+    return target.id();
   }
 
   private AppMenuRecord requireMenu(List<AppMenuRecord> menus, String menuId) {
@@ -437,6 +451,27 @@ public class AppMenuService {
       .filter(form -> form.name().equals(formName))
       .findFirst()
       .orElseThrow(() -> new ValidationException("表单不存在: " + formName));
+  }
+
+  private String requireLinkUrl(String value) {
+    String url = value == null ? "" : value.trim();
+    if (url.isBlank()) {
+      throw new ValidationException("菜单链接不能为空");
+    }
+    if (url.length() > 2048) {
+      throw new ValidationException("菜单链接长度不能超过2048个字符");
+    }
+    URI uri;
+    try {
+      uri = URI.create(url);
+    } catch (IllegalArgumentException exception) {
+      throw new ValidationException("菜单链接格式不正确: " + url);
+    }
+    String scheme = uri.getScheme();
+    if (!("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) || isBlank(uri.getHost())) {
+      throw new ValidationException("菜单链接必须是 http 或 https 地址: " + url);
+    }
+    return url;
   }
 
   private List<AppMenuTargetResponse> builtInResponses() {

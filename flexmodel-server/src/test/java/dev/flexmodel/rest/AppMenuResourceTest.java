@@ -92,6 +92,50 @@ public class AppMenuResourceTest {
   }
 
   @Test
+  void testCreateAndUpdateLinkMenu() {
+    String menuId = createMenu("""
+      {
+        "type": "ITEM",
+        "name": "自定义链接-%s",
+        "target": {"type": "LINK", "id": "https://example.com/path?from=flexmodel"}
+      }
+      """.formatted(TEST_SUFFIX), 201);
+
+    try {
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "type": "ITEM",
+            "name": "自定义链接-%s",
+            "target": {"type": "LINK", "id": "https://docs.example.com/flexmodel"}
+          }
+          """.formatted(TEST_SUFFIX))
+        .when()
+        .put(BASE_PATH + "/" + menuId)
+        .then()
+        .statusCode(200)
+        .body("target.type", equalTo("LINK"))
+        .body("target.id", equalTo("https://docs.example.com/flexmodel"))
+        .body("target.label", equalTo("https://docs.example.com/flexmodel"))
+        .body("pageRoute", equalTo("/apps/dev_test/" + menuId));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH)
+        .then()
+        .statusCode(200)
+        .body("find { it.id == '%s' }.target.type".formatted(menuId), equalTo("LINK"))
+        .body("find { it.id == '%s' }.target.id".formatted(menuId),
+          equalTo("https://docs.example.com/flexmodel"));
+    } finally {
+      deleteMenuQuietly(menuId);
+    }
+  }
+
+  @Test
   void testMoveItemBetweenGroups() {
     String sourceGroupId = createMenu("""
       {
@@ -410,6 +454,27 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "非法表单",
         "target": {"type": "FORM", "id": "not_exists"}
+      }
+      """, 400);
+    createMenu("""
+      {
+        "type": "ITEM",
+        "name": "非法链接协议",
+        "target": {"type": "LINK", "id": "javascript:alert(1)"}
+      }
+      """, 400);
+    createMenu("""
+      {
+        "type": "ITEM",
+        "name": "非法链接传输协议",
+        "target": {"type": "LINK", "id": "ftp://example.com"}
+      }
+      """, 400);
+    createMenu("""
+      {
+        "type": "ITEM",
+        "name": "链接缺少主机",
+        "target": {"type": "LINK", "id": "https:///path"}
       }
       """, 400);
   }

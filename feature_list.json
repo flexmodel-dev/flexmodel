@@ -413,6 +413,24 @@
       ],
       "status": "done",
       "evidence": "AppTools 已按方案暴露应用与表单工具链；create_app_form 改为一次构建包含内置字段与自定义字段的实体模型，并在持久化前完成字段校验，metadata 保存失败时回滚已创建模型；字段不再按名称反查刚创建的表单，避免 read-your-writes 失败导致半成品；options 兼容字符串数组；ModelingService 仅在请求项目与当前项目一致时复用项目数据库缓存，避免跨项目读取落入错误 schema。验证：mvn test -pl flexmodel-server -am -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 通过（5 tests）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。"
+    },
+    {
+      "id": "feat-043",
+      "name": "Apps - 菜单链接关联与 iframe 展示",
+      "description": "应用菜单关联项新增自定义链接类型，支持通过多个链接菜单项配置多个不同 http/https 地址，并在右侧内容区使用 iframe 展示目标页面。",
+      "dependencies": [
+        "feat-042"
+      ],
+      "status": "done",
+      "evidence": "AppMenuService 新增 LINK 关联类型，URL 保存到 target.id，服务端校验仅允许 http/https、主机名非空且长度不超过 2048，并拒绝 javascript/ftp/无 host 等非法地址；AppMenuResponse 对 LINK 保留 target.type 并返回 URL 作为 label，pageRoute 仍为内部路由；AppTools create_app_menu 契约说明同步支持 LINK；AppMenuManager、MenuLinkPicker 与 MenuEditorDialog 支持选择自定义链接并录入 URL，前端使用同一 URL 校验；AppMenuPage 对 LINK 菜单在右侧内容区渲染全高 iframe，并使用 no-referrer；2026-10-14 修复应用页内新增菜单后切换 menuId 仍读取旧列表导致“菜单不存在或已被删除”的刷新问题，并修复删除当前访问菜单时确认后因立即路由跳转导致菜单编辑器关闭的问题。验证：mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（9 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-044",
+      "name": "Apps - 顶部菜单刷新与加载态优化",
+      "description": "修复刷新菜单详情页时顶部菜单选中状态丢失、标题误回退为销售管理、菜单未加载时先选中第一项的问题。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "AppLayout 会根据当前 menuId 反查所属顶部菜单，刷新后保持选中状态；应用与菜单加载期间分别显示加载态，不再误回退到销售管理或第一个顶部菜单。验证：flexmodel-apps-ui npm run build 通过。"
     }
   ]
 }

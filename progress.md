@@ -1811,3 +1811,31 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 修复刷新应用页时标题先显示“销售管理”再变为正确应用名的问题；应用数据加载期间标题改为“应用加载中…”。
 - 修复菜单数据未返回时顶部菜单先选中第一项再跳到正确项的问题；加载期间不再回退到第一项，解析到当前 menuId 后直接选中所属顶部菜单。
 - flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。
+
+**浏览器标题规则 (2026-10-14)：**
+
+- 进入应用后浏览器标题按 `{菜单名} - {应用名称}` 展示；访问应用首页等无菜单路由时仅展示应用名称。
+- 应用或菜单数据尚未加载完成时先展示“应用加载中…”，避免旧标题或错误应用名闪现；离开应用路由后恢复 `Flexmodel Apps`。
+- 切换应用时同步清理上一个应用的应用与菜单状态，避免顶部菜单、标题和路由解析使用旧应用数据。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+
+**Header 新增记录快捷入口 (2026-10-14)：**
+
+- `AppTopHeader` 复用 Header 右侧“新建”按钮，在应用内读取菜单配置中的 FORM 关联项并去重展示，处理加载中、空表单与加载失败状态。
+- 选择表单后打开 `AppRecordCreateDialog`；该组件负责按表单名加载表单，并复用列表页新增按钮的 `AppRecordFormModal`
+  提交新增记录，避免重复实现弹窗。
+- 左侧菜单栏不再额外新增入口；原有设置入口仍打开空白新增/编辑菜单界面，不影响现有菜单管理能力。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+
+**登录默认进入应用管理 (2026-10-14)：**
+
+- 登录成功后默认跳转 `/admin/apps`；历史会话中保存的 `/dashboard/home` 来源路径也会映射到应用管理，避免继续进入 mock 仪表盘。
+- 根路由与未知路由兜底统一改为 `/admin/apps`，并移除 `/dashboard/home` 直达路由。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- `bash ./init.sh` 通过（全模块 clean compile + `flexmodel-engine` 测试）。
+
+**记录弹窗与详情分栏样式统一 (2026-10-14)：**
+
+- 新增 `AppFormSectionTitle` 共用组件，详情页与新增/编辑记录弹窗复用同一主色竖条和标题样式。
+- 表单弹窗分栏标题移除普通底边线，字段标签改为详情页同款浅色小字号，栅格横向间距统一为 32px。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。

@@ -427,10 +427,36 @@
     {
       "id": "feat-044",
       "name": "Apps - 顶部菜单刷新与加载态优化",
-      "description": "修复刷新菜单详情页时顶部菜单选中状态丢失、标题误回退为销售管理、菜单未加载时先选中第一项的问题。",
+      "description": "修复刷新菜单详情页时顶部菜单选中状态丢失、标题误回退为销售管理、菜单未加载时先选中第一项的问题，并统一应用内浏览器标题规则。",
       "dependencies": [],
       "status": "done",
-      "evidence": "AppLayout 会根据当前 menuId 反查所属顶部菜单，刷新后保持选中状态；应用与菜单加载期间分别显示加载态，不再误回退到销售管理或第一个顶部菜单。验证：flexmodel-apps-ui npm run build 通过。"
+      "evidence": "AppLayout 会根据当前 menuId 反查所属顶部菜单，刷新后保持选中状态；应用与菜单加载期间分别显示加载态，不再误回退到销售管理或第一个顶部菜单。浏览器标题按“{菜单名} - {应用名称}”展示，无菜单路由仅展示应用名称，加载期间展示“应用加载中…”，离开应用路由恢复 Flexmodel Apps；切换应用时清理旧应用与菜单状态。验证：flexmodel-apps-ui npm run build 通过。"
+    },
+    {
+      "id": "feat-045",
+      "name": "Apps - Header 新增记录快捷入口",
+      "description": "Header 右侧“新建”按钮读取菜单配置中的 FORM 关联项，选择表单后打开该表单的新增记录弹窗。",
+      "dependencies": [
+        "feat-043"
+      ],
+      "status": "done",
+      "evidence": "AppTopHeader 复用 Header 右侧“新建”按钮，在应用内展示菜单配置中的 FORM 关联项，支持加载中、空表单和加载失败状态；选择表单后打开 AppRecordCreateDialog，并复用列表页新增按钮的 AppRecordFormModal 提交新增记录；左侧菜单栏不再额外新增入口，原有编辑菜单入口保持空白新增/编辑能力。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-046",
+      "name": "Apps - 登录默认进入应用管理",
+      "description": "登录成功后默认跳转应用后台的应用管理页面，不再进入 mock 仪表盘页面。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "登录成功后默认跳转 /admin/apps，历史 /dashboard/home 来源路径也会映射到应用管理，避免继续进入 mock 仪表盘；根路由与未知路由兜底同步改为 /admin/apps。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。"
+    },
+    {
+      "id": "feat-047",
+      "name": "Apps - 记录弹窗与详情分栏样式统一",
+      "description": "统一新增/编辑记录弹窗与详情页的分栏标题、字段标签和栅格间距样式。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "新增 AppFormSectionTitle 共用分栏标题组件，详情页与记录表单弹窗复用同一主色竖条与标题样式；表单弹窗分栏不再使用普通底边线，字段标签改为详情页同款浅色小字号，栅格横向间距由 24px 调整为 32px。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
     }
   ]
 }

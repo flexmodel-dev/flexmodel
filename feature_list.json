@@ -465,6 +465,34 @@
       "dependencies": [],
       "status": "done",
       "evidence": "展开分组后的子菜单项渲染 child.icon，图标与文字使用同一 flex 布局并保持截断；折叠侧边栏时的分组弹层同步展示图标。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-049",
+      "name": "MCP - AppTools AI 友好字段名",
+      "description": "允许 AI 在创建表单字段时提供英文 snake_case 字段标识，服务端校验并保留；未提供时优先从 ASCII 标签推导友好名称，冲突或无法推导时才回退随机名称。",
+      "dependencies": [
+        "feat-042"
+      ],
+      "status": "done",
+      "evidence": "AppFormFieldCreateRequest 新增可选 name 并校验 ^[a-z][a-z0-9_]{0,63}$；AppFormService 统一处理批量创建和单字段创建，拒绝非法或冲突标识；create_app_form 工具说明要求 AI 生成简洁英文字段名；未传 name 时从 ASCII 标签推导。验证：mvn test -pl flexmodel-server -am -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。"
+    },
+    {
+      "id": "feat-050",
+      "name": "Apps UI - 移除团队功能",
+      "description": "从应用前端移除团队管理入口、路由、页面、用户设置展示、动态侧栏团队面板以及团队 mock 数据。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "移除 AdminTeams、/admin/bizuser/teams 路由、左侧管理菜单团队项、用户设置加入团队区域、动态页团队折叠面板、currentUser.teams 与 teams mock 数据；src 中已无团队相关引用。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-051",
+      "name": "Apps UI - 用户与角色路由简化",
+      "description": "将部门用户路由从 /admin/bizuser/users 调整为 /admin/users，将角色权限路由从 /admin/bizuser/role-privileges 调整为 /admin/role-privileges。",
+      "dependencies": [
+        "feat-050"
+      ],
+      "status": "done",
+      "evidence": "main.tsx 路由定义与 AdminLeftSidebar 导航地址同步改为新路径，src 中无旧 /admin/bizuser/users 或 /admin/bizuser/role-privileges 引用。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
     }
   ]
 }

@@ -176,7 +176,7 @@ public class AppFormService {
   ) {
     Map<String, AppFormFieldRecord> fieldRecords = new LinkedHashMap<>();
     for (PreparedField preparedField : preparedFields) {
-      String fieldName = generateFieldName(entity);
+      String fieldName = resolveFieldName(entity, preparedField.name(), preparedField.label());
       TypedField<?, ?> field = buildField(
         entityName, fieldName, preparedField.type(), preparedField.label(), preparedField.required());
       entity.addField(field);
@@ -230,6 +230,7 @@ public class AppFormService {
       validateFieldType(field.type());
       return new PreparedField(
         field.label().trim(),
+        normalizeFieldName(field.name()),
         field.type(),
         field.required(),
         normalizeOptions(field.type(), field.options()),
@@ -315,7 +316,7 @@ public class AppFormService {
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
     String entityName = entity.getName();
-    String fieldName = generateFieldName(entity);
+    String fieldName = resolveFieldName(entity, request.name(), request.label());
     List<AppFormFieldOptionResponse> options = normalizeOptions(request.type(), request.options());
     String referenceForm = normalizeReferenceForm(appId, request.type(), request.referenceForm());
     TypedField<?, ?> field = buildField(entityName, fieldName, request.type(), request.label().trim(),
@@ -464,6 +465,7 @@ public class AppFormService {
 
   private record PreparedField(
     String label,
+    String name,
     String type,
     boolean required,
     List<AppFormFieldOptionResponse> options,
@@ -999,16 +1001,62 @@ public class AppFormService {
     }
   }
 
-  private String generateFieldName(EntityDefinition entity) {
+  private String resolveFieldName(EntityDefinition entity, String requestedName, String label) {
+    if (!isBlank(requestedName)) {
+      String fieldName = requestedName.trim();
+      if (!FORM_NAME_PATTERN.matcher(fieldName).matches()) {
+        throw new ValidationException("字段标识只能以小写字母开头，并可包含小写字母、数字或下划线");
+      }
+      if (!isFieldNameAvailable(entity, fieldName)) {
+        throw new ValidationException("字段标识已存在: " + fieldName);
+      }
+      return fieldName;
+    }
+    return generateFieldName(entity, label);
+  }
+
+  private String normalizeFieldName(String name) {
+    if (name == null) {
+      return null;
+    }
+    String normalized = name.trim();
+    return normalized.isEmpty() ? null : normalized;
+  }
+
+  private String generateFieldName(EntityDefinition entity, String label) {
+    String candidate = friendlyFieldNameFromLabel(label);
+    if (candidate != null && isFieldNameAvailable(entity, candidate)) {
+      return candidate;
+    }
     Set<String> existing = entity.getFields().stream()
       .map(TypedField::getName)
       .collect(Collectors.toSet());
-    String candidate;
+    String generatedName;
     do {
-      candidate = "field_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)
+      generatedName = "field_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)
         .toLowerCase(Locale.ROOT);
-    } while (existing.contains(candidate) || BUILTIN_FIELDS.contains(candidate) || NAME_FIELD.equals(candidate));
-    return candidate;
+    } while (existing.contains(generatedName) || BUILTIN_FIELDS.contains(generatedName) || NAME_FIELD.equals(generatedName));
+    return generatedName;
+  }
+
+  private String friendlyFieldNameFromLabel(String label) {
+    if (isBlank(label)) {
+      return null;
+    }
+    String normalized = label.trim()
+      .toLowerCase(Locale.ROOT)
+      .replaceAll("[^a-z0-9_]+", "_")
+      .replaceAll("^_+|_+$", "");
+    if (normalized.isEmpty() || normalized.length() > 64 || !Character.isLetter(normalized.charAt(0))) {
+      return null;
+    }
+    return normalized;
+  }
+
+  private boolean isFieldNameAvailable(EntityDefinition entity, String fieldName) {
+    return !BUILTIN_FIELDS.contains(fieldName)
+      && !NAME_FIELD.equals(fieldName)
+      && entity.getFields().stream().noneMatch(field -> field.getName().equals(fieldName));
   }
 
   @SuppressWarnings("unchecked")

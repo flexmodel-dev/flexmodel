@@ -123,6 +123,7 @@ Flexmodel Apps 已具备应用、表单、菜单和记录的完整服务端能�
 [
   {
     "label": "客户名称",
+    "name": "customer_name",
     "type": "TEXT",
     "required": true
   },
@@ -153,9 +154,10 @@ LOCATION, SIGN, BOOL, STATE
 
 1. 先调用 `AppFormService.createForm`
 2. 按 `fieldsJson` 顺序调用 `AppFormService.createField`
-3. 字段名由服务端生成，AI 不传入字段内部名
-4. 返回最终 `AppFormResponse`，其中包含服务端生成的真实字段名和默认布局
-5. 如果任一字段创建失败，尽力调用 `deleteForm` 清理已创建表单，再返回错误
+3. AI 在每个字段上生成可选的英文 snake_case `name`，服务端校验后原样保留
+4. 未传 `name` 时，服务端优先从 ASCII 标签推导友好字段名，冲突或无法推导时回退随机字段名
+5. 返回最终 `AppFormResponse`，其中包含最终字段名和默认布局
+6. 如果任一字段创建失败，尽力调用 `deleteForm` 清理已创建表单，再返回错误
 
 **为什么布局必须单独保存**：`AppFormService.generateFieldName` 会生成随机内部字段名，AI 在表单创建前无法预知这些名称。因此
 `save_app_form_layout` 必须在拿到 `create_app_form` 返回值之后调用。
@@ -184,7 +186,7 @@ LOCATION, SIGN, BOOL, STATE
   },
   {
     "type": "FIELD",
-    "name": "field_ab12cd34ef56",
+    "name": "order_amount",
     "width": "HALF"
   },
   {

@@ -54,11 +54,12 @@ class AppToolsTest {
       AppFormResponse form = JsonUtils.parseToObject(appTools.create_app_form(
         appId, "订单", formName, "订单表单", true, """
           [
-            {"label":"订单金额","type":"DECIMAL","required":true}
+            {"label":"订单金额","name":"order_amount","type":"DECIMAL","required":true}
           ]
           """), AppFormResponse.class);
       assertEquals(formName, form.name());
       String amountName = fieldByName(form, "订单金额").name();
+      assertEquals("order_amount", amountName);
       assertEquals(2, form.layout().items().size());
 
       AppFormResponse savedForm = JsonUtils.parseToObject(appTools.save_app_form_layout(
@@ -176,6 +177,33 @@ class AppToolsTest {
       assertEquals(1, forms.length);
       assertEquals(form.fields(), forms[0].fields());
       assertEquals(form.layout(), forms[0].layout());
+    } finally {
+      deleteAppQuietly(appId);
+    }
+  }
+
+  @Test
+  void usesAiGeneratedFieldNamesAndRejectsInvalidNames() {
+    String appId = "app_tools_names_" + SUFFIX;
+    String formName = "name_form_" + SUFFIX;
+    try {
+      createApp(appId);
+      AppFormResponse form = JsonUtils.parseToObject(appTools.create_app_form(
+        appId, "订单", formName, "", false, """
+          [
+            {"label":"订单金额","name":"order_amount","type":"DECIMAL","required":true},
+            {"label":"客户邮箱","name":"customer_email","type":"EMAIL","required":true}
+          ]
+          """), AppFormResponse.class);
+
+      assertEquals("order_amount", fieldByName(form, "订单金额").name());
+      assertEquals("customer_email", fieldByName(form, "客户邮箱").name());
+
+      String result = appTools.create_app_form(
+        appId, "非法字段", formName + "_invalid", "", false, """
+          [{"label":"订单金额","name":"OrderAmount","type":"DECIMAL","required":true}]
+          """);
+      assertTrue(result.startsWith("Error: create_app_form failed - "));
     } finally {
       deleteAppQuietly(appId);
     }

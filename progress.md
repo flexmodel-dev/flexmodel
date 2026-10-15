@@ -39,6 +39,7 @@
 - `mvn test -pl flexmodel-server -am "-Dtest=AppMenuResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（8
   tests，0 failures，0 errors，含 ITEM 从嵌套分组移出到分组外的用例）。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+
 - 请求缓存修复后复跑 `flexmodel-apps-ui npm run build` 通过。
 - 空顶部菜单修复后复跑 `flexmodel-apps-ui npm run build` 通过。
 - 移除关联项选项后复跑 AppMenuResourceTest 验证 targets 仅返回 3 个内置页面。
@@ -1842,6 +1843,31 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 **左侧菜单分组项图标修复 (2026-10-14)：**
 
-- 修复展开分组后的子菜单项只显示文字、不显示配置图标的问题。
+- 修复展开分组后的子菜单项只显示文字、不展示配置图标的问题。
 - 折叠侧边栏时的分组弹层同样展示子菜单图标，并保持图标与文字的对齐和截断规则。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+
+**MCP AppTools AI 友好字段名 (2026-10-15)：**
+
+- `create_app_form` 的 `fieldsJson` 支持每个字段传入 AI 生成的 `name`，要求简洁英文 snake_case 并由服务端校验。
+- 服务端统一校验非法与冲突字段名；未传 `name` 时优先从 ASCII 标签推导（如 `Order Amount` → `order_amount`），无法推导或冲突时回退随机名。
+- 单字段创建接口同步复用该字段名解析逻辑，保持 REST 与 MCP 行为一致。
+- `mvn test -pl flexmodel-server -am -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（6 tests，0
+  failures，0 errors）。
+- `bash ./init.sh` 通过（全模块 clean compile + `flexmodel-engine` 测试）。
+
+**Apps UI 移除团队功能 (2026-10-15)：**
+
+- 删除管理中心的团队入口与 `/admin/bizuser/teams` 路由。
+- 删除团队列表页面、用户设置中的“加入团队”展示、动态页团队折叠面板以及 `teams` / `currentUser.teams` mock 数据。
+- `src` 中已无团队相关引用。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- `git diff --check` 通过。
+
+**Apps UI 用户与角色路由简化 (2026-10-15)：**
+
+- `/admin/bizuser/users` 调整为 `/admin/users`。
+- `/admin/bizuser/role-privileges` 调整为 `/admin/role-privileges`。
+- 路由定义与左侧管理菜单同步更新，`src` 中无旧路由残留。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+- `git diff --check` 通过。

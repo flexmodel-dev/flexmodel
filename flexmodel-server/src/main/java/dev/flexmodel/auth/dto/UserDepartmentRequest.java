@@ -14,5 +14,4 @@ public class UserDepartmentRequest {
   private String departmentId;
   private Boolean isMain;
   private String jobTitle;
-  private String managerUserId;
 }

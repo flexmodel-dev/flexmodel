@@ -19,6 +19,7 @@ public class UserRequest {
   private String name;
   private String email;
   private String password;
+  private String managerUserId;
   private List<String> roleIds = new ArrayList<>();
   private UserStatus status;
   private List<UserDepartmentRequest> departments = new ArrayList<>();

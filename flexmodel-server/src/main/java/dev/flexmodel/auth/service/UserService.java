@@ -74,6 +74,8 @@ public class UserService {
       userDepartmentService.findUserDepartmentsByUserIds(userIds);
     Map<String, Role> rolesById = roleService.findAll().stream()
       .collect(Collectors.toMap(Role::getId, role -> role));
+    Map<String, User> usersById = users.stream()
+      .collect(Collectors.toMap(User::getId, user -> user));
 
     return users.stream()
       .map(user -> UserResponse.fromUser(
@@ -82,7 +84,8 @@ public class UserService {
           .map(rolesById::get)
           .filter(role -> role != null)
           .toList(),
-        departmentsByUser.getOrDefault(user.getId(), List.of())
+        departmentsByUser.getOrDefault(user.getId(), List.of()),
+        usersById.get(user.getManagerUserId())
       ))
       .toList();
   }
@@ -98,7 +101,8 @@ public class UserService {
       .toList();
     var departments = userDepartmentService.findUserDepartmentsByUserIds(List.of(userId))
       .getOrDefault(userId, List.of());
-    return UserResponse.fromUser(user, roles, departments);
+    User managerUser = user.getManagerUserId() == null ? null : findById(user.getManagerUserId());
+    return UserResponse.fromUser(user, roles, departments, managerUser);
   }
 
   public UserResponse createUser(UserRequest request) {
@@ -115,6 +119,7 @@ public class UserService {
     user.setStatus(status);
     user.setCreatedBy(request.getCreatedBy());
     user.setUpdatedBy(request.getUpdatedBy());
+    user.setManagerUserId(resolveManagerUserId(userId, request.getManagerUserId()));
     user.setPasswordHash(resolvePasswordHash(userId, request.getPassword(), status));
 
     User savedUser = save(user);
@@ -154,6 +159,7 @@ public class UserService {
     user.setCreatedBy(existingUser.getCreatedBy());
     user.setUpdatedBy(request.getUpdatedBy());
     user.setCreatedAt(existingUser.getCreatedAt());
+    user.setManagerUserId(resolveManagerUserId(request.getId(), request.getManagerUserId()));
     user.setPasswordHash(resolvePasswordHash(request.getId(), request.getPassword(), status, existingUser));
 
     User savedUser = save(user);
@@ -213,6 +219,19 @@ public class UserService {
 
   private boolean isEmptyPassword(String password) {
     return password == null || password.isBlank();
+  }
+
+  private String resolveManagerUserId(String userId, String managerUserId) {
+    if (managerUserId == null || managerUserId.isBlank()) {
+      return null;
+    }
+    if (managerUserId.equals(userId)) {
+      throw new ValidationException("User cannot be their own manager");
+    }
+    if (userRepository.findById(managerUserId) == null) {
+      throw new NotFoundException("Manager user not found");
+    }
+    return managerUserId;
   }
 
   private boolean isEmpty(String value) {

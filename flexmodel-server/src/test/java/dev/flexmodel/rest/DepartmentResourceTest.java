@@ -87,13 +87,13 @@ class DepartmentResourceTest {
           "email": "department-user@test.com",
           "password": "test123",
           "status": "ACTIVE",
+          "managerUserId": "admin",
           "roleIds": ["admin"],
           "departments": [
             {
               "departmentId": "%s",
               "isMain": true,
-              "jobTitle": "工程师",
-              "managerUserId": "admin"
+              "jobTitle": "工程师"
             }
           ]
         }
@@ -105,7 +105,7 @@ class DepartmentResourceTest {
       .body("departments[0].departmentId", equalTo(departmentId))
       .body("departments[0].isMain", equalTo(true))
       .body("departments[0].jobTitle", equalTo("工程师"))
-      .body("departments[0].managerUserId", equalTo("admin"))
-      .body("departments[0].managerName", equalTo("Admin"));
+      .body("managerUserId", equalTo("admin"))
+      .body("managerName", equalTo("Admin"));
   }
 }

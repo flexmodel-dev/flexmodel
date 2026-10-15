@@ -60,6 +60,7 @@ model f_user {
   name? : String @length("255") @comment("名称"),
   email? : String @length("255") @comment("邮箱"),
   password_hash : String @length("255") @comment("密码HASH"),
+  manager_user_id? : String @length("64") @comment("直属主管用户ID"),
   status : UserStatus @default("ACTIVE") @comment("状态"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
@@ -67,6 +68,7 @@ model f_user {
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name : "IDX_USERNAME", unique: "true", fields: [name]),
   @index(name : "IDX_EMAIL", unique: "true", fields: [email]),
+  @index(name : "IDX_USER_MANAGER", fields : [manager_user_id]),
   @system,
   @comment("用户")
 }
@@ -90,7 +92,6 @@ model f_user_department {
   department_id : String @length("64") @comment("部门ID"),
   is_main : Boolean @default("false") @comment("是否主部门"),
   job_title? : String @length("64") @comment("职位"),
-  manager_user_id? : String @length("64") @comment("直属主管用户ID"),
   created_by? : String @comment("创建人"),
   updated_by? : String @comment("更新人"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
@@ -99,7 +100,6 @@ model f_user_department {
   @index(name : "IDX_USER_DEPARTMENT_USER", fields : [user_id]),
   @index(name : "IDX_USER_DEPARTMENT_DEPARTMENT", fields : [department_id]),
   @index(name : "IDX_USER_DEPARTMENT_MAIN", fields : [is_main]),
-  @index(name : "IDX_USER_DEPARTMENT_MANAGER", fields : [manager_user_id]),
   @system,
   @comment("用户部门关系")
 }

@@ -1,7 +1,6 @@
 package dev.flexmodel.auth.dto;
 
 import dev.flexmodel.codegen.entity.Department;
-import dev.flexmodel.codegen.entity.User;
 import dev.flexmodel.codegen.entity.UserDepartment;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,21 +13,16 @@ public class UserDepartmentResponse {
   private String departmentName;
   private Boolean isMain;
   private String jobTitle;
-  private String managerUserId;
-  private String managerName;
 
   public static UserDepartmentResponse fromUserDepartment(
     UserDepartment userDepartment,
-    Department departmentEntity,
-    User manager
+    Department departmentEntity
   ) {
     UserDepartmentResponse response = new UserDepartmentResponse();
     response.setDepartmentId(userDepartment.getDepartmentId());
     response.setDepartmentName(departmentEntity != null ? departmentEntity.getName() : null);
     response.setIsMain(Boolean.TRUE.equals(userDepartment.getIsMain()));
     response.setJobTitle(userDepartment.getJobTitle());
-    response.setManagerUserId(userDepartment.getManagerUserId());
-    response.setManagerName(manager != null ? manager.getName() : null);
     return response;
   }
 }

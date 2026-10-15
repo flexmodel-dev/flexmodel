@@ -16,6 +16,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import dev.flexmodel.auth.dto.UserRequest;
 import dev.flexmodel.auth.dto.UserResponse;
+import dev.flexmodel.common.SessionContext;
 
 import java.util.List;
 
@@ -30,6 +31,9 @@ public class UserResource {
 
   @Inject
   UserService userService;
+
+  @Inject
+  SessionContext sessionContext;
 
   @APIResponse(
     name = "200",
@@ -109,7 +113,7 @@ public class UserResource {
   @Path("/{userId}")
   public UserResponse updateUser(@PathParam("userId") String userId, UserRequest request) {
     request.setId(userId);
-    return userService.updateUser(request);
+    return userService.updateUser(request, sessionContext.getUserId());
   }
 
   @Parameter(name = "userId", description = "用户ID", in = ParameterIn.PATH)
@@ -117,7 +121,7 @@ public class UserResource {
   @DELETE
   @Path("/{userId}")
   public void deleteUser(@PathParam("userId") String userId) {
-    userService.deleteUser(userId);
+    userService.deleteUser(userId, sessionContext.getUserId());
   }
 
   @Schema(

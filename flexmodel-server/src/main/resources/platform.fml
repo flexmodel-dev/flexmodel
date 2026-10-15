@@ -48,12 +48,19 @@ model f_auth_api_key {
   @comment("API Key")
 }
 
+enum UserStatus {
+  ACTIVE,
+  DISABLED,
+  INVITED,
+  @system
+}
+
 model f_user {
   id : String @id @default(uuid()),
   name? : String @length("255") @comment("名称"),
   email? : String @length("255") @comment("邮箱"),
   password_hash : String @length("255") @comment("密码HASH"),
-  role_ids: String @length("255") @comment("角色ID, 逗号分隔"),
+  status : UserStatus @default("ACTIVE") @comment("状态"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
@@ -62,6 +69,54 @@ model f_user {
   @index(name : "IDX_EMAIL", unique: "true", fields: [email]),
   @system,
   @comment("用户")
+}
+
+model f_department {
+  id : String @id @default(uuid()),
+  name : String @length("255") @comment("部门名称"),
+  parent_id? : String @length("64") @comment("父级部门ID"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name : "IDX_DEPARTMENT_PARENT", fields : [parent_id]),
+  @system,
+  @comment("部门架构")
+}
+
+model f_user_department {
+  id : String @id @default(uuid()),
+  user_id : String @length("64") @comment("用户ID"),
+  department_id : String @length("64") @comment("部门ID"),
+  is_main : Boolean @default("false") @comment("是否主部门"),
+  job_title? : String @length("64") @comment("职位"),
+  manager_user_id? : String @length("64") @comment("直属主管用户ID"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name : "UQ_USER_DEPARTMENT", unique : "true", fields : [user_id, department_id]),
+  @index(name : "IDX_USER_DEPARTMENT_USER", fields : [user_id]),
+  @index(name : "IDX_USER_DEPARTMENT_DEPARTMENT", fields : [department_id]),
+  @index(name : "IDX_USER_DEPARTMENT_MAIN", fields : [is_main]),
+  @index(name : "IDX_USER_DEPARTMENT_MANAGER", fields : [manager_user_id]),
+  @system,
+  @comment("用户部门关系")
+}
+
+model f_user_role {
+  id : String @id @default(uuid()),
+  user_id : String @length("64") @comment("用户ID"),
+  role_id : String @length("64") @comment("角色ID"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name : "UQ_USER_ROLE", unique : "true", fields : [user_id, role_id]),
+  @index(name : "IDX_USER_ROLE_USER", fields : [user_id]),
+  @index(name : "IDX_USER_ROLE_ROLE", fields : [role_id]),
+  @system,
+  @comment("用户角色关系")
 }
 model f_role {
   id : String @id @unique @default(uuid()),
@@ -303,7 +358,11 @@ seed f_branch {
 }
 
 seed f_user {
-  {id: "admin", name: "Admin", password_hash: "172eee54aa664e9dd0536b063796e54e", created_at: "2025-08-30 19:58:23.000", role_ids: "admin"},
+  {id: "admin", name: "Admin", password_hash: "172eee54aa664e9dd0536b063796e54e", created_at: "2025-08-30 19:58:23.000", status: "ACTIVE"},
+}
+
+seed f_user_role {
+  {id: "admin_admin_role", user_id: "admin", role_id: "admin"},
 }
 
 seed f_role {

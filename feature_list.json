@@ -493,6 +493,24 @@
       ],
       "status": "done",
       "evidence": "main.tsx 路由定义与 AdminLeftSidebar 导航地址同步改为新路径，src 中无旧 /admin/bizuser/users 或 /admin/bizuser/role-privileges 引用。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-052",
+      "name": "Auth - 部门用户与角色关系真实接口",
+      "description": "补齐部门组织架构、用户多部门任职和用户多角色关系，管理页面从 mock 数据切换为真实接口；用户角色不再使用 role_ids 冗余字段。",
+      "dependencies": [
+        "feat-051"
+      ],
+      "status": "done",
+      "evidence": "platform.fml 新增 UserStatus、f_department、f_user_department、f_user_role，f_user_department 支持 is_main、job_title 和 manager_user_id，并移除 f_user.role_ids；后端新增部门、用户部门、用户角色 Repository/Service/Resource，AuthService 通过 f_user_role 解析权限；用户创建时可为空 ID 自动生成 UUID；flexmodel-apps-ui 的部门用户与角色权限页面接入 /api/departments、/api/users、/api/roles、/api/resources，新增/编辑部门弹窗不再展示上级部门字段，层级由节点新增操作隐式确定；部门直属人数为 0 时不展示数字徽标。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；mvn test -pl flexmodel-server -Dtest=AuthResourceTest,UserResourceTest,DepartmentResourceTest 通过（24 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-053",
+      "name": "Apps - 组织架构部门树操作优化",
+      "description": "部门树默认展开，节点右侧提供点击展开的更多操作下拉。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "部门树首次加载成功后默认展开全部节点，且不重置后续手动折叠状态；每个节点右侧展示更多图标，点击更多图标后展示新增部门、编辑部门、删除部门，节点文字保持左对齐，新增部门默认挂载到当前节点。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
     }
   ]
 }

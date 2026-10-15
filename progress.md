@@ -1871,3 +1871,26 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 路由定义与左侧管理菜单同步更新，`src` 中无旧路由残留。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
 - `git diff --check` 通过。
+
+**部门用户与角色关系真实接口 (2026-10-15)：**
+
+- `platform.fml` 新增 `UserStatus`、`f_department`、`f_user_department`、`f_user_role`，并移除 `f_user.role_ids`
+  ；系统不再保留逗号分隔角色的历史兼容。
+- `f_user_department` 支持 `is_main`、`job_title`、`manager_user_id`，可表达一人多部门、主部门、职位和直属主管；`f_user_role`
+  以联合唯一索引表达用户与角色多对多关系。
+- 后端新增部门、用户部门、用户角色 Repository/Service/Resource，用户接口返回部门、职位、主管、状态与角色明细，AuthService 改为通过
+  `f_user_role` 解析权限；创建用户未显式传 ID 时自动生成 UUID。
+- `flexmodel-apps-ui` 部门用户与角色权限页面接入 `/api/departments`、`/api/users`、`/api/roles`、`/api/resources`，支持部门
+  CRUD、用户多部门任职、直属主管、状态与角色配置。
+- 新增/编辑部门弹窗不展示“上级部门”字段；在某个节点上执行“新增部门”时自动挂到该节点，顶部按钮新建根部门。
+- `mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。
+- `mvn test -pl flexmodel-server -Dtest=AuthResourceTest,UserResourceTest,DepartmentResourceTest` 通过（24 tests，0
+  failures，0 errors）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示）。
+
+**组织架构部门树操作优化 (2026-10-15)：**
+
+- 部门树首次加载成功后默认展开全部部门节点，用户后续手动折叠状态不被刷新重置。
+- 每个部门节点右侧新增“更多”图标，点击“更多”图标后展示操作下拉。
+- 下拉包含新增部门、编辑部门、删除部门；新增部门默认以当前节点为上级部门，部门节点文字保持左对齐。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。

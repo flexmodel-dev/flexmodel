@@ -23,6 +23,8 @@ public class RoleService {
   ResourceRepository resourceRepository;
   @Inject
   ResourceService resourceService;
+  @Inject
+  UserRoleService userRoleService;
 
   public List<Role> findAll() {
     return roleRepository.findAll();
@@ -111,6 +113,7 @@ public class RoleService {
   }
 
   public void deleteRole(String roleId) {
+    userRoleService.deleteRelationsByRoleId(roleId);
     delete(roleId);
   }
 

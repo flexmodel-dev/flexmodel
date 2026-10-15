@@ -1,20 +1,16 @@
 package dev.flexmodel.auth.dto;
 
-import lombok.Getter;
-import dev.flexmodel.codegen.entity.User;
 import dev.flexmodel.codegen.entity.Role;
+import dev.flexmodel.codegen.entity.User;
+import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * @author cjbi
- */
-@Setter
 @Getter
+@Setter
 public class UserResponse {
 
   private String id;
@@ -24,13 +20,15 @@ public class UserResponse {
   private String updatedBy;
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
-  private List<UserRole> roles;
+  private String status;
+  private List<RoleSummary> roles = Collections.emptyList();
+  private List<UserDepartmentResponse> departments = Collections.emptyList();
 
-  public static UserResponse fromUser(User user) {
-    return fromUser(user, null);
-  }
-
-  public static UserResponse fromUser(User user, List<Role> allRoles) {
+  public static UserResponse fromUser(
+    User user,
+    List<Role> roles,
+    List<UserDepartmentResponse> departments
+  ) {
     UserResponse response = new UserResponse();
     response.setId(user.getId());
     response.setName(user.getName());
@@ -39,29 +37,21 @@ public class UserResponse {
     response.setUpdatedBy(user.getUpdatedBy());
     response.setCreatedAt(user.getCreatedAt());
     response.setUpdatedAt(user.getUpdatedAt());
-
-    if (user.getRoleIds() != null && !user.getRoleIds().isEmpty() && allRoles != null) {
-      List<String> roleIdList = Arrays.asList(user.getRoleIds().split(","));
-      List<UserRole> userRoles = allRoles.stream()
-        .filter(role -> roleIdList.contains(role.getId()))
-        .map(role -> {
-          UserRole userRole = new UserRole();
-          userRole.setId(role.getId());
-          userRole.setName(role.getName());
-          return userRole;
-        })
-        .collect(Collectors.toList());
-      response.setRoles(userRoles);
-    }
-
+    response.setStatus(user.getStatus() == null ? "ACTIVE" : user.getStatus().name());
+    response.setDepartments(departments);
+    response.setRoles(roles == null ? Collections.emptyList() : roles.stream().map(role -> {
+      RoleSummary summary = new RoleSummary();
+      summary.setId(role.getId());
+      summary.setName(role.getName());
+      return summary;
+    }).toList());
     return response;
   }
 
   @Getter
   @Setter
-  public static class UserRole {
+  public static class RoleSummary {
     private String id;
     private String name;
   }
-
 }

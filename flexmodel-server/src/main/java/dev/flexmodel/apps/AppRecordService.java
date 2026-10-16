@@ -3,6 +3,7 @@ package dev.flexmodel.apps;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.dto.AppFormResponse;
+import dev.flexmodel.apps.dto.AppFormViewTabRecord;
 import dev.flexmodel.apps.dto.AppReferenceValueResponse;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
@@ -52,6 +53,7 @@ public class AppRecordService {
     String search,
     String sortField,
     String sortOrder,
+    String viewTabId,
     String mainFormName,
     String mainRecordId,
     String referenceField
@@ -61,7 +63,7 @@ public class AppRecordService {
       appId, form, mainFormName, mainRecordId, referenceField);
     int normalizedPage = Math.max(page, 1);
     int normalizedSize = Math.clamp(size, 1, MAX_SIZE);
-    String filter = buildFilter(form.response(), search, context);
+    String filter = buildFilter(form.response(), search, viewTabId, context);
     String sort = buildSort(form.response(), sortField, sortOrder);
     PageDTO<Map<String, Object>> result = dataService.findPagingRecords(
       appId, form.entityName(), normalizedPage, normalizedSize, filter, sort,
@@ -428,19 +430,47 @@ public class AppRecordService {
   private String buildFilter(
     AppFormResponse form,
     String search,
+    String viewTabId,
     RecordContext context
   ) {
     Map<String, Object> searchFilter = buildSearchFilter(form, search);
-    if (context == null) {
-      return searchFilter == null ? null : JsonUtils.toJsonString(searchFilter);
-    }
-    Map<String, Object> relationFilter = Map.of(
+    Map<String, Object> viewTabFilter = resolveViewTabFilter(form, viewTabId);
+    Map<String, Object> relationFilter = context == null ? null : Map.of(
       context.referenceField(), Map.of("_eq", context.mainRecordId()));
-    if (searchFilter == null) {
-      return JsonUtils.toJsonString(relationFilter);
+    List<Map<String, Object>> filters = new ArrayList<>();
+    if (viewTabFilter != null) {
+      filters.add(viewTabFilter);
     }
-    return JsonUtils.toJsonString(Map.of(
-      "_and", List.of(relationFilter, searchFilter)));
+    if (relationFilter != null) {
+      filters.add(relationFilter);
+    }
+    if (searchFilter != null) {
+      filters.add(searchFilter);
+    }
+    if (filters.isEmpty()) {
+      return null;
+    }
+    if (filters.size() == 1) {
+      return JsonUtils.toJsonString(filters.getFirst());
+    }
+    return JsonUtils.toJsonString(Map.of("_and", filters));
+  }
+
+  private Map<String, Object> resolveViewTabFilter(AppFormResponse form, String viewTabId) {
+    if (viewTabId == null || viewTabId.isBlank() || "all".equals(viewTabId.trim())) {
+      return null;
+    }
+    String normalizedViewTabId = viewTabId.trim();
+    return (form.viewTabs() == null ? List.<AppFormViewTabRecord>of() : form.viewTabs()).stream()
+      .filter(tab -> tab != null && normalizedViewTabId.equals(tab.id()))
+      .findFirst()
+      .map(tab -> {
+        if (tab.filter() == null) {
+          throw new ValidationException("视图页签筛选条件不能为空");
+        }
+        return tab.filter();
+      })
+      .orElseThrow(() -> new ValidationException("视图页签不存在: " + normalizedViewTabId));
   }
 
   private String buildSort(AppFormResponse form, String sortField, String sortOrder) {

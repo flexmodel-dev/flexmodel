@@ -15,6 +15,8 @@ import java.util.List;
  * @param createdAt   创建时间
  * @param updatedAt   更新时间
  * @param fields      字段列表
+ * @param layout      表单布局
+ * @param viewTabs    视图页签配置
  */
 public record AppFormResponse(
   String name,
@@ -26,6 +28,7 @@ public record AppFormResponse(
   LocalDateTime createdAt,
   LocalDateTime updatedAt,
   List<AppFormFieldResponse> fields,
-  AppFormLayoutRecord layout
+  AppFormLayoutRecord layout,
+  List<AppFormViewTabRecord> viewTabs
 ) {
 }

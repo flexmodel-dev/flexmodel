@@ -521,6 +521,16 @@
       ],
       "status": "done",
       "evidence": "用户表格操作列提供最小尺寸的启用/停用按钮并保留原用户角色、部门与直属主管信息；新增/编辑用户弹窗不再展示状态选择器；PATCH /api/users/{userId} 使用 UserPatchRequest，status 与 avatar 均可局部更新且必须至少提交一个字段，f_user 新增 avatar 字段并在 UserResponse 返回；状态切换通过同一 PATCH 接口仅提交 status 字段；新增全局 message 组件并挂载到应用根部，后端“Current user cannot be disabled”等状态切换错误改为右上角全局提示，不再渲染为页面错误块。验证：mvn test -pl flexmodel-server -Dtest=UserResourceTest 通过（10 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-055",
+      "name": "Apps - 记录表格页签配置与筛选",
+      "description": "表单支持持久化自定义视图页签，页签使用原生 filter DSL 配置多个条件，记录列表按当前页签与搜索条件组合筛选。",
+      "dependencies": [
+        "feat-045"
+      ],
+      "status": "done",
+      "evidence": "AppFormRecord/AppFormResponse 新增顶层 viewTabs 字段；PATCH /api/apps/{appId}/forms/{formName} 仅支持 viewTabs 局部更新，校验页签数量、名称、ID、字段、操作符、类型和值；GET records 新增 viewTabId 参数，all/空值不过滤，未知页签返回 400，页签筛选与搜索、子表单上下文条件共同合并在 _and 中；表单更新、布局保存、字段更新和字段删除均保留或清理页签配置；前端固定展示“全部”页签，配置弹窗支持字段、操作符、值、多条件增删和页签持久化，切换页签会重置分页与选择。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -Dtest=AppRecordServiceTest,AppFormResourceTest,AppRecordResourceTest 通过（23 tests）；mvn test -pl flexmodel-engine 通过；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
     }
   ]
 }

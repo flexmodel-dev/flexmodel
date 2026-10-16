@@ -1,7 +1,9 @@
 package dev.flexmodel.apps;
 
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.dto.AppFormResponse;
+import dev.flexmodel.apps.dto.AppFormViewTabRecord;
 import dev.flexmodel.apps.dto.AppReferenceValueResponse;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.dto.PageDTO;
@@ -14,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class AppRecordServiceTest {
 
@@ -25,7 +28,7 @@ class AppRecordServiceTest {
       "customer_id", "Customer", "REFERENCE", false, false, null, "customer");
     AppFormResponse form = new AppFormResponse(
       "orders", "Orders", "", "name", "name", true,
-      LocalDateTime.now(), LocalDateTime.now(), List.of(nameField, referenceField), null);
+      LocalDateTime.now(), LocalDateTime.now(), List.of(nameField, referenceField), null, List.of());
     RecordingDataService dataService = new RecordingDataService();
     AppRecordService service = new AppRecordService();
     service.appFormService = new StubAppFormService(form);
@@ -33,7 +36,7 @@ class AppRecordServiceTest {
     service.sessionContext = new SessionContext();
 
     service.findRecords(
-      "app", "orders", 1, 20, null, null, null, null, null, null);
+      "app", "orders", 1, 20, null, null, null, null, null, null, null);
 
     assertEquals(List.of("customer_id"), dataService.expand);
   }
@@ -46,12 +49,12 @@ class AppRecordServiceTest {
       "customer_id", "Customer", "REFERENCE", false, false, null, "customer");
     AppFormResponse orderForm = new AppFormResponse(
       "orders", "Orders", "", "name", "name", true,
-      LocalDateTime.now(), LocalDateTime.now(), List.of(orderName, customerReference), null);
+      LocalDateTime.now(), LocalDateTime.now(), List.of(orderName, customerReference), null, List.of());
     AppFormFieldResponse customerName = new AppFormFieldResponse(
       "name", "Name", "TEXT", true, false, null, null);
     AppFormResponse customerForm = new AppFormResponse(
       "customer", "Customer", "", "name", "name", true,
-      LocalDateTime.now(), LocalDateTime.now(), List.of(customerName), null);
+      LocalDateTime.now(), LocalDateTime.now(), List.of(customerName), null, List.of());
     RenderingDataService dataService = new RenderingDataService();
     AppRecordService service = new AppRecordService();
     service.appFormService = new StubAppFormService(Map.of(
@@ -63,12 +66,72 @@ class AppRecordServiceTest {
     AppReferenceValueResponse expected = new AppReferenceValueResponse(
       "customer-1", "Customer One", "customer");
     PageDTO<Map<String, Object>> page = service.findRecords(
-      "app", "orders", 1, 20, null, null, null, null, null, null);
+      "app", "orders", 1, 20, null, null, null, null, null, null, null);
     assertEquals(expected, page.list().getFirst().get("customer_id"));
 
     Map<String, Object> record = service.findRecord(
       "app", "orders", "order-1", null, null, null);
     assertEquals(expected, record.get("customer_id"));
+  }
+
+  @Test
+  void findRecordsAppliesViewTabFilter() {
+    AppFormFieldResponse nameField = new AppFormFieldResponse(
+      "name", "Name", "TEXT", true, false, null, null);
+    AppFormResponse form = new AppFormResponse(
+      "orders", "Orders", "", "name", "name", true,
+      LocalDateTime.now(), LocalDateTime.now(), List.of(nameField), null,
+      List.of(new AppFormViewTabRecord("zhang", "张姓", Map.of(
+        "_and", List.of(Map.of("name", Map.of("_contains", "张")))))));
+    RecordingDataService dataService = new RecordingDataService();
+    AppRecordService service = new AppRecordService();
+    service.appFormService = new StubAppFormService(form);
+    service.dataService = dataService;
+    service.sessionContext = new SessionContext();
+
+    service.findRecords(
+      "app", "orders", 1, 20, null, null, null, "zhang", null, null, null);
+
+    List<?> conditions = (List<?>) JsonUtils.parseToMap(dataService.filter).get("_and");
+    assertEquals(Map.of("name", Map.of("_contains", "张")), conditions.getFirst());
+  }
+
+  @Test
+  void findRecordsCombinesViewTabAndSearchFilters() {
+    AppFormFieldResponse nameField = new AppFormFieldResponse(
+      "name", "Name", "TEXT", true, false, null, null);
+    AppFormResponse form = new AppFormResponse(
+      "orders", "Orders", "", "name", "name", true,
+      LocalDateTime.now(), LocalDateTime.now(), List.of(nameField), null,
+      List.of(new AppFormViewTabRecord("zhang", "张姓", Map.of(
+        "_and", List.of(Map.of("name", Map.of("_contains", "张")))))));
+    RecordingDataService dataService = new RecordingDataService();
+    AppRecordService service = new AppRecordService();
+    service.appFormService = new StubAppFormService(form);
+    service.dataService = dataService;
+    service.sessionContext = new SessionContext();
+
+    service.findRecords(
+      "app", "orders", 1, 20, "三", null, null, "zhang", null, null, null);
+
+    Map<String, Object> filter = JsonUtils.parseToMap(dataService.filter);
+    assertEquals(2, ((List<?>) filter.get("_and")).size());
+  }
+
+  @Test
+  void findRecordsRejectsUnknownViewTab() {
+    AppFormFieldResponse nameField = new AppFormFieldResponse(
+      "name", "Name", "TEXT", true, false, null, null);
+    AppFormResponse form = new AppFormResponse(
+      "orders", "Orders", "", "name", "name", true,
+      LocalDateTime.now(), LocalDateTime.now(), List.of(nameField), null, List.of());
+    AppRecordService service = new AppRecordService();
+    service.appFormService = new StubAppFormService(form);
+    service.dataService = new RecordingDataService();
+    service.sessionContext = new SessionContext();
+
+    assertThrows(dev.flexmodel.common.ValidationException.class, () -> service.findRecords(
+      "app", "orders", 1, 20, null, null, null, "unknown", null, null, null));
   }
 
   private static final class StubAppFormService extends AppFormService {
@@ -91,6 +154,7 @@ class AppRecordServiceTest {
 
   private static final class RecordingDataService extends DataService {
     private List<String> expand;
+    private String filter;
 
     @Override
     public PageDTO<Map<String, Object>> findPagingRecords(
@@ -103,6 +167,7 @@ class AppRecordServiceTest {
       List<String> expand
     ) {
       this.expand = expand;
+      this.filter = filter;
       return new PageDTO<>(List.of(), 0L);
     }
   }

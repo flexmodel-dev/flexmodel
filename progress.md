@@ -1906,3 +1906,17 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 操作按钮新增 `xs` 最小尺寸规格，用户表格的启用/停用、编辑、删除按钮统一使用该尺寸。
 - `mvn test -pl flexmodel-server -Dtest=UserResourceTest` 通过（10 tests，0 failures，0 errors）。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**记录表格页签配置与筛选 (2026-10-16)：**
+
+- 表单元数据新增顶层 `viewTabs`，不与 `layout.tabs` 混用；`PATCH /api/apps/{appId}/forms/{formName}` 支持 `viewTabs` 局部更新。
+- 页签条件使用原生 filter DSL：`{"_and":[{"name":{"_contains":"张"}}]}`，支持最多 20 个页签、每页签 10 个条件，并按字段类型校验操作符与值。
+- `GET /api/apps/{appId}/forms/{formName}/records` 新增 `viewTabId`；`all` 或空值不过滤，未知页签返回
+  400，页签条件与搜索、子表单上下文条件合并到 `_and`。
+- 表单更新、布局保存和字段变更保留页签；删除字段会移除引用该字段的页签条件，条件清空后删除页签。
+- 前端固定生成“全部”页签，配置弹窗支持字段、操作符、值与多条件编辑；切换页签重置分页和选择，保存后通过 PATCH 持久化。
+- 验证：`mvn compile -pl flexmodel-server -am -DskipTests` 通过；
+  `mvn test -pl flexmodel-server -Dtest=AppRecordServiceTest,AppFormResourceTest,AppRecordResourceTest` 通过（23 tests，0
+  failures，0 errors）；`mvn test -pl flexmodel-engine` 通过；`flexmodel-apps-ui npm run build` 通过。
+- 环境备注：`bash ./init.sh` 在 clean 阶段因本机已有进程占用 `flexmodel-server/target/flexmodel-server-dev.jar`
+  失败；本次已使用不执行 clean 的后端编译与目标测试完成验证。

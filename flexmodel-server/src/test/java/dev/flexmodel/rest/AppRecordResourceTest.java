@@ -153,6 +153,82 @@ public class AppRecordResourceTest {
   }
 
   @Test
+  void testFindRecordsByViewTab() {
+    Response form = createForm("""
+      {
+        "label": "页签记录表单-%s",
+        "name": "view_record_form_%s",
+        "createDisplayField": true
+      }
+      """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
+    String formName = form.body().path("name");
+    String recordsPath = BASE_PATH + "/" + formName + "/records";
+
+    try {
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "viewTabs": [
+              {
+                "id": "zhang",
+                "label": "张姓",
+                "filter": {
+                  "_and": [
+                    {"name": {"_contains": "张"}}
+                  ]
+                }
+              }
+            ]
+          }
+          """)
+        .when()
+        .patch(BASE_PATH + "/" + formName)
+        .then()
+        .statusCode(200);
+
+      createRecord(recordsPath, "{\"name\": \"张三\"}", 201);
+      createRecord(recordsPath, "{\"name\": \"李四\"}", 201);
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .param("page", 1)
+        .param("size", 20)
+        .param("viewTabId", "zhang")
+        .get(recordsPath)
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(1))
+        .body("list[0].name", equalTo("张三"));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .param("page", 1)
+        .param("size", 20)
+        .param("viewTabId", "all")
+        .get(recordsPath)
+        .then()
+        .statusCode(200)
+        .body("total", greaterThanOrEqualTo(2));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .param("page", 1)
+        .param("size", 20)
+        .param("viewTabId", "unknown")
+        .get(recordsPath)
+        .then()
+        .statusCode(400);
+    } finally {
+      deleteFormQuietly(formName);
+    }
+  }
+
+  @Test
   void testFindRecordsUnauthorized() {
     given()
       .when()
@@ -469,6 +545,17 @@ public class AppRecordResourceTest {
       .body(body)
       .when()
       .post(BASE_PATH);
+    response.then().statusCode(expectedStatus);
+    return response;
+  }
+
+  private Response createRecord(String recordsPath, String body, int expectedStatus) {
+    Response response = given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body(body)
+      .when()
+      .post(recordsPath);
     response.then().statusCode(expectedStatus);
     return response;
   }

@@ -108,6 +108,86 @@ public class AppFormResourceTest {
   }
 
   @Test
+  void testPatchViewTabsAndLayoutPreservation() {
+    Response form = createForm("""
+      {
+        "label": "页签表单-%s",
+        "name": "view_tab_form_%s",
+        "description": "视图页签测试",
+        "createDisplayField": true
+      }
+      """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
+    String formName = form.body().path("name");
+
+    try {
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "viewTabs": [
+              {
+                "id": "zhang",
+                "label": "张姓",
+                "filter": {
+                  "_and": [
+                    {"name": {"_contains": "张"}}
+                  ]
+                }
+              }
+            ]
+          }
+          """)
+        .when()
+        .patch(BASE_PATH + "/" + formName)
+        .then()
+        .statusCode(200)
+        .body("label", equalTo("页签表单-" + TEST_SUFFIX))
+        .body("description", equalTo("视图页签测试"))
+        .body("viewTabs[0].id", equalTo("zhang"))
+        .body("viewTabs[0].label", equalTo("张姓"))
+        .body("viewTabs[0].filter._and[0].name._contains", equalTo("张"));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {
+            "items": [
+              {"type": "FIELD", "name": "name", "width": "HALF"}
+            ]
+          }
+          """)
+        .when()
+        .put(BASE_PATH + "/" + formName + "/layout")
+        .then()
+        .statusCode(200)
+        .body("viewTabs[0].id", equalTo("zhang"));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH + "/" + formName)
+        .then()
+        .statusCode(200)
+        .body("viewTabs[0].label", equalTo("张姓"));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"viewTabs": [{"id": "zhang", "label": "张姓", "filter": {"_or": []}}]}
+          """)
+        .when()
+        .patch(BASE_PATH + "/" + formName)
+        .then()
+        .statusCode(400);
+    } finally {
+      deleteFormQuietly(formName);
+    }
+  }
+
+  @Test
   void testFormFieldCrudAndTypeMappings() {
     Response form = createForm("""
       {

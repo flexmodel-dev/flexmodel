@@ -43,12 +43,13 @@ public class AppRecordResource {
     @QueryParam("search") String search,
     @QueryParam("sortField") String sortField,
     @QueryParam("sortOrder") String sortOrder,
+    @QueryParam("viewTabId") String viewTabId,
     @QueryParam("mainFormName") String mainFormName,
     @QueryParam("mainRecordId") String mainRecordId,
     @QueryParam("referenceField") String referenceField
   ) {
     return appRecordService.findRecords(
-      appId, formName, page, size, search, sortField, sortOrder,
+      appId, formName, page, size, search, sortField, sortOrder, viewTabId,
       mainFormName, mainRecordId, referenceField);
   }
 

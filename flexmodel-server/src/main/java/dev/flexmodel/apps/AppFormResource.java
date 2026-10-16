@@ -5,6 +5,7 @@ import dev.flexmodel.apps.dto.AppFormLayoutRequest;
 import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.dto.AppFormFieldUpdateRequest;
+import dev.flexmodel.apps.dto.AppFormPatchRequest;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppFormUpdateRequest;
 import jakarta.inject.Inject;
@@ -13,6 +14,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -70,6 +72,18 @@ public class AppFormResource {
     @Valid AppFormUpdateRequest request
   ) {
     return appFormService.updateForm(appId, formName, request);
+  }
+
+  @Parameter(name = "formName", description = "表单名称", in = ParameterIn.PATH, required = true)
+  @Operation(summary = "局部更新应用表单")
+  @PATCH
+  @Path("/{formName}")
+  public AppFormResponse patch(
+    @PathParam("appId") String appId,
+    @PathParam("formName") String formName,
+    @Valid AppFormPatchRequest request
+  ) {
+    return appFormService.patchForm(appId, formName, request);
   }
 
   @Parameter(name = "formName", description = "表单名", in = ParameterIn.PATH, required = true)

@@ -16,6 +16,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import dev.flexmodel.auth.dto.UserRequest;
 import dev.flexmodel.auth.dto.UserResponse;
+import dev.flexmodel.auth.dto.UserPatchRequest;
 import dev.flexmodel.common.SessionContext;
 
 import java.util.List;
@@ -114,6 +115,37 @@ public class UserResource {
   public UserResponse updateUser(@PathParam("userId") String userId, UserRequest request) {
     request.setId(userId);
     return userService.updateUser(request, sessionContext.getUserId());
+  }
+
+  @RequestBody(
+    name = "状态请求体",
+    content = {@Content(
+      mediaType = "application/json",
+      schema = @Schema(
+        implementation = UserPatchRequest.class
+      )
+    )
+    })
+  @APIResponse(
+    name = "200",
+    responseCode = "200",
+    description = "OK",
+    content = {@Content(
+      mediaType = "application/json",
+      schema = @Schema(
+        implementation = UserResponse.class
+      )
+    )
+    })
+  @Parameter(name = "userId", description = "用户ID", in = ParameterIn.PATH)
+  @Operation(summary = "局部更新用户")
+  @PATCH
+  @Path("/{userId}")
+  public UserResponse patchUser(
+    @PathParam("userId") String userId,
+    UserPatchRequest request
+  ) {
+    return userService.patchUser(userId, request, sessionContext.getUserId());
   }
 
   @Parameter(name = "userId", description = "用户ID", in = ParameterIn.PATH)

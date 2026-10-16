@@ -59,6 +59,7 @@ model f_user {
   id : String @id @default(uuid()),
   name? : String @length("255") @comment("名称"),
   email? : String @length("255") @comment("邮箱"),
+  avatar? : String @length("2048") @comment("头像"),
   password_hash : String @length("255") @comment("密码HASH"),
   manager_user_id? : String @length("64") @comment("直属主管用户ID"),
   status : UserStatus @default("ACTIVE") @comment("状态"),

@@ -16,6 +16,7 @@ public class UserResponse {
   private String id;
   private String name;
   private String email;
+  private String avatar;
   private String createdBy;
   private String updatedBy;
   private LocalDateTime createdAt;
@@ -36,6 +37,7 @@ public class UserResponse {
     response.setId(user.getId());
     response.setName(user.getName());
     response.setEmail(user.getEmail());
+    response.setAvatar(user.getAvatar());
     response.setCreatedBy(user.getCreatedBy());
     response.setUpdatedBy(user.getUpdatedBy());
     response.setCreatedAt(user.getCreatedAt());

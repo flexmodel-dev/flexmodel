@@ -2,6 +2,7 @@ package dev.flexmodel.auth.service;
 
 import dev.flexmodel.auth.dto.UserRequest;
 import dev.flexmodel.auth.dto.UserResponse;
+import dev.flexmodel.auth.dto.UserPatchRequest;
 import dev.flexmodel.auth.exception.AuthException;
 import dev.flexmodel.auth.repository.UserRepository;
 import dev.flexmodel.codegen.entity.Role;
@@ -170,6 +171,45 @@ public class UserService {
       request.getUpdatedBy()
     );
     return findUserById(savedUser.getId());
+  }
+
+  public UserResponse patchUser(
+    String userId,
+    UserPatchRequest request,
+    String currentUserId
+  ) {
+    if (request == null || (request.status() == null && request.avatar() == null)) {
+      throw new ValidationException("At least one field is required");
+    }
+    User existingUser = findById(userId);
+    if (existingUser == null) {
+      throw new NotFoundException("User not found");
+    }
+    UserStatus status = request.status();
+    if (status != null) {
+      if (status == UserStatus.DISABLED && userId.equals(currentUserId)) {
+        throw new ValidationException("Current user cannot be disabled");
+      }
+      if (status == UserStatus.ACTIVE
+        && normalizeStatus(existingUser.getStatus()) == UserStatus.INVITED
+        && isEmptyPassword(existingUser.getPasswordHash())) {
+        throw new ValidationException("Password is required before activating an invited user");
+      }
+    }
+    String avatar = request.avatar();
+    if (avatar != null && avatar.length() > 2048) {
+      throw new ValidationException("Avatar cannot be longer than 2048 characters");
+    }
+
+    if (status != null) {
+      existingUser.setStatus(status);
+    }
+    if (avatar != null) {
+      existingUser.setAvatar(avatar);
+    }
+    existingUser.setUpdatedBy(currentUserId);
+    save(existingUser);
+    return findUserById(userId);
   }
 
   public void deleteUser(String userId, String currentUserId) {

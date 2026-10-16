@@ -511,6 +511,16 @@
       "dependencies": [],
       "status": "done",
       "evidence": "部门树首次加载成功后默认展开全部节点，且不重置后续手动折叠状态；每个节点右侧展示更多图标，点击更多图标后展示新增部门、编辑部门、删除部门，节点文字保持左对齐，新增部门默认挂载到当前节点。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-054",
+      "name": "Apps UI - 用户状态行内操作与全局提示",
+      "description": "用户启用/停用从新增/编辑表单移至行内最小尺寸操作按钮，PATCH 支持状态与头像局部更新，状态切换失败通过全局 message 提示。",
+      "dependencies": [
+        "feat-052"
+      ],
+      "status": "done",
+      "evidence": "用户表格操作列提供最小尺寸的启用/停用按钮并保留原用户角色、部门与直属主管信息；新增/编辑用户弹窗不再展示状态选择器；PATCH /api/users/{userId} 使用 UserPatchRequest，status 与 avatar 均可局部更新且必须至少提交一个字段，f_user 新增 avatar 字段并在 UserResponse 返回；状态切换通过同一 PATCH 接口仅提交 status 字段；新增全局 message 组件并挂载到应用根部，后端“Current user cannot be disabled”等状态切换错误改为右上角全局提示，不再渲染为页面错误块。验证：mvn test -pl flexmodel-server -Dtest=UserResourceTest 通过（10 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
     }
   ]
 }

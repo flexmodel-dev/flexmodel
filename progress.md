@@ -1894,3 +1894,15 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 每个部门节点右侧新增“更多”图标，点击“更多”图标后展示操作下拉。
 - 下拉包含新增部门、编辑部门、删除部门；新增部门默认以当前节点为上级部门，部门节点文字保持左对齐。
 - `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**用户状态行内操作与全局提示 (2026-10-15)：**
+
+- 用户表格操作列新增“启用/停用”按钮，切换状态时保留用户原角色、部门任职与直属主管信息。
+- 新增/编辑用户弹窗移除状态选择器，状态只通过行内按钮修改。
+- `PATCH /api/users/{userId}` 使用 `UserPatchRequest` 支持 `status` 与 `avatar` 局部更新，两者均可选且必须至少提交一个字段；状态切换仅提交
+  `status`，不再重组完整用户 payload 或使用状态子资源。
+- `f_user` 新增 `avatar` 字段，`UserResponse` 同步返回头像；新增局部更新头像的集成测试。
+- 新增全局 `message` 轻量提示组件并挂载到应用根部；停用当前登录用户等后端校验错误改为右上角全局提示，不再占用页面错误区域。
+- 操作按钮新增 `xs` 最小尺寸规格，用户表格的启用/停用、编辑、删除按钮统一使用该尺寸。
+- `mvn test -pl flexmodel-server -Dtest=UserResourceTest` 通过（10 tests，0 failures，0 errors）。
+- `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。

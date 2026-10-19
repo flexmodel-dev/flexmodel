@@ -73,6 +73,7 @@ public class AppTools {
   @Tool(description = """
     List all forms of a Flexmodel App. Use this tool to confirm form names \
     and generated field names before saving a layout or creating records.\
+    The list includes the built-in forms f_user, f_role, and f_department.\
     """)
   public String list_app_forms(
     @ToolArg(description = "The app ID") String appId
@@ -148,7 +149,10 @@ public class AppTools {
     one operator. Numeric and date/time fields support _eq, _ne, _gt, _gte, \
     _lt, and _lte. BOOL and choice/reference-like fields support _eq and _ne. \
     Other text-like fields also support _contains, _not_contains, \
-    _starts_with, and _ends_with.\
+    _starts_with, and _ends_with. A REFERENCE field must set referenceForm to \
+    a form name returned by list_app_forms. The available reference targets \
+    include the built-in forms f_user, f_role, and f_department, plus any \
+    user-created forms in the same app.\
     """)
   public String create_app_form(
     @ToolArg(description = "The appId returned by create_app") String appId,

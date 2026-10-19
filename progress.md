@@ -2134,3 +2134,27 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - FormDesign 在 appId 为 system 时不再返回 /admin/apps/system/settings/forms，避免把 system 当作普通应用加载。
 - f_user、f_department 返回 /admin/users，f_role 返回 /admin/role-privileges；普通应用表单仍返回对应应用的表单管理页。
 - 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。
+
+**系统审计字段与 AppTools 内置引用目标 (2026-10-19)：**
+
+- 应用表单的 created_by、updated_by 字段契约改为 REFERENCE，并引用内置 f_user 表单。
+- AppTools 的 list_app_forms 与 create_app_form 说明内置表单可作为 REFERENCE 目标，可用目标包括
+  f_user、f_role、f_department。
+- 新增 createsReferenceFieldsToBuiltinForms 测试，覆盖三个内置引用字段和两个系统审计字段。
+- 验证：mvn test -pl flexmodel-server -Dtest=AppToolsTest#createsReferenceFieldsToBuiltinForms
+  -Dsurefire.failIfNoSpecifiedTests=false
+  通过（1 test，0 failures，0 errors）。
+
+**应用记录接口布局字段投影 (2026-10-19)**
+
+- AppRecordService 的列表、详情、创建返回与更新返回统一在引用渲染后执行布局投影；仅输出 FIELD 节点引用的字段与
+  SUBFORM.referenceField，并始终保留 id。
+- 未进入布局的实体字段不再通过 /records 响应暴露；子表单关联字段保留，避免主子记录上下文丢失。
+- AppRecordServiceTest 增加未布局字段不返回的用例，并让引用渲染用例显式提供布局。按用户要求，本次未运行构建或测试。
+
+**Apps UI NTEXT Textarea (2026-10-19)**
+
+- Added a shared Textarea primitive with the existing input styling, focus ring, disabled state, and vertical resizing.
+- AppRecordFormModal now renders NTEXT fields with Textarea for both record creation and editing; other field types
+  continue using Input.
+- Static inspection confirmed the branch and import are present. Build and tests were not run per user request.

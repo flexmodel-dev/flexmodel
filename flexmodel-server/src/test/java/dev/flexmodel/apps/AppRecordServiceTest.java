@@ -2,6 +2,8 @@ package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
+import dev.flexmodel.apps.dto.AppFormItemRecord;
+import dev.flexmodel.apps.dto.AppFormLayoutRecord;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppFormViewTabRecord;
 import dev.flexmodel.apps.dto.AppReferenceValueResponse;
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,7 +52,8 @@ class AppRecordServiceTest {
       "customer_id", "Customer", "REFERENCE", false, false, null, "customer");
     AppFormResponse orderForm = new AppFormResponse(
       "orders", "Orders", "", "name", "name", true,
-      LocalDateTime.now(), LocalDateTime.now(), List.of(orderName, customerReference), null, List.of());
+      LocalDateTime.now(), LocalDateTime.now(), List.of(orderName, customerReference),
+      layout("name", "customer_id"), List.of());
     AppFormFieldResponse customerName = new AppFormFieldResponse(
       "name", "Name", "TEXT", true, false, null, null);
     AppFormResponse customerForm = new AppFormResponse(
@@ -72,6 +76,29 @@ class AppRecordServiceTest {
     Map<String, Object> record = service.findRecord(
       "app", "orders", "order-1", null, null, null);
     assertEquals(expected, record.get("customer_id"));
+  }
+
+  @Test
+  void findRecordsOnlyReturnsFieldsUsedInLayout() {
+    AppFormFieldResponse nameField = new AppFormFieldResponse(
+      "name", "Name", "TEXT", true, false, null, null);
+    AppFormFieldResponse secretField = new AppFormFieldResponse(
+      "secret", "Secret", "TEXT", false, false, null, null);
+    AppFormResponse form = new AppFormResponse(
+      "orders", "Orders", "", "name", "name", true,
+      LocalDateTime.now(), LocalDateTime.now(), List.of(nameField, secretField),
+      layout("name"), List.of());
+    RenderingDataService dataService = new RenderingDataService();
+    AppRecordService service = new AppRecordService();
+    service.appFormService = new StubAppFormService(form);
+    service.dataService = dataService;
+    service.sessionContext = new SessionContext();
+
+    Map<String, Object> record = service.findRecords(
+        "app", "orders", 1, 20, null, null, null, null, null, null, null)
+      .list().getFirst();
+
+    assertEquals(Set.of("id", "name"), record.keySet());
   }
 
   @Test
@@ -152,6 +179,13 @@ class AppRecordServiceTest {
 
   }
 
+  private static AppFormLayoutRecord layout(String... fieldNames) {
+    return new AppFormLayoutRecord(List.of(fieldNames).stream()
+      .map(fieldName -> new AppFormItemRecord(
+        "FIELD", fieldName, null, null, null, null, null, null, null))
+      .toList());
+  }
+
   private static final class RecordingDataService extends DataService {
     private List<String> expand;
     private String filter;
@@ -188,6 +222,7 @@ class AppRecordServiceTest {
         record.put("id", "order-1");
         record.put("name", "Order One");
         record.put("customer_id", "customer-1");
+        record.put("secret", "hidden-value");
         return new PageDTO<>(List.of(record), 1L);
       }
       if ("customer".equals(modelName)) {

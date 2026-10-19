@@ -683,6 +683,36 @@
       ],
       "status": "done",
       "evidence": "FormDesigner.saveFieldCreate 创建字段后同步更新 items 和 form.layout，新字段默认 HALF 宽度并保留填写提示；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-071",
+      "name": "Apps - 系统审计字段与内置引用目标",
+      "description": "应用表单的 created_by/updated_by 使用引用字段指向 f_user，AppTools 创建表单时可引用 f_user、f_role、f_department 三个内置表单。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "done",
+      "evidence": "AppFormService 为 created_by/updated_by 生成 REFERENCE 且 referenceForm=f_user 的字段契约；AppTools 的 list_app_forms 与 create_app_form 说明内置表单可作为 REFERENCE 目标，并新增 createsReferenceFieldsToBuiltinForms 测试覆盖三个内置引用和两个系统审计字段。验证：mvn test -pl flexmodel-server -Dtest=AppToolsTest#createsReferenceFieldsToBuiltinForms -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test，0 failures，0 errors）。"
+    },
+    {
+      "id": "feat-072",
+      "name": "Apps - 记录接口布局字段投影",
+      "description": "应用表单 /records 响应仅返回表单布局中使用的字段，同时保留记录 id 和子表单关联字段，避免未布局字段暴露给前端。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "in-progress",
+      "evidence": "AppRecordService 新增布局投影：列表、详情、创建返回和更新返回均先完成引用渲染，再按 FIELD 节点与 SUBFORM.referenceField 输出字段，id 始终保留；同步调整 AppRecordServiceTest 覆盖未布局字段不返回。按用户要求，本次未运行构建或测试。"
+    },
+    {
+      "id": "feat-073",
+      "name": "Apps UI - NTEXT Textarea control",
+      "description": "Use a resizable Textarea control for multiline text fields in the shared record create/edit modal.",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "in-progress",
+      "evidence": "Added a Textarea primitive and routed NTEXT fields through it; verification not run per user request."
     }
   ]
 }

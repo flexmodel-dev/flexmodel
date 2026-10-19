@@ -161,8 +161,8 @@ public class AppFormService {
     List<PreparedField> preparedFields = prepareFields(appId, fields);
     ensureUniqueFormName(project, appId, formName);
     EntityDefinition entity = buildFormEntity(formName, label, request.createDisplayField());
-    Map<String, AppFormFieldRecord> fieldRecords = addPreparedFields(
-      formName, entity, preparedFields);
+    Map<String, AppFormFieldRecord> fieldRecords = systemFieldRecords();
+    fieldRecords.putAll(addPreparedFields(formName, entity, preparedFields));
 
     modelingService.createModel(appId, entity);
     AppFormRecord record = new AppFormRecord(
@@ -774,6 +774,15 @@ public class AppFormService {
     fields.add(new StringField("updated_by").setLength(64).setComment("更新人"));
     fields.add(new DateTimeField("created_at").setDefaultValue(DefaultValue.NOW).setComment("创建时间"));
     fields.add(new DateTimeField("updated_at").setDefaultValue(DefaultValue.NOW).setComment("更新时间"));
+    return fields;
+  }
+
+  private Map<String, AppFormFieldRecord> systemFieldRecords() {
+    Map<String, AppFormFieldRecord> fields = new LinkedHashMap<>();
+    fields.put("created_by", new AppFormFieldRecord(
+      "created_by", "创建人", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
+    fields.put("updated_by", new AppFormFieldRecord(
+      "updated_by", "更新人", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
     return fields;
   }
 

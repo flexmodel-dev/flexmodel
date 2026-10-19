@@ -2,6 +2,7 @@ package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
+import dev.flexmodel.apps.dto.AppFormItemRecord;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppFormViewTabRecord;
 import dev.flexmodel.apps.dto.AppReferenceValueResponse;
@@ -16,6 +17,7 @@ import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -70,7 +72,8 @@ public class AppRecordService {
     PageDTO<Map<String, Object>> result = findPagingRecords(
       appId, form.response(), normalizedPage, normalizedSize, filter, sort,
       referenceFields(form.response()));
-    return renderReferenceValues(appId, form.response(), result);
+    renderReferenceValues(appId, form.response(), result);
+    return projectRecords(form.response(), result);
   }
 
   public Map<String, Object> findRecord(
@@ -88,7 +91,8 @@ public class AppRecordService {
     Map<String, Object> record = context == null
       ? requireRecord(appId, form, recordId, expand)
       : requireSubformRecord(appId, form, recordId, context, expand);
-    return renderReferenceRecord(appId, form.response(), record);
+    return projectRecord(form.response(), renderReferenceRecord(
+      appId, form.response(), record));
   }
 
   public Map<String, Object> createRecord(
@@ -111,8 +115,9 @@ public class AppRecordService {
     values.put("created_at", now);
     values.put("updated_at", now);
     createRecord(appId, form.response(), values);
-    return renderReferenceRecord(appId, form.response(), requireRecord(
-      appId, form, String.valueOf(values.get("id")), referenceFields(form.response())));
+    return projectRecord(form.response(), renderReferenceRecord(
+      appId, form.response(), requireRecord(
+        appId, form, String.valueOf(values.get("id")), referenceFields(form.response()))));
   }
 
   public Map<String, Object> updateRecord(
@@ -136,8 +141,9 @@ public class AppRecordService {
     values.put("updated_by", currentUserId());
     values.put("updated_at", LocalDateTime.now());
     updateRecord(appId, form.response(), recordId, values);
-    return renderReferenceRecord(appId, form.response(), requireRecord(
-      appId, form, recordId, referenceFields(form.response())));
+    return projectRecord(form.response(), renderReferenceRecord(
+      appId, form.response(), requireRecord(
+        appId, form, recordId, referenceFields(form.response()))));
   }
 
   public void deleteRecord(
@@ -271,6 +277,65 @@ public class AppRecordService {
 
     records.forEach(record -> record.put(
       field.name(), referenceValue(field, referenceForm, record.get(field.name()), referenceRecords)));
+  }
+
+  private PageDTO<Map<String, Object>> projectRecords(
+    AppFormResponse form,
+    PageDTO<Map<String, Object>> page
+  ) {
+    if (page == null || page.list() == null) {
+      return page;
+    }
+    Set<String> exposedFields = exposedFields(form);
+    List<Map<String, Object>> records = page.list().stream()
+      .map(record -> projectRecord(record, exposedFields))
+      .toList();
+    return new PageDTO<>(records, page.total());
+  }
+
+  private Map<String, Object> projectRecord(
+    AppFormResponse form,
+    Map<String, Object> record
+  ) {
+    return projectRecord(record, exposedFields(form));
+  }
+
+  private Map<String, Object> projectRecord(
+    Map<String, Object> record,
+    Set<String> exposedFields
+  ) {
+    if (record == null) {
+      return null;
+    }
+    Map<String, Object> projected = new LinkedHashMap<>();
+    if (record.containsKey("id")) {
+      projected.put("id", record.get("id"));
+    }
+    exposedFields.forEach(name -> {
+      if (record.containsKey(name)) {
+        projected.put(name, record.get(name));
+      }
+    });
+    return projected;
+  }
+
+  private Set<String> exposedFields(AppFormResponse form) {
+    if (form.layout() == null || form.layout().items() == null) {
+      return Set.of();
+    }
+    LinkedHashSet<String> fields = new LinkedHashSet<>();
+    for (AppFormItemRecord item : form.layout().items()) {
+      if (item == null) {
+        continue;
+      }
+      if ("FIELD".equals(item.type()) && item.name() != null && !item.name().isBlank()) {
+        fields.add(item.name());
+      } else if ("SUBFORM".equals(item.type())
+        && item.referenceField() != null && !item.referenceField().isBlank()) {
+        fields.add(item.referenceField());
+      }
+    }
+    return Collections.unmodifiableSet(fields);
   }
 
   private void collectExpandedReferenceRecords(

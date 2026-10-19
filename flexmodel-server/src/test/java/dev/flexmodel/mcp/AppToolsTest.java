@@ -183,6 +183,48 @@ class AppToolsTest {
   }
 
   @Test
+  void createsReferenceFieldsToBuiltinForms() {
+    String appId = "app_tools_builtin_ref_" + SUFFIX;
+    String formName = "builtin_ref_form_" + SUFFIX;
+    try {
+      createApp(appId);
+      AppFormResponse form = JsonUtils.parseToObject(appTools.create_app_form(
+        appId, "Builtin references", formName, "", false, """
+          [
+            {"label":"Owner","name":"owner","type":"REFERENCE","referenceForm":"f_user"},
+            {"label":"Role","name":"role","type":"REFERENCE","referenceForm":"f_role"},
+            {"label":"Department","name":"department","type":"REFERENCE","referenceForm":"f_department"}
+          ]
+          """), AppFormResponse.class);
+
+      var owner = fieldByName(form, "Owner");
+      var role = fieldByName(form, "Role");
+      var department = fieldByName(form, "Department");
+      assertEquals("REFERENCE", owner.type());
+      assertEquals("f_user", owner.referenceForm());
+      assertEquals("REFERENCE", role.type());
+      assertEquals("f_role", role.referenceForm());
+      assertEquals("REFERENCE", department.type());
+      assertEquals("f_department", department.referenceForm());
+
+      var createdBy = form.fields().stream()
+        .filter(field -> "created_by".equals(field.name()))
+        .findFirst()
+        .orElseThrow();
+      var updatedBy = form.fields().stream()
+        .filter(field -> "updated_by".equals(field.name()))
+        .findFirst()
+        .orElseThrow();
+      assertEquals("REFERENCE", createdBy.type());
+      assertEquals("f_user", createdBy.referenceForm());
+      assertEquals("REFERENCE", updatedBy.type());
+      assertEquals("f_user", updatedBy.referenceForm());
+    } finally {
+      deleteAppQuietly(appId);
+    }
+  }
+
+  @Test
   void usesAiGeneratedFieldNamesAndRejectsInvalidNames() {
     String appId = "app_tools_names_" + SUFFIX;
     String formName = "name_form_" + SUFFIX;

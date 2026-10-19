@@ -571,6 +571,47 @@
       ],
       "status": "done",
       "evidence": "AppRecordDetail 移除对已布局字段 builtin 的过滤，记录详情会展示布局中的内置字段；详情页改为 12 列栅格并按布局项 width 应用 QUARTER、THIRD、HALF、TWO_THIRDS、THREE_QUARTERS、FULL 栅格跨度；RecordList 的 layoutColumns 不再排除内置字段，记录列表会展示布局中的内置字段；无布局时仍回退为业务字段。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-060",
+      "name": "Apps UI - 仪表盘添加图表",
+      "description": "仪表盘工具栏提供添加图表入口，弹窗中配置标题并选择图表类型，新图表按类型默认尺寸追加到当前仪表盘布局，数据全部来自 mock 数据源。",
+      "dependencies": [
+        "feat-059"
+      ],
+      "status": "done",
+      "evidence": "DashboardHome 新增添加图表入口，支持指标卡、折线图、柱状图、饼图、明细表和我的常用类型卡片选择，展示默认尺寸并校验标题；addableChartTypes 与 addDashChart 集中维护在 src/data/mock.ts，新图表追加到当前仪表盘并可继续拖拽调整。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。"
+    },
+    {
+      "id": "feat-061",
+      "name": "Apps UI - 我的常用图表",
+      "description": "仪表盘新增“我的常用”图表类型，卡片内放置常用表单，点击后直接打开对应的菜单页面。",
+      "dependencies": [
+        "feat-060"
+      ],
+      "status": "done",
+      "evidence": "DashboardHome 图表类型新增 favorites，并使用 favoriteForms mock 数据渲染客户、商机、产品和报销单四个常用表单；点击任意表单卡片通过 useNavigate 跳转到对应的 /apps/{appId}/{menuId} 菜单路由。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-062",
+      "name": "Apps UI - 图表设计器",
+      "description": "将简易添加图表弹窗升级为图表设计器，支持图表、数据、样式和布局四个配置分区，并在右侧提供实时预览；已有图表卡片支持直接进入设计器编辑。",
+      "dependencies": [
+        "feat-060",
+        "feat-061"
+      ],
+      "status": "done",
+      "evidence": "新增 ChartDesigner 组件，提供图表标题/类型、数据源或类型化配置、图例/标签/曲线/配色、宽度/高度设置，并通过 ChartCanvas 统一渲染预览与仪表盘卡片；DashboardHome 的添加入口与卡片编辑入口均复用该设计器。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-063",
+      "name": "Apps UI - 我的任务审批图表",
+      "description": "在默认仪表盘新增“我的任务”图表，提供“待办工作、最近处理、我发起的”三个页签，切换页签展示对应流程审批列表。",
+      "dependencies": [
+        "feat-062"
+      ],
+      "status": "done",
+      "evidence": "新增 tasks 图表类型；默认仪表盘新增“我的任务”卡片；图表设计器新增对应图标；ChartCanvas 使用 Tabs 展示“待办工作、最近处理、我发起的”三个页签，Tab 采用与记录页签一致的下划线样式；每个页签仅渲染对应流程列表，列表项为横向条目并以横线分隔，左侧展示流程信息，右侧展示提交时间，点击列表项跳转 /approval/home。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
     }
   ]
 }

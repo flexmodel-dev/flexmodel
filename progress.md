@@ -1953,3 +1953,56 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   栅格跨度；例如 `FULL` 在桌面端整行展示，不再固定占用二分之一。
 - `RecordList` 的布局列不再排除内置字段，已手动加入布局的内置字段会出现在记录列表中；无布局回退仍保持仅业务字段。
 - 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**仪表盘添加图表 (2026-10-19)**
+
+- `DashboardHome` 工具栏新增“添加图表”入口，支持配置图表标题并选择指标卡、折线图、柱状图、饼图、明细表或我的常用。
+- 图表类型卡片展示说明与默认尺寸，标题必填校验；确认后新图表按当前仪表盘的最大底部行追加，并继续支持拖拽与缩放。
+- `addableChartTypes` 与 `addDashChart` 集中维护在 `src/data/mock.ts`，新增图表的数据继续来自页面 mock 数据源，并跟随筛选与自动刷新。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；
+  `bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试。
+
+**我的常用图表 (2026-10-19)**
+
+- `DashboardHome` 图表类型新增“我的常用”，卡片内展示客户、商机、产品和报销单四个常用表单。
+- 点击任一常用表单卡片会通过 `useNavigate` 直接跳转到对应的菜单路由，满足“放置常用表单、点击打开对应菜单”的交互。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**图表设计器 (2026-10-19)**
+
+- 新增 `ChartDesigner` 组件，按“图表 / 数据 / 样式 / 布局”四个页签组织配置项，右侧提供实时预览，替代原先信息密度较低的简易添加弹窗。
+- 新增 `ChartCanvas` 统一渲染折线图、柱状图、饼图、指标卡、明细表和我的常用，设计器预览与仪表盘卡片复用同一渲染逻辑。
+- 图表卡片新增编辑入口，点击铅笔图标即可进入设计器修改现有图表；数据配置支持数据源、指标、展示列和常用表单选择，样式配置支持图例、标签、曲线和配色。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**仪表盘切换控件还原 (2026-10-19)**
+
+- 按用户反馈还原 `DashboardHome` 左侧仪表盘切换入口为原始文本下拉样式，移除图标、边框和额外提示。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**我的任务审批图表 (2026-10-19)：**
+
+- 仪表盘新增 `tasks` 图表类型和默认“我的任务”卡片。
+- 图表展示待审批流程数量、申请人、当前节点，并提供“进入审批中心”按钮，点击跳转 `/approval/home`。
+- 图表设计器新增对应图标，可直接从图表类型列表选择“我的任务”。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**我的任务图表样式调整 (2026-10-19)：**
+
+- “我的任务”图表改为三个页签：`待办工作`、`最近处理`、`我发起的`。
+- 每个页签只展示对应流程列表，移除原先的统计数字和底部“进入审批中心”按钮。
+- 点击任一列表项跳转 `/approval/home`。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**我的任务列表条目样式 (2026-10-19)：**
+
+- “我的任务”三个页签内的列表项改为横向条目。
+- 条目之间以一条横线分隔。
+- 左侧展示流程标题、申请人与当前节点，右侧展示提交时间。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**我的任务 Tab 样式统一 (2026-10-19)：**
+
+- “我的任务”图表的 Tab 样式调整为与记录页签一致的下划线样式。
+- Tab 容器改为底部横线布局，激活页签使用主色下划线，非激活页签保持灰色。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。

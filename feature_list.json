@@ -612,6 +612,26 @@
       ],
       "status": "done",
       "evidence": "新增 tasks 图表类型；默认仪表盘新增“我的任务”卡片；图表设计器新增对应图标；ChartCanvas 使用 Tabs 展示“待办工作、最近处理、我发起的”三个页签，Tab 采用与记录页签一致的下划线样式；每个页签仅渲染对应流程列表，列表项为横向条目并以横线分隔，左侧展示流程信息，右侧展示提交时间，点击列表项跳转 /approval/home。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-064",
+      "name": "Apps UI - 图表表单数据源",
+      "description": "图表设计器直接以当前系统表单作为唯一数据源，可配置维度字段、指标字段与求和、计数、平均值统计方式，图表使用 mock 表单记录实时聚合渲染。",
+      "dependencies": [
+        "feat-062"
+      ],
+      "status": "done",
+      "evidence": "ChartConfig 新增 formName、dimensionField、measureField 与 aggregation，并移除内置数据源分支；mock.ts 新增 getChartRows，按表单记录维度分组并执行求和、计数、平均值聚合；ChartDesigner 数据分区直接提供表单、维度字段、统计方式、指标字段和记录/聚合摘要；ChartCanvas 统一通过 getChartRows 解析折线图、柱状图与饼图数据，设计器预览与仪表盘卡片保持一致。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-065",
+      "name": "Apps UI - 工作台组件概念重命名",
+      "description": "将前台概念从 dashboard/chart 统一切换为 workbench/component，不保留旧概念命名与兼容分支；页面、组件、类型、mock 存储、路由与内置菜单目标同步更新。",
+      "dependencies": [
+        "feat-064"
+      ],
+      "status": "done",
+      "evidence": "DashboardHome/ChartCanvas/ChartDesigner 重命名为 WorkbenchHome/ComponentCanvas/ComponentDesigner；DashChart、ChartConfig、dashboards、dashCharts、addableChartTypes、defaultChartConfig 与 getChartRows 等类型和数据结构改为 WorkbenchComponent、ComponentConfig、workbenches、workbenchComponents、addableComponentTypes、defaultComponentConfig 与 getComponentRows；前台路由与内置菜单目标从 dashboard 改为 workbench，后端内置菜单 ID 同步改为 workbench，所有旧 dashboard 命名从相关源码和测试中清除。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -Dtest=AppMenuResourceTest 通过（9 tests，0 failures，0 errors）。"
     }
   ]
 }

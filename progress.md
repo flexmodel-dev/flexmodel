@@ -1927,6 +1927,24 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 点击按钮会关闭当前弹窗，并跳转到 `/admin/apps/{appId}/forms/{formName}/form-design` 表单设计器页面。
 - 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
 
+**工作台组件概念重命名 (2026-10-19)：**
+
+- 前台概念由 `dashboard/chart` 统一切换为 `workbench/component`，不做历史兼容。
+- `DashboardHome`、`ChartCanvas`、`ChartDesigner` 分别重命名为 `WorkbenchHome`、`ComponentCanvas`、`ComponentDesigner`。
+- `DashChart`、`ChartConfig`、`dashboards`、`dashCharts` 等类型和 mock 数据结构同步改为 `WorkbenchComponent`、
+  `ComponentConfig`、`workbenches`、`workbenchComponents`。
+- 前台路由与内置菜单目标改为 `/workbench/home` / `workbench`；后端内置菜单 ID 与相关测试同步更新。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；
+  `mvn test -pl flexmodel-server -Dtest=AppMenuResourceTest` 通过（9 tests，0 failures，0 errors）。
+
+**图表表单数据源 (2026-10-19)：**
+
+- 按前台仅有表单数据源的模型调整：图表设计器不再提供“数据源类型”切换，直接选择客户、商机、产品、报销单等当前系统 mock 表单。
+- 表单数据源可配置维度字段、统计方式（求和、计数、平均值）和指标字段，并展示记录数与聚合组数摘要。
+- `mock.ts` 的 `getChartRows` 仅按表单记录维度分组并执行聚合，已移除内置数据源回退；`ChartCanvas`
+  复用该结果渲染折线图、柱状图和饼图，设计器预览与仪表盘卡片保持一致。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
 **表单设计器可选字段列表 (2026-10-19)：**
 
 - 表单设计器右侧字段列表同时包含业务字段和内置字段，并按当前布局剔除已经布局的字段；内置字段展示“内置字段”标识。

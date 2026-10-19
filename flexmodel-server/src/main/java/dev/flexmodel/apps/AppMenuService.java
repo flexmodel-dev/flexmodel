@@ -540,7 +540,7 @@ public class AppMenuService {
 
   private static Map<String, String> builtInTargets() {
     Map<String, String> result = new LinkedHashMap<>();
-    result.put("dashboard", "工作台");
+    result.put("workbench", "工作台");
     result.put("files", "文件");
     result.put("approval", "审批中心");
     return result;

@@ -2072,12 +2072,12 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 内置表单仅展示当前后端支持且添加弹窗可完整配置的扩展字段类型；暂不展示 REFERENCE 与 MULTIREFERENCE，避免缺少引用目标配置导致保存失败。
 - 按用户要求，本次仅修改代码，未运行构建或测试。
 
-**内置表单启动配置保留 (2026-10-19)：**
+**内置表单启动运行时实体合并保留 (2026-10-19)：**
 
-- BuildItem 新增 getPreservedMetadataModels 扩展点，SessionFactory 在应用启动种子模型前可按模型名保留数据库中的运行时
-  metadata。
-- 系统 BuildItem 改为 SystemBuildItem，仅对 f_user、f_department、f_role 启用 metadata 保留，避免重启时 platform.fml
-  种子覆盖用户修改的布局和扩展字段配置。
+- BuildItem 扩展点调整为 getPreservedRuntimeModels，SessionFactory 在应用启动种子模型时按模型名合并数据库中的完整运行时
+  EntityDefinition。
+- 对 f_user、f_department、f_role 合并保留运行时扩展字段、索引和 metadata；种子中的核心字段、索引和新增字段仍可同步到实体定义。
+- 合并后的实体同时写入缓存并传给 migrateEntity，避免 platform.fml 启动执行导致扩展字段从运行时模型中丢失。
 - 物理 DDL 与普通模型迁移不受影响；按用户要求，本次未运行构建或测试。
 
 **内置记录编辑输入保留 (2026-10-19)：**
@@ -2096,3 +2096,17 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 按用户要求撤销未确认的 f_system_form_config 方案，platform.fml 不再新增该模型。
 - SystemFormService 恢复为读取和保存系统模型 metadata，并保留启动时针对 f_user、f_department、f_role 的运行时 metadata 保护。
 - 本次仅回滚代码，未运行构建或测试。
+
+**完整运行时实体合并保留 (2026-10-19)：**
+
+- mergedFields 按字段名优先使用种子中的核心字段定义，同时保留数据库中的扩展字段，并追加种子新增字段。
+- mergedIndexes 按索引名合并运行时索引和种子索引，保留运行时新增索引并追加种子新增索引。
+- additionalProperties 合并时优先保留运行时 metadata，避免表单布局、列表列和页面配置被启动种子覆盖。
+- 验证：SystemFormResourceTest、SystemRecordResourceTest、AppFormResourceTest、AppRecordServiceTest 共 29
+  个用例通过；flexmodel-core 90 个测试通过；flexmodel-apps-ui npm run build 通过。
+
+**内置表单设计器返回修复 (2026-10-19)：**
+
+- FormDesign 在 appId 为 system 时不再返回 /admin/apps/system/settings/forms，避免把 system 当作普通应用加载。
+- f_user、f_department 返回 /admin/users，f_role 返回 /admin/role-privileges；普通应用表单仍返回对应应用的表单管理页。
+- 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。

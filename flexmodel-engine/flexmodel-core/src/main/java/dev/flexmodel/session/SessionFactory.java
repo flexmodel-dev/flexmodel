@@ -10,7 +10,9 @@ import dev.flexmodel.event.EventPublisher;
 import dev.flexmodel.event.impl.SimpleEventPublisher;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
+import dev.flexmodel.model.IndexDefinition;
 import dev.flexmodel.model.SchemaObject;
+import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.mongodb.MongoContext;
 import dev.flexmodel.mongodb.MongoSchemaProvider;
 import dev.flexmodel.mongodb.MongoSession;
@@ -83,9 +85,9 @@ public class SessionFactory {
    * </ul>
    *
    * @param schemaName 要应用的 schema 名称
-   * @param preservedMetadataModels 需要保留运行时 metadata 的模型名称
+   * @param preservedRuntimeModels 需要合并保留运行时实体定义的模型名称
    */
-  private void applyBuildItemSchemas(String schemaName, Set<String> preservedMetadataModels) {
+  private void applyBuildItemSchemas(String schemaName, Set<String> preservedRuntimeModels) {
     MemoryScriptManager.SchemaScriptConfig config = memoryScriptManager.getScriptConfig(schemaName);
     if (config == null) {
       return;
@@ -105,8 +107,9 @@ public class SessionFactory {
         .collect(Collectors.toMap(SchemaObject::getName, m -> m));
       config.getSchema().forEach(obj -> {
         if (obj instanceof EntityDefinition e) {
-          EntityDefinition entity = preservedRuntimeMetadata(
-            e, existing.get(e.getName()), preservedMetadataModels);
+          EntityDefinition entity = mergedRuntimeEntity(
+            e, existing.get(e.getName()), preservedRuntimeModels);
+          cache.put(schemaName + ":" + entity.getName(), entity);
           session.schema().migrateEntity(entity, existing.get(e.getName()));
         } else if (obj instanceof EnumDefinition e) {
           session.schema().createEnum(e);
@@ -124,25 +127,74 @@ public class SessionFactory {
     }
   }
 
-  private EntityDefinition preservedRuntimeMetadata(
+  private EntityDefinition mergedRuntimeEntity(
     EntityDefinition incoming,
     SchemaObject older,
-    Set<String> preservedMetadataModels
+    Set<String> preservedRuntimeModels
   ) {
-    if (!preservedMetadataModels.contains(incoming.getName())
+    if (!preservedRuntimeModels.contains(incoming.getName())
       || !(older instanceof EntityDefinition existingEntity)) {
       return incoming;
     }
-    Object runtimeMetadata = existingEntity.getAdditionalProperties().get("metadata");
-    if (runtimeMetadata == null
-      || !incoming.getAdditionalProperties().containsKey("metadata")
-      || Objects.equals(incoming.getAdditionalProperties().get("metadata"), runtimeMetadata)) {
-      return incoming;
-    }
+
     EntityDefinition entity = incoming.clone();
-    entity.setAdditionalProperties(new HashMap<>(incoming.getAdditionalProperties()));
-    entity.addAdditionalProperty("metadata", runtimeMetadata);
+    entity.setFields(mergedFields(incoming, existingEntity));
+    entity.setIndexes(mergedIndexes(incoming, existingEntity));
+
+    entity.setAdditionalProperties(mergedAdditionalProperties(incoming, existingEntity));
     return entity;
+  }
+
+  private Map<String, Object> mergedAdditionalProperties(
+    EntityDefinition incoming,
+    EntityDefinition existing
+  ) {
+    Map<String, Object> result = new HashMap<>(incoming.getAdditionalProperties());
+    existing.getAdditionalProperties().forEach((key, value) -> {
+      if (value != null || !result.containsKey(key)) {
+        result.put(key, value);
+      }
+    });
+    return result;
+  }
+
+  private List<TypedField<?, ?>> mergedFields(EntityDefinition incoming, EntityDefinition existing) {
+    Map<String, TypedField<?, ?>> incomingFields = incoming.getFields().stream()
+      .collect(Collectors.toMap(TypedField::getName, field -> field, (left, right) -> right,
+        LinkedHashMap::new));
+    Set<String> fieldNames = new LinkedHashSet<>();
+    List<TypedField<?, ?>> fields = existing.getFields().stream()
+      .<TypedField<?, ?>>map(field -> {
+        fieldNames.add(field.getName());
+        return incomingFields.getOrDefault(field.getName(), field);
+      })
+      .toList();
+    List<TypedField<?, ?>> result = new ArrayList<>(fields);
+    incoming.getFields().stream()
+      .filter(field -> !fieldNames.contains(field.getName()))
+      .forEach(result::add);
+    return result;
+  }
+
+  private List<IndexDefinition> mergedIndexes(EntityDefinition incoming, EntityDefinition existing) {
+    Map<String, IndexDefinition> incomingIndexes = incoming.getIndexes().stream()
+      .filter(index -> index.getName() != null)
+      .collect(Collectors.toMap(IndexDefinition::getName, index -> index, (left, right) -> right,
+        LinkedHashMap::new));
+    Set<String> indexNames = new LinkedHashSet<>();
+    List<IndexDefinition> indexes = existing.getIndexes().stream()
+      .map(index -> {
+        if (index.getName() != null) {
+          indexNames.add(index.getName());
+        }
+        return index.getName() == null ? index : incomingIndexes.getOrDefault(index.getName(), index);
+      })
+      .toList();
+    List<IndexDefinition> result = new ArrayList<>(indexes);
+    incoming.getIndexes().stream()
+      .filter(index -> index.getName() != null && !indexNames.contains(index.getName()))
+      .forEach(result::add);
+    return result;
   }
 
   private void loadJSONString(String schemaName, String jsonString) {
@@ -367,7 +419,7 @@ public class SessionFactory {
     // 立即将加载的 schema 应用到缓存和数据库
     // 因为 processBuildItem() 在构造函数中已执行过，此方法调用时
     // buildItem 是新追加的，需要独立触发应用逻辑
-    applyBuildItemSchemas(buildItem.getSchemaName(), buildItem.getPreservedMetadataModels());
+    applyBuildItemSchemas(buildItem.getSchemaName(), buildItem.getPreservedRuntimeModels());
   }
 
   public String getDefaultSchema() {

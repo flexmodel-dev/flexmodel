@@ -21,7 +21,7 @@ public interface BuildItem {
 
   List<ModelImportBundle.ImportData> getData();
 
-  default Set<String> getPreservedMetadataModels() {
+  default Set<String> getPreservedRuntimeModels() {
     return Set.of();
   }
 }

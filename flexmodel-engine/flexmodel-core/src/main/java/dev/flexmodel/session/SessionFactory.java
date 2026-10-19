@@ -83,8 +83,9 @@ public class SessionFactory {
    * </ul>
    *
    * @param schemaName 要应用的 schema 名称
+   * @param preservedMetadataModels 需要保留运行时 metadata 的模型名称
    */
-  private void applyBuildItemSchemas(String schemaName) {
+  private void applyBuildItemSchemas(String schemaName, Set<String> preservedMetadataModels) {
     MemoryScriptManager.SchemaScriptConfig config = memoryScriptManager.getScriptConfig(schemaName);
     if (config == null) {
       return;
@@ -104,7 +105,9 @@ public class SessionFactory {
         .collect(Collectors.toMap(SchemaObject::getName, m -> m));
       config.getSchema().forEach(obj -> {
         if (obj instanceof EntityDefinition e) {
-          session.schema().migrateEntity(e, existing.get(e.getName()));
+          EntityDefinition entity = preservedRuntimeMetadata(
+            e, existing.get(e.getName()), preservedMetadataModels);
+          session.schema().migrateEntity(entity, existing.get(e.getName()));
         } else if (obj instanceof EnumDefinition e) {
           session.schema().createEnum(e);
         }
@@ -119,6 +122,27 @@ public class SessionFactory {
         }
       });
     }
+  }
+
+  private EntityDefinition preservedRuntimeMetadata(
+    EntityDefinition incoming,
+    SchemaObject older,
+    Set<String> preservedMetadataModels
+  ) {
+    if (!preservedMetadataModels.contains(incoming.getName())
+      || !(older instanceof EntityDefinition existingEntity)) {
+      return incoming;
+    }
+    Object runtimeMetadata = existingEntity.getAdditionalProperties().get("metadata");
+    if (runtimeMetadata == null
+      || !incoming.getAdditionalProperties().containsKey("metadata")
+      || Objects.equals(incoming.getAdditionalProperties().get("metadata"), runtimeMetadata)) {
+      return incoming;
+    }
+    EntityDefinition entity = incoming.clone();
+    entity.setAdditionalProperties(new HashMap<>(incoming.getAdditionalProperties()));
+    entity.addAdditionalProperty("metadata", runtimeMetadata);
+    return entity;
   }
 
   private void loadJSONString(String schemaName, String jsonString) {
@@ -343,7 +367,7 @@ public class SessionFactory {
     // 立即将加载的 schema 应用到缓存和数据库
     // 因为 processBuildItem() 在构造函数中已执行过，此方法调用时
     // buildItem 是新追加的，需要独立触发应用逻辑
-    applyBuildItemSchemas(buildItem.getSchemaName());
+    applyBuildItemSchemas(buildItem.getSchemaName(), buildItem.getPreservedMetadataModels());
   }
 
   public String getDefaultSchema() {

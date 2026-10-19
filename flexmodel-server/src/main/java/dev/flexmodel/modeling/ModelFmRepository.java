@@ -57,6 +57,22 @@ public class ModelFmRepository implements ModelRepository {
   }
 
   @Override
+  public SchemaObject saveModel(String projectId, String datasourceName, SchemaObject model) {
+    try (Session session = this.sessionFactory.createSession(datasourceName)) {
+      if (model instanceof EntityDefinition entity) {
+        return session.schema().saveEntity(entity);
+      }
+      if (model instanceof NativeQueryDefinition nativeQueryModelDefinition) {
+        return session.schema().createNativeQuery(nativeQueryModelDefinition);
+      }
+      if (model instanceof EnumDefinition anEnumDefinition) {
+        return session.schema().createEnum(anEnumDefinition);
+      }
+    }
+    throw new ValidationException("Unsupported model type");
+  }
+
+  @Override
   public void dropModel(String projectId, String datasourceName, String modelName) {
     try (Session session = this.sessionFactory.createSession(datasourceName)) {
       session.schema().dropModel(modelName);

@@ -632,6 +632,37 @@
       ],
       "status": "done",
       "evidence": "DashboardHome/ChartCanvas/ChartDesigner 重命名为 WorkbenchHome/ComponentCanvas/ComponentDesigner；DashChart、ChartConfig、dashboards、dashCharts、addableChartTypes、defaultChartConfig 与 getChartRows 等类型和数据结构改为 WorkbenchComponent、ComponentConfig、workbenches、workbenchComponents、addableComponentTypes、defaultComponentConfig 与 getComponentRows；前台路由与内置菜单目标从 dashboard 改为 workbench，后端内置菜单 ID 同步改为 workbench，所有旧 dashboard 命名从相关源码和测试中清除。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -Dtest=AppMenuResourceTest 通过（9 tests，0 failures，0 errors）。"
+    },
+    {
+      "id": "feat-066",
+      "name": "Apps - 内置表单",
+      "description": "每个应用默认返回用户、部门、角色与关联关系五个内置表单；内置表单使用 builtin 属性标识，记录数据统一路由到 system schema。",
+      "dependencies": [
+        "feat-057"
+      ],
+      "status": "done",
+      "evidence": "AppFormService 从 system schema 合并 f_role、f_user、f_department、f_user_department、f_user_role 到每个应用表单列表，AppFormResponse 新增 builtin，同名历史用户表单被内置定义压制以避免重复；内置表单禁止创建与修改。AppRecordService 按 builtin 将查询、详情、新增、更新、删除路由到 system schema，非内置表单继续使用应用项目数据源。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -Dtest=AppRecordServiceTest,AppFormResourceTest 通过（20 tests，0 failures，0 errors）。"
+    },
+    {
+      "id": "feat-067",
+      "name": "Apps UI - 内置表单标签",
+      "description": "表单管理卡片与表单设置页为内置表单展示“内置”徽标，样式与内置字段徽标保持一致。",
+      "dependencies": [
+        "feat-066"
+      ],
+      "status": "done",
+      "evidence": "AppForm 前端契约补充 boolean builtin，normalizeForm 对缺失值回退 false；表单管理卡片和表单设置标题使用 bg-muted、text-muted-foreground 的 Badge 展示内置表单，与字段列表内置徽标一致；表单设计器与引用表单回退对象同步携带 builtin。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-068",
+      "name": "System - 系统表单配置驱动组织与角色",
+      "description": "部门、用户、角色页面由 system schema 内置模型 metadata 配置驱动；仅暴露 f_user、f_department、f_role 三个系统表单，关联表保留但不作为表单暴露；记录接口保持扁平 JSON，用户与角色支持扩展字段和布局设计，资源不作为用户功能暴露。",
+      "dependencies": [
+        "feat-066",
+        "feat-067"
+      ],
+      "status": "done",
+      "evidence": "新增 /api/system/forms 与 /api/system/forms/{formName}/records 统一入口，表单配置保存在 f_user/f_department/f_role 的模型 metadata；f_role_resource 承载角色资源授权，权限计算改为 f_user_role -> f_role_resource -> f_resource.permission；应用表单列表不再暴露系统表单与关联表；移除 /api/departments、/api/users、/api/roles、/api/resources 旧入口；前端组织用户保留左侧部门树，右侧用户表单按 metadata 渲染布局、列表列、扩展字段、任职与角色，角色页由 f_role metadata 渲染并使用服务端注入权限树；系统表单核心字段校验改为大小写不敏感，并保留 avatar/password_hash 等物理核心字段。验证：mvn test -pl flexmodel-server -am -Dtest=SystemFormResourceTest,SystemRecordResourceTest,AppFormResourceTest,AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（29 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积与 /logo.png 提示）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。"
     }
   ]
 }

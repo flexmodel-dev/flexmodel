@@ -60,6 +60,17 @@ public class DataService {
                                                         String sort,
                                                         List<String> expand) {
     String datasourceName = projectService.resolveDatabaseName(projectId);
+    return findPagingRecords(projectId, datasourceName, modelName, page, size, filter, sort, expand);
+  }
+
+  public PageDTO<Map<String, Object>> findPagingRecords(String projectId,
+                                                        String datasourceName,
+                                                        String modelName,
+                                                        int page,
+                                                        int size,
+                                                        String filter,
+                                                        String sort,
+                                                        List<String> expand) {
     List<Map<String, Object>> list = dataRepository.findRecords(projectId, datasourceName, modelName, page, size, filter, sort, expand);
     long total = dataRepository.countRecords(projectId, datasourceName, modelName, filter);
     return new PageDTO<>(list, total);

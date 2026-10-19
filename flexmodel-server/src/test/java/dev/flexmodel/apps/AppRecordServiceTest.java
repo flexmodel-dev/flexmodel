@@ -213,4 +213,27 @@ class AppRecordServiceTest {
       return record;
     }
   }
+
+  private static final class RoutingDataService extends DataService {
+    private String projectId;
+    private String datasourceName;
+    private String modelName;
+
+    @Override
+    public PageDTO<Map<String, Object>> findPagingRecords(
+      String projectId,
+      String datasourceName,
+      String modelName,
+      int page,
+      int size,
+      String filter,
+      String sort,
+      List<String> expand
+    ) {
+      this.projectId = projectId;
+      this.datasourceName = datasourceName;
+      this.modelName = modelName;
+      return new PageDTO<>(List.of(), 0L);
+    }
+  }
 }

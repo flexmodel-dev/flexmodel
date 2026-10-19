@@ -12,6 +12,7 @@ import java.util.List;
  * @param displayField 主显字段
  * @param searchField 搜索字段
  * @param managed     是否已纳入应用表单配置
+ * @param builtin     是否内置表单
  * @param createdAt   创建时间
  * @param updatedAt   更新时间
  * @param fields      字段列表
@@ -25,10 +26,27 @@ public record AppFormResponse(
   String displayField,
   String searchField,
   boolean managed,
+  boolean builtin,
   LocalDateTime createdAt,
   LocalDateTime updatedAt,
   List<AppFormFieldResponse> fields,
   AppFormLayoutRecord layout,
   List<AppFormViewTabRecord> viewTabs
 ) {
+  public AppFormResponse(
+    String name,
+    String label,
+    String description,
+    String displayField,
+    String searchField,
+    boolean managed,
+    LocalDateTime createdAt,
+    LocalDateTime updatedAt,
+    List<AppFormFieldResponse> fields,
+    AppFormLayoutRecord layout,
+    List<AppFormViewTabRecord> viewTabs
+  ) {
+    this(name, label, description, displayField, searchField, managed, false,
+      createdAt, updatedAt, fields, layout, viewTabs);
+  }
 }

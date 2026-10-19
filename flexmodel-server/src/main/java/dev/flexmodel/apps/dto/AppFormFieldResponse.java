@@ -20,6 +20,19 @@ public record AppFormFieldResponse(
   boolean required,
   boolean builtin,
   List<AppFormFieldOptionResponse> options,
-  String referenceForm
+  String referenceForm,
+  boolean locked,
+  boolean extension
 ) {
+  public AppFormFieldResponse(
+    String name,
+    String label,
+    String type,
+    boolean required,
+    boolean builtin,
+    List<AppFormFieldOptionResponse> options,
+    String referenceForm
+  ) {
+    this(name, label, type, required, builtin, options, referenceForm, false, false);
+  }
 }

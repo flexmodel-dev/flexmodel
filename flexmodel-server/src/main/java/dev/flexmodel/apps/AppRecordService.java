@@ -6,6 +6,7 @@ import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppFormViewTabRecord;
 import dev.flexmodel.apps.dto.AppReferenceValueResponse;
 import dev.flexmodel.common.NotFoundException;
+import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.common.dto.PageDTO;
@@ -35,6 +36,7 @@ public class AppRecordService {
     "CLASSIFICATION", "TAG", "FILE", "IMAGE", "AVATAR", "BARCODE", "LOCATION",
     "SIGN", "STATE", "REFERENCE");
   private static final int MAX_SIZE = 200;
+  private static final String SYSTEM_SCHEMA = EngineConfig.SYSTEM_DS_KEY;
 
   @Inject
   AppFormService appFormService;
@@ -65,8 +67,8 @@ public class AppRecordService {
     int normalizedSize = Math.clamp(size, 1, MAX_SIZE);
     String filter = buildFilter(form.response(), search, viewTabId, context);
     String sort = buildSort(form.response(), sortField, sortOrder);
-    PageDTO<Map<String, Object>> result = dataService.findPagingRecords(
-      appId, form.entityName(), normalizedPage, normalizedSize, filter, sort,
+    PageDTO<Map<String, Object>> result = findPagingRecords(
+      appId, form.response(), normalizedPage, normalizedSize, filter, sort,
       referenceFields(form.response()));
     return renderReferenceValues(appId, form.response(), result);
   }
@@ -84,8 +86,8 @@ public class AppRecordService {
       appId, form, mainFormName, mainRecordId, referenceField);
     List<String> expand = referenceFields(form.response());
     Map<String, Object> record = context == null
-      ? requireRecord(appId, form.entityName(), recordId, expand)
-      : requireSubformRecord(appId, form.entityName(), recordId, context, expand);
+      ? requireRecord(appId, form, recordId, expand)
+      : requireSubformRecord(appId, form, recordId, context, expand);
     return renderReferenceRecord(appId, form.response(), record);
   }
 
@@ -108,9 +110,9 @@ public class AppRecordService {
     values.put("updated_by", userId);
     values.put("created_at", now);
     values.put("updated_at", now);
-    dataService.createRecord(appId, form.entityName(), values);
+    createRecord(appId, form.response(), values);
     return renderReferenceRecord(appId, form.response(), requireRecord(
-      appId, form.entityName(), String.valueOf(values.get("id")), referenceFields(form.response())));
+      appId, form, String.valueOf(values.get("id")), referenceFields(form.response())));
   }
 
   public Map<String, Object> updateRecord(
@@ -126,16 +128,16 @@ public class AppRecordService {
     RecordContext context = resolveRecordContext(
       appId, form, mainFormName, mainRecordId, referenceField);
     if (context == null) {
-      requireRecord(appId, form.entityName(), recordId);
+      requireRecord(appId, form, recordId);
     } else {
-      requireSubformRecord(appId, form.entityName(), recordId, context, null);
+      requireSubformRecord(appId, form, recordId, context, null);
     }
     Map<String, Object> values = sanitizeInput(form.response(), input, false, context);
     values.put("updated_by", currentUserId());
     values.put("updated_at", LocalDateTime.now());
-    dataService.updateRecord(appId, form.entityName(), recordId, values);
+    updateRecord(appId, form.response(), recordId, values);
     return renderReferenceRecord(appId, form.response(), requireRecord(
-      appId, form.entityName(), recordId, referenceFields(form.response())));
+      appId, form, recordId, referenceFields(form.response())));
   }
 
   public void deleteRecord(
@@ -150,11 +152,11 @@ public class AppRecordService {
     RecordContext context = resolveRecordContext(
       appId, form, mainFormName, mainRecordId, referenceField);
     if (context == null) {
-      requireRecord(appId, form.entityName(), recordId);
+      requireRecord(appId, form, recordId);
     } else {
-      requireSubformRecord(appId, form.entityName(), recordId, context, null);
+      requireSubformRecord(appId, form, recordId, context, null);
     }
-    dataService.deleteRecord(appId, form.entityName(), recordId);
+    deleteRecord(appId, form.response(), recordId);
   }
 
   private ResolvedForm resolveForm(String appId, String formName) {
@@ -178,7 +180,7 @@ public class AppRecordService {
       return null;
     }
     ResolvedForm mainForm = resolveForm(appId, mainFormName.trim());
-    requireRecord(appId, mainForm.entityName(), mainRecordId.trim());
+    requireRecord(appId, mainForm, mainRecordId.trim());
     String resolvedReferenceField = resolveReferenceField(
       childForm.response(), mainFormName.trim(), referenceField);
     return new RecordContext(mainRecordId.trim(), resolvedReferenceField);
@@ -258,8 +260,8 @@ public class AppRecordService {
     if (!missingIds.isEmpty()) {
       String filter = JsonUtils.toJsonString(Map.of(
         "id", Map.of("_in", List.copyOf(missingIds))));
-      PageDTO<Map<String, Object>> referencePage = dataService.findPagingRecords(
-        appId, referenceForm.entityName(), 1, missingIds.size(), filter, null, null);
+      PageDTO<Map<String, Object>> referencePage = findPagingRecords(
+        appId, referenceForm.response(), 1, missingIds.size(), filter, null, null);
       referencePage.list().forEach(record -> {
         if (record.get("id") != null) {
           referenceRecords.put(record.get("id"), record);
@@ -500,35 +502,97 @@ public class AppRecordService {
     };
   }
 
-  private Map<String, Object> requireRecord(String appId, String entityName, String recordId) {
-    Map<String, Object> record = dataService.findOneRecord(appId, entityName, recordId, null);
-    if (record == null) {
-      throw new NotFoundException("记录不存在: " + recordId);
+  private PageDTO<Map<String, Object>> findPagingRecords(
+    String appId,
+    AppFormResponse form,
+    int page,
+    int size,
+    String filter,
+    String sort,
+    List<String> expand
+  ) {
+    if (form.builtin()) {
+      return dataService.findPagingRecords(
+        appId, SYSTEM_SCHEMA, form.name(), page, size, filter, sort, expand);
     }
-    return record;
+    return dataService.findPagingRecords(
+      appId, form.name(), page, size, filter, sort, expand);
+  }
+
+  private Map<String, Object> findOneRecord(
+    String appId,
+    AppFormResponse form,
+    String recordId,
+    List<String> expand
+  ) {
+    if (form.builtin()) {
+      return dataService.findOneRecord(
+        appId, SYSTEM_SCHEMA, form.name(), recordId, expand);
+    }
+    return dataService.findOneRecord(appId, form.name(), recordId, expand);
+  }
+
+  private Map<String, Object> createRecord(
+    String appId,
+    AppFormResponse form,
+    Map<String, Object> values
+  ) {
+    if (form.builtin()) {
+      return dataService.createRecord(appId, SYSTEM_SCHEMA, form.name(), values);
+    }
+    return dataService.createRecord(appId, form.name(), values);
+  }
+
+  private Map<String, Object> updateRecord(
+    String appId,
+    AppFormResponse form,
+    String recordId,
+    Map<String, Object> values
+  ) {
+    if (form.builtin()) {
+      return dataService.updateRecord(
+        appId, SYSTEM_SCHEMA, form.name(), recordId, values);
+    }
+    return dataService.updateRecord(appId, form.name(), recordId, values);
+  }
+
+  private void deleteRecord(
+    String appId,
+    AppFormResponse form,
+    String recordId
+  ) {
+    if (form.builtin()) {
+      dataService.deleteRecord(appId, SYSTEM_SCHEMA, form.name(), recordId);
+      return;
+    }
+    dataService.deleteRecord(appId, form.name(), recordId);
   }
 
   private Map<String, Object> requireRecord(
     String appId,
-    String entityName,
+    ResolvedForm form,
     String recordId,
     List<String> expand
   ) {
-    Map<String, Object> record = dataService.findOneRecord(appId, entityName, recordId, expand);
+    Map<String, Object> record = findOneRecord(appId, form.response(), recordId, expand);
     if (record == null) {
       throw new NotFoundException("记录不存在: " + recordId);
     }
     return record;
   }
 
+  private Map<String, Object> requireRecord(String appId, ResolvedForm form, String recordId) {
+    return requireRecord(appId, form, recordId, null);
+  }
+
   private Map<String, Object> requireSubformRecord(
     String appId,
-    String entityName,
+    ResolvedForm form,
     String recordId,
     RecordContext context,
     List<String> expand
   ) {
-    Map<String, Object> record = requireRecord(appId, entityName, recordId, expand);
+    Map<String, Object> record = requireRecord(appId, form, recordId, expand);
     Object value = record.get(context.referenceField());
     if (!context.mainRecordId().equals(referenceRecordId(value))) {
       throw new NotFoundException("记录不存在: " + recordId);

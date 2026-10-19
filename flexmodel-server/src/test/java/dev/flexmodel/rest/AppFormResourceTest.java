@@ -4,6 +4,7 @@ import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import io.vertx.core.json.JsonObject;
 import io.restassured.response.Response;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,47 @@ public class AppFormResourceTest {
       .get(BASE_PATH)
       .then()
       .statusCode(401);
+  }
+
+  @Test
+  void testFindFormsIncludesBuiltinFormsAndHidesRelationForms() {
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get(BASE_PATH)
+      .then()
+      .statusCode(200)
+      .body("name", hasItems("f_user", "f_department", "f_role"))
+      .body("name", not(hasItems("f_user_department", "f_user_role", "f_role_resource")));
+  }
+
+  @Test
+  void testSystemAppFormDesignEntrance() {
+    Response response = given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get(Resources.ROOT_PATH + "/apps/system/forms/f_user")
+      .then()
+      .statusCode(200)
+      .body("builtin", equalTo(true))
+      .body("fields.find { it.name == 'roleIds' }.type", equalTo("MULTIREFERENCE"))
+      .body("fields.find { it.name == 'roleIds' }.referenceForm", equalTo("f_role"))
+      .body("layout.items.find { it.type == 'SUBFORM' }.formName", equalTo("f_user_department"))
+      .body("layout.items.find { it.type == 'SUBFORM' }.referenceField", equalTo("user_id"))
+      .extract()
+      .response();
+
+    JsonObject layout = new JsonObject(response.asString()).getJsonObject("layout");
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body(layout.encode())
+      .when()
+      .put(Resources.ROOT_PATH + "/apps/system/forms/f_user/layout")
+      .then()
+      .statusCode(200)
+      .body("name", equalTo("f_user"))
+      .body("layout.items.find { it.type == 'SUBFORM' }.formName", equalTo("f_user_department"));
   }
 
   @Test

@@ -37,7 +37,11 @@ import dev.flexmodel.model.field.StringField;
 import dev.flexmodel.model.field.TimeField;
 import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.modeling.ModelingService;
+import dev.flexmodel.modeling.ModelService;
 import dev.flexmodel.project.ProjectService;
+import dev.flexmodel.system.SystemFormService;
+import dev.flexmodel.system.dto.SystemFormItemRecord;
+import dev.flexmodel.system.dto.SystemFormLayoutRecord;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -79,6 +83,11 @@ public class AppFormService {
   private static final String NAME_FIELD = "name";
   private static final Set<String> BUILTIN_FIELDS = Set.of(
     "id", "created_by", "updated_by", "created_at", "updated_at");
+  private static final Set<String> RESERVED_SYSTEM_FORM_NAMES = Set.of(
+    "f_user", "f_department", "f_role", "f_user_department", "f_user_role",
+    "f_role_resource");
+  private static final Set<String> BUILTIN_SYSTEM_FORM_NAMES = Set.of(
+    "f_user", "f_department", "f_role");
   private static final Set<String> FIELD_TYPES = Set.of(
     "TEXT", "NTEXT", "PHONE", "EMAIL", "URL", "SERIES", "PICKLIST", "SELECT",
     "NUMBER", "DECIMAL", "DATE", "DATETIME", "TIME", "CLASSIFICATION",
@@ -92,6 +101,9 @@ public class AppFormService {
   ModelingService modelingService;
 
   @Inject
+  ModelService modelService;
+
+  @Inject
   ProjectService projectService;
 
   @Inject
@@ -100,17 +112,35 @@ public class AppFormService {
   @Inject
   EventBus eventBus;
 
+  @Inject
+  SystemFormService systemFormService;
+
   public List<AppFormResponse> findForms(String appId) {
+    if ("system".equals(appId)) {
+      return systemFormService.findForms().stream()
+        .map(systemFormService::toAppFormResponse)
+        .toList();
+    }
     Project project = requireAppProject(appId);
     Map<String, AppFormRecord> records = formRecords(project).stream()
       .collect(Collectors.toMap(AppFormRecord::name, Function.identity(), (left, right) -> right,
         LinkedHashMap::new));
-    return entities(appId).stream()
+    List<AppFormResponse> builtinForms = systemFormService.findForms().stream()
+      .map(systemFormService::toAppFormResponse)
+      .toList();
+    List<AppFormResponse> userForms = entities(appId).stream()
+      .filter(entity -> !RESERVED_SYSTEM_FORM_NAMES.contains(entity.getName()))
       .map(entity -> toResponse(project, entity, records.get(entity.getName())))
       .toList();
+    List<AppFormResponse> result = new ArrayList<>(builtinForms);
+    result.addAll(userForms);
+    return result;
   }
 
   public AppFormResponse findForm(String appId, String formName) {
+    if (BUILTIN_SYSTEM_FORM_NAMES.contains(formName)) {
+      return systemFormService.toAppFormResponse(systemFormService.findForm(formName));
+    }
     Project project = requireAppProject(appId);
     ResolvedForm form = requireForm(project, appId, formName);
     return toResponse(project, form.entity(), form.record());
@@ -246,6 +276,7 @@ public class AppFormService {
   }
 
   public AppFormResponse updateForm(String appId, String formName, AppFormUpdateRequest request) {
+    requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
@@ -286,6 +317,22 @@ public class AppFormService {
     String formName,
     AppFormLayoutRequest request
   ) {
+    if (BUILTIN_SYSTEM_FORM_NAMES.contains(formName)) {
+      SystemFormLayoutRecord layout = new SystemFormLayoutRecord(request.items().stream()
+        .map(item -> new SystemFormItemRecord(
+          item.type(),
+          item.name(),
+          item.label(),
+          item.tip(),
+          item.width(),
+          item.hidden(),
+          item.readonly(),
+          item.formName(),
+          item.referenceField()))
+        .toList());
+      return systemFormService.toAppFormResponse(systemFormService.saveLayout(formName, layout));
+    }
+    requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
@@ -297,6 +344,7 @@ public class AppFormService {
   }
 
   public AppFormResponse patchForm(String appId, String formName, AppFormPatchRequest request) {
+    requireNotBuiltinForm(formName);
     if (request == null || request.viewTabs() == null) {
       throw new ValidationException("viewTabs 不能为空");
     }
@@ -485,6 +533,7 @@ public class AppFormService {
   }
 
   public void deleteForm(String appId, String formName) {
+    requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
@@ -507,6 +556,10 @@ public class AppFormService {
     String formName,
     AppFormFieldCreateRequest request
   ) {
+    if (BUILTIN_SYSTEM_FORM_NAMES.contains(formName)) {
+      return systemFormService.createField(formName, request);
+    }
+    requireNotBuiltinForm(formName);
     validateFieldType(request.type());
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
@@ -547,6 +600,7 @@ public class AppFormService {
     String fieldName,
     AppFormFieldUpdateRequest request
   ) {
+    requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
@@ -599,6 +653,7 @@ public class AppFormService {
   }
 
   public void deleteField(String appId, String formName, String fieldName) {
+    requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
@@ -637,6 +692,9 @@ public class AppFormService {
   }
 
   private ResolvedForm requireForm(Project project, String appId, String formName) {
+    if (RESERVED_SYSTEM_FORM_NAMES.contains(formName)) {
+      throw new NotFoundException("表单不存在: " + formName);
+    }
     AppFormRecord record = formRecords(project).stream()
       .filter(item -> item.name().equals(formName))
       .findFirst()
@@ -649,6 +707,12 @@ public class AppFormService {
       .findFirst()
       .orElseThrow(() -> new NotFoundException("表单不存在: " + formName));
     return new ResolvedForm(entity, null);
+  }
+
+  private void requireNotBuiltinForm(String formName) {
+    if (BUILTIN_SYSTEM_FORM_NAMES.contains(formName)) {
+      throw new ValidationException("内置表单不允许修改");
+    }
   }
 
   private String formName(EntityDefinition entity) {
@@ -812,6 +876,7 @@ public class AppFormService {
       displayField,
       searchField,
       record != null,
+      false,
       record == null ? project.getCreatedAt() : record.createdAt(),
       record == null ? project.getUpdatedAt() : record.updatedAt(),
       entity.getFields().stream()
@@ -1174,6 +1239,9 @@ public class AppFormService {
   }
 
   private void ensureUniqueFormName(Project project, String appId, String formName) {
+    if (RESERVED_SYSTEM_FORM_NAMES.contains(formName)) {
+      throw new ValidationException("琛ㄥ崟鍐呯儴鏍囪瘑宸插瓨鍦? " + formName);
+    }
     boolean metadataExists = formRecords(project).stream()
       .anyMatch(record -> record.name().equals(formName));
     boolean schemaObjectExists = modelingService.findModels(appId).stream()

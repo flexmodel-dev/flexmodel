@@ -70,6 +70,48 @@ model f_user {
   @index(name : "IDX_USERNAME", unique: "true", fields: [name]),
   @index(name : "IDX_EMAIL", unique: "true", fields: [email]),
   @index(name : "IDX_USER_MANAGER", fields : [manager_user_id]),
+  @metadata({
+    label: "用户",
+    description: "系统用户表单",
+    displayField: "name",
+    searchField: "name",
+    fields: [
+      {name: "name", label: "姓名", type: "TEXT", required: true},
+      {name: "email", label: "邮箱", type: "EMAIL"},
+      {name: "password", label: "密码", type: "TEXT"},
+      {name: "status", label: "状态", type: "SELECT", required: true, options: [
+        {id: "ACTIVE", text: "启用"},
+        {id: "DISABLED", text: "停用"},
+        {id: "INVITED", text: "待激活"}
+      ]},
+      {name: "manager_user_id", label: "直属主管", type: "REFERENCE", referenceForm: "f_user"},
+      {name: "roleIds", label: "角色", type: "MULTIREFERENCE", referenceForm: "f_role"}
+    ],
+    layout: {items: [
+      {type: "SECTION", label: "基础信息", width: "FULL"},
+      {type: "FIELD", name: "name", width: "HALF"},
+      {type: "FIELD", name: "email", width: "HALF"},
+      {type: "FIELD", name: "password", width: "HALF"},
+      {type: "FIELD", name: "status", width: "QUARTER"},
+      {type: "FIELD", name: "manager_user_id", width: "QUARTER"},
+      {type: "SECTION", label: "组织关系", width: "FULL"},
+      {type: "SUBFORM", name: "departments", label: "任职", width: "FULL", formName: "f_user_department", referenceField: "user_id"},
+      {type: "FIELD", name: "roleIds", label: "角色", width: "FULL"}
+    ]},
+    listColumns: [
+      {name: "name", label: "姓名"},
+      {name: "email", label: "邮箱"},
+      {name: "status", label: "状态"},
+      {name: "departments", label: "任职"},
+      {name: "roles", label: "角色"}
+    ],
+    page: {title: "组织用户", description: "维护用户基础信息、任职与角色", pageSize: 30, leftComponent: "DEPARTMENT_TREE"},
+    components: {
+      departments: {type: "USER_DEPARTMENTS", label: "任职"},
+      roles: {type: "USER_ROLES", label: "角色"}
+    },
+    designable: true
+  }),
   @system,
   @comment("用户")
 }
@@ -83,6 +125,29 @@ model f_department {
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
   @index(name : "IDX_DEPARTMENT_PARENT", fields : [parent_id]),
+  @metadata({
+    label: "部门",
+    description: "系统部门表单",
+    displayField: "name",
+    searchField: "name",
+    fields: [
+      {name: "name", label: "部门名称", type: "TEXT", required: true},
+      {name: "parent_id", label: "上级部门", type: "TEXT"}
+    ],
+    layout: {items: [
+      {type: "SECTION", label: "基础信息", width: "FULL"},
+      {type: "FIELD", name: "name", width: "HALF"},
+      {type: "FIELD", name: "parent_id", width: "HALF"}
+    ]},
+    listColumns: [
+      {name: "name", label: "部门名称"},
+      {name: "parent_id", label: "上级部门"},
+      {name: "direct_user_count", label: "成员数"}
+    ],
+    page: {title: "部门", description: "维护组织架构", pageSize: 30},
+    components: {},
+    designable: true
+  }),
   @system,
   @comment("部门架构")
 }
@@ -123,14 +188,56 @@ model f_role {
   id : String @id @unique @default(uuid()),
   name : String @length("255"),
   description? : String @length("255"),
-  resource_ids?: String @length("2000") @comment("资源ID, 逗号分隔"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name:"IDX_ROLE_NAME", unique: "true", fields: [name]),
+  @metadata({
+    label: "角色",
+    description: "系统角色表单",
+    displayField: "name",
+    searchField: "name",
+    fields: [
+      {name: "name", label: "角色名称", type: "TEXT", required: true},
+      {name: "description", label: "角色说明", type: "TEXT"},
+      {name: "resourceIds", label: "可访问权限", type: "MULTIREFERENCE"}
+    ],
+    layout: {items: [
+      {type: "SECTION", label: "基础信息", width: "FULL"},
+      {type: "FIELD", name: "name", width: "HALF"},
+      {type: "FIELD", name: "description", width: "HALF"},
+      {type: "SECTION", label: "权限", width: "FULL"},
+      {type: "FIELD", name: "resourceIds", label: "可访问权限", width: "FULL"}
+    ]},
+    listColumns: [
+      {name: "name", label: "角色名称"},
+      {name: "description", label: "说明"},
+      {name: "resources", label: "权限资源"}
+    ],
+    page: {title: "角色权限", description: "维护角色及其权限", pageSize: 30},
+    components: {
+      resources: {type: "ROLE_PERMISSIONS", label: "可访问权限"}
+    },
+    designable: true
+  }),
   @system,
   @comment("角色")
+}
+
+model f_role_resource {
+  id : String @id @default(uuid()),
+  role_id : String @length("64") @comment("角色ID"),
+  resource_id : Long @comment("资源ID"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name : "UQ_ROLE_RESOURCE", unique : "true", fields : [role_id, resource_id]),
+  @index(name : "IDX_ROLE_RESOURCE_ROLE", fields : [role_id]),
+  @index(name : "IDX_ROLE_RESOURCE_RESOURCE", fields : [resource_id]),
+  @system,
+  @comment("角色资源关系")
 }
 model f_resource {
   id: Long @id @default(autoIncrement()),
@@ -367,8 +474,13 @@ seed f_user_role {
 }
 
 seed f_role {
-  {id: "admin", name: "管理员", description: "管理员拥有所有权限", resource_ids: "1"},
-  {id: "developer", name: "开发", description: "开发人员拥有项目管理权限", resource_ids: "100"},
+  {id: "admin", name: "管理员", description: "管理员拥有所有权限"},
+  {id: "developer", name: "开发", description: "开发人员拥有项目管理权限"},
+}
+
+seed f_role_resource {
+  {id: "admin_all_resource", role_id: "admin", resource_id: 1},
+  {id: "developer_project_resource", role_id: "developer", resource_id: 100},
 }
 
 seed f_resource {

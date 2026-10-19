@@ -2023,4 +2023,76 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - “我的任务”图表的 Tab 样式调整为与记录页签一致的下划线样式。
 - Tab 容器改为底部横线布局，激活页签使用主色下划线，非激活页签保持灰色。
-- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**Apps 内置表单 (2026-10-19)：**
+
+- 每个应用默认返回 f_role、f_user、f_department、f_user_department、f_user_role 五个内置表单；内置定义来自 system
+  schema，排在用户表单之前，managed=false 且 builtin=true。
+- AppFormResponse 新增 builtin 属性并保留旧构造器兼容；内置表单禁止创建、更新、PATCH、布局修改、字段增删改和删除，同名历史用户实体不再重复返回。
+- AppRecordService 统一按 builtin 路由记录操作：内置表单查询、详情、新增、更新、删除访问 system
+  schema；非内置表单继续使用应用项目数据源；引用字段渲染同样复用该路由。
+- DataService 增加显式 datasourceName 的分页查询重载，供内置表单访问 system schema。
+- 验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server
+  -Dtest=AppRecordServiceTest,AppFormResourceTest 通过（20 tests，0 failures，0 errors）。
+- 标准基线：bash ./init.sh 通过全模块 clean compile 与 flexmodel-engine 测试；当前环境未检测到 Node，UI E2E 按脚本跳过。
+
+**Apps UI 内置表单标签 (2026-10-19)：**
+
+- AppForm 前端契约补充 boolean builtin，normalizeForm 对缺失值回退 false。
+- 表单管理卡片和表单设置标题展示“内置”徽标，样式复用内置字段徽标的 bg-muted 与 text-muted-foreground。
+- 表单设计器内部模型与引用表单回退对象同步携带 builtin，保证 TypeScript 契约完整。
+- 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。
+
+**系统表单配置驱动组织与角色 (2026-10-19)：**
+
+- 新增系统表单 API，表单定义与记录操作统一入口为 /api/system/forms 与 /api/system/forms/{formName}/records；表单配置直接保存在
+  f_user、f_department、f_role 的模型 metadata，不新增 f_system_form。
+- 仅暴露 f_user、f_department、f_role 三个系统表单；f_user_department、f_user_role、f_role_resource
+  继续作为关系表使用但不作为表单暴露，用户任职仍可编辑。
+- 记录接口保持既有扁平 JSON 契约：用户使用 roleIds 与 departments，角色使用 resourceIds；本期未引入 values/relations
+  包装，也未做目录筛选组件抽象。
+- f_role.resource_ids 移除，改为 f_role_resource 关系表；权限计算链路改为 f_user_role -> f_role_resource ->
+  f_resource.permission。
+- 应用表单列表不再返回系统表单与关联表；移除 /api/departments、/api/users、/api/roles、/api/resources 旧入口，且未新增资源用户入口。
+- 前端 /admin/users 保留左侧部门树与既有交互，右侧用户表单按 metadata 渲染核心字段、扩展字段、布局、列表列、任职和角色；/admin/role-privileges
+  按 f_role metadata 渲染，权限树由服务端注入。
+- 修复系统表单 metadata 读取：FML 注解解析会包一层 value，服务端解包后读取，并固定表单列表顺序为
+  f_user、f_department、f_role。
+- 修复系统表单核心字段校验与物理字段保留：字段名统一转小写后与 roleIds、resourceIds 等驼峰核心字段改为大小写不敏感匹配，同时将
+  avatar、password_hash 纳入用户表实际核心字段，避免保存表单配置时被误当作扩展字段删除。
+- 部门架构点击改为实时请求 /records 接口：新增 departmentId 与 includeDescendants 查询参数，用户列表改为服务端分页，并继续包含子部门递归筛选。
+- 验证：mvn test -pl flexmodel-server -am
+  -Dtest=SystemFormResourceTest,SystemRecordResourceTest,AppFormResourceTest,AppRecordServiceTest
+  -Dsurefire.failIfNoSpecifiedTests=false 通过（29 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（仅既有
+  chunk 体积与 /logo.png 提示）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。
+
+**内置表单设计器添加字段入口 (2026-10-19)：**
+
+- FormDesigner 右侧字段面板对内置表单开放“添加字段”页签，新建/编辑表单右上角设置入口与表单设计入口均可使用。
+- 内置表单仅展示当前后端支持且添加弹窗可完整配置的扩展字段类型；暂不展示 REFERENCE 与 MULTIREFERENCE，避免缺少引用目标配置导致保存失败。
+- 按用户要求，本次仅修改代码，未运行构建或测试。
+
+**内置表单启动配置保留 (2026-10-19)：**
+
+- BuildItem 新增 getPreservedMetadataModels 扩展点，SessionFactory 在应用启动种子模型前可按模型名保留数据库中的运行时
+  metadata。
+- 系统 BuildItem 改为 SystemBuildItem，仅对 f_user、f_department、f_role 启用 metadata 保留，避免重启时 platform.fml
+  种子覆盖用户修改的布局和扩展字段配置。
+- 物理 DDL 与普通模型迁移不受影响；按用户要求，本次未运行构建或测试。
+
+**内置记录编辑输入保留 (2026-10-19)：**
+
+- 修复 SystemRecordFormModal 每次重渲染都重新构造 AppForm 对象的问题；任职职位等输入触发父组件状态更新后，AppRecordFormModal
+  不再因 form 引用变化重新加载记录并清空输入。
+- toAppForm 转换结果改为 useMemo 缓存，仅在系统表单配置真正变化时更新；按用户要求，本次未运行构建或测试。
+
+**应用表单列表内置优先 (2026-10-19)：**
+
+- AppFormService.findForms 统一先返回 f_user、f_department、f_role 三个内置表单，再返回应用用户表单。
+- 保留既有系统表单固定顺序与应用用户表单原有顺序；按用户要求，本次未运行构建或测试。
+
+**系统表单配置独立持久化回滚 (2026-10-19)：**
+
+- 按用户要求撤销未确认的 f_system_form_config 方案，platform.fml 不再新增该模型。
+- SystemFormService 恢复为读取和保存系统模型 metadata，并保留启动时针对 f_user、f_department、f_role 的运行时 metadata 保护。
+- 本次仅回滚代码，未运行构建或测试。

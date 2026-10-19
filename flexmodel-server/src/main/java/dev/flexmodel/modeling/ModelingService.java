@@ -84,6 +84,12 @@ public class ModelingService {
     return created;
   }
 
+  public SchemaObject saveModel(String projectId, SchemaObject model) {
+    SchemaObject saved = modelService.saveModel(projectId, resolveDatabaseName(projectId), model);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
+    return saved;
+  }
+
   public void dropModel(String projectId, String modelName) {
     modelService.dropModel(projectId, resolveDatabaseName(projectId), modelName);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());

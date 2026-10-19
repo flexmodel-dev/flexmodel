@@ -68,6 +68,12 @@ public class SqlSchemaService extends BaseService implements SchemaService {
   }
 
   @Override
+  public EntityDefinition saveEntity(EntityDefinition entity) {
+    modelRegistry.register(sessionContext.getSchemaName(), entity);
+    return entity;
+  }
+
+  @Override
   public NativeQueryDefinition createNativeQuery(NativeQueryDefinition nq) {
     modelRegistry.register(sessionContext.getSchemaName(), nq);
     return nq;

@@ -2061,6 +2061,12 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；bash ./init.sh 因运行中的 flexmodel-server-dev.jar
   无法删除而中断，未执行 clean 的目标测试已补足本次代码验证。
 
+**表单设计器新增字段自动入布局 (2026-10-19)：**
+
+- FormDesigner 的“添加字段”保存成功后，新字段默认以 HALF 宽度追加到当前布局末尾，并保留填写提示。
+- 同步更新 form.fields、items 和 form.layout，右侧字段列表立即反映最新状态。
+- 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。
+
 **系统表单配置驱动组织与角色 (2026-10-19)：**
 
 - 新增系统表单 API，表单定义与记录操作统一入口为 /api/system/forms 与 /api/system/forms/{formName}/records；表单配置直接保存在

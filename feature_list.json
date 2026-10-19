@@ -673,6 +673,16 @@
       ],
       "status": "done",
       "evidence": "AdminLayout 恢复表单左侧二级菜单，FormSettings 移除页面底部重复导航；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-070",
+      "name": "Apps UI - 表单设计器新增字段自动入布局",
+      "description": "表单设计器右侧“添加字段”保存成功后，新字段默认追加到当前表单布局末尾。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "done",
+      "evidence": "FormDesigner.saveFieldCreate 创建字段后同步更新 items 和 form.layout，新字段默认 HALF 宽度并保留填写提示；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
     }
   ]
 }

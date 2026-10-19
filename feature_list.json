@@ -662,7 +662,17 @@
         "feat-067"
       ],
       "status": "done",
-      "evidence": "新增 /api/system/forms 与 /api/system/forms/{formName}/records 统一入口，表单配置保存在 f_user/f_department/f_role 的模型 metadata；f_role_resource 承载角色资源授权，权限计算改为 f_user_role -> f_role_resource -> f_resource.permission；应用表单列表不再暴露系统表单与关联表；移除 /api/departments、/api/users、/api/roles、/api/resources 旧入口；前端组织用户保留左侧部门树，右侧用户表单按 metadata 渲染布局、列表列、扩展字段、任职与角色，角色页由 f_role metadata 渲染并使用服务端注入权限树；系统表单核心字段校验改为大小写不敏感，并保留 avatar/password_hash 等物理核心字段。验证：mvn test -pl flexmodel-server -am -Dtest=SystemFormResourceTest,SystemRecordResourceTest,AppFormResourceTest,AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（29 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积与 /logo.png 提示）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。"
+      "evidence": "新增 /api/system/forms 与 /api/system/forms/{formName}/records 统一入口，表单配置保存在 f_user/f_department/f_role 的模型 metadata；f_role_resource 承载角色资源授权，权限计算改为 f_user_role -> f_role_resource -> f_resource.permission；应用表单列表不再暴露系统表单与关联表；移除 /api/departments、/api/users、/api/roles、/api/resources 旧入口；前端组织用户保留左侧部门树，右侧用户表单按 metadata 渲染布局、列表列、扩展字段、任职与角色，角色页由 f_role metadata 渲染并使用服务端注入权限树；系统表单核心字段校验改为大小写不敏感，并保留 avatar/password_hash 等物理核心字段；应用表单入口中系统核心字段返回 builtin=true，avatar 以 URL 字段进入字段列表，字段列表与设计器可展示“内置字段”。2026-10-19 验证：mvn test -pl flexmodel-server -Dtest=SystemFormResourceTest,SystemRecordResourceTest,AppFormResourceTest,AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（29 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积与 /logo.png 提示）；bash ./init.sh 因运行中的 flexmodel-server-dev.jar 无法删除而中断，代码验证由目标测试补足。"
+    },
+    {
+      "id": "feat-069",
+      "name": "Apps UI - 表单页面导航修正",
+      "description": "应用管理的表单页面保留左侧二级菜单，移除页面下方的重复导航。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "done",
+      "evidence": "AdminLayout 恢复表单左侧二级菜单，FormSettings 移除页面底部重复导航；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
     }
   ]
 }

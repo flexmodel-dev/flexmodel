@@ -2043,6 +2043,24 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 表单设计器内部模型与引用表单回退对象同步携带 builtin，保证 TypeScript 契约完整。
 - 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。
 
+**应用表单右侧导航精简 (2026-10-19)：**
+
+- AdminLayout 移除表单专属二级侧栏和相关路由偏移，保留原有应用管理左侧主导航。
+- 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。
+
+**内置表单系统字段标记 (2026-10-19)：**
+
+- f_user 的 avatar 纳入系统核心字段，以 URL 类型返回到应用表单入口的字段列表与设计器可用字段。
+- 系统核心字段（name、email、avatar、status、roleIds 等）通过 AppFormFieldResponse.builtin=true 标记；扩展字段继续返回
+  builtin=false，设计器沿用“内置字段 / 扩展”展示。
+- SystemRecordFormModal 继续将系统核心字段转换为可编辑字段，避免 AppRecordFormModal 把 builtin 解释为只读导致 name、email
+  等无法编辑。
+- 验证：mvn test -pl flexmodel-server
+  -Dtest=SystemFormResourceTest,SystemRecordResourceTest,AppFormResourceTest,AppRecordServiceTest
+  -Dsurefire.failIfNoSpecifiedTests=false 通过（29 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc
+  -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；bash ./init.sh 因运行中的 flexmodel-server-dev.jar
+  无法删除而中断，未执行 clean 的目标测试已补足本次代码验证。
+
 **系统表单配置驱动组织与角色 (2026-10-19)：**
 
 - 新增系统表单 API，表单定义与记录操作统一入口为 /api/system/forms 与 /api/system/forms/{formName}/records；表单配置直接保存在

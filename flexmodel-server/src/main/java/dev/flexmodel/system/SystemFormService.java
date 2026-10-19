@@ -78,7 +78,7 @@ public class SystemFormService {
     "DECIMAL", "DATE", "DATETIME", "TIME", "BOOL", "MULTISELECT", "REFERENCE",
     "MULTIREFERENCE");
   private static final Map<String, Set<String>> CORE_FIELDS = Map.of(
-    USER_FORM, Set.of("name", "email", "password", "status", "manager_user_id", "roleIds"),
+    USER_FORM, Set.of("name", "email", "avatar", "password", "status", "manager_user_id", "roleIds"),
     DEPARTMENT_FORM, Set.of("name", "parent_id"),
     ROLE_FORM, Set.of("name", "description", "resourceIds"));
   private static final Map<String, Set<String>> ACTUAL_CORE_FIELDS = Map.of(
@@ -260,7 +260,7 @@ public class SystemFormService {
         item.label(),
         item.type(),
         item.required(),
-        false,
+        !item.extension(),
         item.options(),
         item.referenceForm(),
         item.locked(),
@@ -366,7 +366,7 @@ public class SystemFormService {
         field.label(),
         field.type(),
         field.required(),
-        false,
+        !field.extension(),
         field.options(),
         field.referenceForm(),
         field.locked(),
@@ -519,6 +519,7 @@ public class SystemFormService {
       case USER_FORM -> switch (name) {
         case "name" -> new SystemFormFieldRecord(name, "姓名", "TEXT", true, true, false, false, false, null, null);
         case "email" -> new SystemFormFieldRecord(name, "邮箱", "EMAIL", false, true, false, false, false, null, null);
+        case "avatar" -> new SystemFormFieldRecord(name, "头像", "URL", false, true, false, false, false, null, null);
         case "password" -> new SystemFormFieldRecord(name, "密码", "TEXT", false, true, false, true, false, null, null);
         case "roleIds" ->
           new SystemFormFieldRecord(name, "角色", "MULTIREFERENCE", false, true, false, true, false, null, ROLE_FORM);

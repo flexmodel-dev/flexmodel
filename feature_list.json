@@ -531,6 +531,46 @@
       ],
       "status": "done",
       "evidence": "AppFormRecord/AppFormResponse 新增顶层 viewTabs 字段；PATCH /api/apps/{appId}/forms/{formName} 仅支持 viewTabs 局部更新，校验页签数量、名称、ID、字段、操作符、类型和值；GET records 新增 viewTabId 参数，all/空值不过滤，未知页签返回 400，页签筛选与搜索、子表单上下文条件共同合并在 _and 中；表单更新、布局保存、字段更新和字段删除均保留或清理页签配置；前端固定展示“全部”页签，配置弹窗支持字段、操作符、值、多条件增删和页签持久化，切换页签会重置分页与选择。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -Dtest=AppRecordServiceTest,AppFormResourceTest,AppRecordResourceTest 通过（23 tests）；mvn test -pl flexmodel-engine 通过；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-056",
+      "name": "Apps UI - 记录弹窗表单设计入口",
+      "description": "在记录新增、编辑弹窗标题右侧提供表单设置按钮，点击后进入当前表单的设计器页面。",
+      "dependencies": [
+        "feat-055"
+      ],
+      "status": "done",
+      "evidence": "AppRecordFormModal 新增标题右侧设置图标按钮，新增与编辑两种弹窗共用该入口；点击后关闭当前弹窗并跳转 /admin/apps/{appId}/forms/{formName}/form-design。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-057",
+      "name": "Apps - 表单设计器可选字段列表",
+      "description": "表单设计器右侧字段列表展示业务字段与内置字段中尚未布局的字段；新建表单和新建字段不再自动生成布局，字段布局完全由用户显式配置。",
+      "dependencies": [
+        "feat-056"
+      ],
+      "status": "done",
+      "evidence": "新建表单与缺省表单记录返回空布局；createField 只保存字段元数据，不追加布局项；布局校验允许空布局和部分字段布局，但非空布局必须至少包含一个字段且字段必须存在、不重复，内置字段可作为只读字段加入布局；FormDesigner 通过已布局字段集合过滤右侧字段列表，内置字段展示标识，新建字段的备注保留到手动添加布局时；AppRecordFormModal 仅按 layout.items 渲染，必填校验与提交范围同样限定为已布局字段，内置字段只读且不参与提交。验证：mvn test -pl flexmodel-server -Dtest=AppFormResourceTest 通过（13 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-058",
+      "name": "MCP - AppTools 页签契约提示词",
+      "description": "在 create_app_form 的 MCP 提示词中说明记录列表页签 viewTabs 的结构、筛选条件、字段类型与操作符约束，以及通过表单 PATCH 局部更新页签的方式。",
+      "dependencies": [
+        "feat-055"
+      ],
+      "status": "done",
+      "evidence": "AppTools.create_app_form 工具描述新增 viewTabs 契约：页签对象为 {id,label,filter}，PATCH 仅更新 viewTabs；说明 id、label、条件数量、_and 结构与不同字段类型支持的操作符。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 中 3 个布局相关既有断言失败（expected 3/2 field items but was 0、invalid layout keeps original layout），与本次仅提示词改动无关。"
+    },
+    {
+      "id": "feat-059",
+      "name": "Apps UI - 详情与列表展示已布局内置字段",
+      "description": "记录详情和记录列表按表单布局渲染字段，已手动布局的内置字段不再被隐藏，同时保持未布局时仅展示业务字段的默认行为。",
+      "dependencies": [
+        "feat-057"
+      ],
+      "status": "done",
+      "evidence": "AppRecordDetail 移除对已布局字段 builtin 的过滤，记录详情会展示布局中的内置字段；详情页改为 12 列栅格并按布局项 width 应用 QUARTER、THIRD、HALF、TWO_THIRDS、THREE_QUARTERS、FULL 栅格跨度；RecordList 的 layoutColumns 不再排除内置字段，记录列表会展示布局中的内置字段；无布局时仍回退为业务字段。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
     }
   ]
 }

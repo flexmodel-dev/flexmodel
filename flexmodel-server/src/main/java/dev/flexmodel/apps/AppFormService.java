@@ -146,7 +146,7 @@ public class AppFormService {
       entity.getFields().stream()
         .map(field -> toFieldRecord(field, fieldRecords.get(field.getName())))
         .toList(),
-      defaultLayout(entity),
+      new AppFormLayoutRecord(List.of()),
       List.of());
     try {
       saveFormRecord(project, record);
@@ -530,12 +530,10 @@ public class AppFormService {
       AppFormRecord current = findFormRecord(project, entityName).orElseGet(() -> defaultRecord(project, entity));
       List<AppFormFieldRecord> fields = new ArrayList<>(current.fields());
       fields.add(fieldRecord);
-      AppFormLayoutRecord layout = current.layout() == null ? defaultLayout(entity) : current.layout();
-      List<AppFormItemRecord> items = new ArrayList<>(layout.items() == null ? List.of() : layout.items());
-      if (findLayoutFieldItem(layout, fieldName).isEmpty()) {
-        items.add(new AppFormItemRecord("FIELD", fieldName, null, null, null, null, null, null, null));
-      }
-      saveFormRecord(project, withLayout(withFields(current, fields), new AppFormLayoutRecord(items)));
+      AppFormLayoutRecord layout = current.layout() == null
+        ? new AppFormLayoutRecord(List.of())
+        : current.layout();
+      saveFormRecord(project, withLayout(withFields(current, fields), layout));
     } catch (RuntimeException caught) {
       modelingService.dropField(appId, entityName, fieldName);
       throw caught;
@@ -802,7 +800,7 @@ public class AppFormService {
     String displayField = record == null ? defaultDisplayField(entity) : record.displayField();
     String searchField = record == null ? displayField : record.searchField();
     AppFormLayoutRecord layout = record == null || record.layout() == null
-      ? defaultLayout(entity)
+      ? new AppFormLayoutRecord(List.of())
       : record.layout();
     List<AppFormViewTabRecord> viewTabs = record == null || record.viewTabs() == null
       ? List.of()
@@ -889,7 +887,7 @@ public class AppFormService {
       project.getCreatedAt(),
       project.getUpdatedAt(),
       entity.getFields().stream().map(field -> toFieldRecord(field, null)).toList(),
-      defaultLayout(entity),
+      new AppFormLayoutRecord(List.of()),
       List.of());
   }
 
@@ -963,7 +961,6 @@ public class AppFormService {
       throw new ValidationException("表单布局项数量不合法");
     }
     Set<String> fieldNames = entity.getFields().stream()
-      .filter(field -> !BUILTIN_FIELDS.contains(field.getName()))
       .map(TypedField::getName)
       .collect(Collectors.toSet());
     LinkedHashSet<String> usedFieldNames = new LinkedHashSet<>();
@@ -972,10 +969,8 @@ public class AppFormService {
       .map(item -> normalizeLayoutItem(
         project, appId, fieldNames, item, usedFieldNames, subformKeys))
       .toList();
-    for (String fieldName : fieldNames) {
-      if (!usedFieldNames.contains(fieldName)) {
-        throw new ValidationException("字段未上版: " + fieldName);
-      }
+    if (items.stream().noneMatch(item -> "FIELD".equals(item.type()))) {
+      throw new ValidationException("表单布局必须包含字段");
     }
     return new AppFormLayoutRecord(items);
   }
@@ -1099,22 +1094,6 @@ public class AppFormService {
       .anyMatch(item -> "SUBFORM".equals(item.type())
         && formName.equals(item.formName())
         && fieldName.equals(item.referenceField()));
-  }
-
-  private AppFormLayoutRecord defaultLayout(EntityDefinition entity) {
-    return new AppFormLayoutRecord(entity.getFields().stream()
-      .filter(field -> !BUILTIN_FIELDS.contains(field.getName()))
-      .map(field -> new AppFormItemRecord(
-        "FIELD",
-        field.getName(),
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null))
-      .toList());
   }
 
   private AppFormRecord withLayout(AppFormRecord record, AppFormLayoutRecord layout) {

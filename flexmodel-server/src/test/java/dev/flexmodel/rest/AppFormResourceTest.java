@@ -60,7 +60,8 @@ public class AppFormResourceTest {
         .body("managed", equalTo(true))
         .body("fields.name", hasItems("id", "created_by", "updated_by", "created_at", "updated_at", "name"))
         .body("fields.find { it.name == 'id' }.builtin", equalTo(true))
-        .body("fields.find { it.name == 'name' }.required", equalTo(true));
+        .body("fields.find { it.name == 'name' }.required", equalTo(true))
+        .body("layout.items", empty());
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -102,6 +103,52 @@ public class AppFormResourceTest {
         .body("searchField", nullValue())
         .body("fields.name", not(hasItem("name")))
         .body("layout.items", empty());
+    } finally {
+      deleteFormQuietly(formName);
+    }
+  }
+
+  @Test
+  void testCreateFieldDoesNotAutomaticallyAddLayout() {
+    Response form = createForm("""
+      {
+        "label": "字段不自动布局表单-%s",
+        "name": "field_no_layout_form_%s",
+        "createDisplayField": false
+      }
+      """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
+    String formName = form.body().path("name");
+
+    try {
+      Response field = createField(formName, """
+        {
+          "label": "客户名称",
+          "type": "TEXT",
+          "required": true
+        }
+        """, 201);
+      String fieldName = field.body().path("name");
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH + "/" + formName)
+        .then()
+        .statusCode(200)
+        .body("fields.name", hasItem(fieldName))
+        .body("layout.items", empty());
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON)
+        .body("""
+          {"items": [{"type": "FIELD", "name": "id", "width": "HALF"}]}
+          """)
+        .when()
+        .put(BASE_PATH + "/" + formName + "/layout")
+        .then()
+        .statusCode(200)
+        .body("layout.items[0].name", equalTo("id"));
     } finally {
       deleteFormQuietly(formName);
     }

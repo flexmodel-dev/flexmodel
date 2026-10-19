@@ -1920,3 +1920,36 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   failures，0 errors）；`mvn test -pl flexmodel-engine` 通过；`flexmodel-apps-ui npm run build` 通过。
 - 环境备注：`bash ./init.sh` 在 clean 阶段因本机已有进程占用 `flexmodel-server/target/flexmodel-server-dev.jar`
   失败；本次已使用不执行 clean 的后端编译与目标测试完成验证。
+
+**记录弹窗表单设计入口 (2026-10-19)：**
+
+- `AppRecordFormModal` 在新增、编辑记录弹窗标题右侧新增“表单设计”设置按钮。
+- 点击按钮会关闭当前弹窗，并跳转到 `/admin/apps/{appId}/forms/{formName}/form-design` 表单设计器页面。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**表单设计器可选字段列表 (2026-10-19)：**
+
+- 表单设计器右侧字段列表同时包含业务字段和内置字段，并按当前布局剔除已经布局的字段；内置字段展示“内置字段”标识。
+- 新建表单返回空布局；新建字段只更新字段元数据，不再自动加入布局，字段备注会在用户手动把字段加入布局时作为提示写入。
+- 布局成为记录新增、编辑弹窗的唯一渲染来源；空布局是合法状态。内置字段可以手动加入布局，渲染为只读控件且不参与提交；未布局业务字段不参与必填校验与提交。
+- 布局校验允许空布局和部分字段布局；非空布局必须至少包含一个字段，字段必须存在且不重复，以保留既有校验并支持可选布局。
+- 验证：`mvn test -pl flexmodel-server -Dtest=AppFormResourceTest` 通过（13 tests，0 failures，0 errors）；
+  `flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。
+
+**MCP AppTools 页签契约提示词 (2026-10-19)：**
+
+- `AppTools.create_app_form` 的工具描述新增记录列表页签配置契约，说明 `viewTabs` 页签对象、`id`/`label` 约束、`filter._and`
+  条件结构、1-10 个条件限制，以及数值、日期、布尔、选项、引用和文本类字段支持的操作符。
+- 提示词同步说明页签通过 `PATCH /api/apps/{appId}/forms/{formName}` 仅提交 `viewTabs` 进行局部更新，帮助 AI
+  在创建表单后正确配置列表页签。
+- 验证：`mvn compile -pl flexmodel-server -am -DskipTests` 通过；
+  `mvn test -pl flexmodel-server -Dtest=AppToolsTest "-Dsurefire.failIfNoSpecifiedTests=false"` 中 3
+  个布局相关既有断言失败（expected 3/2 field items but was 0、invalid layout keeps original layout），与本次仅提示词改动无关。
+
+**详情与列表展示已布局内置字段 (2026-10-19)：**
+
+- `AppRecordDetail` 渲染表单布局字段时不再过滤 `field.builtin`，已手动加入布局的内置字段会在记录详情中展示。
+- 详情字段渲染改为 12 列栅格，按布局项的 `width` 应用 `QUARTER`、`THIRD`、`HALF`、`TWO_THIRDS`、`THREE_QUARTERS` 或 `FULL`
+  栅格跨度；例如 `FULL` 在桌面端整行展示，不再固定占用二分之一。
+- `RecordList` 的布局列不再排除内置字段，已手动加入布局的内置字段会出现在记录列表中；无布局回退仍保持仅业务字段。
+- 验证：`flexmodel-apps-ui npm run build` 通过（`tsc -b` + `vite build`，仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）。

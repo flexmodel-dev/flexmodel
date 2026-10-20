@@ -2252,5 +2252,6 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 组件类型选择压缩为两列紧凑图标项，减少视觉噪音；右侧预览头部展示组件图标、标题和网格尺寸。
 - 布局宽度输入直接按 `w/12` 转为百分比，右侧预览宽度实时变化；高度按 80px 行高计算，超过可用区域时整体等比缩放。
 - 图表画布显式使用 `100%` 宽高，避免预览容器尺寸变化后图表不跟随重绘。
+- 工作台在 GridStack 初始化后显式调用 `grid.update` 应用每个组件的 `x/y/w/h`，修复组件设计器保存布局后工作台不变化的问题。
 - 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
   `git diff --check` 通过。

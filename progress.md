@@ -2197,6 +2197,14 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
   `git diff --check` 通过。
 
+**新增组件配置布局优化 (2026-10-20)**
+
+- 新增组件弹窗基础配置改为“先选类型、再填标题”的顺序，操作路径更直观。
+- 组件类型从文字卡片改为紧凑图标卡片网格，减少视觉噪音；选中类型单独展示说明。
+- 弹窗加宽到 1360px，左侧配置区固定 420px，右侧预览区扩大为主空间并加高到 520px。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `git diff --check` 通过。
+
 **工作台管理操作按钮 (2026-10-20)**
 
 - 工作台新建、编辑、删除操作改为仅图标按钮；编辑按钮使用铅笔图标，删除按钮使用垃圾桶图标并采用 danger 样式，均保留 title 与
@@ -2234,5 +2242,15 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 组件新增、编辑、删除和布局拖拽/缩放先写入本地 `draftLayout`，不再即时调用服务端。
 - 点击“保存配置”时才统一调用 `patchWorkbench` 持久化；保存失败时保留草稿与编辑态，便于重试。
 - “添加组件”按钮仅在编辑状态下展示，避免非编辑模式出现未保存入口。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `git diff --check` 通过。
+
+**新增组件构建式布局 (2026-10-20)**
+
+- 新增/编辑组件弹窗重构为构建式双栏布局：左侧 360px 紧凑配置栏，右侧预览区占据剩余主空间。
+- 弹窗宽度提升到 1680px，高度提升到 `min(92vh, 960px)`，预览画布最小高度提升到 560px，避免内容挤压。
+- 组件类型选择压缩为两列紧凑图标项，减少视觉噪音；右侧预览头部展示组件图标、标题和网格尺寸。
+- 布局宽度输入直接按 `w/12` 转为百分比，右侧预览宽度实时变化；高度按 80px 行高计算，超过可用区域时整体等比缩放。
+- 图表画布显式使用 `100%` 宽高，避免预览容器尺寸变化后图表不跟随重绘。
 - 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
   `git diff --check` 通过。

@@ -5,15 +5,17 @@ import java.util.List;
 /**
  * 工作台布局。
  *
- * @param components 组件定义
- * @param items      布局项
+ * @param schemaVersion 布局协议版本，当前为 1
+ * @param components    组件定义，placement 内嵌在每个组件中
  */
 public record WorkbenchLayoutRecord(
-  List<WorkbenchComponentRecord> components,
-  List<WorkbenchLayoutItemRecord> items
+  Integer schemaVersion,
+  List<WorkbenchComponentRecord> components
 ) {
 
+  public static final int CURRENT_SCHEMA_VERSION = 1;
+
   public static WorkbenchLayoutRecord empty() {
-    return new WorkbenchLayoutRecord(List.of(), List.of());
+    return new WorkbenchLayoutRecord(CURRENT_SCHEMA_VERSION, List.of());
   }
 }

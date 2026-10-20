@@ -1,32 +1,37 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
+import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppMenuRecord;
+import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
+import dev.flexmodel.apps.dto.WorkbenchChartConfig;
 import dev.flexmodel.apps.dto.WorkbenchComponentConfig;
 import dev.flexmodel.apps.dto.WorkbenchComponentRecord;
+import dev.flexmodel.apps.dto.WorkbenchComponentSpecRecord;
 import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
-import dev.flexmodel.apps.dto.WorkbenchLayoutItemRecord;
+import dev.flexmodel.apps.dto.WorkbenchDataLoaderConfig;
+import dev.flexmodel.apps.dto.WorkbenchFieldOptionRecord;
+import dev.flexmodel.apps.dto.WorkbenchFormOptionRecord;
 import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
+import dev.flexmodel.apps.dto.WorkbenchMenuOptionRecord;
+import dev.flexmodel.apps.dto.WorkbenchMetricConfig;
 import dev.flexmodel.apps.dto.WorkbenchPatchRequest;
+import dev.flexmodel.apps.dto.WorkbenchPlacementRecord;
 import dev.flexmodel.apps.dto.WorkbenchResponse;
+import dev.flexmodel.apps.dto.WorkbenchShortcutsConfig;
 import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
+import dev.flexmodel.apps.dto.WorkbenchTasksConfig;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.codegen.entity.Workbench;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
-import io.quarkus.runtime.StartupEvent;
-import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import jakarta.interceptor.Interceptor;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,14 +44,14 @@ import java.util.UUID;
 public class WorkbenchService {
 
   private static final String DEFAULT_NAME = "默认工作台";
-  private static final Set<String> COMPONENT_TYPES = Set.of(
-    "index", "line", "bar", "pie", "dataloader", "shortcuts", "tasks");
-  private static final Set<String> DATA_COMPONENT_TYPES = Set.of(
-    "index", "line", "bar", "pie", "dataloader");
-  private static final Set<String> AGGREGATIONS = Set.of("count", "sum", "avg");
-  private static final Set<String> MEASURE_FIELD_TYPES = Set.of("NUMBER", "DECIMAL");
   private static final int GRID_COLUMNS = 12;
   private static final int MAX_GRID_HEIGHT = 24;
+  private static final Set<String> CHART_TYPES = Set.of("line", "bar", "pie");
+  private static final Set<String> AGGREGATIONS = Set.of("count", "sum", "avg");
+  private static final Set<String> PALETTES = Set.of("primary", "multi");
+  private static final Set<String> METRICS = Set.of(
+    "new-customers", "won-opportunities", "target-completion", "new-leads");
+  private static final Set<String> MEASURE_FIELD_TYPES = Set.of("NUMBER", "DECIMAL");
 
   @Inject
   WorkbenchRepository workbenchRepository;
@@ -60,13 +65,6 @@ public class WorkbenchService {
   @Inject
   SessionContext sessionContext;
 
-  @Priority(Interceptor.Priority.APPLICATION + 100)
-  void migrateLegacyWorkbenchLayouts(@Observes StartupEvent startupEvent) {
-    for (Workbench workbench : workbenchRepository.findAll()) {
-      migrateLegacyWorkbenchLayout(workbench);
-    }
-  }
-
   public List<WorkbenchSummaryResponse> findWorkbenches(String appId) {
     Project project = appMenuRecordStore.requireAppProject(appId);
     List<Workbench> workbenches = workbenchRepository.findByProjectId(project.getId());
@@ -78,8 +76,21 @@ public class WorkbenchService {
   }
 
   public WorkbenchResponse findWorkbench(String appId, String workbenchId) {
-    Workbench workbench = requireWorkbench(appId, workbenchId);
-    return toResponse(workbench);
+    return toResponse(requireWorkbench(appId, workbenchId));
+  }
+
+  public WorkbenchCapabilityResponse findCapabilities(String appId) {
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    List<AppFormResponse> forms = appFormService.findForms(appId);
+    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
+
+    return new WorkbenchCapabilityResponse(
+      WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION,
+      componentSpecs(),
+      forms.stream().map(this::toFormOption).toList(),
+      shortcutMenuOptions(menus),
+      availableValues(),
+      exampleLayout());
   }
 
   public WorkbenchResponse createWorkbench(String appId, WorkbenchCreateRequest request) {
@@ -150,7 +161,8 @@ public class WorkbenchService {
   }
 
   private Workbench requireWorkbench(String appId, String workbenchId) {
-    Workbench workbench = workbenchRepository.findByProjectIdAndId(appId, workbenchId);
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    Workbench workbench = workbenchRepository.findByProjectIdAndId(project.getId(), workbenchId);
     if (workbench == null) {
       throw new NotFoundException("工作台不存在: " + workbenchId);
     }
@@ -185,18 +197,15 @@ public class WorkbenchService {
     if (layout == null) {
       throw new ValidationException("工作台布局不能为空");
     }
-    List<WorkbenchComponentRecord> components = layout.components() == null
-      ? List.of()
-      : layout.components();
-    List<WorkbenchLayoutItemRecord> items = layout.items() == null
-      ? List.of()
-      : layout.items();
-    if (components.size() != items.size()) {
-      throw new ValidationException("工作台组件与布局项数量必须一致");
+    if (!Objects.equals(layout.schemaVersion(), WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION)) {
+      throw new ValidationException("工作台布局版本不合法: " + layout.schemaVersion());
+    }
+    List<WorkbenchComponentRecord> components = layout.components();
+    if (components == null) {
+      throw new ValidationException("工作台组件不能为空");
     }
 
     Set<String> componentIds = new HashSet<>();
-    Map<String, WorkbenchComponentRecord> componentsById = new LinkedHashMap<>();
     for (WorkbenchComponentRecord component : components) {
       if (component == null || isBlank(component.id())) {
         throw new ValidationException("工作台组件ID不能为空");
@@ -210,115 +219,42 @@ public class WorkbenchService {
       if (component.title().trim().length() > 100) {
         throw new ValidationException("工作台组件标题长度不能超过100个字符");
       }
-      if (!COMPONENT_TYPES.contains(component.type())) {
-        throw new ValidationException("工作台组件类型不合法: " + component.type());
-      }
+      validatePlacement(component.placement(), component.id());
       validateComponentConfig(appId, component);
-      componentsById.put(component.id(), component);
     }
-
-    Set<String> itemComponentIds = new HashSet<>();
-    for (WorkbenchLayoutItemRecord item : items) {
-      if (item == null || isBlank(item.componentId())) {
-        throw new ValidationException("工作台布局项必须关联组件");
-      }
-      if (!componentsById.containsKey(item.componentId())) {
-        throw new ValidationException("工作台布局项关联的组件不存在: " + item.componentId());
-      }
-      if (!itemComponentIds.add(item.componentId())) {
-        throw new ValidationException("工作台布局项重复: " + item.componentId());
-      }
-      if (item.x() == null || item.x() < 0) {
-        throw new ValidationException("工作台布局横向位置不合法: " + item.x());
-      }
-      if (item.y() == null || item.y() < 0) {
-        throw new ValidationException("工作台布局纵向位置不合法: " + item.y());
-      }
-      if (item.w() == null || item.w() < 1 || item.w() > GRID_COLUMNS) {
-        throw new ValidationException("工作台布局宽度不合法: " + item.w());
-      }
-      if (item.h() == null || item.h() < 1 || item.h() > MAX_GRID_HEIGHT) {
-        throw new ValidationException("工作台布局高度不合法: " + item.h());
-      }
-      if (item.x() + item.w() > GRID_COLUMNS) {
-        throw new ValidationException("工作台布局超出网格宽度: " + item.componentId());
-      }
-      if (item.y() + item.h() > MAX_GRID_HEIGHT) {
-        throw new ValidationException("工作台布局超出网格高度: " + item.componentId());
-      }
-    }
-    validateNoLayoutOverlap(items);
-    return new WorkbenchLayoutRecord(components, items);
+    validateNoLayoutOverlap(components);
+    return new WorkbenchLayoutRecord(layout.schemaVersion(), components);
   }
 
-  void migrateLegacyWorkbenchLayout(Workbench workbench) {
-    if (workbench.getLayout() == null) {
-      return;
+  private void validatePlacement(WorkbenchPlacementRecord placement, String componentId) {
+    if (placement == null) {
+      throw new ValidationException("工作台组件必须配置位置: " + componentId);
     }
-    Map<String, Object> layout = JsonUtils.convertValue(workbench.getLayout(), Map.class);
-    List<Map<String, Object>> items = layout.get("items") == null
-      ? List.of()
-      : JsonUtils.convertValue(layout.get("items"), List.class);
-    if (items.isEmpty() || items.stream().noneMatch(WorkbenchService::isLegacyLayoutItem)) {
-      return;
+    if (placement.x() == null || placement.x() < 0) {
+      throw new ValidationException("工作台布局横向位置不合法: " + componentId);
     }
-
-    int cursorX = 0;
-    int rowY = 0;
-    int rowHeight = 0;
-    List<Map<String, Object>> migratedItems = new ArrayList<>();
-    for (Map<String, Object> item : items) {
-      int width = legacyWidth(item.get("width"));
-      int height = legacyHeight(item.get("height"));
-      if (cursorX + width > GRID_COLUMNS) {
-        cursorX = 0;
-        rowY += rowHeight;
-        rowHeight = 0;
-      }
-      Map<String, Object> migratedItem = new HashMap<>();
-      migratedItem.put("componentId", item.get("componentId"));
-      migratedItem.put("x", cursorX);
-      migratedItem.put("y", rowY);
-      migratedItem.put("w", width);
-      migratedItem.put("h", height);
-      migratedItems.add(migratedItem);
-      cursorX += width;
-      rowHeight = Math.max(rowHeight, height);
+    if (placement.y() == null || placement.y() < 0) {
+      throw new ValidationException("工作台布局纵向位置不合法: " + componentId);
     }
-    layout.put("items", migratedItems);
-    workbench.setLayout(layout);
-    workbench.setUpdatedBy("system");
-    workbench.setUpdatedAt(LocalDateTime.now());
-    workbenchRepository.save(workbench);
+    if (placement.w() == null || placement.w() < 1 || placement.w() > GRID_COLUMNS) {
+      throw new ValidationException("工作台布局宽度不合法: " + componentId);
+    }
+    if (placement.h() == null || placement.h() < 1 || placement.h() > MAX_GRID_HEIGHT) {
+      throw new ValidationException("工作台布局高度不合法: " + componentId);
+    }
+    if (placement.x() + placement.w() > GRID_COLUMNS) {
+      throw new ValidationException("工作台布局超出网格宽度: " + componentId);
+    }
+    if (placement.y() + placement.h() > MAX_GRID_HEIGHT) {
+      throw new ValidationException("工作台布局超出网格高度: " + componentId);
+    }
   }
 
-  private static boolean isLegacyLayoutItem(Map<String, Object> item) {
-    return item != null && !item.containsKey("w") && item.containsKey("width");
-  }
-
-  private static int legacyWidth(Object width) {
-    return switch (String.valueOf(width)) {
-      case "QUARTER" -> 3;
-      case "THIRD" -> 4;
-      case "TWO_THIRDS" -> 8;
-      case "THREE_QUARTERS" -> 9;
-      case "FULL" -> 12;
-      default -> 6;
-    };
-  }
-
-  private static int legacyHeight(Object height) {
-    return switch (String.valueOf(height)) {
-      case "SHORT" -> 3;
-      case "TALL" -> 5;
-      default -> 4;
-    };
-  }
-
-  private void validateNoLayoutOverlap(List<WorkbenchLayoutItemRecord> items) {
+  private void validateNoLayoutOverlap(List<WorkbenchComponentRecord> components) {
     boolean[] occupied = new boolean[GRID_COLUMNS * MAX_GRID_HEIGHT];
-    for (WorkbenchLayoutItemRecord item : items) {
-      markOccupiedArea(occupied, item.x(), item.y(), item.w(), item.h());
+    for (WorkbenchComponentRecord component : components) {
+      WorkbenchPlacementRecord placement = component.placement();
+      markOccupiedArea(occupied, placement.x(), placement.y(), placement.w(), placement.h());
     }
   }
 
@@ -336,44 +272,64 @@ public class WorkbenchService {
 
   private void validateComponentConfig(String appId, WorkbenchComponentRecord component) {
     WorkbenchComponentConfig config = component.config();
-    if ("tasks".equals(component.type())) {
+    if (config == null) {
+      throw new ValidationException("工作台组件配置不能为空: " + component.id());
+    }
+    if (config instanceof WorkbenchTasksConfig) {
       return;
     }
-    if (config == null) {
-      throw new ValidationException("工作台组件配置不能为空: " + component.title());
+    if (config instanceof WorkbenchMetricConfig metricConfig) {
+      requireForm(appId, metricConfig.formName());
+      if (isBlank(metricConfig.metric()) || !METRICS.contains(metricConfig.metric())) {
+        throw new ValidationException("工作台指标不合法: " + metricConfig.metric());
+      }
+      return;
     }
-    if (DATA_COMPONENT_TYPES.contains(component.type())) {
-      AppFormResponse form = requireForm(appId, config.formName());
-      if (!"index".equals(component.type()) && isBlank(config.dimensionField())) {
+    if (config instanceof WorkbenchChartConfig chartConfig) {
+      if (isBlank(chartConfig.chartType()) || !CHART_TYPES.contains(chartConfig.chartType())) {
+        throw new ValidationException("工作台图表类型不合法: " + chartConfig.chartType());
+      }
+      AppFormResponse form = requireForm(appId, chartConfig.formName());
+      if (isBlank(chartConfig.dimensionField())) {
         throw new ValidationException("工作台图表必须配置分组字段: " + component.title());
       }
-      if (!"index".equals(component.type()) && requireField(form, config.dimensionField()) == null) {
-        throw new ValidationException("工作台分组字段不存在: " + config.dimensionField());
+      if (requireField(form, chartConfig.dimensionField()) == null) {
+        throw new ValidationException("工作台分组字段不存在: " + chartConfig.dimensionField());
       }
-      if (!AGGREGATIONS.contains(config.aggregation())) {
-        throw new ValidationException("工作台聚合方式不合法: " + config.aggregation());
+      if (isBlank(chartConfig.aggregation()) || !AGGREGATIONS.contains(chartConfig.aggregation())) {
+        throw new ValidationException("工作台聚合方式不合法: " + chartConfig.aggregation());
       }
-      if (!"count".equals(config.aggregation())) {
-        AppFormFieldResponse field = requireField(form, config.measureField());
+      if (!"count".equals(chartConfig.aggregation())) {
+        AppFormFieldResponse field = requireField(form, chartConfig.measureField());
         if (field == null) {
-          throw new ValidationException("工作台指标字段不存在: " + config.measureField());
+          throw new ValidationException("工作台指标字段不存在: " + chartConfig.measureField());
         }
         if (!MEASURE_FIELD_TYPES.contains(field.type())) {
-          throw new ValidationException("工作台指标字段必须是数字字段: " + config.measureField());
+          throw new ValidationException("工作台指标字段必须是数字字段: " + chartConfig.measureField());
         }
       }
-      if ("dataloader".equals(component.type())) {
-        validateVisibleColumns(form, config.visibleColumns(), component.title());
+      if (chartConfig.showLegend() == null || chartConfig.showLabel() == null || chartConfig.smooth() == null) {
+        throw new ValidationException("工作台图表显示配置不能为空: " + component.title());
+      }
+      if (isBlank(chartConfig.palette()) || !PALETTES.contains(chartConfig.palette())) {
+        throw new ValidationException("工作台配色不合法: " + chartConfig.palette());
       }
       return;
     }
-    if ("shortcuts".equals(component.type())) {
-      if (config.columnsPerRow() == null || config.columnsPerRow() < 1 || config.columnsPerRow() > 12) {
+    if (config instanceof WorkbenchDataLoaderConfig dataLoaderConfig) {
+      AppFormResponse form = requireForm(appId, dataLoaderConfig.formName());
+      validateVisibleColumns(form, dataLoaderConfig.visibleColumns(), component.title());
+      return;
+    }
+    if (config instanceof WorkbenchShortcutsConfig shortcutsConfig) {
+      if (shortcutsConfig.columnsPerRow() == null
+        || shortcutsConfig.columnsPerRow() < 1
+        || shortcutsConfig.columnsPerRow() > 12) {
         throw new ValidationException("工作台快捷入口每行数量必须在 1 到 12 之间: " + component.title());
       }
       Project project = appMenuRecordStore.requireAppProject(appId);
       List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
-      List<String> shortcuts = config.shortcuts() == null ? List.of() : config.shortcuts();
+      List<String> shortcuts = shortcutsConfig.shortcuts() == null ? List.of() : shortcutsConfig.shortcuts();
       Set<String> shortcutIds = new HashSet<>();
       for (String menuId : shortcuts) {
         if (isBlank(menuId) || !shortcutIds.add(menuId)) {
@@ -384,7 +340,9 @@ public class WorkbenchService {
           throw new ValidationException("工作台快捷入口必须关联表单菜单: " + menuId);
         }
       }
+      return;
     }
+    throw new ValidationException("工作台组件配置类型不合法");
   }
 
   private void validateVisibleColumns(
@@ -434,6 +392,73 @@ public class WorkbenchService {
       }
     }
     return null;
+  }
+
+  private List<WorkbenchComponentSpecRecord> componentSpecs() {
+    return List.of(
+      new WorkbenchComponentSpecRecord("metric", "指标", "突出展示核心指标", 3, 3,
+        List.of("type", "formName", "metric"), Map.of(
+        "type", "metric", "formName", "<form.name>", "metric", "new-customers")),
+      new WorkbenchComponentSpecRecord("chart", "图表", "展示表单数据趋势、对比或占比", 6, 4,
+        List.of("type", "chartType", "formName", "dimensionField", "measureField",
+          "aggregation", "showLegend", "showLabel", "smooth", "palette"), Map.of(
+        "type", "chart", "chartType", "line", "formName", "<form.name>",
+        "dimensionField", "<field.name>", "measureField", "<numeric-field.name>",
+        "aggregation", "count", "showLegend", false, "showLabel", true,
+        "smooth", true, "palette", "primary")),
+      new WorkbenchComponentSpecRecord("dataloader", "明细", "查看表单记录", 12, 5,
+        List.of("type", "formName", "visibleColumns"), Map.of(
+        "type", "dataloader", "formName", "<form.name>", "visibleColumns", List.of("<field.name>"))),
+      new WorkbenchComponentSpecRecord("shortcuts", "快捷入口", "直达表单菜单", 6, 3,
+        List.of("type", "shortcuts", "columnsPerRow"), Map.of(
+        "type", "shortcuts", "shortcuts", List.of("<menu.id>"), "columnsPerRow", 2)),
+      new WorkbenchComponentSpecRecord("tasks", "我的任务", "查看流程待办", 4, 4,
+        List.of("type"), Map.of("type", "tasks")));
+  }
+
+  private WorkbenchFormOptionRecord toFormOption(AppFormResponse form) {
+    return new WorkbenchFormOptionRecord(
+      form.name(),
+      form.label(),
+      form.displayField(),
+      form.fields().stream()
+        .map(field -> new WorkbenchFieldOptionRecord(
+          field.name(), field.label(), field.type(), MEASURE_FIELD_TYPES.contains(field.type())))
+        .toList());
+  }
+
+  private List<WorkbenchMenuOptionRecord> shortcutMenuOptions(List<AppMenuRecord> menus) {
+    List<WorkbenchMenuOptionRecord> result = new ArrayList<>();
+    for (AppMenuRecord menu : menus) {
+      if (Objects.equals(menu.type(), "ITEM")
+        && menu.target() != null
+        && Objects.equals(menu.target().type(), "FORM")) {
+        result.add(new WorkbenchMenuOptionRecord(menu.id(), menu.name()));
+      }
+      if (menu.children() != null) {
+        result.addAll(shortcutMenuOptions(menu.children()));
+      }
+    }
+    return result;
+  }
+
+  private Map<String, List<String>> availableValues() {
+    Map<String, List<String>> result = new LinkedHashMap<>();
+    result.put("chartType", List.of("line", "bar", "pie"));
+    result.put("aggregation", List.of("count", "sum", "avg"));
+    result.put("palette", List.of("primary", "multi"));
+    result.put("metric", List.of("new-customers", "won-opportunities", "target-completion", "new-leads"));
+    result.put("columnsPerRow", List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"));
+    return result;
+  }
+
+  private WorkbenchLayoutRecord exampleLayout() {
+    WorkbenchComponentRecord component = new WorkbenchComponentRecord(
+      "component_tasks",
+      "我的任务",
+      new WorkbenchPlacementRecord(0, 0, 4, 4),
+      new WorkbenchTasksConfig());
+    return new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(component));
   }
 
   private Object toLayoutValue(WorkbenchLayoutRecord layout) {

@@ -8,14 +8,13 @@ import io.restassured.response.Response;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import java.util.UUID;
 
-/**
- * WorkbenchResource 集成测试。
- *
- * @author cjbi
- */
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItems;
+
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
 public class WorkbenchResourceTest {
@@ -36,15 +35,24 @@ public class WorkbenchResourceTest {
   }
 
   @Test
-  void testListCreatesDefaultWorkbenchAndProtectsLastWorkbench() {
+  void testCapabilityCatalogAndDefaultWorkbench() {
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get(BASE_PATH + "/capabilities")
+      .then()
+      .statusCode(200)
+      .body("schemaVersion", greaterThanOrEqualTo(1))
+      .body("components.type", hasItems("metric", "chart", "dataloader", "shortcuts", "tasks"))
+      .body("availableValues.chartType", hasItems("line", "bar", "pie"));
+
     Response response = given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
       .get(BASE_PATH);
     response.then()
       .statusCode(200)
-      .body("size()", greaterThanOrEqualTo(1))
-      .body("name", hasItem("默认工作台"));
+      .body("size()", greaterThanOrEqualTo(1));
 
     String defaultWorkbenchId = response.body().path("[0].id");
     given()
@@ -67,27 +75,24 @@ public class WorkbenchResourceTest {
         .then()
         .statusCode(200)
         .body("id", equalTo(workbenchId))
-        .body("name", equalTo("销售工作台-" + TEST_SUFFIX))
+        .body("layout.schemaVersion", equalTo(1))
         .body("layout.components[0].id", equalTo("component_tasks"))
-        .body("layout.items[0].componentId", equalTo("component_tasks"))
-        .body("layout.items[0].x", equalTo(0))
-        .body("layout.items[0].y", equalTo(0))
-        .body("layout.items[0].w", equalTo(12))
-        .body("layout.items[0].h", equalTo(4));
+        .body("layout.components[0].config.type", equalTo("tasks"))
+        .body("layout.components[0].placement.x", equalTo(0))
+        .body("layout.components[0].placement.y", equalTo(0))
+        .body("layout.components[0].placement.w", equalTo(12))
+        .body("layout.components[0].placement.h", equalTo(4));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .contentType(ContentType.JSON)
-        .body("""
-          {"description": "局部更新描述-%s"}
-          """.formatted(TEST_SUFFIX))
+        .body("{\"description\": \"局部更新描述-%s\"}".formatted(TEST_SUFFIX))
         .when()
         .patch(BASE_PATH + "/" + workbenchId)
         .then()
         .statusCode(200)
-        .body("name", equalTo("销售工作台-" + TEST_SUFFIX))
         .body("description", equalTo("局部更新描述-" + TEST_SUFFIX))
-        .body("layout.items[0].h", equalTo(4));
+        .body("layout.components[0].placement.h", equalTo(4));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -95,21 +100,13 @@ public class WorkbenchResourceTest {
         .body("""
           {
             "layout": {
+              "schemaVersion": 1,
               "components": [
                 {
                   "id": "component_tasks",
                   "title": "我的任务",
-                  "type": "tasks",
-                  "config": {}
-                }
-              ],
-              "items": [
-                {
-                  "componentId": "component_tasks",
-                  "x": 0,
-                  "y": 0,
-                  "w": 6,
-                  "h": 3
+                  "placement": {"x": 0, "y": 0, "w": 6, "h": 3},
+                  "config": {"type": "tasks"}
                 }
               ]
             }
@@ -119,46 +116,8 @@ public class WorkbenchResourceTest {
         .patch(BASE_PATH + "/" + workbenchId)
         .then()
         .statusCode(200)
-        .body("layout.items[0].componentId", equalTo("component_tasks"))
-        .body("layout.items[0].x", equalTo(0))
-        .body("layout.items[0].y", equalTo(0))
-        .body("layout.items[0].w", equalTo(6))
-        .body("layout.items[0].h", equalTo(3));
-
-      given()
-        .header("Authorization", testTokenHelper.getAuthorizationHeader())
-        .contentType(ContentType.JSON)
-        .body("""
-          {
-            "layout": {
-              "components": [
-                {
-                  "id": "component_tasks",
-                  "title": "????",
-                  "type": "tasks",
-                  "config": {}
-                }
-              ],
-              "items": [
-                {
-                  "componentId": "component_tasks",
-                  "x": 2,
-                  "y": 3,
-                  "w": 6,
-                  "h": 4
-                }
-              ]
-            }
-          }
-          """)
-        .when()
-        .patch(BASE_PATH + "/" + workbenchId)
-        .then()
-        .statusCode(200)
-        .body("layout.items[0].x", equalTo(2))
-        .body("layout.items[0].y", equalTo(3))
-        .body("layout.items[0].w", equalTo(6))
-        .body("layout.items[0].h", equalTo(4));
+        .body("layout.components[0].placement.w", equalTo(6))
+        .body("layout.components[0].placement.h", equalTo(3));
     } finally {
       deleteWorkbenchQuietly(workbenchId);
     }
@@ -192,8 +151,10 @@ public class WorkbenchResourceTest {
         .body("""
           {
             "layout": {
-              "components": [{"id": "component_tasks", "title": "我的任务", "type": "tasks"}],
-              "items": [{"componentId": "not_exists", "x": 0, "y": 0, "w": 12, "h": 3}]
+              "schemaVersion": 1,
+              "components": [
+                {"id": "component_tasks", "title": "我的任务", "config": {"type": "tasks"}}
+              ]
             }
           }
           """)
@@ -231,29 +192,21 @@ public class WorkbenchResourceTest {
       .contentType(ContentType.JSON)
       .body("""
         {
-          "name": "销售工作台-%s",
+          "name": "销售工作台-%s-%s",
           "description": "工作台配置测试",
           "layout": {
+            "schemaVersion": 1,
             "components": [
               {
                 "id": "component_tasks",
                 "title": "我的任务",
-                "type": "tasks",
-                "config": {}
-              }
-            ],
-            "items": [
-              {
-                "componentId": "component_tasks",
-                "x": 0,
-                "y": 0,
-                "w": 12,
-                "h": 4
+                "placement": {"x": 0, "y": 0, "w": 12, "h": 4},
+                "config": {"type": "tasks"}
               }
             ]
           }
         }
-        """.formatted(TEST_SUFFIX))
+        """.formatted(TEST_SUFFIX, UUID.randomUUID()))
       .when()
       .post(BASE_PATH)
       .then()

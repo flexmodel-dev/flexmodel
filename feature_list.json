@@ -803,6 +803,16 @@
       ],
       "status": "done",
       "evidence": "ComponentDesigner 重构为左侧 360px 紧凑配置栏与右侧大面积实时预览；弹窗加宽到 1680px、加高到 min(92vh, 960px)，配置类型改为两列紧凑图标项，选中类型说明独立展示；右侧顶部展示组件图标、标题与尺寸信息。预览宽度直接按 w/12 转为百分比，保证宽度输入实时生效；高度按 80px 行高计算，并通过 ResizeObserver 与整体等比缩放适配可用区域；图表画布显式使用 100% 宽高，避免容器变化后不重绘。工作台在 GridStack 初始化后显式调用 grid.update 应用组件 x/y/w/h，确保组件设计器保存的新布局立即生效。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-083",
+      "name": "Apps - AI 友好工作台契约与 MCP 能力",
+      "description": "工作台布局升级为 schemaVersion + components 单数组契约，每个组件内嵌 placement，config 按 type 使用判别联合；提供工作台能力目录，并在 AppTools MCP 中开放工作台查询、能力目录、布局保存和 BUILTIN 工作台菜单关联能力。",
+      "dependencies": [
+        "feat-082"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchLayoutRecord 使用 schemaVersion=1 和 components 单数组；WorkbenchPlacementRecord 内嵌组件；WorkbenchComponentConfig 拆分为 metric/chart/dataloader/shortcuts/tasks 判别联合，line/bar/pie 合并为 chartType；后端保留网格、重叠、表单字段、聚合、快捷菜单校验。新增 GET /apps/{appId}/workbenches/capabilities 与 WorkbenchCapabilityResponse，返回组件规格、默认配置、枚举值、表单字段和快捷菜单。AppTools 新增 list_app_workbenches、get_app_workbench、get_app_workbench_capabilities、create_app_workbench、save_app_workbench_layout 和 create_app_workbench_menu，其中 create_app_workbench_menu 使用 BUILTIN targetId=workbench。前端同步为单数组 placement/config union 契约，不调整现有视觉样式；ComponentDesigner.changeForm 切换表单时保留当前组件类型、图表样式和指标选择。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -am \"-Dtest=WorkbenchServiceTest,WorkbenchResourceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink\" \"-Dsurefire.failIfNoSpecifiedTests=false\" 通过（9 tests，0 failures，0 errors）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；最终 flexmodel-apps-ui npm run build 与 git diff --check 均通过。"
     }
   ]
 }

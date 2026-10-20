@@ -1,6 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
+import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
 import dev.flexmodel.apps.dto.WorkbenchPatchRequest;
 import dev.flexmodel.apps.dto.WorkbenchResponse;
 import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
@@ -46,6 +47,13 @@ public class WorkbenchResource {
   ) {
     WorkbenchResponse response = workbenchService.createWorkbench(appId, request);
     return Response.status(Response.Status.CREATED).entity(response).build();
+  }
+
+  @Operation(summary = "获取应用工作台能力目录", description = "返回 AI 生成工作台布局所需 schema、默认值、枚举值与可引用业务对象")
+  @GET
+  @Path("/capabilities")
+  public WorkbenchCapabilityResponse capabilities(@PathParam("appId") String appId) {
+    return workbenchService.findCapabilities(appId);
   }
 
   @Parameter(name = "workbenchId", description = "工作台ID", in = ParameterIn.PATH, required = true)

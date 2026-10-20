@@ -2255,3 +2255,22 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 工作台在 GridStack 初始化后显式调用 `grid.update` 应用每个组件的 `x/y/w/h`，修复组件设计器保存布局后工作台不变化的问题。
 - 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
   `git diff --check` 通过。
+
+**AI 友好工作台契约与 MCP 能力 (2026-10-20)**
+
+- 工作台布局升级为 `schemaVersion + components` 单数组契约；`placement` 内嵌在组件中，移除独立 `items` 数组和旧宽高迁移逻辑。
+- `config` 改为 `metric/chart/dataloader/shortcuts/tasks` 判别联合；折线、柱状和饼图统一为 `chart + chartType`
+  ，后端保留网格边界、重叠、字段类型、聚合和快捷菜单校验。
+- 新增 `GET /api/apps/{appId}/workbenches/capabilities`，返回组件规格、默认配置、枚举值、可引用表单字段和可关联表单菜单，供
+  AI 在生成前读取。
+- `AppTools` 新增工作台 MCP 工具：`list_app_workbenches`、`get_app_workbench`、`get_app_workbench_capabilities`、
+  `create_app_workbench`、`save_app_workbench_layout` 和 `create_app_workbench_menu`；工作台菜单关联使用
+  `BUILTIN targetId=workbench`。
+- 前端 `workbenches` 服务、`WorkbenchHome`、`ComponentCanvas` 和 `ComponentDesigner` 同步新契约；本次仅调整功能契约，未调整既有视觉样式。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；
+  `mvn test -pl flexmodel-server -am "-Dtest=WorkbenchServiceTest,WorkbenchResourceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink" "-Dsurefire.failIfNoSpecifiedTests=false"`
+  通过（9 tests，0 failures，0 errors）。
+- 补充验证：`git diff --check` 通过；`bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试。
+- 复核修复：`ComponentDesigner.changeForm` 切换表单时只重置表单相关字段，保留当前组件类型、图表样式和指标选择；最终再次执行
+  `flexmodel-apps-ui npm run build` 与 `git diff --check`，均通过。
+- 遗留：全量 `AppToolsTest` 仍存在 4 个与本次无关的既有表单布局断言失败；本次仅验证新增工作台链路测试。

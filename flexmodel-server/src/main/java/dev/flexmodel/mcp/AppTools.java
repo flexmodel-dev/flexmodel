@@ -5,6 +5,7 @@ import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.apps.AppMenuService;
 import dev.flexmodel.apps.AppRecordService;
 import dev.flexmodel.apps.AppService;
+import dev.flexmodel.apps.WorkbenchService;
 import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.dto.AppFormCreateRequest;
 import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
@@ -14,6 +15,9 @@ import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppMenuSaveRequest;
 import dev.flexmodel.apps.dto.AppMenuTargetRequest;
 import dev.flexmodel.apps.dto.AppResponse;
+import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
+import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
+import dev.flexmodel.apps.dto.WorkbenchPatchRequest;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.inject.Inject;
@@ -25,7 +29,7 @@ import java.util.Map;
 
 /**
  * MCP 工具：Flexmodel Apps
- * 将应用、表单、布局、菜单和记录能力按 AI 可编排的固定顺序开放。
+ * 将应用、表单、布局、菜单、工作台和记录能力按 AI 可编排的固定顺序开放。
  */
 @Slf4j
 public class AppTools {
@@ -41,6 +45,9 @@ public class AppTools {
 
   @Inject
   AppRecordService appRecordService;
+
+  @Inject
+  WorkbenchService workbenchService;
 
   @Tool(description = """
     List all Flexmodel Apps. Each app is an isolated top-level project \
@@ -206,6 +213,131 @@ public class AppTools {
     } catch (Exception exception) {
       log.error("save_app_form_layout failed, appId={}, formName={}", appId, formName, exception);
       return "Error: save_app_form_layout failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = """
+    List all workbenches of a Flexmodel App. Calling this tool also creates \
+    the app's default workbench when none exists. Use it after creating an app \
+    to obtain a workbenchId before saving a layout.\
+    """)
+  public String list_app_workbenches(
+    @ToolArg(description = "The app ID") String appId
+  ) {
+    log.info("list_app_workbenches called, appId={}", appId);
+    try {
+      return JsonUtils.toJsonString(workbenchService.findWorkbenches(appId));
+    } catch (Exception exception) {
+      log.error("list_app_workbenches failed, appId={}", appId, exception);
+      return "Error: list_app_workbenches failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = """
+    Get the AI-friendly workbench capability catalog for one app. It returns \
+    schemaVersion, component specs, required fields, default configs, enum values, \
+    forms, fields, and FORM menus that shortcuts may reference. Call this tool \
+    before generating a workbench layout.\
+    """)
+  public String get_app_workbench_capabilities(
+    @ToolArg(description = "The app ID") String appId
+  ) {
+    log.info("get_app_workbench_capabilities called, appId={}", appId);
+    try {
+      return JsonUtils.toJsonString(workbenchService.findCapabilities(appId));
+    } catch (Exception exception) {
+      log.error("get_app_workbench_capabilities failed, appId={}", appId, exception);
+      return "Error: get_app_workbench_capabilities failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = "Get one workbench by its workbenchId.")
+  public String get_app_workbench(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "The workbench ID returned by list_app_workbenches") String workbenchId
+  ) {
+    log.info("get_app_workbench called, appId={}, workbenchId={}", appId, workbenchId);
+    try {
+      return JsonUtils.toJsonString(workbenchService.findWorkbench(appId, workbenchId));
+    } catch (Exception exception) {
+      log.error("get_app_workbench failed, appId={}, workbenchId={}", appId, workbenchId, exception);
+      return "Error: get_app_workbench failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = """
+    Create a workbench for a Flexmodel App. layoutJson is optional; when omitted, \
+    an empty schemaVersion 1 layout is created. A valid layout contains schemaVersion, \
+    and components with id, title, placement, and a type-discriminated config.\
+    """)
+  public String create_app_workbench(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "Workbench display name, required") String name,
+    @ToolArg(description = "Workbench description, optional") String description,
+    @ToolArg(description = """
+      JSON object string for the layout, optional. Get the exact contract from \
+      get_app_workbench_capabilities.\
+      """) String layoutJson
+  ) {
+    log.info("create_app_workbench called, appId={}, name={}", appId, name);
+    try {
+      WorkbenchLayoutRecord layout = isBlank(layoutJson)
+        ? WorkbenchLayoutRecord.empty()
+        : JsonUtils.parseToObject(layoutJson, WorkbenchLayoutRecord.class);
+      return JsonUtils.toJsonString(workbenchService.createWorkbench(
+        appId, new WorkbenchCreateRequest(name, description, layout)));
+    } catch (Exception exception) {
+      log.error("create_app_workbench failed, appId={}, name={}", appId, name, exception);
+      return "Error: create_app_workbench failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = """
+    Replace the complete layout of one workbench. Before calling this tool, use \
+    get_app_workbench_capabilities to obtain component specs and valid references, \
+    and get_app_workbench to preserve unchanged components.\
+    """)
+  public String save_app_workbench_layout(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "The workbench ID") String workbenchId,
+    @ToolArg(description = """
+      JSON object string of the complete schemaVersion 1 layout. Each component \
+      needs id, title, placement, and a type-discriminated config.\
+      """) String layoutJson
+  ) {
+    log.info("save_app_workbench_layout called, appId={}, workbenchId={}", appId, workbenchId);
+    try {
+      WorkbenchLayoutRecord layout = JsonUtils.parseToObject(layoutJson, WorkbenchLayoutRecord.class);
+      WorkbenchPatchRequest request = new WorkbenchPatchRequest();
+      request.setLayout(layout);
+      return JsonUtils.toJsonString(workbenchService.patchWorkbench(appId, workbenchId, request));
+    } catch (Exception exception) {
+      log.error("save_app_workbench_layout failed, appId={}, workbenchId={}", appId, workbenchId, exception);
+      return "Error: save_app_workbench_layout failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = """
+    Create a menu entry linked to the app workbench. This is the one-call way to \
+    expose an app's workbench in navigation; it creates an ITEM with BUILTIN \
+    targetId=workbench.\
+    """)
+  public String create_app_workbench_menu(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "Menu display name, required") String name,
+    @ToolArg(description = "Menu icon name, optional") String iconName,
+    @ToolArg(description = "Parent menu ID, only for a nested menu item") String parentId
+  ) {
+    log.info("create_app_workbench_menu called, appId={}, name={}", appId, name);
+    try {
+      return JsonUtils.toJsonString(appMenuService.createMenu(
+        appId,
+        new dev.flexmodel.apps.dto.AppMenuSaveRequest(
+          "ITEM", name, iconName, parentId,
+          new dev.flexmodel.apps.dto.AppMenuTargetRequest("BUILTIN", "workbench"))));
+    } catch (Exception exception) {
+      log.error("create_app_workbench_menu failed, appId={}, name={}", appId, name, exception);
+      return "Error: create_app_workbench_menu failed - " + exception.getMessage();
     }
   }
 

@@ -1,35 +1,23 @@
 package dev.flexmodel.apps.dto;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 /**
- * 工作台组件配置。
- *
- * @param formName       数据表单
- * @param dimensionField 分组字段
- * @param measureField   指标字段
- * @param aggregation    聚合方式
- * @param showLegend     是否显示图例
- * @param showLabel      是否显示数值标签
- * @param smooth         是否平滑曲线
- * @param palette        配色
- * @param metric         指标标识
- * @param visibleColumns 明细列
- * @param shortcuts      快捷入口菜单
- * @param columnsPerRow  快捷入口每行数量
+ * 工作台组件配置。type 字段是配置判别符。
  */
-public record WorkbenchComponentConfig(
-  String formName,
-  String dimensionField,
-  String measureField,
-  String aggregation,
-  Boolean showLegend,
-  Boolean showLabel,
-  Boolean smooth,
-  String palette,
-  String metric,
-  List<String> visibleColumns,
-  List<String> shortcuts,
-  Integer columnsPerRow
-) {
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+  @JsonSubTypes.Type(value = WorkbenchMetricConfig.class, name = "metric"),
+  @JsonSubTypes.Type(value = WorkbenchChartConfig.class, name = "chart"),
+  @JsonSubTypes.Type(value = WorkbenchDataLoaderConfig.class, name = "dataloader"),
+  @JsonSubTypes.Type(value = WorkbenchShortcutsConfig.class, name = "shortcuts"),
+  @JsonSubTypes.Type(value = WorkbenchTasksConfig.class, name = "tasks")
+})
+public sealed interface WorkbenchComponentConfig permits
+  WorkbenchMetricConfig,
+  WorkbenchChartConfig,
+  WorkbenchDataLoaderConfig,
+  WorkbenchShortcutsConfig,
+  WorkbenchTasksConfig {
 }

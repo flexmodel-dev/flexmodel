@@ -1,25 +1,26 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.JsonUtils;
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.apps.dto.WorkbenchComponentConfig;
+import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
+import dev.flexmodel.apps.dto.WorkbenchChartConfig;
 import dev.flexmodel.apps.dto.WorkbenchComponentRecord;
 import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
-import dev.flexmodel.apps.dto.WorkbenchLayoutItemRecord;
 import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
+import dev.flexmodel.apps.dto.WorkbenchPlacementRecord;
+import dev.flexmodel.apps.dto.WorkbenchShortcutsConfig;
+import dev.flexmodel.apps.dto.WorkbenchTasksConfig;
 import dev.flexmodel.common.ValidationException;
-import dev.flexmodel.codegen.entity.Workbench;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @QuarkusTest
@@ -29,83 +30,48 @@ class WorkbenchServiceTest {
   @Inject
   WorkbenchService workbenchService;
 
-  @Inject
-  WorkbenchRepository workbenchRepository;
+  @Test
+  void capabilityCatalogDescribesTargetSchema() {
+    WorkbenchCapabilityResponse capability = workbenchService.findCapabilities("dev_test");
+
+    assertEquals(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, capability.schemaVersion());
+    assertEquals(List.of("metric", "chart", "dataloader", "shortcuts", "tasks"),
+      capability.components().stream().map(item -> item.type()).toList());
+    assertNotNull(capability.forms());
+    assertEquals(List.of("count", "sum", "avg"), capability.availableValues().get("aggregation"));
+    assertInstanceOf(WorkbenchTasksConfig.class,
+      capability.exampleLayout().components().getFirst().config());
+  }
 
   @Test
-  void testShortcutColumnsPerRowMustBeValid() {
-    WorkbenchComponentConfig config = new WorkbenchComponentConfig(
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      List.of(),
-      List.of(),
-      13
-    );
+  void shortcutColumnsPerRowMustBeValid() {
     WorkbenchComponentRecord component = new WorkbenchComponentRecord(
       "component_shortcuts",
       "快捷入口",
-      "shortcuts",
-      config
-    );
-    WorkbenchLayoutItemRecord item = new WorkbenchLayoutItemRecord(
-      "component_shortcuts",
-      0,
-      0,
-      6,
-      3
-    );
+      new WorkbenchPlacementRecord(0, 0, 6, 3),
+      new WorkbenchShortcutsConfig(List.of(), 13));
     WorkbenchCreateRequest request = new WorkbenchCreateRequest(
       "快捷入口每行数量校验-" + UUID.randomUUID(),
       null,
-      new WorkbenchLayoutRecord(List.of(component), List.of(item))
-    );
+      new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(component)));
 
     assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", request));
   }
 
   @Test
-  void testLegacyLayoutIsMigratedToExplicitGrid() {
-    String workbenchId = UUID.randomUUID().toString();
-    String projectId = "dev_test";
-    LocalDateTime now = LocalDateTime.now();
-    Workbench workbench = new Workbench();
-    workbench.setId(workbenchId);
-    workbench.setProjectId(projectId);
-    workbench.setName("Legacy layout-" + workbenchId);
-    workbench.setLayout(Map.of(
-      "components", List.of(),
-      "items", List.of(Map.of(
-        "componentId", "component_shortcuts",
-        "width", "HALF",
-        "height", "SHORT"
-      ))
-    ));
-    workbench.setCreatedBy("test");
-    workbench.setUpdatedBy("test");
-    workbench.setCreatedAt(now);
-    workbench.setUpdatedAt(now);
-    workbenchRepository.save(workbench);
+  void chartConfigMustUseValidAggregation() {
+    WorkbenchComponentRecord component = new WorkbenchComponentRecord(
+      "component_chart",
+      "销售趋势",
+      new WorkbenchPlacementRecord(0, 0, 6, 4),
+      new WorkbenchChartConfig(
+        "line", "f_user", "name", null, "invalid",
+        false, true, true, "primary"));
+    WorkbenchCreateRequest request = new WorkbenchCreateRequest(
+      "图表配置校验-" + UUID.randomUUID(),
+      null,
+      new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(component)));
 
-    try {
-      workbenchService.migrateLegacyWorkbenchLayout(workbench);
-
-      Workbench migrated = workbenchRepository.findByProjectIdAndId(projectId, workbenchId);
-      WorkbenchLayoutRecord layout = JsonUtils.convertValue(migrated.getLayout(), WorkbenchLayoutRecord.class);
-      assertEquals(1, layout.items().size());
-      assertEquals("component_shortcuts", layout.items().get(0).componentId());
-      assertEquals(0, layout.items().get(0).x());
-      assertEquals(0, layout.items().get(0).y());
-      assertEquals(6, layout.items().get(0).w());
-      assertEquals(3, layout.items().get(0).h());
-    } finally {
-      workbenchRepository.deleteByProjectIdAndId(projectId, workbenchId);
-    }
+    assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", request));
   }
 }

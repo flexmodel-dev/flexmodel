@@ -7,6 +7,11 @@ import dev.flexmodel.apps.AppRecordService;
 import dev.flexmodel.apps.AppService;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppResponse;
+import dev.flexmodel.apps.dto.AppMenuResponse;
+import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
+import dev.flexmodel.apps.dto.WorkbenchChartConfig;
+import dev.flexmodel.apps.dto.WorkbenchResponse;
+import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -16,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -93,6 +99,91 @@ class AppToolsTest {
       AppFormResponse finalForm = JsonUtils.parseToObject(
         appTools.get_app_form(appId, formName), AppFormResponse.class);
       assertEquals(savedForm.layout(), finalForm.layout());
+    } finally {
+      deleteAppQuietly(appId);
+    }
+  }
+
+  @Test
+  void createsAiFriendlyWorkbenchAndMenuLink() {
+    String appId = "app_tools_workbench_" + SUFFIX;
+    String formName = "workbench_form_" + SUFFIX;
+    try {
+      createApp(appId);
+      AppFormResponse form = JsonUtils.parseToObject(appTools.create_app_form(
+        appId, "订单", formName, "", true, """
+          [
+            {"label":"订单金额","type":"DECIMAL","required":true},
+            {"label":"客户","type":"TEXT","required":true}
+          ]
+          """), AppFormResponse.class);
+      String amountName = fieldByName(form, "订单金额").name();
+      String customerName = fieldByName(form, "客户").name();
+
+      WorkbenchCapabilityResponse capability = JsonUtils.parseToObject(
+        appTools.get_app_workbench_capabilities(appId), WorkbenchCapabilityResponse.class);
+      assertEquals(1, capability.schemaVersion());
+      assertTrue(capability.forms().stream().anyMatch(item -> item.name().equals(formName)));
+
+      WorkbenchSummaryResponse[] workbenches = JsonUtils.parseToObject(
+        appTools.list_app_workbenches(appId), WorkbenchSummaryResponse[].class);
+      String workbenchId = workbenches[0].id();
+      WorkbenchResponse saved = JsonUtils.parseToObject(appTools.save_app_workbench_layout(
+        appId, workbenchId, """
+          {
+            "schemaVersion": 1,
+            "components": [
+              {
+                "id": "metric",
+                "title": "核心指标",
+                "placement": {"x": 0, "y": 0, "w": 3, "h": 3},
+                "config": {"type": "metric", "formName": "%s", "metric": "new-customers"}
+              },
+              {
+                "id": "chart",
+                "title": "客户指标",
+                "placement": {"x": 3, "y": 0, "w": 6, "h": 4},
+                "config": {
+                  "type": "chart",
+                  "chartType": "bar",
+                  "formName": "%s",
+                  "dimensionField": "%s",
+                  "measureField": "%s",
+                  "aggregation": "sum",
+                  "showLegend": true,
+                  "showLabel": true,
+                  "smooth": false,
+                  "palette": "primary"
+                }
+              },
+              {
+                "id": "records",
+                "title": "订单明细",
+                "placement": {"x": 0, "y": 4, "w": 12, "h": 5},
+                "config": {
+                  "type": "dataloader",
+                  "formName": "%s",
+                  "visibleColumns": ["id", "name", "%s", "%s"]
+                }
+              },
+              {
+                "id": "tasks",
+                "title": "我的任务",
+                "placement": {"x": 9, "y": 0, "w": 3, "h": 3},
+                "config": {"type": "tasks"}
+              }
+            ]
+          }
+          """.formatted(formName, formName, customerName, amountName, formName,
+          customerName, amountName)), WorkbenchResponse.class);
+      assertEquals(4, saved.layout().components().size());
+      assertInstanceOf(WorkbenchChartConfig.class, saved.layout().components().get(1).config());
+
+      AppMenuResponse menu = JsonUtils.parseToObject(
+        appTools.create_app_workbench_menu(appId, "工作台", "Home", null),
+        AppMenuResponse.class);
+      assertEquals("BUILTIN", menu.target().type());
+      assertEquals("workbench", menu.target().id());
     } finally {
       deleteAppQuietly(appId);
     }

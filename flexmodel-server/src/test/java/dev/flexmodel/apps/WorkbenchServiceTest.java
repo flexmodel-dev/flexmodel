@@ -89,15 +89,18 @@ class WorkbenchServiceTest {
     assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", request));
   }
 
-
   @Test
   void chartTypeControlsSmoothAndAggregationControlsMeasureField() {
     assertThrows(ValidationException.class, () -> createChartWorkbench("line", "count", null, null));
     for (String chartType : List.of("bar", "pie")) {
       var saved = createChartWorkbench(chartType, "count", null, null);
-      var savedConfig = saved.layout().components().getFirst().config();
-      assertInstanceOf(WorkbenchChartConfig.class, savedConfig);
-      assertNull(((WorkbenchChartConfig) savedConfig).smooth());
+      try {
+        var savedConfig = saved.layout().components().getFirst().config();
+        assertInstanceOf(WorkbenchChartConfig.class, savedConfig);
+        assertNull(((WorkbenchChartConfig) savedConfig).smooth());
+      } finally {
+        workbenchService.deleteWorkbench("dev_test", saved.id());
+      }
     }
     assertThrows(ValidationException.class, () -> createChartWorkbench("bar", "count", "name", null));
     assertThrows(ValidationException.class, () -> createChartWorkbench("bar", "sum", null, null));

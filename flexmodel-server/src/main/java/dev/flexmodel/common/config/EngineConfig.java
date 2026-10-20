@@ -17,9 +17,11 @@ import dev.flexmodel.system.SystemBuildItem;
 import dev.flexmodel.test.codegen.DevTest;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.runtime.StartupEvent;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Produces;
+import jakarta.interceptor.Interceptor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -34,6 +36,7 @@ public class EngineConfig {
 
   public static final String SYSTEM_DS_KEY = "system";
 
+  @Priority(Interceptor.Priority.APPLICATION)
   public void installDatasource(@Observes StartupEvent startupEvent,
                                 ProjectService projectService, SchemaRegistry schemaRegistry,
                                 BranchRepository branchRepository) {

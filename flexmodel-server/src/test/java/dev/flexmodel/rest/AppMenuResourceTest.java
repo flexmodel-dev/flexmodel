@@ -154,7 +154,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "移动菜单-%s",
         "parentId": "%s",
-        "target": {"type": "BUILTIN", "id": "workbench"}
+        "target": {"type": "BUILTIN", "id": "files"}
       }
       """.formatted(TEST_SUFFIX, sourceGroupId), 201);
 
@@ -167,7 +167,7 @@ public class AppMenuResourceTest {
             "type": "ITEM",
             "name": "移动菜单-%s",
             "parentId": "%s",
-            "target": {"type": "BUILTIN", "id": "workbench"}
+            "target": {"type": "BUILTIN", "id": "files"}
           }
           """.formatted(TEST_SUFFIX, targetGroupId))
         .when()
@@ -212,7 +212,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "移出菜单-%s",
         "parentId": "%s",
-        "target": {"type": "BUILTIN", "id": "workbench"}
+        "target": {"type": "BUILTIN", "id": "files"}
       }
       """.formatted(TEST_SUFFIX, nestedGroupId), 201);
 
@@ -225,7 +225,7 @@ public class AppMenuResourceTest {
             "type": "ITEM",
             "name": "移出菜单-%s",
             "parentId": "%s",
-            "target": {"type": "BUILTIN", "id": "workbench"}
+            "target": {"type": "BUILTIN", "id": "files"}
           }
           """.formatted(TEST_SUFFIX, rootGroupId))
         .when()
@@ -289,7 +289,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "菜单测试工作台-%s",
         "iconName": "Home",
-        "target": {"type": "BUILTIN", "id": "workbench"}
+        "target": {"type": "BUILTIN", "id": "files"}
       }
       """.formatted(TEST_SUFFIX), 201);
 
@@ -423,7 +423,7 @@ public class AppMenuResourceTest {
       {
         "type": "GROUP",
         "name": "分组不能关联",
-        "target": {"type": "BUILTIN", "id": "workbench"}
+        "target": {"type": "BUILTIN", "id": "files"}
       }
       """, 400);
     createMenu("""
@@ -431,7 +431,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "父级不存在",
         "parentId": "not_exists",
-        "target": {"type": "BUILTIN", "id": "workbench"}
+        "target": {"type": "BUILTIN", "id": "files"}
       }
       """, 400);
     createMenu("""
@@ -439,7 +439,7 @@ public class AppMenuResourceTest {
         "type": "ITEM",
         "name": "非法图标",
         "iconName": "NotExists",
-        "target": {"type": "BUILTIN", "id": "workbench"}
+        "target": {"type": "BUILTIN", "id": "files"}
       }
       """, 400);
     createMenu("""
@@ -514,4 +514,5 @@ public class AppMenuResourceTest {
       .when()
       .delete(BASE_PATH + "/" + menuId);
   }
+
 }

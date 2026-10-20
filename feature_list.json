@@ -713,6 +713,26 @@
       ],
       "status": "in-progress",
       "evidence": "Added a Textarea primitive and routed NTEXT fields through it; verification not run per user request."
+    },
+    {
+      "id": "feat-074",
+      "name": "Apps UI - 工作台快捷入口命名统一",
+      "description": "工作台“我的常用”组件更名为“快捷入口”，组件类型、配置字段和入口数据源统一使用 shortcuts 命名。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "done",
+      "evidence": "addableComponentTypes、WorkbenchComponent、ComponentConfig、ComponentCanvas 和 ComponentDesigner 同步由 favorites/favoriteForms 改为 shortcuts；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试（UI E2E 因 Node.js 未安装跳过）。"
+    },
+    {
+      "id": "feat-075",
+      "name": "Apps - 工作台真实配置接口",
+      "description": "应用级工作台配置持久化，支持多工作台、layout.items 显式 x/y/w/h 网格坐标与 PATCH 局部更新；获客端使用 GridStack 支持编辑模式下拖动与宽高缩放。",
+      "dependencies": [
+        "feat-074"
+      ],
+      "status": "done",
+      "evidence": "layout.items 仅保存 componentId/x/y/w/h，不再接受或输出 width/height 历史字段；后端校验位置、尺寸、网格边界与重叠。前端 WorkbenchHome 集成 GridStack，编辑配置模式启用拖动与缩放，拖动/缩放结束后 PATCH 保存显式坐标；右下角缩放把手向下偏移 2px，组件标题在编辑模式显示 grab/grabbing 光标；ComponentDesigner 支持网格宽高设置。启动迁移按优先级在引擎初始化后执行，一次性把已持久化的 width/height 数据改写为显式 x/y/w/h，修复旧数据被解析为 null 导致组件退回 1x1 的问题；真实 sqlite.db 中两条旧布局已验证变为 w=6、h=3。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -am -Dtest=WorkbenchServiceTest,WorkbenchStartupMigrationTest,WorkbenchResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests，0 failures，0 errors）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。"
     }
   ]
 }

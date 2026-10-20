@@ -1,6 +1,5 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppMenuOrderRequest;
 import dev.flexmodel.apps.dto.AppMenuRecord;
@@ -12,16 +11,12 @@ import dev.flexmodel.apps.dto.AppMenuTargetResponse;
 import dev.flexmodel.apps.dto.AppMenuTargetsResponse;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.NotFoundException;
-import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
-import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.net.URI;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,35 +39,36 @@ public class AppMenuService {
   private static final String BUILTIN_TARGET_TYPE = "BUILTIN";
   private static final String FORM_TARGET_TYPE = "FORM";
   private static final String LINK_TARGET_TYPE = "LINK";
-  private static final String METADATA_APP_KEY = "app";
   private static final Set<String> MENU_ICON_NAMES = Set.of(
     "Home", "User", "TrendingUp", "ShoppingCart", "PieChart", "Folder", "BookUser",
     "ClipboardCheck", "Shapes", "Tags", "Boxes", "Banknote");
   private static final Map<String, String> BUILTIN_TARGETS = builtInTargets();
 
+  private record TargetLabels(Map<String, String> forms) {
+  }
+
   @Inject
-  ProjectService projectService;
+  AppMenuRecordStore appMenuRecordStore;
 
   @Inject
   AppFormService appFormService;
 
-  @Inject
-  SessionContext sessionContext;
-
   public List<AppMenuResponse> findMenus(String appId) {
-    Project project = requireAppProject(appId);
-    return toResponses(appId, menuRecords(project), formLabels(appId));
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    return toResponses(appId, appMenuRecordStore.menuRecords(project), targetLabels(appId));
   }
 
   public AppMenuTargetsResponse findTargets(String appId) {
-    requireAppProject(appId);
-    return new AppMenuTargetsResponse(builtInResponses(), formResponses(appId));
+    appMenuRecordStore.requireAppProject(appId);
+    return new AppMenuTargetsResponse(
+      builtInResponses(),
+      formResponses(appId));
   }
 
   public AppMenuResponse createMenu(String appId, AppMenuSaveRequest request) {
-    Project project = requireAppProject(appId);
-    Map<String, String> formLabels = formLabels(appId);
-    List<AppMenuRecord> menus = menuRecords(project);
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    TargetLabels labels = targetLabels(appId);
+    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
     AppMenuRecord menu = validatedMenu(request, appId, null);
 
     if (findNode(menus, menu.id()) != null) {
@@ -87,14 +83,14 @@ public class AppMenuService {
     } else {
       nextMenus = replaceNode(nextMenus, withChildren(parent, appended(parent.children(), menu)));
     }
-    saveMenus(appId, project, nextMenus, formLabels);
-    return toResponse(appId, menu, formLabels);
+    saveMenus(appId, project, nextMenus, labels);
+    return toResponse(appId, menu, labels);
   }
 
   public AppMenuResponse updateMenu(String appId, String menuId, AppMenuSaveRequest request) {
-    Project project = requireAppProject(appId);
-    Map<String, String> formLabels = formLabels(appId);
-    List<AppMenuRecord> menus = menuRecords(project);
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    TargetLabels labels = targetLabels(appId);
+    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
     AppMenuRecord existing = requireMenu(menus, menuId);
     if (!Objects.equals(existing.type(), request.type())) {
       throw new ValidationException("菜单类型不能修改");
@@ -108,8 +104,8 @@ public class AppMenuService {
     requireUniqueName(menus, menu, menu.id());
 
     if (Objects.equals(normalizeParent(existing.parentId()), normalizeParent(menu.parentId()))) {
-      saveMenus(appId, project, replaceNode(menus, menu), formLabels);
-      return toResponse(appId, menu, formLabels);
+      saveMenus(appId, project, replaceNode(menus, menu), labels);
+      return toResponse(appId, menu, labels);
     }
 
     List<AppMenuRecord> nextMenus = removeNode(menus, menu.id());
@@ -119,24 +115,24 @@ public class AppMenuService {
     } else {
       nextMenus = replaceNode(nextMenus, withChildren(parent, appended(parent.children(), menu)));
     }
-    saveMenus(appId, project, nextMenus, formLabels);
-    return toResponse(appId, menu, formLabels);
+    saveMenus(appId, project, nextMenus, labels);
+    return toResponse(appId, menu, labels);
   }
 
   public void deleteMenu(String appId, String menuId) {
-    Project project = requireAppProject(appId);
-    Map<String, String> formLabels = formLabels(appId);
-    List<AppMenuRecord> menus = menuRecords(project);
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    TargetLabels labels = targetLabels(appId);
+    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
     requireMenu(menus, menuId);
-    saveMenus(appId, project, removeNode(menus, menuId), formLabels);
+    saveMenus(appId, project, removeNode(menus, menuId), labels);
   }
 
   public List<AppMenuResponse> reorderMenus(String appId, AppMenuOrderRequest request) {
-    Project project = requireAppProject(appId);
-    Map<String, String> formLabels = formLabels(appId);
-    List<AppMenuRecord> menus = menuRecords(project);
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    TargetLabels labels = targetLabels(appId);
+    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
     List<AppMenuRecord> nextMenus = orderedMenus(menus, request);
-    return saveMenus(appId, project, nextMenus, formLabels);
+    return saveMenus(appId, project, nextMenus, labels);
   }
 
   private AppMenuRecord validatedMenu(AppMenuSaveRequest request, String appId, AppMenuRecord existing) {
@@ -264,53 +260,27 @@ public class AppMenuService {
     String appId,
     Project project,
     List<AppMenuRecord> menus,
-    Map<String, String> formLabels
+    TargetLabels labels
   ) {
-    Map<String, Object> metadata = metadataMap(project);
-    Map<String, Object> app = appNode(project);
-    app.put("menus", menus);
-    metadata.put(METADATA_APP_KEY, app);
-    project.setMetadata(metadata);
-    project.setUpdatedBy(currentUserId());
-    project.setUpdatedAt(LocalDateTime.now());
-    Project updated = projectService.updateProject(project);
-    return toResponses(appId, menuRecords(updated), formLabels);
-  }
-
-  private List<AppMenuRecord> menuRecords(Project project) {
-    Object value = appNode(project).get("menus");
-    if (value == null) {
-      return new ArrayList<>();
-    }
-    if (!(value instanceof Collection<?> collection)) {
-      throw new ValidationException("应用菜单数据格式不正确");
-    }
-    List<AppMenuRecord> result = new ArrayList<>();
-    for (Object item : collection) {
-      AppMenuRecord menu = JsonUtils.convertValue(item, AppMenuRecord.class);
-      if (menu == null || isBlank(menu.id()) || isBlank(menu.type()) || isBlank(menu.name())) {
-        throw new ValidationException("应用菜单数据格式不正确");
-      }
-      result.add(menu);
-    }
-    return result;
+    Project updated = appMenuRecordStore.saveMenus(project, menus);
+    return toResponses(appId, appMenuRecordStore.menuRecords(updated), labels);
   }
 
   private List<AppMenuResponse> toResponses(
     String appId,
     List<AppMenuRecord> menus,
-    Map<String, String> formLabels) {
+    TargetLabels labels) {
     return menus.stream()
-      .map(menu -> toResponse(appId, menu, formLabels))
+      .map(menu -> toResponse(appId, menu, labels))
       .toList();
   }
 
-  private AppMenuResponse toResponse(String appId, AppMenuRecord menu, Map<String, String> formLabels) {
+  private AppMenuResponse toResponse(String appId, AppMenuRecord menu, TargetLabels labels) {
     AppMenuTargetRecord target = menu.target();
     AppMenuTargetResponse targetResponse = target == null ? null : new AppMenuTargetResponse(
       target.type(),
       target.id(),
-      targetLabel(target, formLabels));
+      targetLabel(target, labels));
     return new AppMenuResponse(
       menu.id(),
       menu.type(),
@@ -321,15 +291,15 @@ public class AppMenuService {
       ITEM_TYPE.equals(menu.type()) ? "/apps/" + appId + "/" + menu.id() : null,
       menu.children() == null
         ? List.of()
-        : menu.children().stream().map(child -> toResponse(appId, child, formLabels)).toList());
+        : menu.children().stream().map(child -> toResponse(appId, child, labels)).toList());
   }
 
-  private String targetLabel(AppMenuTargetRecord target, Map<String, String> formLabels) {
+  private String targetLabel(AppMenuTargetRecord target, TargetLabels labels) {
     if (BUILTIN_TARGET_TYPE.equals(target.type())) {
       return BUILTIN_TARGETS.get(target.id());
     }
     if (FORM_TARGET_TYPE.equals(target.type())) {
-      return formLabels.getOrDefault(target.id(), target.id());
+      return labels.forms().getOrDefault(target.id(), target.id());
     }
     return target.id();
   }
@@ -446,6 +416,10 @@ public class AppMenuService {
         LinkedHashMap::new));
   }
 
+  private TargetLabels targetLabels(String appId) {
+    return new TargetLabels(formLabels(appId));
+  }
+
   private void requireFormName(String appId, String formName) {
     appFormService.findForms(appId).stream()
       .filter(form -> form.name().equals(formName))
@@ -486,52 +460,12 @@ public class AppMenuService {
       .toList();
   }
 
-  private Project requireAppProject(String appId) {
-    Project project = projectService.findProject(appId);
-    if (project == null || project.getParentProjectId() != null || "default".equals(appId)) {
-      throw new NotFoundException("应用不存在: " + appId);
-    }
-    return project;
-  }
-
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> metadataMap(Project project) {
-    Object metadata = project.getMetadata();
-    if (metadata == null) {
-      return new LinkedHashMap<>();
-    }
-    if (metadata instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, value) -> result.put(String.valueOf(key), value));
-      return result;
-    }
-    return JsonUtils.convertValue(metadata, Map.class);
-  }
-
-  private Map<String, Object> appNode(Project project) {
-    Object app = metadataMap(project).get(METADATA_APP_KEY);
-    if (app == null) {
-      return new LinkedHashMap<>();
-    }
-    if (app instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, value) -> result.put(String.valueOf(key), value));
-      return result;
-    }
-    return JsonUtils.convertValue(app, Map.class);
-  }
-
   private String normalizeParent(String parentId) {
     return parentId == null ? "" : parentId;
   }
 
   private String generateMenuId() {
     return "menu_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-  }
-
-  private String currentUserId() {
-    String userId = sessionContext.getUserId();
-    return isBlank(userId) ? "admin" : userId;
   }
 
   private boolean isBlank(String value) {

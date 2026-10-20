@@ -2041,7 +2041,8 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - AppForm 前端契约补充 boolean builtin，normalizeForm 对缺失值回退 false。
 - 表单管理卡片和表单设置标题展示“内置”徽标，样式复用内置字段徽标的 bg-muted 与 text-muted-foreground。
 - 表单设计器内部模型与引用表单回退对象同步携带 builtin，保证 TypeScript 契约完整。
-- 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。
+- 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；
+  bash ./init.sh 通过全模块编译与 flexmodel-engine 测试（UI E2E 因 Node.js 未安装跳过）。
 
 **应用表单右侧导航精简 (2026-10-19)：**
 
@@ -2158,3 +2159,29 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - AppRecordFormModal now renders NTEXT fields with Textarea for both record creation and editing; other field types
   continue using Input.
 - Static inspection confirmed the branch and import are present. Build and tests were not run per user request.
+
+**Apps UI 工作台快捷入口命名 (2026-10-19)**
+
+- 工作台可选组件“我的常用”更名为“快捷入口”，描述同步改为配置常用入口。
+- 组件类型由 `favorites` 统一重命名为 `shortcuts`，配置字段由 `favoriteForms` 重命名为
+  `shortcuts`，入口数据源由 `favoriteForms` 重命名为 `shortcuts`。
+- ComponentCanvas 与 ComponentDesigner 的类型判断、局部变量和默认配置同步更新，不再保留旧的 favorites/quickAccess 命名。
+- 验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。
+
+**应用工作台真实配置接口 (2026-10-20)**
+
+- platform.fml 新增 `f_workbench` 系统表：`project_id + name` 唯一，`layout` 为 JSON；不再拆分布局表。
+- 工作台布局结构为 `layout.components + layout.items`；`items` 保存 `componentId + x/y/w/h` 显式网格坐标，不做
+  width/height 历史兼容。后端校验位置、尺寸、边界与重叠。
+- 前端 WorkbenchHome 集成 GridStack：编辑配置模式启用拖动与缩放，拖动/缩放结束后 PATCH 保存显式坐标；ComponentDesigner 支持
+  1-12 列宽度与 1-24 行高度设置。
+- 右下角缩放把手向下偏移 2px；编辑模式下组件标题 hover 显示 grab 光标，拖动中显示 grabbing 光标。
+- 修复布局持续显示最小 1x1 的问题：已持久化的旧 `width/height` 数据会在启动迁移中一次性改写为显式 `x/y/w/h`
+  ；迁移监听器通过事件优先级确保在引擎初始化后执行，避免因启动顺序查不到表而跳过迁移。真实 `sqlite.db` 两条旧布局已验证转换为
+  `x=0, y=0, w=6, h=3`。
+- 新增 `WorkbenchServiceTest` 覆盖旧 `HALF/SHORT` 布局迁移；新增 `WorkbenchStartupMigrationTest`
+  在应用启动前预置旧布局数据，验证迁移监听器确实在引擎初始化后自动执行。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 /logo.png 提示）；
+  `mvn test -pl flexmodel-server -am "-Dtest=WorkbenchServiceTest,WorkbenchStartupMigrationTest,WorkbenchResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"`
+  通过（7 tests，0 failures，0 errors）；`bash ./init.sh` 通过全模块编译与 flexmodel-engine 测试。
+- 遗留：工作台组件展示数据仍为 mock，真实数据接口与刷新策略留待下一阶段；本次未提交 Git 变更。

@@ -42,6 +42,9 @@ public class AppService {
   ProjectService projectService;
 
   @Inject
+  WorkbenchRepository workbenchRepository;
+
+  @Inject
   SessionContext sessionContext;
 
   public List<AppResponse> findApps() {
@@ -107,6 +110,7 @@ public class AppService {
 
   public void deleteApp(String appId) {
     Project project = requireAppProject(appId);
+    workbenchRepository.deleteByProjectId(project.getId());
     projectService.deleteProject(project.getId());
   }
 

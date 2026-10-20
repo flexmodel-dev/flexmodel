@@ -29,6 +29,22 @@ model f_branch {
   @comment("项目分支")
 }
 
+model f_workbench {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  name : String @comment("工作台名称"),
+  description? : String @comment("工作台描述"),
+  layout : JSON @comment("工作台布局"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_WORKBENCH_PROJECT", fields: [project_id]),
+  @index(name: "UQ_WORKBENCH_PROJECT_NAME", unique: true, fields: [project_id, name]),
+  @system,
+  @comment("应用工作台")
+}
+
 // f_api_request_log 已迁移至 project.fml，作为项目级模型
 
 model f_auth_api_key {

@@ -23,7 +23,7 @@ public record AppCreateRequest(
   String projectId,
   @Pattern(regexp = "ShoppingCart|Banknote|Boxes|Folder|Tags|TrendingUp", message = "应用图标不合法")
   String iconName,
-  @Pattern(regexp = "indigo|blue|green|amber|rose|black", message = "应用主色不合法")
+  @Pattern(regexp = "blue|indigo|green|amber|rose|black", message = "应用主色不合法")
   String primaryColor
 ) {
 }

@@ -32,10 +32,10 @@ public class AppService {
   private static final Pattern PROJECT_ID_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{1,62}$");
   private static final Set<String> ICON_NAMES = Set.of(
     "ShoppingCart", "Banknote", "Boxes", "Folder", "Tags", "TrendingUp");
-  private static final Set<String> PRIMARY_COLORS = Set.of(
-    "indigo", "blue", "green", "amber", "rose", "black");
+  private static final List<String> PRIMARY_COLORS = List.of(
+    "blue", "indigo", "green", "amber", "rose", "black");
   private static final String DEFAULT_ICON_NAME = "Boxes";
-  private static final String DEFAULT_PRIMARY_COLOR = "indigo";
+  private static final String DEFAULT_PRIMARY_COLOR = "blue";
   private static final String METADATA_APP_KEY = "app";
 
   @Inject

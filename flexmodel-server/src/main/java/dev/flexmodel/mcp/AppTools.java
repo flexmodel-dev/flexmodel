@@ -118,7 +118,7 @@ public class AppTools {
   @Tool(description = """
     Create a Flexmodel App. This is step 1 of the app creation flow. \
     iconName allows ShoppingCart, Banknote, Boxes, Folder, Tags, or TrendingUp. \
-    primaryColor allows indigo, blue, green, amber, rose, or black.\
+    primaryColor allows blue, indigo, green, amber, rose, or black; blue is the default.\
     """)
   public String create_app(
     @ToolArg(description = "Human-readable app name, required") String name,

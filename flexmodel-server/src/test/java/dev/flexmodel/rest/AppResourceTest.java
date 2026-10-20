@@ -52,7 +52,7 @@ public class AppResourceTest {
       .body("projectId", equalTo("dev_test"))
       .body("name", notNullValue())
       .body("iconName", equalTo("Boxes"))
-      .body("primaryColor", equalTo("indigo"))
+      .body("primaryColor", equalTo("blue"))
       .body("enabled", equalTo(true))
       .body("owner", notNullValue());
   }

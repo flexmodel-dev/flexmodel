@@ -832,7 +832,7 @@
         "feat-084"
       ],
       "status": "done",
-      "evidence": "后端 AppService 默认主色为 blue，DTO 与 MCP 描述同步蓝色优先；前端新建/编辑表单默认蓝色，颜色列表蓝色第一，管理后台基础主题与回退 data-primary 均为蓝色。验证：bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）；git diff --check 通过。"
+      "evidence": "后端 AppService 默认主色为 blue，DTO 与 MCP 描述同步蓝色优先；前端新建/编辑表单默认蓝色，颜色列表蓝色第一，管理后台基础主题与回退 data-primary 均为蓝色。补充 data-primary='indigo' 亮色/暗色 CSS 覆盖，修复默认色改为蓝色后已配置靛蓝的应用不再生效的问题；六种可选主色均有亮色/暗色映射。验证：bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）；相关文件 git diff --check 通过。"
     }
   ]
 }

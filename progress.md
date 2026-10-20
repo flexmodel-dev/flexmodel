@@ -2313,5 +2313,6 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 应用主色默认值由靛蓝改为蓝色；颜色选择器、前端请求归一化、新建与编辑表单默认值同步蓝色优先，后端 `AppService`、DTO 校验和
   `AppTools` 描述保持一致。
 - 管理后台基础主题改为蓝色，应用外壳无数据或卸载时的 `data-primary` 回退值也改为蓝色；应用内仍可按应用配置切换专属主色。
+- 修复应用配置主色不生效：补充 `data-primary='indigo'` 的亮色/暗色 CSS 覆盖；此前靛蓝依赖基础默认值，默认改为蓝色后缺失覆盖导致回落蓝色。
 - 验证：`bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试；`flexmodel-apps-ui npm run build` 通过；`mvn test -pl flexmodel-server
   -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（10 tests）；`git diff --check` 通过。

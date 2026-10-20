@@ -8,11 +8,13 @@ import java.util.Map;
  */
 public record WorkbenchComponentSpecRecord(
   String type,
+  String chartType,
   String label,
   String description,
   Integer defaultWidth,
   Integer defaultHeight,
   List<String> requiredFields,
-  Map<String, Object> defaultConfig
+  Map<String, Object> defaultConfig,
+  String dataEndpoint
 ) {
 }

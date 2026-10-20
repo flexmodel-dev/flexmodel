@@ -19,6 +19,16 @@ public interface DataRepository {
 
   long countRecords(String projectId, String datasourceName, String modelName, String filter);
 
+  List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String datasourceName,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    int limit
+  );
+
   Map<String, Object> findOneRecord(String projectId, String datasourceName, String modelName, Object id, List<String> expand);
 
   Map<String, Object> createRecord(String projectId, String datasourceName, String modelName, Map<String, Object> data);

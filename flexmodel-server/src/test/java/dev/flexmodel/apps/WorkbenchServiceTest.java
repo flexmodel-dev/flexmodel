@@ -4,8 +4,10 @@ import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
 import dev.flexmodel.apps.dto.WorkbenchChartConfig;
 import dev.flexmodel.apps.dto.WorkbenchComponentRecord;
+import dev.flexmodel.apps.dto.WorkbenchComponentSpecRecord;
 import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
 import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
+import dev.flexmodel.apps.dto.WorkbenchMetricConfig;
 import dev.flexmodel.apps.dto.WorkbenchPlacementRecord;
 import dev.flexmodel.apps.dto.WorkbenchShortcutsConfig;
 import dev.flexmodel.apps.dto.WorkbenchTasksConfig;
@@ -21,7 +23,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
@@ -33,10 +37,20 @@ class WorkbenchServiceTest {
   @Test
   void capabilityCatalogDescribesTargetSchema() {
     WorkbenchCapabilityResponse capability = workbenchService.findCapabilities("dev_test");
+    List<WorkbenchComponentSpecRecord> components = capability.components();
 
     assertEquals(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, capability.schemaVersion());
-    assertEquals(List.of("metric", "chart", "dataloader", "shortcuts", "tasks"),
-      capability.components().stream().map(item -> item.type()).toList());
+    assertEquals(7, components.size());
+    assertEquals(List.of("metric", "chart", "chart", "chart", "dataloader", "shortcuts", "tasks"),
+      components.stream().map(WorkbenchComponentSpecRecord::type).toList());
+    assertEquals(List.of("line", "bar", "pie"),
+      components.stream()
+        .filter(item -> "chart".equals(item.type()))
+        .map(WorkbenchComponentSpecRecord::chartType)
+        .toList());
+    assertTrue(components.stream()
+      .filter(item -> "chart".equals(item.type()))
+      .noneMatch(item -> item.defaultConfig().containsKey("measureField")));
     assertNotNull(capability.forms());
     assertEquals(List.of("count", "sum", "avg"), capability.availableValues().get("aggregation"));
     assertInstanceOf(WorkbenchTasksConfig.class,
@@ -73,5 +87,74 @@ class WorkbenchServiceTest {
       new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(component)));
 
     assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", request));
+  }
+
+
+  @Test
+  void chartTypeControlsSmoothAndAggregationControlsMeasureField() {
+    assertThrows(ValidationException.class, () -> createChartWorkbench("line", "count", null, null));
+    for (String chartType : List.of("bar", "pie")) {
+      var saved = createChartWorkbench(chartType, "count", null, null);
+      var savedConfig = saved.layout().components().getFirst().config();
+      assertInstanceOf(WorkbenchChartConfig.class, savedConfig);
+      assertNull(((WorkbenchChartConfig) savedConfig).smooth());
+    }
+    assertThrows(ValidationException.class, () -> createChartWorkbench("bar", "count", "name", null));
+    assertThrows(ValidationException.class, () -> createChartWorkbench("bar", "sum", null, null));
+  }
+
+  @Test
+  void metricAggregationFieldMustBeNumericAndChartDimensionMustBeGroupable() {
+    WorkbenchComponentRecord metric = new WorkbenchComponentRecord(
+      "component_metric",
+      "核心指标",
+      new WorkbenchPlacementRecord(0, 0, 3, 3),
+      new WorkbenchMetricConfig("f_user", "sum", "name"));
+    WorkbenchCreateRequest metricRequest = new WorkbenchCreateRequest(
+      "指标字段校验-" + UUID.randomUUID(),
+      null,
+      new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(metric)));
+    assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", metricRequest));
+
+    WorkbenchComponentRecord chart = new WorkbenchComponentRecord(
+      "component_chart",
+      "用户分组",
+      new WorkbenchPlacementRecord(0, 0, 6, 4),
+      new WorkbenchChartConfig(
+        "line", "f_user", "manager_user_id", null, "count",
+        false, true, true, "primary"));
+    WorkbenchCreateRequest chartRequest = new WorkbenchCreateRequest(
+      "图表分组校验-" + UUID.randomUUID(),
+      null,
+      new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(chart)));
+    assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", chartRequest));
+  }
+
+  private WorkbenchChartConfig chartConfig(
+    String chartType,
+    String aggregation,
+    String measureField,
+    Boolean smooth
+  ) {
+    return new WorkbenchChartConfig(
+      chartType, "f_user", "name", measureField, aggregation, false, true, smooth, "primary");
+  }
+
+  private dev.flexmodel.apps.dto.WorkbenchResponse createChartWorkbench(
+    String chartType,
+    String aggregation,
+    String measureField,
+    Boolean smooth
+  ) {
+    WorkbenchComponentRecord component = new WorkbenchComponentRecord(
+      "component_chart_" + chartType,
+      "Chart type validation-" + chartType,
+      new WorkbenchPlacementRecord(0, 0, 6, 4),
+      chartConfig(chartType, aggregation, measureField, smooth));
+    WorkbenchCreateRequest request = new WorkbenchCreateRequest(
+      "Chart type validation-" + chartType + "-" + UUID.randomUUID(),
+      null,
+      new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(component)));
+    return workbenchService.createWorkbench("dev_test", request);
   }
 }

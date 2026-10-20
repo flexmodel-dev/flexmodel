@@ -813,6 +813,16 @@
       ],
       "status": "done",
       "evidence": "WorkbenchLayoutRecord 使用 schemaVersion=1 和 components 单数组；WorkbenchPlacementRecord 内嵌组件；WorkbenchComponentConfig 拆分为 metric/chart/dataloader/shortcuts/tasks 判别联合，line/bar/pie 合并为 chartType；后端保留网格、重叠、表单字段、聚合、快捷菜单校验。新增 GET /apps/{appId}/workbenches/capabilities 与 WorkbenchCapabilityResponse，返回组件规格、默认配置、枚举值、表单字段和快捷菜单。AppTools 新增 list_app_workbenches、get_app_workbench、get_app_workbench_capabilities、create_app_workbench、save_app_workbench_layout 和 create_app_workbench_menu，其中 create_app_workbench_menu 使用 BUILTIN targetId=workbench。前端同步为单数组 placement/config union 契约，不调整现有视觉样式；ComponentDesigner.changeForm 切换表单时保留当前组件类型、图表样式和指标选择。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -am \"-Dtest=WorkbenchServiceTest,WorkbenchResourceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink\" \"-Dsurefire.failIfNoSpecifiedTests=false\" 通过（9 tests，0 failures，0 errors）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；最终 flexmodel-apps-ui npm run build 与 git diff --check 均通过。"
+    },
+    {
+      "id": "feat-084",
+      "name": "Apps - 工作台真实数据组件与 MCP 数据能力",
+      "description": "metric/chart/dataloader 工作台组件接入真实表单数据：指标支持 count/sum/avg，图表支持分组聚合，明细支持分页与搜索；新增组件数据 REST 端点与 AppTools MCP 工具，前端渲染真实数据但不调整既有视觉样式。",
+      "dependencies": [
+        "feat-083"
+      ],
+      "status": "done",
+      "evidence": "后端新增 WorkbenchDataService、组件数据 DTO、GET /api/apps/{appId}/workbenches/{workbenchId}/components/{componentId}/data 和 MCP get_app_workbench_component_data；DataRepository/DataFmRepository 支持聚合查询；前端 WorkbenchHome/ComponentCanvas/ComponentDesigner 消费真实数据契约。验证：mvn compile -pl flexmodel-server -am 通过；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=WorkbenchDataServiceTest 通过（4 tests）；mvn test -pl flexmodel-server -am \"-Dtest=WorkbenchServiceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink\" 通过（5 tests）；WorkbenchResourceTest 新增响应形态与分页校验通过；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；git diff --check 通过。"
     }
   ]
 }

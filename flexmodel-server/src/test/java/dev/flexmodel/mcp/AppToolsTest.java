@@ -10,6 +10,10 @@ import dev.flexmodel.apps.dto.AppResponse;
 import dev.flexmodel.apps.dto.AppMenuResponse;
 import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
 import dev.flexmodel.apps.dto.WorkbenchChartConfig;
+import dev.flexmodel.apps.dto.WorkbenchChartData;
+import dev.flexmodel.apps.dto.WorkbenchComponentDataResponse;
+import dev.flexmodel.apps.dto.WorkbenchDataLoaderData;
+import dev.flexmodel.apps.dto.WorkbenchMetricData;
 import dev.flexmodel.apps.dto.WorkbenchResponse;
 import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -137,7 +141,7 @@ class AppToolsTest {
                 "id": "metric",
                 "title": "核心指标",
                 "placement": {"x": 0, "y": 0, "w": 3, "h": 3},
-                "config": {"type": "metric", "formName": "%s", "metric": "new-customers"}
+                "config": {"type": "metric", "formName": "%s", "aggregation": "count", "field": null}
               },
               {
                 "id": "chart",
@@ -178,6 +182,35 @@ class AppToolsTest {
           customerName, amountName)), WorkbenchResponse.class);
       assertEquals(4, saved.layout().components().size());
       assertInstanceOf(WorkbenchChartConfig.class, saved.layout().components().get(1).config());
+
+      String records = appTools.create_app_mock_records(appId, formName, """
+        [
+          {"name":"订单一","%s":100,"%s":"Alpha"},
+          {"name":"订单二","%s":250,"%s":"Beta"}
+        ]
+        """.formatted(amountName, customerName, amountName, customerName), null, null, null);
+      assertTrue(records.startsWith("["));
+
+      WorkbenchComponentDataResponse metric = JsonUtils.parseToObject(
+        appTools.get_app_workbench_component_data(appId, workbenchId, "metric", null, null, null),
+        WorkbenchComponentDataResponse.class);
+      assertInstanceOf(WorkbenchMetricData.class, metric.data());
+      assertEquals(2, ((WorkbenchMetricData) metric.data()).value());
+
+      WorkbenchComponentDataResponse chart = JsonUtils.parseToObject(
+        appTools.get_app_workbench_component_data(appId, workbenchId, "chart", null, null, null),
+        WorkbenchComponentDataResponse.class);
+      assertInstanceOf(WorkbenchChartData.class, chart.data());
+      assertEquals(2, ((WorkbenchChartData) chart.data()).rows().size());
+
+      WorkbenchComponentDataResponse dataloader = JsonUtils.parseToObject(
+        appTools.get_app_workbench_component_data(appId, workbenchId, "records", "1", "20", null),
+        WorkbenchComponentDataResponse.class);
+      assertInstanceOf(WorkbenchDataLoaderData.class, dataloader.data());
+      assertEquals(2, ((WorkbenchDataLoaderData) dataloader.data()).total());
+
+      assertTrue(appTools.get_app_workbench_component_data(
+        appId, workbenchId, "tasks", null, null, null).startsWith("Error:"));
 
       AppMenuResponse menu = JsonUtils.parseToObject(
         appTools.create_app_workbench_menu(appId, "工作台", "Home", null),

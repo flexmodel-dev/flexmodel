@@ -44,14 +44,17 @@ import java.util.UUID;
 public class WorkbenchService {
 
   private static final String DEFAULT_NAME = "默认工作台";
+  private static final String DATA_ENDPOINT_TEMPLATE =
+    "/api/apps/{appId}/workbenches/{workbenchId}/components/{componentId}/data";
   private static final int GRID_COLUMNS = 12;
   private static final int MAX_GRID_HEIGHT = 24;
   private static final Set<String> CHART_TYPES = Set.of("line", "bar", "pie");
   private static final Set<String> AGGREGATIONS = Set.of("count", "sum", "avg");
   private static final Set<String> PALETTES = Set.of("primary", "multi");
-  private static final Set<String> METRICS = Set.of(
-    "new-customers", "won-opportunities", "target-completion", "new-leads");
   private static final Set<String> MEASURE_FIELD_TYPES = Set.of("NUMBER", "DECIMAL");
+  private static final Set<String> GROUPABLE_FIELD_TYPES = Set.of(
+    "TEXT", "NTEXT", "PHONE", "EMAIL", "URL", "SERIES", "PICKLIST", "SELECT",
+    "NUMBER", "DECIMAL", "DATE", "DATETIME", "TIME", "CLASSIFICATION", "BOOL", "STATE");
 
   @Inject
   WorkbenchRepository workbenchRepository;
@@ -77,6 +80,15 @@ public class WorkbenchService {
 
   public WorkbenchResponse findWorkbench(String appId, String workbenchId) {
     return toResponse(requireWorkbench(appId, workbenchId));
+  }
+
+  public WorkbenchComponentRecord findComponent(String appId, String workbenchId, String componentId) {
+    Workbench workbench = requireWorkbench(appId, workbenchId);
+    WorkbenchLayoutRecord layout = validatedLayout(appId, toLayout(workbench));
+    return layout.components().stream()
+      .filter(component -> Objects.equals(component.id(), componentId))
+      .findFirst()
+      .orElseThrow(() -> new NotFoundException("工作台组件不存在: " + componentId));
   }
 
   public WorkbenchCapabilityResponse findCapabilities(String appId) {
@@ -280,8 +292,21 @@ public class WorkbenchService {
     }
     if (config instanceof WorkbenchMetricConfig metricConfig) {
       requireForm(appId, metricConfig.formName());
-      if (isBlank(metricConfig.metric()) || !METRICS.contains(metricConfig.metric())) {
-        throw new ValidationException("工作台指标不合法: " + metricConfig.metric());
+      if (isBlank(metricConfig.aggregation()) || !AGGREGATIONS.contains(metricConfig.aggregation())) {
+        throw new ValidationException("工作台指标聚合方式不合法: " + metricConfig.aggregation());
+      }
+      if ("count".equals(metricConfig.aggregation())) {
+        if (!isBlank(metricConfig.field())) {
+          throw new ValidationException("工作台记录数指标不能配置聚合字段: " + metricConfig.field());
+        }
+      } else {
+        AppFormFieldResponse field = requireField(requireForm(appId, metricConfig.formName()), metricConfig.field());
+        if (field == null) {
+          throw new ValidationException("工作台指标聚合字段不存在: " + metricConfig.field());
+        }
+        if (!MEASURE_FIELD_TYPES.contains(field.type())) {
+          throw new ValidationException("工作台指标聚合字段必须是数字字段: " + metricConfig.field());
+        }
       }
       return;
     }
@@ -293,13 +318,21 @@ public class WorkbenchService {
       if (isBlank(chartConfig.dimensionField())) {
         throw new ValidationException("工作台图表必须配置分组字段: " + component.title());
       }
-      if (requireField(form, chartConfig.dimensionField()) == null) {
+      AppFormFieldResponse dimensionField = requireField(form, chartConfig.dimensionField());
+      if (dimensionField == null) {
         throw new ValidationException("工作台分组字段不存在: " + chartConfig.dimensionField());
+      }
+      if (!GROUPABLE_FIELD_TYPES.contains(dimensionField.type())) {
+        throw new ValidationException("工作台分组字段类型不支持: " + dimensionField.type());
       }
       if (isBlank(chartConfig.aggregation()) || !AGGREGATIONS.contains(chartConfig.aggregation())) {
         throw new ValidationException("工作台聚合方式不合法: " + chartConfig.aggregation());
       }
-      if (!"count".equals(chartConfig.aggregation())) {
+      if ("count".equals(chartConfig.aggregation())) {
+        if (!isBlank(chartConfig.measureField())) {
+          throw new ValidationException("工作台记录数图表不能配置指标字段: " + chartConfig.measureField());
+        }
+      } else {
         AppFormFieldResponse field = requireField(form, chartConfig.measureField());
         if (field == null) {
           throw new ValidationException("工作台指标字段不存在: " + chartConfig.measureField());
@@ -308,7 +341,8 @@ public class WorkbenchService {
           throw new ValidationException("工作台指标字段必须是数字字段: " + chartConfig.measureField());
         }
       }
-      if (chartConfig.showLegend() == null || chartConfig.showLabel() == null || chartConfig.smooth() == null) {
+      if (chartConfig.showLegend() == null || chartConfig.showLabel() == null
+        || ("line".equals(chartConfig.chartType()) && chartConfig.smooth() == null)) {
         throw new ValidationException("工作台图表显示配置不能为空: " + component.title());
       }
       if (isBlank(chartConfig.palette()) || !PALETTES.contains(chartConfig.palette())) {
@@ -396,24 +430,44 @@ public class WorkbenchService {
 
   private List<WorkbenchComponentSpecRecord> componentSpecs() {
     return List.of(
-      new WorkbenchComponentSpecRecord("metric", "指标", "突出展示核心指标", 3, 3,
-        List.of("type", "formName", "metric"), Map.of(
-        "type", "metric", "formName", "<form.name>", "metric", "new-customers")),
-      new WorkbenchComponentSpecRecord("chart", "图表", "展示表单数据趋势、对比或占比", 6, 4,
-        List.of("type", "chartType", "formName", "dimensionField", "measureField",
+      new WorkbenchComponentSpecRecord("metric", null, "指标", "突出展示核心指标", 3, 3,
+        List.of("type", "formName", "aggregation"), Map.of(
+        "type", "metric", "formName", "<form.name>", "aggregation", "count"),
+        DATA_ENDPOINT_TEMPLATE),
+      new WorkbenchComponentSpecRecord("chart", "line", "折线图", "观察数据趋势", 6, 4,
+        List.of("type", "chartType", "formName", "dimensionField",
           "aggregation", "showLegend", "showLabel", "smooth", "palette"), Map.of(
         "type", "chart", "chartType", "line", "formName", "<form.name>",
-        "dimensionField", "<field.name>", "measureField", "<numeric-field.name>",
+        "dimensionField", "<field.name>",
         "aggregation", "count", "showLegend", false, "showLabel", true,
-        "smooth", true, "palette", "primary")),
-      new WorkbenchComponentSpecRecord("dataloader", "明细", "查看表单记录", 12, 5,
+        "smooth", true, "palette", "primary"),
+        DATA_ENDPOINT_TEMPLATE),
+      new WorkbenchComponentSpecRecord("chart", "bar", "柱状图", "比较分组数据", 6, 4,
+        List.of("type", "chartType", "formName", "dimensionField",
+          "aggregation", "showLegend", "showLabel", "palette"), Map.of(
+        "type", "chart", "chartType", "bar", "formName", "<form.name>",
+        "dimensionField", "<field.name>",
+        "aggregation", "count", "showLegend", false, "showLabel", true,
+        "palette", "primary"),
+        DATA_ENDPOINT_TEMPLATE),
+      new WorkbenchComponentSpecRecord("chart", "pie", "饼图", "展示分组占比", 4, 4,
+        List.of("type", "chartType", "formName", "dimensionField",
+          "aggregation", "showLegend", "showLabel", "palette"), Map.of(
+        "type", "chart", "chartType", "pie", "formName", "<form.name>",
+        "dimensionField", "<field.name>",
+        "aggregation", "count", "showLegend", true, "showLabel", true,
+        "palette", "multi"),
+        DATA_ENDPOINT_TEMPLATE),
+      new WorkbenchComponentSpecRecord("dataloader", null, "明细", "查看表单记录", 12, 5,
         List.of("type", "formName", "visibleColumns"), Map.of(
-        "type", "dataloader", "formName", "<form.name>", "visibleColumns", List.of("<field.name>"))),
-      new WorkbenchComponentSpecRecord("shortcuts", "快捷入口", "直达表单菜单", 6, 3,
+        "type", "dataloader", "formName", "<form.name>", "visibleColumns", List.of("<field.name>")),
+        DATA_ENDPOINT_TEMPLATE),
+      new WorkbenchComponentSpecRecord("shortcuts", null, "快捷入口", "直达表单菜单", 6, 3,
         List.of("type", "shortcuts", "columnsPerRow"), Map.of(
-        "type", "shortcuts", "shortcuts", List.of("<menu.id>"), "columnsPerRow", 2)),
-      new WorkbenchComponentSpecRecord("tasks", "我的任务", "查看流程待办", 4, 4,
-        List.of("type"), Map.of("type", "tasks")));
+        "type", "shortcuts", "shortcuts", List.of("<menu.id>"), "columnsPerRow", 2),
+        null),
+      new WorkbenchComponentSpecRecord("tasks", null, "我的任务", "查看流程待办", 4, 4,
+        List.of("type"), Map.of("type", "tasks"), null));
   }
 
   private WorkbenchFormOptionRecord toFormOption(AppFormResponse form) {
@@ -447,7 +501,6 @@ public class WorkbenchService {
     result.put("chartType", List.of("line", "bar", "pie"));
     result.put("aggregation", List.of("count", "sum", "avg"));
     result.put("palette", List.of("primary", "multi"));
-    result.put("metric", List.of("new-customers", "won-opportunities", "target-completion", "new-leads"));
     result.put("columnsPerRow", List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"));
     return result;
   }

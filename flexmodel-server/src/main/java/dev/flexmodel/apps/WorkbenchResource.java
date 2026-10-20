@@ -1,20 +1,14 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
+import dev.flexmodel.apps.dto.WorkbenchComponentDataResponse;
 import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
 import dev.flexmodel.apps.dto.WorkbenchPatchRequest;
 import dev.flexmodel.apps.dto.WorkbenchResponse;
 import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.PATCH;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -32,6 +26,9 @@ public class WorkbenchResource {
 
   @Inject
   WorkbenchService workbenchService;
+
+  @Inject
+  WorkbenchDataService workbenchDataService;
 
   @Operation(summary = "获取应用工作台列表")
   @GET
@@ -65,6 +62,21 @@ public class WorkbenchResource {
     @PathParam("workbenchId") String workbenchId
   ) {
     return workbenchService.findWorkbench(appId, workbenchId);
+  }
+
+  @Parameter(name = "workbenchId", description = "工作台ID", in = ParameterIn.PATH, required = true)
+  @Operation(summary = "获取工作台组件真实数据")
+  @GET
+  @Path("/{workbenchId}/components/{componentId}/data")
+  public WorkbenchComponentDataResponse componentData(
+    @PathParam("appId") String appId,
+    @PathParam("workbenchId") String workbenchId,
+    @PathParam("componentId") String componentId,
+    @QueryParam("page") @DefaultValue("1") Integer page,
+    @QueryParam("size") @DefaultValue("20") Integer size,
+    @QueryParam("search") String search
+  ) {
+    return workbenchDataService.findComponentData(appId, workbenchId, componentId, page, size, search);
   }
 
   @Parameter(name = "workbenchId", description = "工作台ID", in = ParameterIn.PATH, required = true)

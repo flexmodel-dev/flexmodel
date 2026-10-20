@@ -5,6 +5,7 @@ package dev.flexmodel.apps.dto;
  */
 public record WorkbenchMetricConfig(
   String formName,
-  String metric
+  String aggregation,
+  String field
 ) implements WorkbenchComponentConfig {
 }

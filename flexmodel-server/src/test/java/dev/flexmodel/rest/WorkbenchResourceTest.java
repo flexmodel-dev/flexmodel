@@ -186,6 +186,39 @@ public class WorkbenchResourceTest {
       .statusCode(404);
   }
 
+  @Test
+  void testComponentDataResponseShapeAndPageSizeValidation() {
+    String workbenchId = createWorkbenchWithRealDataComponents();
+    try {
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH + "/" + workbenchId + "/components/metric/data")
+        .then()
+        .statusCode(200)
+        .body("componentId", equalTo("metric"))
+        .body("data.type", equalTo("metric"));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH + "/" + workbenchId + "/components/records/data")
+        .then()
+        .statusCode(200)
+        .body("componentId", equalTo("records"))
+        .body("data.type", equalTo("dataloader"));
+
+      given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .when()
+        .get(BASE_PATH + "/" + workbenchId + "/components/records/data?page=1&size=51")
+        .then()
+        .statusCode(400);
+    } finally {
+      deleteWorkbenchQuietly(workbenchId);
+    }
+  }
+
   private String createWorkbench() {
     return given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -202,6 +235,40 @@ public class WorkbenchResourceTest {
                 "title": "我的任务",
                 "placement": {"x": 0, "y": 0, "w": 12, "h": 4},
                 "config": {"type": "tasks"}
+              }
+            ]
+          }
+        }
+        """.formatted(TEST_SUFFIX, UUID.randomUUID()))
+      .when()
+      .post(BASE_PATH)
+      .then()
+      .statusCode(201)
+      .extract()
+      .path("id");
+  }
+
+  private String createWorkbenchWithRealDataComponents() {
+    return given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "name": "真实数据工作台-%s-%s",
+          "layout": {
+            "schemaVersion": 1,
+            "components": [
+              {
+                "id": "metric",
+                "title": "用户数量",
+                "placement": {"x": 0, "y": 0, "w": 3, "h": 3},
+                "config": {"type": "metric", "formName": "f_user", "aggregation": "count", "field": null}
+              },
+              {
+                "id": "records",
+                "title": "用户明细",
+                "placement": {"x": 0, "y": 3, "w": 12, "h": 5},
+                "config": {"type": "dataloader", "formName": "f_user", "visibleColumns": ["name"]}
               }
             ]
           }

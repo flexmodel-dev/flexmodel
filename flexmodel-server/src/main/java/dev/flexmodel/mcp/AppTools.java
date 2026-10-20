@@ -5,6 +5,7 @@ import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.apps.AppMenuService;
 import dev.flexmodel.apps.AppRecordService;
 import dev.flexmodel.apps.AppService;
+import dev.flexmodel.apps.WorkbenchDataService;
 import dev.flexmodel.apps.WorkbenchService;
 import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.dto.AppFormCreateRequest;
@@ -48,6 +49,9 @@ public class AppTools {
 
   @Inject
   WorkbenchService workbenchService;
+
+  @Inject
+  WorkbenchDataService workbenchDataService;
 
   @Tool(description = """
     List all Flexmodel Apps. Each app is an isolated top-level project \
@@ -266,6 +270,35 @@ public class AppTools {
   }
 
   @Tool(description = """
+    Get real data for one workbench component. Only metric, chart, and dataloader \
+    components support this tool. Use get_app_workbench_capabilities first to obtain \
+    the component contract, then use get_app_workbench to find componentId. page, \
+    size, and search only affect dataloader components.\
+    """)
+  public String get_app_workbench_component_data(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "The workbench ID returned by list_app_workbenches") String workbenchId,
+    @ToolArg(description = "The component ID from the saved workbench layout") String componentId,
+    @ToolArg(description = "Page number for dataloader data, default 1") String page,
+    @ToolArg(description = "Page size for dataloader data, default 20, maximum 50") String size,
+    @ToolArg(description = "Search text for dataloader data, optional") String search
+  ) {
+    log.info(
+      "get_app_workbench_component_data called, appId={}, workbenchId={}, componentId={}",
+      appId, workbenchId, componentId);
+    try {
+      return JsonUtils.toJsonString(workbenchDataService.findComponentData(
+        appId, workbenchId, componentId, optionalInteger(page, 1),
+        optionalInteger(size, 20), isBlank(search) ? null : search));
+    } catch (Exception exception) {
+      log.error(
+        "get_app_workbench_component_data failed, appId={}, workbenchId={}, componentId={}",
+        appId, workbenchId, componentId, exception);
+      return "Error: get_app_workbench_component_data failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = """
     Create a workbench for a Flexmodel App. layoutJson is optional; when omitted, \
     an empty schemaVersion 1 layout is created. A valid layout contains schemaVersion, \
     and components with id, title, placement, and a type-discriminated config.\
@@ -413,5 +446,16 @@ public class AppTools {
 
   private boolean isBlank(String value) {
     return value == null || value.isBlank();
+  }
+
+  private Integer optionalInteger(String value, int fallback) {
+    if (isBlank(value)) {
+      return fallback;
+    }
+    try {
+      return Integer.valueOf(value.trim());
+    } catch (NumberFormatException exception) {
+      throw new IllegalArgumentException("数字参数不合法: " + value);
+    }
   }
 }

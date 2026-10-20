@@ -84,6 +84,42 @@ public class DataFmRepository implements DataRepository {
   }
 
   @Override
+  public List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String datasourceName,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    int limit
+  ) {
+    try (Session session = sessionFactory.createSession(datasourceName)) {
+      boolean grouped = !StringUtils.isBlank(dimensionField);
+      Query.Builder builder = Query.Builder.create()
+        .select(select -> {
+          if (grouped) {
+            select.field("dimension", dimensionField);
+          }
+          switch (aggregation) {
+            case "count" -> select.field("value", Query.count(Query.field("id")));
+            case "sum" -> select.field("value", Query.sum(Query.field(measureField)));
+            case "avg" -> select.field("value", Query.avg(Query.field(measureField)));
+            default -> throw new IllegalArgumentException("不支持的聚合方式: " + aggregation);
+          }
+        });
+      if (grouped) {
+        builder
+          .groupBy(groupBy -> groupBy.field(dimensionField))
+          .orderBy(orderBy -> orderBy.asc("dimension"))
+          .page(1, limit);
+      } else {
+        builder.page(1, 1);
+      }
+      return session.data().findAll(modelName, builder.build());
+    }
+  }
+
+  @Override
   public Map<String, Object> findOneRecord(String projectId, String datasourceName, String modelName, Object id, List<String> expand) {
     try (Session session = sessionFactory.createSession(datasourceName)) {
 

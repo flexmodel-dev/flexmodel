@@ -2274,3 +2274,18 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 复核修复：`ComponentDesigner.changeForm` 切换表单时只重置表单相关字段，保留当前组件类型、图表样式和指标选择；最终再次执行
   `flexmodel-apps-ui npm run build` 与 `git diff --check`，均通过。
 - 遗留：全量 `AppToolsTest` 仍存在 4 个与本次无关的既有表单布局断言失败；本次仅验证新增工作台链路测试。
+
+**工作台真实数据组件与 MCP 数据能力 (2026-10-20)**
+
+- `metric/chart/dataloader` 组件接入真实表单数据：指标支持 `count/sum/avg`，`sum/avg` 必须选择数字字段；图表按可分组字段聚合，最多返回
+  100 组；明细支持分页、搜索，页大小限制 1-50。
+- 新增 `GET /api/apps/{appId}/workbenches/{workbenchId}/components/{componentId}/data` 与
+  `AppTools.get_app_workbench_component_data`，`shortcuts/tasks` 明确不支持真实数据查询；能力目录补充组件 `dataEndpoint`，
+  `schemaVersion` 保持 1。
+- 前端 `WorkbenchHome`、`ComponentCanvas`、`ComponentDesigner` 同步真实数据契约并渲染真实结果；未保存配置仍使用设计器预览示例，
+  `tasks` 保持 mock 数据，本次不调整视觉样式。
+- 验证：`mvn compile -pl flexmodel-server -am` 通过；`flexmodel-apps-ui npm run build` 通过；`WorkbenchDataServiceTest` 4
+  tests 通过；`WorkbenchServiceTest + AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink` 5 tests 通过；
+  `WorkbenchResourceTest` 新增数据响应与分页校验通过；`bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试；
+  `git diff --check` 通过。
+- 备注：全量 `AppToolsTest` 仍存在与本次无关的既有断言失败；本次仅验证新增工作台数据链路相关测试。

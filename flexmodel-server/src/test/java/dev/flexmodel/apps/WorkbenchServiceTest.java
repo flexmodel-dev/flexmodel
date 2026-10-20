@@ -91,6 +91,7 @@ class WorkbenchServiceTest {
 
   @Test
   void chartTypeControlsSmoothAndAggregationControlsMeasureField() {
+    workbenchService.findWorkbenches("dev_test");
     assertThrows(ValidationException.class, () -> createChartWorkbench("line", "count", null, null));
     for (String chartType : List.of("bar", "pie")) {
       var saved = createChartWorkbench(chartType, "count", null, null);

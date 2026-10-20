@@ -316,7 +316,7 @@
         "feat-026"
       ],
       "status": "done",
-      "evidence": "AppFormLayout 新增 subforms 配置，FormDesign 支持添加、编辑、拖拽和移除子表单，未选择引用字段时自动创建指向当前表单的 REFERENCE 字段；AppRecordService/AppRecordResource 在现有 /records 接口上支持 mainFormName、mainRecordId 与 referenceField 查询参数，列表自动按主记录过滤，新增强制写入归属，详情/更新/删除校验归属；AppRecordDetail 下方渲染子表单列表并支持新增、编辑、删除与空态。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest,AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+      "evidence": "AppFormLayout 新增 subforms 配置，FormDesign 支持添加、编辑、拖拽和移除子表单，未选择引用字段时自动创建指向当前表单的 REFERENCE 字段；AppRecordService/AppRecordResource 在现有 /records 接口上支持 mainFormName、mainRecordId 与 referenceField 查询参数，列表自动按主记录过滤，新增强制写入归属，详情/更新/删除校验归属；AppRecordDetail 下方渲染子表单列表并支持新增、编辑、删除与空态；子表单表格与工作台明细共用引用值格式化工具，引用对象优先显示 displayValue、缺失时回退 id，数组逐项拼接，避免显示 [object Object]。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest,AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
     },
     {
       "id": "feat-034",
@@ -822,7 +822,7 @@
         "feat-083"
       ],
       "status": "done",
-      "evidence": "后端新增 WorkbenchDataService、组件数据 DTO、GET /api/apps/{appId}/workbenches/{workbenchId}/components/{componentId}/data 和 MCP get_app_workbench_component_data；DataRepository/DataFmRepository 支持聚合查询；前端 WorkbenchHome/ComponentCanvas/ComponentDesigner 消费真实数据契约。验证：mvn compile -pl flexmodel-server -am 通过；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=WorkbenchDataServiceTest 通过（4 tests）；mvn test -pl flexmodel-server -am \"-Dtest=WorkbenchServiceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink\" 通过（5 tests）；WorkbenchResourceTest 新增响应形态与分页校验通过；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；git diff --check 通过。"
+      "evidence": "后端新增 WorkbenchDataService、组件数据 DTO、GET /api/apps/{appId}/workbenches/{workbenchId}/components/{componentId}/data 和 MCP get_app_workbench_component_data；DataRepository/DataFmRepository 支持聚合查询；前端 WorkbenchHome/ComponentCanvas/ComponentDesigner 消费真实数据契约。验证：mvn compile -pl flexmodel-server -am 通过；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=WorkbenchDataServiceTest 通过（4 tests）；mvn test -pl flexmodel-server -am \"-Dtest=WorkbenchServiceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink\" 通过（5 tests）；WorkbenchResourceTest 新增响应形态与分页校验通过；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；git diff --check 通过；明细组件渲染引用字段时优先展示服务端返回的 displayValue，缺失时回退 id，并支持引用数组拼接，修复引用值显示为 [object Object] 的问题。"
     }
   ]
 }

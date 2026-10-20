@@ -2289,3 +2289,15 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   `WorkbenchResourceTest` 新增数据响应与分页校验通过；`bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试；
   `git diff --check` 通过。
 - 备注：全量 `AppToolsTest` 仍存在与本次无关的既有断言失败；本次仅验证新增工作台数据链路相关测试。
+
+**工作台明细引用值展示修复 (2026-10-20)**
+
+- `ComponentCanvas` 新增 `displayRecordValue`：引用对象优先显示 `displayValue`，缺失时回退 `id`
+  ；数组逐项格式化后用逗号拼接，避免明细组件把引用字段渲染成 `[object Object]`。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 `/logo.png` 运行时解析提示）；`git diff --check` 通过。
+  **子表单引用字段展示修复 (2026-10-20)**
+
+- 新增 `recordValue` 工具：`formatRecordValue` 处理引用对象与数组，`displayRecordText` 为空值返回 `-`。
+- `AppSubformRecords` 表格引用字段改用 `displayRecordText`，物料等子表单中的引用字段不再显示 `[object Object]`；
+  `ComponentCanvas` 同步复用同一格式化工具。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 `/logo.png` 运行时解析提示）；`git diff --check` 通过。

@@ -2301,3 +2301,9 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - `AppSubformRecords` 表格引用字段改用 `displayRecordText`，物料等子表单中的引用字段不再显示 `[object Object]`；
   `ComponentCanvas` 同步复用同一格式化工具。
 - 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 `/logo.png` 运行时解析提示）；`git diff --check` 通过。
+
+**工作台组件滚动条自动隐藏 (2026-10-20)**
+
+- 工作台组件内容容器新增 `workbench-component-scroll`：滚动条默认透明隐藏，鼠标悬停或键盘聚焦时显示 6px
+  细滚动条；保留滚动能力且不改变组件布局。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 `/logo.png` 运行时解析提示）；`git diff --check` 通过。

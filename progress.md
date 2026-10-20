@@ -2307,3 +2307,11 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 工作台组件内容容器新增 `workbench-component-scroll`：滚动条默认透明隐藏，鼠标悬停或键盘聚焦时显示 6px
   细滚动条；保留滚动能力且不改变组件布局。
 - 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 `/logo.png` 运行时解析提示）；`git diff --check` 通过。
+
+**默认蓝色主色与管理后台统一 (2026-10-20)**
+
+- 应用主色默认值由靛蓝改为蓝色；颜色选择器、前端请求归一化、新建与编辑表单默认值同步蓝色优先，后端 `AppService`、DTO 校验和
+  `AppTools` 描述保持一致。
+- 管理后台基础主题改为蓝色，应用外壳无数据或卸载时的 `data-primary` 回退值也改为蓝色；应用内仍可按应用配置切换专属主色。
+- 验证：`bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试；`flexmodel-apps-ui npm run build` 通过；`mvn test -pl flexmodel-server
+  -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（10 tests）；`git diff --check` 通过。

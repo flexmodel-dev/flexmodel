@@ -823,6 +823,16 @@
       ],
       "status": "done",
       "evidence": "后端新增 WorkbenchDataService、组件数据 DTO、GET /api/apps/{appId}/workbenches/{workbenchId}/components/{componentId}/data 和 MCP get_app_workbench_component_data；DataRepository/DataFmRepository 支持聚合查询；前端 WorkbenchHome/ComponentCanvas/ComponentDesigner 消费真实数据契约。验证：mvn compile -pl flexmodel-server -am 通过；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=WorkbenchDataServiceTest 通过（4 tests）；mvn test -pl flexmodel-server -am \"-Dtest=WorkbenchServiceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink\" 通过（5 tests）；WorkbenchResourceTest 新增响应形态与分页校验通过；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；git diff --check 通过；明细组件渲染引用字段时优先展示服务端返回的 displayValue，缺失时回退 id，并支持引用数组拼接，修复引用值显示为 [object Object] 的问题；组件内容滚动条默认隐藏，悬停或键盘聚焦时显示为细滚动条。"
+    },
+    {
+      "id": "feat-085",
+      "name": "Apps - 默认蓝色主色与管理后台统一",
+      "description": "应用主色默认值改为蓝色，颜色选择器将蓝色排在第一位；管理后台在无应用专属主色覆盖时也使用蓝色，前端与后端默认契约保持一致。",
+      "dependencies": [
+        "feat-084"
+      ],
+      "status": "done",
+      "evidence": "后端 AppService 默认主色为 blue，DTO 与 MCP 描述同步蓝色优先；前端新建/编辑表单默认蓝色，颜色列表蓝色第一，管理后台基础主题与回退 data-primary 均为蓝色。验证：bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）；git diff --check 通过。"
     }
   ]
 }

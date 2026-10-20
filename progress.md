@@ -2316,3 +2316,14 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 修复应用配置主色不生效：补充 `data-primary='indigo'` 的亮色/暗色 CSS 覆盖；此前靛蓝依赖基础默认值，默认改为蓝色后缺失覆盖导致回落蓝色。
 - 验证：`bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试；`flexmodel-apps-ui npm run build` 通过；`mvn test -pl flexmodel-server
   -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false` 通过（10 tests）；`git diff --check` 通过。
+
+**弹窗贴边输入框聚焦边框被裁剪修复 (2026-10-20)**
+
+- `BizDialog` 内容滚动容器仅有纵向滚动需求，但 `overflow-y-auto` 会让浏览器把横向也按滚动裁剪处理；全宽输入框贴齐滚动容器左右边缘，聚焦时的
+  `ring-2 ring-offset-2` 光圈（约 4px）被横向裁掉，表现为弹窗两侧边缘输入框聚焦边框不显示。
+- 修复：内容滚动容器新增 `px-1.5`（6px）横向内边距，为贴边输入框的聚焦光圈留出绘制空间，不改变弹窗整体内边距与布局结构。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 /logo.png 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `flexmodel-apps-ui git diff --check` 通过（仅既有 CRLF 提示）。
+- 备注：`bash ./init.sh` 本次在 `mvn clean` 删除 `flexmodel-server-dev.jar` 时失败，原因是当前有
+  `mvn -pl flexmodel-server quarkus:dev` 会话正在运行并占用该 jar，属环境占用而非代码问题；本次仅修改前端弹窗样式，待 dev
+  会话停止后可重跑 init.sh 完成基线验证。

@@ -368,6 +368,9 @@ public class WorkbenchService {
       return;
     }
     if ("shortcuts".equals(component.type())) {
+      if (config.columnsPerRow() == null || config.columnsPerRow() < 1 || config.columnsPerRow() > 12) {
+        throw new ValidationException("工作台快捷入口每行数量必须在 1 到 12 之间: " + component.title());
+      }
       Project project = appMenuRecordStore.requireAppProject(appId);
       List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
       List<String> shortcuts = config.shortcuts() == null ? List.of() : config.shortcuts();

@@ -732,7 +732,67 @@
         "feat-074"
       ],
       "status": "done",
-      "evidence": "layout.items 仅保存 componentId/x/y/w/h，不再接受或输出 width/height 历史字段；后端校验位置、尺寸、网格边界与重叠。前端 WorkbenchHome 集成 GridStack，编辑配置模式启用拖动与缩放，拖动/缩放结束后 PATCH 保存显式坐标；右下角缩放把手向下偏移 2px，组件标题在编辑模式显示 grab/grabbing 光标；ComponentDesigner 支持网格宽高设置。启动迁移按优先级在引擎初始化后执行，一次性把已持久化的 width/height 数据改写为显式 x/y/w/h，修复旧数据被解析为 null 导致组件退回 1x1 的问题；真实 sqlite.db 中两条旧布局已验证变为 w=6、h=3。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -am -Dtest=WorkbenchServiceTest,WorkbenchStartupMigrationTest,WorkbenchResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests，0 failures，0 errors）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。"
+      "evidence": "layout.items 仅保存 componentId/x/y/w/h，不再接受或输出 width/height 历史字段；后端校验位置、尺寸、网格边界与重叠。前端 WorkbenchHome 集成 GridStack，编辑配置模式启用拖动与缩放，拖动/缩放结束后从 `GridItemHTMLElement.gridstackNode` 读取组件 ID 与坐标并发起 PATCH 保存；右下角缩放把手向下偏移 2px，组件标题在编辑模式显示 grab/grabbing 光标；ComponentDesigner 支持网格宽高设置；布局采用 0 16px 16px 0 边距，顶部和左侧与容器起点对齐，右侧和底部保留间距。启动迁移按优先级在引擎初始化后执行，一次性把已持久化的 width/height 数据改写为显式 x/y/w/h，修复旧数据被解析为 null 导致组件退回 1x1 的问题；真实 sqlite.db 中两条旧布局已验证变为 w=6、h=3。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -am -Dtest=WorkbenchServiceTest,WorkbenchStartupMigrationTest,WorkbenchResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests，0 failures，0 errors）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。"
+    },
+    {
+      "id": "feat-076",
+      "name": "Apps UI - 快捷入口复用菜单图标",
+      "description": "工作台快捷入口引用菜单时，卡片图标直接复用该菜单已配置的导航图标；菜单未配置图标时保留文件图标兜底。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "appMenuNavigation 的 menuIcon 解析函数开放复用，WorkbenchHome 与 ComponentDesigner 在构造 shortcutTargets 时传入菜单图标，ComponentCanvas 渲染 item.icon 并以 FileText 兜底。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；flexmodel-apps-ui npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-077",
+      "name": "Apps UI - 工作台管理操作按钮",
+      "description": "工作台的新建、编辑和删除操作在页头使用仅图标按钮展示，并通过悬浮提示与 aria-label 保留可访问性。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchHome 页头的新建、编辑、删除三个独立 Button 改为仅图标展示；新建使用 Plus 图标，编辑使用 Pencil 图标，删除使用 Trash2 图标并切换为 danger 样式，均补充 title 与 aria-label。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-078",
+      "name": "Apps UI - 组件标题默认组件名称",
+      "description": "新增组件时标题默认使用当前组件类型名称；切换组件类型时同步默认标题，但不覆盖用户已输入的自定义标题。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "ComponentDesigner 的 toResult 在新建组件时以组件类型 label 初始化标题；changeType 在标题为空或仍为上一个组件类型默认名称时更新为当前组件名称，自定义标题保持不变。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-079",
+      "name": "Apps UI - 工作台头部操作图标",
+      "description": "工作台头部左侧收敛为新增和更多两个无边框 ghost 图标按钮，使用最小尺寸，并仅在鼠标悬浮头部时显示；编辑和删除收进更多菜单。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchHome 的工作台头部容器增加 group/workbench-header，左侧展示最小尺寸的新增和更多两个 ghost 图标按钮，并通过 group-hover/workbench-header:opacity-100 控制悬浮显示；更多菜单收进编辑工作台与删除工作台。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-080",
+      "name": "Apps UI - 快捷入口每行数量",
+      "description": "快捷入口组件支持配置每行展示的入口数量，取值范围为 1 到 12，并随工作台布局一起持久化；入口卡片采用上图标下文字结构，图标带背景色，文字位于背景色外部，图标和文字尺寸随每行数量自适应。",
+      "dependencies": [
+        "feat-074"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchComponentConfig 新增 columnsPerRow 字段；ComponentDesigner 提供每行数量选择，ComponentCanvas 按配置渲染网格列数；后端 WorkbenchComponentConfig 与 WorkbenchService 同步增加字段和 1-12 范围校验。快捷入口卡片改为纵向布局，图标容器使用背景色，文字位于背景色外部，并根据 columnsPerRow 自适应调整图标与文字尺寸；1-3 个/行时使用更大图标档位。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；mvn test -pl flexmodel-server -am -Dtest=WorkbenchServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests，0 failures，0 errors）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-081",
+      "name": "Apps UI - 工作台编辑与保存配置",
+      "description": "工作台头部操作从“编辑配置/锁定配置”改为“编辑组件/保存配置”；组件新增、编辑、删除和布局调整先写入本地草稿，点击保存配置时才统一调用服务端 PATCH 持久化；“添加组件”仅在编辑状态下展示。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchHome 新增 draftLayout 本地草稿状态；拖拽、缩放、组件设计器保存和组件删除仅更新草稿；点击“保存配置”后才调用 patchWorkbench 持久化并退出编辑态，失败时保留草稿与编辑态；“添加组件”按钮仅在 editable 状态渲染。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
     }
   ]
 }

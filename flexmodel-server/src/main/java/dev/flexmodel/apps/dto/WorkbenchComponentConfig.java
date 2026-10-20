@@ -16,6 +16,7 @@ import java.util.List;
  * @param metric         指标标识
  * @param visibleColumns 明细列
  * @param shortcuts      快捷入口菜单
+ * @param columnsPerRow  快捷入口每行数量
  */
 public record WorkbenchComponentConfig(
   String formName,
@@ -28,6 +29,7 @@ public record WorkbenchComponentConfig(
   String palette,
   String metric,
   List<String> visibleColumns,
-  List<String> shortcuts
+  List<String> shortcuts,
+  Integer columnsPerRow
 ) {
 }

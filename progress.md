@@ -2179,9 +2179,60 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 修复布局持续显示最小 1x1 的问题：已持久化的旧 `width/height` 数据会在启动迁移中一次性改写为显式 `x/y/w/h`
   ；迁移监听器通过事件优先级确保在引擎初始化后执行，避免因启动顺序查不到表而跳过迁移。真实 `sqlite.db` 两条旧布局已验证转换为
   `x=0, y=0, w=6, h=3`。
+- 布局边框已与容器起点对齐：GridStack 采用 `0 16px 16px 0` 边距，顶部和左侧不再额外缩进，右侧和底部保留组件间距。
+- 修复多组件相邻问题：移除 `grid-stack-item-content` 上的 `h-full`，让 GridStack 的上下左右偏移真正生效，组件之间恢复固定间距。
+- 修复拖动/缩放后未发 PATCH 的问题：GridStack 的 `dragstop/resizestop` 回调参数应为 `GridItemHTMLElement`，改为从其
+  `gridstackNode` 读取组件 ID 与网格坐标，确保提交真实布局。
 - 新增 `WorkbenchServiceTest` 覆盖旧 `HALF/SHORT` 布局迁移；新增 `WorkbenchStartupMigrationTest`
   在应用启动前预置旧布局数据，验证迁移监听器确实在引擎初始化后自动执行。
 - 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 /logo.png 提示）；
   `mvn test -pl flexmodel-server -am "-Dtest=WorkbenchServiceTest,WorkbenchStartupMigrationTest,WorkbenchResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"`
   通过（7 tests，0 failures，0 errors）；`bash ./init.sh` 通过全模块编译与 flexmodel-engine 测试。
 - 遗留：工作台组件展示数据仍为 mock，真实数据接口与刷新策略留待下一阶段；本次未提交 Git 变更。
+
+**快捷入口复用菜单图标 (2026-10-20)**
+
+- 快捷入口目标数据从菜单读取已配置的导航图标，工作台卡片与组件设计器预览均复用同一图标映射。
+- 菜单未配置图标或选择“无图标”时，快捷入口保留原文件图标兜底，不影响既有空图标菜单。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `git diff --check` 通过。
+
+**工作台管理操作按钮 (2026-10-20)**
+
+- 工作台新建、编辑、删除操作改为仅图标按钮；编辑按钮使用铅笔图标，删除按钮使用垃圾桶图标并采用 danger 样式，均保留 title 与
+  aria-label。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `git diff --check` 通过。
+
+**组件标题默认组件名称 (2026-10-20)**
+
+- 新增组件时标题默认填入当前组件类型名称；切换组件类型时，默认标题随组件名称同步更新。
+- 用户已输入的自定义标题不会被切换组件类型覆盖；编辑既有组件时保留原标题。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `git diff --check` 通过。
+
+**工作台头部操作图标 (2026-10-20)**
+
+- 工作台头部左侧收敛为新增和更多两个无边框 ghost 图标按钮，默认隐藏，仅在悬浮工作台头部时显示。
+- 两个操作按钮均使用最小尺寸；编辑工作台与删除工作台收进更多菜单，按钮保留 title 与 aria-label。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `git diff --check` 通过。
+
+**快捷入口每行数量 (2026-10-20)**
+
+- 快捷入口配置新增 `columnsPerRow`，设计器支持选择每行 1 到 12 个入口，画布按该配置渲染列数。
+- 后端配置结构同步新增 `columnsPerRow` 并校验 1 到 12 的范围；保存快捷入口组件时随配置一起持久化。
+- 快捷入口卡片改为上图标下文字结构；移除文字外框，图标背景参考 Logo 的圆角方形样式，文字位于背景色外部，并根据每行数量自适应图标与文字尺寸；1-3
+  个/行时使用更大图标档位。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `mvn test -pl flexmodel-server -am "-Dtest=WorkbenchServiceTest" "-Dsurefire.failIfNoSpecifiedTests=false"` 通过（2
+  tests，0 failures，0 errors）；`git diff --check` 通过。
+
+**工作台编辑与保存配置 (2026-10-20)**
+
+- 工作台头部按钮从“编辑配置/锁定配置”改为“编辑组件/保存配置”。
+- 组件新增、编辑、删除和布局拖拽/缩放先写入本地 `draftLayout`，不再即时调用服务端。
+- 点击“保存配置”时才统一调用 `patchWorkbench` 持久化；保存失败时保留草稿与编辑态，便于重试。
+- “添加组件”按钮仅在编辑状态下展示，避免非编辑模式出现未保存入口。
+- 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积提示与 `/logo.png` 运行时解析提示）；`npx tsc --noEmit` 通过；
+  `git diff --check` 通过。

@@ -11,7 +11,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.util.*;
 
 import static dev.flexmodel.query.Expressions.field;
-import static dev.flexmodel.notification.NotificationRepository.*;
+import static dev.flexmodel.common.Values.text;
 
 /**
  * A wake signal is disposable; the ordered event log is the durable source of truth.
@@ -38,10 +38,6 @@ public class NotificationRelay {
   private com.rabbitmq.client.Channel channel;
   private static final String EXCHANGE = "flexmodel.notifications";
   private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(NotificationRelay.class);
-
-  public void wake(String user) {
-    streams.wake(user);
-  }
 
   private synchronized void connect() throws Exception {
     if (channel != null && channel.isOpen()) return;
@@ -79,7 +75,7 @@ public class NotificationRelay {
             channel.waitForConfirmsOrDie(3000);
           }
           streams.wake(user);
-          update(session, "f_notification_event", text(event, "id"), Map.of("published", true));
+          session.mergeUpdate("f_notification_event", text(event, "id"), Map.of("published", true));
         }
       }
     } catch (Exception error) {

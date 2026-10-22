@@ -10,6 +10,7 @@ import java.util.*;
 
 import static dev.flexmodel.query.Expressions.*;
 import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.common.Values.*;
 
 @ApplicationScoped
 public class ApprovalRepository extends AbstractRepository {

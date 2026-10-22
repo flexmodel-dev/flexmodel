@@ -12,6 +12,7 @@ import jakarta.inject.Inject;
 import java.util.*;
 
 import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.common.Values.*;
 import static dev.flexmodel.query.Expressions.*;
 
 /**
@@ -34,12 +35,8 @@ public class ApprovalRecordActions {
     return projects.resolveDatabaseName(appId);
   }
 
-  private Session open(String schema) {
-    return sessions.open(schema);
-  }
-
   public Map<String, Object> snapshot(String appId, String form, String id) {
-    try (Session session = open(schema(appId, form))) {
+    try (Session session = sessions.open(schema(appId, form))) {
       return session.data().findById(form, id).orElseThrow(() -> new ValidationException("提交记录不存在"));
     }
   }
@@ -55,7 +52,7 @@ public class ApprovalRecordActions {
       return snapshot(appId, form, text(created, "id"));
     }
     Predicate filter = predicate(objects(cfg.get("conditions")), text(cfg, "match"), variables);
-    try (Session session = open(schema)) {
+    try (Session session = sessions.open(schema)) {
       List<Map<String, Object>> selected = session.dsl().selectFrom(form).where(filter)
         .limit(kind.equals("query") && text(cfg, "queryMode").equals("one") ? 1 : 1001).execute();
       if (selected.size() > 1000) throw new ValidationException("单个节点最多处理 1000 条记录，请收紧筛选条件");
@@ -81,16 +78,7 @@ public class ApprovalRecordActions {
     for (var condition : conditions) {
       var field = field(text(condition, "field"));
       Object right = value(object(condition.get("value")), variables);
-      Predicate next = switch (text(condition, "operator")) {
-        case "eq" -> field.eq(right);
-        case "ne" -> field.ne(right);
-        case "gt" -> field.gt(right);
-        case "gte" -> field.gte(right);
-        case "lt" -> field.lt(right);
-        case "lte" -> field.lte(right);
-        case "contains" -> field.contains(right);
-        default -> throw new ValidationException("条件操作符无效");
-      };
+      Predicate next = ConditionOperator.parse(text(condition, "operator")).test(field, right);
       result = result == null ? next : match.equals("any") ? result.or(next) : result.and(next);
     }
     return result == null ? TRUE : result;
@@ -99,22 +87,7 @@ public class ApprovalRecordActions {
   public static boolean matches(Map<String, Object> cfg, Map<String, Object> variables) {
     List<Boolean> results = objects(cfg.get("conditions")).stream().map(condition -> {
       Object left = path(variables, text(condition, "field")), right = value(object(condition.get("value")), variables);
-      int comparison = 0;
-      if (left instanceof Number && right instanceof Number)
-        comparison = new java.math.BigDecimal(left.toString()).compareTo(new java.math.BigDecimal(right.toString()));
-      else if (left != null && right != null) comparison = left.toString().compareTo(right.toString());
-      boolean equal = left instanceof Number && right instanceof Number ? comparison == 0 : Objects.equals(left, right);
-      return switch (text(condition, "operator")) {
-        case "eq" -> equal;
-        case "ne" -> !equal;
-        case "gt" -> left != null && comparison > 0;
-        case "gte" -> left != null && comparison >= 0;
-        case "lt" -> left != null && comparison < 0;
-        case "lte" -> left != null && comparison <= 0;
-        case "contains" ->
-          left instanceof Collection<?> values ? values.contains(right) : left != null && left.toString().contains(Objects.toString(right, ""));
-        default -> throw new ValidationException("条件操作符无效");
-      };
+      return ConditionOperator.parse(text(condition, "operator")).apply(left, right);
     }).toList();
     return text(cfg, "match").equals("any") ? results.stream().anyMatch(Boolean::booleanValue) : results.stream().allMatch(Boolean::booleanValue);
   }

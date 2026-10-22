@@ -26,13 +26,7 @@ public final class NotificationTemplates {
   public static String render(String template, Map<String, Object> variables, int max) {
     paths(template);
     String value = SLOT.matcher(template).replaceAll(match -> {
-      Object current = variables;
-      for (String part : match.group(1).split("\\.")) {
-        if (current instanceof Map<?, ?> map) current = map.get(part);
-        else if (current instanceof List<?> list && part.matches("\\d+") && part.length() < 9 && Integer.parseInt(part) < list.size())
-          current = list.get(Integer.parseInt(part));
-        else current = null;
-      }
+      Object current = dev.flexmodel.common.Values.path(variables, match.group(1));
       return java.util.regex.Matcher.quoteReplacement(current == null ? "" : current instanceof Map<?, ?> || current instanceof List<?> ? dev.flexmodel.JsonUtils.toJsonString(current) : current.toString());
     });
     if (value.isBlank() || value.length() > max)

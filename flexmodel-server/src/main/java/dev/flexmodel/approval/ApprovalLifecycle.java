@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import java.util.*;
 
 import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.common.Values.*;
 
 @ApplicationScoped
 public class ApprovalLifecycle implements ProjectDeletionGuard {

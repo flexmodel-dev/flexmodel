@@ -68,7 +68,7 @@ public class ApprovalCapabilities {
       Map.entry("subflow", Map.of("kind", "subflow", "flowId", "replace_with_enabled_flow_module_id", "inputs", List.of(Map.of("id", "record_input", "field", "record", "value", Map.of("kind", "variable", "value", "record"))), "outputs", List.of()))));
     result.put("enums", Map.of("signMode", List.of("all", "any", "sequential"),
       "memberSource", DirectoryService.SOURCES, "memberScope", DirectoryService.SCOPES,
-      "match", List.of("all", "any"), "operator", List.of("eq", "ne", "gt", "gte", "lt", "lte", "contains"),
+      "match", List.of("all", "any"), "operator", ConditionOperator.NAMES,
       "bindingKind", List.of("literal", "variable"), "valueType", List.of("text", "number", "boolean"),
       "queryMode", List.of("one", "many")));
     result.put("forms", availableForms);

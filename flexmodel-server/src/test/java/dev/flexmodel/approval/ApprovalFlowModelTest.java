@@ -8,7 +8,7 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.common.Values.*;
 
 class ApprovalFlowModelTest {
   Map<String, Object> node(String id, String kind) {

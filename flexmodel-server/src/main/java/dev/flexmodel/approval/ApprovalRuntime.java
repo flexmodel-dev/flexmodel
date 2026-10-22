@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.common.Values.*;
 import static dev.flexmodel.query.Expressions.field;
 
 /**
@@ -75,12 +76,7 @@ public class ApprovalRuntime implements DurableFlowListener {
       });
     } catch (RuntimeException error) {
       // Different records can race for one request key; read the winner after rollback, without replaying work.
-      boolean constraint = false;
-      for (Throwable cause = error; cause != null; cause = cause.getCause()) {
-        if (cause instanceof java.sql.SQLException sql && (Objects.toString(sql.getSQLState(), "").startsWith("23") || sql.getErrorCode() == 19))
-          constraint = true;
-      }
-      if (!constraint) throw error;
+      if (!SqlErrors.constraintViolation(error)) throw error;
       var existing = repository.list(appId, "f_approval_instance", field("request_key").eq(requestKey));
       if (existing.isEmpty()) throw error;
       return reuse(appId, existing.getFirst(), form, recordId, flowId);

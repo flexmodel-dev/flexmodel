@@ -12,6 +12,7 @@ import jakarta.inject.Inject;
 import java.util.*;
 
 import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.common.Values.*;
 
 /**
  * Validate the editor view and add trusted execution attributes to a Flow deployment.
@@ -124,7 +125,7 @@ public class ApprovalCompiler {
         validateBinding(object(entry.get("value")), upstream, id, issues);
       for (var entry : objects(cfg.get("conditions"))) {
         validateBinding(object(entry.get("value")), upstream, id, issues);
-        if (!Set.of("eq", "ne", "gt", "gte", "lt", "lte", "contains").contains(text(entry, "operator")) || text(entry, "field").isBlank())
+        if (!ConditionOperator.valid(text(entry, "operator")) || text(entry, "field").isBlank())
           issue(issues, id, "条件字段或操作符无效");
         try {
           if (!"variable".equals(text(object(entry.get("value")), "kind"))) value(object(entry.get("value")), Map.of());

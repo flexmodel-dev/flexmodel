@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 
+import static dev.flexmodel.common.Values.text;
 import static dev.flexmodel.query.Expressions.*;
 
 /**
@@ -21,7 +22,7 @@ public class NotificationRepository {
   @Inject
   ServerSessions sessions;
   @Inject
-  NotificationRelay relay;
+  NotificationStream streams;
 
   public boolean activeUser(String user) {
     try (var session = sessions.openOwned("system")) {
@@ -29,18 +30,8 @@ public class NotificationRepository {
     }
   }
 
-  public static String text(Map<String, Object> row, String key) {
-    return Objects.toString(row.get(key), "");
-  }
-
   public static long number(Map<String, Object> row, String key) {
     return ((Number) row.getOrDefault(key, 0L)).longValue();
-  }
-
-  public static void update(Session session, String model, String id, Map<String, Object> values) {
-    var row = new HashMap<>(session.data().findById(model, id).orElseThrow());
-    row.putAll(values);
-    session.data().updateById(model, row, id);
   }
 
   private <T> T mutate(String user, Function<ManagedSession, T> action) {
@@ -58,14 +49,14 @@ public class NotificationRepository {
         throw error;
       }
     }
-    relay.wake(user);
+    streams.wake(user);
     return result;
   }
 
-  private void event(Session session, String user, String type, long unreadDelta, Map<String, Object> payload) {
+  private void event(ManagedSession session, String user, String type, long unreadDelta, Map<String, Object> payload) {
     var state = session.data().findById("f_notification_stream", user).orElseThrow();
     long version = number(state, "version") + 1, unread = number(state, "unread") + unreadDelta;
-    update(session, "f_notification_stream", user, Map.of("version", version, "unread", unread));
+    session.mergeUpdate("f_notification_stream", user, Map.of("version", version, "unread", unread));
     var data = new HashMap<>(payload);
     data.put("version", Long.toString(version));
     data.put("unread", unread);

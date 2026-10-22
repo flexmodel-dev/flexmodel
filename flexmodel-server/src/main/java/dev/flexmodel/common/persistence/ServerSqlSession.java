@@ -1,6 +1,7 @@
 package dev.flexmodel.common.persistence;
 
 import dev.flexmodel.approval.ApprovalRecordGuard;
+import dev.flexmodel.common.SqlErrors;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.EventAwareDataService;
@@ -100,12 +101,8 @@ final class ServerSqlSession extends SqlSession implements ManagedSession {
   }
 
   private RuntimeException databaseFailure(RuntimeException error) {
-    if (context.getSqlDialect() instanceof dev.flexmodel.sql.dialect.SQLiteSqlDialect) {
-      for (Throwable cause = error; cause != null; cause = cause.getCause()) {
-        if (cause instanceof SQLException sql && ((sql.getErrorCode() & 255) == 5 || (sql.getErrorCode() & 255) == 6))
-          return new jakarta.ws.rs.ServiceUnavailableException("SQLite 开发数据库正忙，请稍后重试");
-      }
-    }
+    if (context.getSqlDialect() instanceof dev.flexmodel.sql.dialect.SQLiteSqlDialect && SqlErrors.sqliteBusy(error))
+      return new jakarta.ws.rs.ServiceUnavailableException("SQLite 开发数据库正忙，请稍后重试");
     return error;
   }
 

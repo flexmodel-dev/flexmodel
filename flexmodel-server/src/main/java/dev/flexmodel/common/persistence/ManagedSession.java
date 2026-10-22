@@ -13,4 +13,10 @@ public interface ManagedSession extends Session {
   java.util.List<java.util.Map<String, Object>> lockRows(String model, dev.flexmodel.query.Query query);
 
   void afterCommit(Runnable callback);
+
+  default void mergeUpdate(String model, String id, java.util.Map<String, Object> values) {
+    var row = new java.util.HashMap<>(data().findById(model, id).orElseThrow());
+    row.putAll(values);
+    data().updateById(model, row, id);
+  }
 }

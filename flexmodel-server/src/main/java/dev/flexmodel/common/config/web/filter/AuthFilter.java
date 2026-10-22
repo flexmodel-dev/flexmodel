@@ -79,6 +79,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     boolean isOpenSurface = normalizedPath.startsWith("open/");
 
     String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
+    if (projectId == null) projectId = requestContext.getUriInfo().getPathParameters().getFirst("appId");
 
     if (isOpenSurface) {
       // ---- OPEN surface: API Key (open scope) + system JWT + IdP + anonymous ----
@@ -282,6 +283,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
    * 系统 JWT 认证 -> 填充上下文（管理后台用户）。
    */
   private void fillSessionContextForUser(ContainerRequestContext requestContext, String projectId, String userId) {
+    sessionContext.setAuthenticatedUser(true);
     if (projectId != null) {
       Project project = projectService.findProject(projectId);
       if (project == null) {

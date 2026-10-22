@@ -1,5 +1,7 @@
 package dev.flexmodel.graphql;
 
+import dev.flexmodel.common.ProjectUnitOfWork;
+import dev.flexmodel.common.persistence.ServerSessions;
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
 import graphql.GraphQL;
@@ -34,6 +36,11 @@ public class GraphQLManager {
   SessionFactory sf;
 
   @Inject
+  ServerSessions sessions;
+  @Inject
+  ProjectUnitOfWork transactions;
+
+  @Inject
   ProjectRepository projectRepository;
 
   public GraphQL getGraphQL(String projectId) {
@@ -52,7 +59,22 @@ public class GraphQLManager {
       String databaseName = project.getDatabaseName();
       log.info("Lazy-loading GraphQL schema for project '{}', database='{}'", pid, databaseName);
       FlexmodelGraphQL fg = new FlexmodelGraphQL();
-      return fg.generateGraphQLWithSchemaObject(sf, databaseName);
+      GraphQL generated = fg.generateGraphQLWithSchemaObject(sf, databaseName);
+      if (!(sf.getSchemaProvider(databaseName) instanceof dev.flexmodel.sql.JdbcSchemaProvider)) return generated;
+      var schema = generated.getGraphQLSchema();
+      var registry = graphql.schema.GraphQLCodeRegistry.newCodeRegistry(schema.getCodeRegistry());
+      for (var model : sf.getModels(databaseName)) {
+        if (!(model instanceof dev.flexmodel.model.EntityDefinition entity) || entity.getAdditionalProperties().containsKey("system"))
+          continue;
+        String camelName = dev.flexmodel.codegen.StringUtils.uncapitalize(dev.flexmodel.codegen.StringUtils.capitalize(dev.flexmodel.codegen.StringUtils.snakeToCamel(model.getName())));
+        for (var operation : DataFetchers.values())
+          if (operation.isMutation()) {
+            String fieldName = operation.getKeyFunc().apply(databaseName, camelName);
+            registry.dataFetcher(graphql.schema.FieldCoordinates.coordinates("Mutation", fieldName),
+              new ServerMutationDataFetcher(pid, databaseName, model.getName(), sf, operation, sessions, transactions));
+          }
+      }
+      return generated.transform(builder -> builder.schema(schema.transform(s -> s.codeRegistry(registry.build()))));
     });
   }
 

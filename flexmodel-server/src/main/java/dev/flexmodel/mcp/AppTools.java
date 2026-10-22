@@ -1,6 +1,9 @@
 package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.approval.ApprovalCapabilities;
+import dev.flexmodel.approval.ApprovalFlowModel;
+import dev.flexmodel.approval.ApprovalFlowService;
 import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.apps.AppMenuService;
 import dev.flexmodel.apps.AppRecordService;
@@ -27,10 +30,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * MCP 工具：Flexmodel Apps
- * 将应用、表单、布局、菜单、工作台和记录能力按 AI 可编排的固定顺序开放。
+ * 将应用、表单、布局、菜单、工作台、审批流程和记录能力开放给 AI。
  */
 @Slf4j
 public class AppTools {
@@ -52,6 +56,15 @@ public class AppTools {
 
   @Inject
   WorkbenchDataService workbenchDataService;
+
+  @Inject
+  ApprovalFlowService approvalFlows;
+
+  @Inject
+  ApprovalCapabilities approvalCapabilities;
+
+  @Inject
+  McpToolAccess access;
 
   @Tool(description = """
     List all Flexmodel Apps. Each app is an isolated top-level project \
@@ -441,6 +454,106 @@ public class AppTools {
     } catch (Exception exception) {
       log.error("create_app_mock_records failed, appId={}, formName={}", appId, formName, exception);
       return "Error: create_app_mock_records failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = """
+    Get the approval authoring contract for this app: node configs, Flow element types, \
+    conditions, member rules, real forms/fields, subflows, limits and complete simple/gateway \
+    examples. Call before generating flowJson. Approval definitions use the native Flow \
+    contract, including flow_model as a JSON string. Use the separate get_directory and \
+    resolve_members tools to select real people, roles or organizations.\
+    """)
+  public String get_app_approval_capabilities(
+    @ToolArg(description = "The app ID") String appId
+  ) {
+    return approvalTool("get_app_approval_capabilities", appId, false, () -> approvalCapabilities.describe(appId));
+  }
+
+  @Tool(description = """
+    List approval flows belonging to an app, using flow_module_id, flow_name, flow_key, \
+    flow_model (JSON string), status and revision. status: 1 draft, 2 enabled, 3 disabled. \
+    Use this before creating a flow to avoid duplicates or find existing subflows.\
+    """)
+  public String list_app_approval_flows(
+    @ToolArg(description = "The app ID") String appId
+  ) {
+    return approvalTool("list_app_approval_flows", appId, false,
+      () -> approvalFlows.list(appId).stream().map(ApprovalFlowModel::encode).toList());
+  }
+
+  @Tool(description = "Get an app approval flow and its latest revision before editing or changing status.")
+  public String get_app_approval_flow(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "flow_module_id returned by list_app_approval_flows or save_app_approval_flow") String flowId
+  ) {
+    return approvalTool("get_app_approval_flow", appId, false,
+      () -> ApprovalFlowModel.encode(approvalFlows.get(appId, flowId)));
+  }
+
+  @Tool(description = """
+    Create or replace an app approval draft. Call get_app_approval_capabilities first. \
+    For creation omit flowId; for updates pass flowId and the latest revision in flowJson. \
+    flowJson uses the same Flow contract as get_app_approval_flow; preserve unchanged nodes. \
+    Returns the saved flow_module_id and revision. Saving an enabled flow returns it to draft. \
+    Incomplete drafts are allowed: validate and explicitly enable before running.\
+    """)
+  public String save_app_approval_flow(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "Existing flow_module_id for updates; omit to create", required = false) String flowId,
+    @ToolArg(description = "JSON object string with flow_name, flow_model (a nested JSON STRING), optional flow_key/remark, and revision for updates") String flowJson
+  ) {
+    return approvalTool("save_app_approval_flow", appId, true, () -> {
+      var body = JsonUtils.parseToMap(flowJson);
+      String bodyId = java.util.Objects.toString(body.get("flow_module_id"), "");
+      if (!bodyId.isBlank() && !bodyId.equals(flowId)) {
+        throw new IllegalArgumentException("flow_module_id must match flowId; omit both to create a new flow");
+      }
+      return ApprovalFlowModel.encode(approvalFlows.save(appId, isBlank(flowId) ? null : flowId, ApprovalFlowModel.decode(body)));
+    });
+  }
+
+  @Tool(description = """
+    Validate an approval definition without saving or publishing it. Accepts the full Flow \
+    JSON contract returned by get_app_approval_flow or a generated draft. Returns an array \
+    of {nodeId,message} issues; an empty array means the definition passes validation. \
+    Fix all issues before enabling. Malformed Flow JSON returns an Error message.\
+    """)
+  public String validate_app_approval_flow(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "JSON object string of the complete approval Flow contract, including flow_module_id when validating an existing flow") String flowJson
+  ) {
+    return approvalTool("validate_app_approval_flow", appId, false,
+      () -> approvalFlows.validate(appId, ApprovalFlowModel.decode(JsonUtils.parseToMap(flowJson))));
+  }
+
+  @Tool(description = """
+    Publish/enable (status=2) or disable (status=3) an app approval flow using its latest \
+    revision. Enabling validates again and creates an immutable Flow deployment; referenced \
+    subflows must already be enabled. Returns the updated flow and revision. A version \
+    conflict requires re-reading the flow. Existing runs keep their published version. \
+    This does not submit records or make approval decisions.\
+    """)
+  public String set_app_approval_flow_status(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "The flow_module_id") String flowId,
+    @ToolArg(description = "2 = publish and enable; 3 = disable") int status,
+    @ToolArg(description = "Latest revision returned by get/save/status") int revision
+  ) {
+    return approvalTool("set_app_approval_flow_status", appId, true, () -> {
+      if (status != 2 && status != 3) throw new IllegalArgumentException("status must be 2 (enabled) or 3 (disabled)");
+      return ApprovalFlowModel.encode(approvalFlows.status(appId, flowId, status == 2 ? "enabled" : "disabled", revision));
+    });
+  }
+
+  private String approvalTool(String tool, String appId, boolean write, Supplier<?> action) {
+    log.info("{} called, appId={}", tool, appId);
+    try {
+      access.requireApp(appId, write);
+      return JsonUtils.toJsonString(action.get());
+    } catch (Exception exception) {
+      log.error("{} failed, appId={}", tool, appId, exception);
+      return "Error: " + tool + " failed - " + exception.getMessage();
     }
   }
 

@@ -2,6 +2,7 @@ package dev.flexmodel.common;
 
 import dev.flexmodel.codegen.System;
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.common.persistence.ServerSessions;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.inject.spi.CDI;
@@ -16,7 +17,12 @@ public abstract class AbstractRepository {
   @Inject
   protected SessionFactory sessionFactory;
 
+  @Inject
+  protected ServerSessions serverSessions;
+
   protected Session getProjectSession(String projectId) {
+    Session borrowed = ProjectUnitOfWork.borrow(projectId);
+    if (borrowed != null) return borrowed;
     SessionContext sessionContext = null;
     Project project = null;
     String cachedDb = null;
@@ -33,7 +39,7 @@ public abstract class AbstractRepository {
 
         if (projectId.equals(cachedProjectId)) {
           if (cachedDb != null) {
-            return sessionFactory.createSession(cachedDb);
+            return serverSessions.open(cachedDb);
           }
         }
         // 查询项目对应的 databaseName 并更新缓存
@@ -50,7 +56,7 @@ public abstract class AbstractRepository {
           } catch (Exception _) {
 
           }
-          return sessionFactory.createSession(project.getDatabaseName());
+          return serverSessions.open(project.getDatabaseName());
         }
       }
       return sessionFactory.createSession();
@@ -59,7 +65,7 @@ public abstract class AbstractRepository {
       project = session.dsl().selectFrom(Project.class)
         .where(System.project.id.eq(projectId))
         .executeOne();
-      return sessionFactory.createSession(project.getDatabaseName());
+      return serverSessions.open(project.getDatabaseName());
     }
   }
 }

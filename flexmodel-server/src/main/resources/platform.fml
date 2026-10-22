@@ -1,3 +1,42 @@
+model f_notification {
+  id: String @id,
+  app_id: String,
+  event_key: String @length("180"),
+  recipient_id: String,
+  category: String,
+  title: String @length("200"),
+  content: String @length("5000"),
+  app_name: String,
+  instance_id?: String,
+  task_id?: String,
+  occurred_at: DateTime,
+  received_at: DateTime,
+  read_at?: DateTime,
+  is_read: Boolean,
+  @index(name: "UQ_NOTIFICATION_EVENT_USER", unique: true, fields: [app_id, event_key, recipient_id]),
+  @index(name: "IDX_NOTIFICATION_INBOX", fields: [recipient_id, received_at]),
+  @index(name: "IDX_NOTIFICATION_UNREAD", fields: [recipient_id, is_read, received_at]),
+  @system
+}
+model f_notification_stream {
+  id: String @id,
+  version: Long,
+  unread: Long,
+  @system
+}
+model f_notification_event {
+  id: String @id,
+  recipient_id: String,
+  version: Long,
+  type: String,
+  payload: JSON,
+  published: Boolean,
+  created_at: DateTime,
+  @index(name: "UQ_NOTIFICATION_CURSOR", unique: true, fields: [recipient_id, version]),
+  @index(name: "IDX_NOTIFICATION_DISPATCH", fields: [published]),
+  @system
+}
+
 model f_project {
   id : String @id @default(uuid()),
   name: String,

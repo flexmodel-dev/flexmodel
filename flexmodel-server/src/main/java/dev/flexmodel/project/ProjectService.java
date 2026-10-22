@@ -1,12 +1,9 @@
 package dev.flexmodel.project;
 
+import dev.flexmodel.common.*;
 import dev.flexmodel.graphql.consumer.GraphQLEventConsumer;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.common.SchemaInitializer;
-import dev.flexmodel.common.SchemaRegistry;
-import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.config.AgroalDataSourceFactory;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
@@ -21,6 +18,7 @@ import dev.flexmodel.storage.BucketRepository;
 import io.quarkus.cache.CacheInvalidateAll;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,6 +33,9 @@ import java.util.regex.Pattern;
 @Slf4j
 @ApplicationScoped
 public class ProjectService {
+
+  @Inject
+  Instance<ProjectDeletionGuard> deletionGuards;
 
   /**
    * 项目ID格式：以小写字母开头，由小写字母、数字和下划线组成，长度2~63个字符
@@ -216,7 +217,7 @@ public class ProjectService {
     if (project.getDatabaseName() == null) {
       project.setDatabaseName(existingProject.getDatabaseName());
     }
-    if(project.getMetadata()==null) {
+    if (project.getMetadata() == null) {
       project.setMetadata(existingProject.getMetadata());
     }
     return projectRepository.save(project);
@@ -227,6 +228,7 @@ public class ProjectService {
     if ("default".equals(projectId)) {
       throw new IllegalArgumentException("默认项目不能删除");
     }
+    deletionGuards.forEach(guard -> guard.beforeDelete(projectId));
     Project project = findProject(projectId);
     DataSource systemDs = getSystemDataSource(flexmodelConfig);
 

@@ -14,7 +14,7 @@ import dev.flexmodel.functions.FunctionService;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
-import dev.flexmodel.session.SessionFactory;
+import dev.flexmodel.common.persistence.ServerSessions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.core.Response;
@@ -38,7 +38,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceTaskExecutor.class);
 
   @Inject
-  SessionFactory sessionFactory;
+  ServerSessions sessions;
 
   @Inject
   FunctionService functionService;
@@ -229,7 +229,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
     int affectedRows = 0;
 
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = sessions.open(datasourceName)) {
       // 获取输入数据
       Object inputData = getInputData(inputPath, contextData);
 
@@ -269,7 +269,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
     int affectedRows = 0;
 
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = sessions.open(datasourceName)) {
       // 获取输入数据
       Object inputData = getInputData(inputPath, contextData);
 
@@ -323,7 +323,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
     LOGGER.debug("executeDeleteRecord: datasource={}, model={}, filter={}",
       datasourceName, modelName, filter);
 
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = sessions.open(datasourceName)) {
       String processedFilter = StringUtils.simpleRenderTemplate(filter, contextData);
 
       var deleteBuilder = session.dsl().deleteFrom(modelName);
@@ -359,7 +359,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
     List<Map<String, Object>> records;
 
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = sessions.open(datasourceName)) {
       var queryBuilder = session.dsl().selectFrom(modelName);
 
       // 处理 filter
@@ -552,7 +552,7 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
     // 执行原生SQL查询
     long beginTime = System.currentTimeMillis();
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = sessions.open(datasourceName)) {
       return session.data().executeNative(processedScript, contextData);
     } finally {
       long endTime = System.currentTimeMillis() - beginTime;

@@ -26,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * @author cjbi
@@ -36,19 +38,21 @@ public class EngineConfig {
 
   public static final String SYSTEM_DS_KEY = "system";
 
-  @Priority(Interceptor.Priority.APPLICATION)
-  public void installDatasource(@Observes StartupEvent startupEvent,
+  public void installDatasource(@Observes @Priority(Interceptor.Priority.APPLICATION) StartupEvent startupEvent,
                                 ProjectService projectService, SchemaRegistry schemaRegistry,
                                 BranchRepository branchRepository) {
     long beginTime = System.currentTimeMillis();
     List<Project> projects = projectService.findProjects();
+    Set<String> schemas = new LinkedHashSet<>();
     for (Project project : projects) {
-      // 注册非 main 分支的数据库 SchemaProvider
+      schemas.add(project.getDatabaseName());
       List<Branch> branches = branchRepository.findByProjectId(project.getId());
       for (Branch branch : branches) {
-        schemaRegistry.registerSchema(branch.getDatabaseName());
+        schemas.add(branch.getDatabaseName());
       }
     }
+    // registerSchema installs the provider before applying project.fml (including runtime tables).
+    schemas.forEach(schemaRegistry::registerSchema);
     log.info("========== Engine init successful in {} ms!", System.currentTimeMillis() - beginTime);
   }
 

@@ -1,5 +1,253 @@
 # Session Progress Log
 
+## 修复: AppRecordFormModal 主表单卡片缺失（2026-10-22）
+
+**现象:** 编辑页（AppRecordFormModal：审批记录抽屉可编辑态、子表记录、系统表单、页面详情编辑）主表单
+字段仍是裸 grid，无卡片；此前卡片修复只覆盖了 AppRecordDrawer。
+
+**修复:** AppRecordFormModal 主体与 AppRecordDrawer 布局对齐——主表单字段（SECTION+FIELD）包进
+`rounded-xl border bg-card p-4 shadow-sm` 卡片，子表单（SUBFORM）移到卡片外；entries 按类型收窄预过滤
+（mainEntries/subformEntries）。
+
+**验证:** build 与 test（27 tests）通过；Playwright 实测审批中心已处理（已拒绝→可编辑）：卡片渲染、
+主表单 11 个字段在卡片内、BOM明细等子表在卡片外。
+
+## 修复: 审批中心列表人名展示 id（2026-10-22）
+
+**现象:** 审批中心列表发起人一栏直接渲染 `item.initiator`（用户 id）。
+
+**修复:** services/approvals.ts 新增 `getApprovalMemberNames(appId)`（审批成员目录 id→姓名，会话内
+缓存）；ApprovalFeed 按列表涉及的应用批量拉取目录合并 names（以 appId 集合为 effect 依赖，轮询刷新
+不重复请求），发起人显示 `names[id] ?? id`。InstanceDrawer/ApprovalProgressPanel 原本已正确解析，未动。
+
+**验证:** build 与 test（27 tests）通过；Playwright 实测审批中心已处理 tab：发起人显示「Admin」「张三」。
+
+## Feature: 详情抽屉审批 UI 统一（审批进度右侧面板 + 审批按钮入底部操作行）（2026-10-22）
+
+**需求:** UI 保持统一——右侧区域只展示审批进度（与审批记录抽屉一致的 ApprovalProgressPanel）；审批按钮
+（同意/不同意、提交审批）放到表单底部操作行（编辑/删除那一列）；编辑页不展示审批状态。
+
+**修改:**
+
+- 新增 `components/biz/useRecordApproval.ts`：记录审批状态 hook（3s 轮询 recordApprovals+flows，
+  对进行中实例 getApprovalDetail 解析当前用户 PENDING 任务），返回 flows/instances/myTask/locked/
+  latestInstance（优先进行中实例，否则最新已结束实例）；cancelled 标志防切换记录时旧请求竞态更新，
+  enabled=false 时清空状态（修复了切换记录后同意/不同意按钮残留上一条记录任务的 bug）。
+- `AppRecordDrawer`：
+  - approvalLocked 由 hook 派生（移除 RecordApprovalPanel 与 onLocked state）。
+  - 查看态 footer：锁定提示 + 提交审批（未锁定且有启用流程；查看态直接 submitApproval 不改记录，
+    与新建态「发起流程」=保存+提交区分）+ 删除 + 编辑 + 不同意/同意（有待办任务时），决策走意见
+    BizDialog（requestKey 幂等）。
+  - aside 仅查看态且有审批实例时渲染 ApprovalProgressPanel（进度 UI 与审批记录抽屉统一）；
+    编辑/新建态无 aside。
+  - 发起流程弹窗选项按模式取 flows（新建=加载的 flows，查看=hook flows）。
+- `RecordApprovalPanel`（AppRecordDetail 独立页面仍用）上一轮已加同意/不同意，本轮未动。
+
+**验证:** build（tsc -b + vite build）与 test（27 tests）通过；Playwright 实测 products 列表：
+锁定记录 footer=「审批中已锁定+删除 (禁)+编辑 (禁)+不同意+同意」，右侧为统一进度面板（审批中状态卡+
+或签/依次审批时间线+待处理/等待前序），同意弹意见弹窗正常；无审批记录 footer=「提交审批+删除+编辑」
+无残留按钮；编辑态 aside 消失、返回查看态恢复。
+
+## Feature: 流程进度改为抽屉右侧内嵌面板（2026-10-22）
+
+**需求:** 去掉「查看流程进度」按钮，在 Drawer 右侧区域内直接展示流程进度，右上角按钮支持展开/折叠
+（类似明道云）。
+
+**修改:**
+
+- `ui/drawer.tsx` BizDrawer 新增 `aside` prop：主体变为左右布局（表单 flex-1 + 右侧 `w-72` 边栏，
+  `border-l bg-muted/30` 独立滚动）；aside 存在时 header 右侧自动渲染展开/折叠按钮
+  （PanelRightClose/PanelRightOpen，aria-label 收起/展开流程进度），默认展开、每次打开抽屉重置为展开。
+- `AppRecordFormModal` 透传 `aside`（footerExtra 保留备用）。
+- 新增 `pages/Approvals/ApprovalProgress.tsx`：
+  - `ApprovalTimeline`：签核进度时间线纯展示组件（会签/或签/依次审批 + 各任务决策与意见），
+    InstanceDrawer 的「签核进度」区同步改用，消除重复。
+  - `ApprovalProgressPanel`：右侧面板数据组件，getApprovalDetail + 成员名映射 + 3s 轮询，
+    渲染状态卡（状态/发起人/时间）+ ApprovalTimeline。
+- `ApprovalTaskDrawer`：移除「查看流程进度」按钮、progressOpen 状态与 InstanceDrawer 引用，
+  `aside={<ApprovalProgressPanel appId instanceId/>}`；底部恢复纯 同意/不同意、关闭、默认保存。
+
+**验证:** build（tsc -b + vite build）与 test（27 tests）通过；Playwright 实测审批中心「已处理」：
+按钮已移除、右侧面板默认展开（288px，状态卡+时间线含或签/依次审批与各人决策意见）、右上角收起后面板
+隐藏、再展开恢复、底部为 取消/保存（已结束=编辑模式）。
+
+**环境备忘:** Vite dev watcher 偶发漏检工具写入的文件（本次 drawer.tsx 未热更导致 aside 不渲染），
+通过 `(Get-Item file).LastWriteTime = Get-Date` 强制触发变更后恢复；后续会话若浏览器表现与源码不符，
+先 `Invoke-WebRequest http://localhost:5180/src/...` 核对模块是否最新。
+
+## Feature: 审批入口统一为记录表单 + 查看流程进度按钮（2026-10-22）
+
+**需求:** 使用 InstanceDrawer 的地方全部换成编辑模式的表单；表单增加「查看流程进度」按钮打开流程进度
+（InstanceDrawer 退化为流程进度查看器，不再是审批条目的主视图）。
+
+**修改:**
+
+- `AppRecordFormModal` 新增 `footerExtra` prop：渲染在默认底部操作（取消/保存/发起流程）左侧，供
+  调用方注入额外按钮；自定义 `footer` 时不生效。
+- `ApprovalTaskDrawer` 泛化为通用审批记录抽屉（prop `task` → `item: ApprovalItem`）：
+  - 待我审批（taskId 且未决策）：只读表单 + 底部「不同意/同意」（意见弹窗、requestKey 幂等不变）。
+  - 流程进行中：只读表单 + 关闭按钮。
+  - 流程已结束：编辑模式表单（可保存，onSaved 回调刷新列表）。
+  - 三种形态底部均常驻「查看流程进度」按钮 → 打开 InstanceDrawer（签核进度、快照、节点记录）。
+  - 修复判断：已处理列表条目也带 taskId，用 `taskId && !decision` 区分待办与已办。
+- `ApprovalFeed`：三个 tab（待处理/已处理/我提交的）统一打开 ApprovalTaskDrawer，移除 InstanceDrawer。
+- `Notifications` 查看审批：有 PENDING 任务带 taskId，否则直接传 ApprovalDetail（无 taskId）→
+  统一走 ApprovalTaskDrawer，移除 InstanceDrawer 分支。
+- `RecordApprovalPanel` 保留 InstanceDrawer：它本身处于记录表单内部，点击审批历史打开的就是
+  「查看流程进度」目标视图，符合新交互模式。
+
+**验证:** build（tsc -b + vite build）与 test（27 tests）通过；Playwright 实测审批中心「已处理」tab：
+点击条目打开记录表单（已拒绝的实例为编辑模式，子表出现新增/操作列），标题无审批前缀；点击
+「查看流程进度」后第二个抽屉正常叠加展示快照与签核进度。待处理链路逻辑未变（feat-096 已验证）。
+
+## 修复: 统一抽屉主表单卡片丢失（2026-10-22）
+
+**现象:** 用户反馈详情抽屉里主表单字段的卡片不见了（对比原 AppRecordDetail 有 `rounded-xl border
+bg-card p-4 shadow-sm` 卡片容器）。
+
+**修复:** AppRecordDrawer 主体改为 `space-y-4` 布局：错误提示与审批面板在卡片外；主表单字段
+（SECTION + FIELD，查看/编辑/新建三态共用）包回与原详情一致的卡片，子表单渲染在卡片外。布局条目按
+kind 预过滤（mainEntries/subformEntries，带类型收窄），切换模式时卡片容器不变，保持滚动位置。
+
+**验证:** build（tsc -b + vite build）与 test（27 tests）通过；Playwright 实测：卡片渲染（字段 10 项在
+卡片内）、分组标题展示、点击「编辑」原地切换后卡片保持且输入控件在卡片内（8 项）。
+
+## 修复: 统一抽屉点击详情空白（2026-10-22）
+
+**现象:** 用户反馈点击记录后详情抽屉 body 空白（标题兜底为「记录」）。
+
+**定位:** 用 Playwright 连接本地 dev（5180）+ 后端（8080）实测复现：记录接口正常返回但抽屉 body 三段
+（loading/error/form）均不渲染。根因为 `AppRecordDrawer` 表单加载 `.then` 回调清理标志条件写反：
+`if (cancelled) setForm(loaded)` —— 组件未取消（cancelled=false）时反而丢弃表单，`finally` 又将
+loading 置 false，导致 form=null、无错误、无 loading 的全空白状态。
+
+**修复:** 改为 `if (!cancelled) setForm(loaded)`，与同文件其他回调一致。
+
+**验证:** build（tsc -b + vite build）与 test（27 tests）通过；浏览器实测：抽屉标题显示主显字段值、
+表单设计入口出现（form 非空才渲染）、字段与子表引用选项正常加载。既有数据问题（f_user 引用的
+f_user_department 表后端不存在，404）与本次无关。
+
+## Feature: Apps UI - 记录详情与编辑合并统一抽屉（2026-10-22）
+
+**目标:** 消除“打开详情 → 点击编辑 → 再打开一层编辑抽屉”的双层切换。同一抽屉内原地切换 查看/编辑/新建
+（Power Apps 表单模式），字段位置、子表单与审批进度保持连续。
+
+**修改:**
+
+- 新增共享助手，消除与 AppRecordFormModal 的逻辑重复：
+  - `form/recordPayload.ts`：`buildRecordPayload`（可见字段必填校验+载荷构建）、`initialCreateValues`（新建
+    默认值）、`toEditValues`（记录 → 输入值）。
+  - `form/useReferenceOptions.ts`：REFERENCE/MULTIREFERENCE 候选加载 hook。
+  - `AppRecordFormModal` 重构消费上述助手（行为不变，继续服务子表记录、快速新建、系统表单、审批待办）。
+- 新增 `components/biz/AppRecordDrawer.tsx` 统一抽屉：
+  - 三态共用 `parseFormLayout` 布局：查看态文本（renderFormValue / AppReferenceValue 可点击关联记录 /
+    MULTIREFERENCE 用 displayRecordText），编辑/新建态 FieldControl 输入控件，切换不换容器、保留滚动位置。
+  - 底部按模式切换：查看=「删除」「编辑」；编辑/新建=「取消」「保存」（新建态额外「发起流程」）；编辑/新建态
+    左侧固定提示“子表记录即时保存，主表单字段点击「保存」生效”，明确分开保存语义。
+  - 保存边界：dirty 状态下关闭抽屉或编辑取消均弹「放弃未保存的修改」确认；新建态自动保存过主表单时确认文案
+    明确“主表单已自动保存并保留”。
+  - 保存成功：编辑/新建均切回查看态（新建内部 activeRecordId 更新后加载记录详情）并回调 onSaved 刷新列表；
+    「发起流程」=先保存校验再 submitApproval，与保存分离。
+  - `RecordApprovalPanel` 常驻（非内置表单且有记录时），编辑期间也能看到审批状态与锁定原因；锁定时禁用
+    编辑/删除/保存。
+  - 子表：查看态只读；编辑/新建态可操作，新建态新增子记录沿用“自动保存主表单”流程。
+- `RecordList` 接入：行点击/主显字段链接=查看态、行内编辑与批量编辑=编辑态、新建=新建态、关联记录跳转=第二个
+  统一抽屉；删除原双层 `Drawer + AppRecordDetail` 与 `AppRecordFormModal` 组合及 formRecordId 状态。
+- `AppRecordView` 独立页面保留 `AppRecordDetail`（页面编辑仅覆盖一层抽屉，无双层叠加问题）。
+- 后端零改动。
+
+**验证:**
+
+- `flexmodel-apps-ui npm run build`（tsc -b + vite build）通过，仅既有 chunk 体积与 /logo.png 提示。
+- `flexmodel-apps-ui npm test`（vitest run）通过：3 files / 27 tests。
+
+**遗留/风险:**
+
+- 查看态 MULTIREFERENCE 已用 displayRecordText 展示，但 AppRecordDetail（独立页面）仍未处理数组引用展示，
+  后续可统一。
+- 统一抽屉的编辑/查看切换未做浏览器端手工回归（构建+单测覆盖）；建议实测一次滚动保持与确认弹窗交互。
+- 若后续确认某些表单主要用于高频资料维护，可加“默认进入编辑态”的表单级配置（当前统一默认查看态）。
+
+## Feature: Apps UI - 待办审批复用记录表单与意见弹窗（2026-10-22）
+
+**目标:** 审批中心待办任务点击后复用记录编辑表单（只读）展示记录内容，底部按钮改为「同意」「不同意」，点击后弹窗
+输入审批意见再提交。
+
+**修改:**
+
+- `AppRecordFormModal` 新增可选 props：`title`（覆盖抽屉标题）、`readOnly`（禁用全部字段控件 + 隐藏表单设计
+  headerExtra + 默认子表单只读）、`footer`（覆盖默认保存/取消底部，传入则完全替换）。
+- `AppSubformRecords` 新增 `readOnly`：隐藏「新增」按钮、行内编辑/删除按钮与操作列，空态与未保存提示文案适配。
+- 新增 `pages/Approvals/ApprovalTaskDrawer.tsx`：
+  - `getAppForm(appId, formName)` 加载表单，加载/错误态用简单 Drawer 呈现（错误可重试）；
+  - 表单就绪后复用 `AppRecordFormModal`（readOnly + recordId）只读渲染审批记录（审批期间记录被
+    f_approval_record_lock 锁定，只读符合后端约束）；
+  - footer 为「不同意」（secondary）+「同意」（primary）；点击打开 BizDialog 意见弹窗（Textarea，maxLength
+    2000，选填），确认调用既有 `decideApproval(appId, taskId, decision, comment, requestKey)`；
+  - 幂等：同任务+同决策+同意见复用同一 requestKey（对齐 InstanceDrawer 的重试语义），成功后 message 提示、
+    关闭意见弹窗与抽屉、刷新列表。
+- `ApprovalFeed`：待处理 tab 且任务带 taskId 时打开 `ApprovalTaskDrawer`；已处理/我提交的及无 taskId 场景保留
+  `InstanceDrawer`；切换 tab 清空选中，避免抽屉内容与 tab 不一致。
+- 消息中心（`Notifications.tsx`）「查看审批」同步接入：通知详情的 `approval` 为 `ApprovalDetail`（后端 detail 接口
+  不带 taskId，仅列表接口附加），前端从 `approval.tasks` 中解析当前用户（getAuthSession）PENDING 任务并拼装
+  `taskId` 打开 `ApprovalTaskDrawer`；无待办任务（已处理/他人任务）回退 `InstanceDrawer` 进度详情；决策成功后
+  刷新通知列表（onChanged=reload）。
+- 后端零改动（决策接口、requestKey 幂等、comment ≤2000 校验均为既有能力）。
+
+**验证:**
+
+- `flexmodel-apps-ui npm run build`（tsc -b + vite build）通过，仅既有 chunk 体积与 /logo.png 提示。
+- `flexmodel-apps-ui npm test`（vitest run）通过：3 files / 27 tests（消息中心改造后复跑通过）。
+
+**遗留/风险:**
+
+- 意见弹窗（z-[1041]）叠在表单抽屉（z-[1040]）之上，未做浏览器端视觉复验。
+- 只读态下引用字段以下拉禁用样式展示（与编辑态一致），未复用详情页的可点击链接样式；如需点击跳转关联记录，
+  后续可在 readOnly 模式下切换为 AppReferenceValue 渲染。
+- 会话间 AppSubformRecords 的两处 Empty description 属性曾被外部改动移除，本次已恢复并适配只读文案。
+
+## Feature: Apps UI - 新增/编辑弹窗支持子表单与自动保存主表单（2026-10-22）
+
+**目标:** 让新增/编辑记录弹窗与详情页保持一致（共享表单渲染层），弹窗内支持添加子表单记录；添加子表单记录时自动
+保存主表单；必填字段未填时拦截，不允许添加子表单记录。
+
+**修改:**
+
+- 新增 `flexmodel-apps-ui/src/components/biz/form/` 共享渲染层：
+  - `parseFormLayout.ts`：统一 SECTION/SUBFORM/FIELD 布局解析（弹窗与详情页原先各自实现）；layout 为空时回退为
+    全部业务字段（此前弹窗空布局渲染为空白，与详情页不一致）；hidden 字段与 excludeField（子表单引用字段）不参与
+    渲染与校验。
+  - `FormFieldControl.tsx`：可编辑字段控件（FieldControl/toInputValue/ReferenceOption），由弹窗抽出共享。
+  - `FormReadonlyValue.tsx`：只读字段值渲染（renderFormValue），由详情页抽出共享。
+- `AppRecordFormModal` 重构消费共享层；新增默认 renderSubform：渲染 `AppSubformRecords`（自定义 renderSubform
+  优先，SystemRecordFormModal 本地态子记录不受影响；recordContext/saveRecord 场景不启用默认子表单，天然限制嵌套
+  一层，防止表单互引时无限递归）。
+- 自动保存流程 `persistForSubform`：buildPayload 必填（仅可见字段）校验失败 → 拦截并显示“X不能为空”，不保存；
+  通过 → 新建场景 createAppRecord 后 setSavedRecordId 切换编辑态（标题变“编辑”、隐藏发起流程按钮、后续保存走
+  update）并 message 提示“主表单已自动保存”；编辑场景静默 update 保存当前改动。取消弹窗保留已保存的主记录
+  （草稿式，用户确认的取舍）。
+- `AppSubformRecords`：mainRecordId 改为可空，新增 `onBeforeCreate?: () => Promise<string | null>` 拦截；主记录
+  未保存时展示“主表单尚未保存”占位且隐藏搜索/刷新/表格，新增按钮 await onBeforeCreate 解析主记录 ID 后再打开
+  子记录弹窗；删除操作增加 mainRecordId 判空保护。
+- 必填口径（用户确认）：前端仅校验 layout 可见字段；后端 create 时对隐藏必填字段的 400
+  （“必填字段不能为空: X”）经 requestJson 抛出并透出到弹窗错误区。
+- 后端零改动（`AppRecordService.resolveRecordContext` 已强制主记录先存在，与自动保存顺序天然一致）。
+- 按用户要求“样式都使用 Drawer”：`components/ui/drawer.tsx` 新增 `BizDrawer`（标题 + headerExtra + 滚动内容 +
+  footer 结构，宽度默认与详情页抽屉一致 `md:w-[calc(100vw-16rem)]`，可用 width 覆盖）；AppRecordFormModal 的
+  主表单与子表单记录表单均由 BizDialog 改为 BizDrawer 呈现（SystemRecordFormModal 复用同组件自动生效）；
+  「发起流程」小型选择弹窗与删除确认保留 BizDialog。
+
+**验证:**
+
+- `flexmodel-apps-ui npm run build`（tsc -b + vite build）通过，仅既有 chunk 体积与 /logo.png 运行时解析提示。
+- `flexmodel-apps-ui npm test`（vitest run）通过：3 files / 27 tests。
+
+**遗留/风险:**
+
+- 自动保存后取消抽屉会在列表留下草稿记录（预期行为）；父列表不会自动刷新，需手动刷新可见。
+- 子表单记录抽屉与主表单抽屉同宽，打开时完全覆盖主抽屉，关闭后返回；未做浏览器端视觉复验。
+- 既有 LSP 对 flexmodel-server 生成代码的误报与本次改动无关。
+
 ## Follow-up: 应用菜单弹窗接入真实接口与内置页面关联（2026-10-09）
 
 **目标:** 保持原始 `MenuEditorDialog` UI 与交互不变，将应用菜单从 mock 数据切换为 `/api/apps/{appId}/menus`
@@ -2327,3 +2575,244 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 备注：`bash ./init.sh` 本次在 `mvn clean` 删除 `flexmodel-server-dev.jar` 时失败，原因是当前有
   `mvn -pl flexmodel-server quarkus:dev` 会话正在运行并占用该 jar，属环境占用而非代码问题；本次仅修改前端弹窗样式，待 dev
   会话停止后可重跑 init.sh 完成基线验证。
+
+**应用审批流程设计与模拟预览（2026-10-21，feat-086）**
+
+- `flexmodel-apps-ui` 的“管理后台 > 应用管理 > 审批流程”替换占位列表，支持搜索、状态筛选、分页、创建、模板、复制、启停、删除和选择操作；旧全局入口引导先选择应用。
+- 新增 `/admin/apps/:appId/approvals/:flowId/design`，采用 FlowGram 纵向固定布局，提供节点插入、拖动排序、复制/删除、撤销重做、缩放、适应画布和缩略图；开始与结束节点保留。
+- 七类业务节点：审批、条件网关、新增记录、更新记录、查询记录、删除记录和子流程。配置面板支持条件优先级与默认分支、字段类型联动、固定值/上游变量及子流程输入输出映射。
+- 审批执行人支持多组用户/角色/组织规则及发起人、上游节点执行人、变量、脚本；人员范围按所选成员计算，合并后稳定去重；会签、或签、依次审批均任一拒绝即终止。
+- 逐步模拟支持选择发起人、输入示例记录和变量、脚本模拟返回成员、逐人同意/拒绝、条件分流、独立记录副本与同步子流程；不会执行真实脚本或调用业务记录写接口。
+- 配置按当前登录用户和应用存入 localStorage。保存允许不完整草稿，启用/模拟前校验并定位错误；修改后重新检查变量路径，禁止子流程循环；复制整个流程时重建节点和内部变量引用。
+- 真实应用与表单元数据仍通过既有 services 读取，失败时可重试；示例表单有明确标识。沿用 shadcn/ui、Lucide
+  与语义主题变量，适配明暗主题、1280px 桌面及窄屏配置抽屉，列表滚动限定在表格内。
+- FlowGram 原计划 1.0.16 因其传递依赖 `@flowgram.ai/editor@1.0.16` 未发布而无法安装，改用 Certimate 所采用的同版本 1.0.15
+  包；同步 npm/pnpm 锁文件，Vite 去重 React，编辑路由懒加载。补齐 BizDialog 的无障碍标题。
+- 验证通过：`npm test`（22 tests）；`npm run test:approvals`（5 tests，覆盖完整模拟、七类节点、拖动、撤销重做、分支增删、真实字段、多组执行人、列表管理、重试和离开提醒）；
+  `npm run build`（含 TypeScript）；两仓库 `git diff --check`。浏览器检查浅色/夜间、1440×900、1280×800、900×800；5180
+  现有开发服务的登录入口无运行时异常。
+- 标准 `bash ./init.sh` 在开始和结束均尝试，仍因现有服务占用 `flexmodel-server/target/flexmodel-server-dev.jar` 而在
+  clean 阶段失败。保留该服务，前后分别执行不带 clean 的全模块编译与引擎测试，均通过。待现有 dev 服务停止后可重跑完整
+  init.sh；本次没有 Java 改动。
+- 页面截图（运行测试可重现，生成文件不提交）：`flexmodel-apps-ui/artifacts/approvals-list-light.png`、
+  `approvals-node-settings.png`、`approvals-designer-dark.png`、`approvals-designer-1280.png` 和
+  `approvals-simulation.png`。
+- 代码已提交到 Apps UI 独立仓库：`c5641ad feat(approvals): 添加应用审批流程设计器与模拟预览`。保留根仓库原有
+  `flexmodel-ui` 修改和未登记为子模块的 `flexmodel-apps-ui` 目录状态。
+- 后续范围：真实审批定义持久化、后端执行人解析/签核执行、脚本执行以及现有 Flow 引擎适配尚未接入；本次交付范围为页面交互与
+  mock 模拟。
+
+**事件驱动的表单流程与真实审批闭环（2026-10-21，feat-087）**
+
+- 按用户确认的边界实现：从记录详情手动提交表单流程，提交时持久化快照并锁定原记录；Flow
+  保持通用编排能力，发布通用挂起事件，独立审批模块创建待办和聚合签核，再投递继续或终止命令。`flow` 包没有导入审批或表单模块。
+- 项目库增加事务 Outbox、互斥行、草稿/不可变发布、实例、待办、记录锁和节点日志；同项目事务借用同一
+  Session，消费结果与消息确认一起提交。支持多服务实例行锁、顺序投递、指数退避（最多 8 次）、失败消息重试，以及发起/签核/节点/子流程的幂等处理。托管
+  Flow 校验服务端处理器归属，通用 REST 入口不能绕过审批直接推进。
+-
+
+七类业务节点接入真实执行。服务端校验表单字段、可用上游变量/审批节点、网关优先级/唯一默认分支、子流程直接或间接循环；发布时固定子流程版本。数据节点通过现有表单服务验证写入，使用完整服务端记录作为输出，避免表单布局投影导致上游变量字段缺失。
+
+- 人员来自真实用户、角色、部门和直属上级关系；多组规则按范围解析并稳定去重。会签、或签、依次审批均支持，任一拒绝终止；下游执行人取实际同意者。脚本通过
+  Functions Runtime 的独立无权限 Deno Worker 运行，双方需配置相同 `FLEXMODEL_APPROVAL_SCRIPT_SECRET`；未配置时禁止发布含脚本的流程。
+- 记录锁在类型化 DataService 层执行，覆盖单条、筛选、批量和 GraphQL 调用；所属流程/子流程可操作自己的记录，其他人工写入返回
+  409。补充批量失败原子回滚、保留调用者事务及回滚后不发送虚假数据事件。活跃流程阻止应用/关联表单删除。
+- Apps UI 从 localStorage
+  切换真实异步接口：版本冲突提示、服务端保存/校验/发布、真实目录、记录提交及锁状态、审批中心待办/已处理/我提交的、实例快照/签核/子流程/日志/失败恢复。原独立模拟预览保留，不写真实记录，也不执行真实成员脚本。UI
+  独立仓库提交：`579afb3 feat(approvals): 接入服务端流程与真实审批中心`。
+- 修复用户报告的启动错误 `Unexpected schemaName: plm_system`：删除先于数据源注册的重复迁移观察器；EngineConfig
+  统一注册主应用与分支、去重 Schema，并把 CDI 观察器优先级标在事件参数上；SchemaRegistry 对显式配置且已注册的数据源仍同步
+  project.fml。回归覆盖没有分支行的主应用及主分支去重。
+- 验证通过：`mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`；`mvn test -q -pl flexmodel-engine`；另实际运行
+  `mvn test -q -pl flexmodel-engine/flexmodel-core -am`（90 项、0 失败）。后端指定
+  `EngineConfigTest,ApprovalPolicyTest,ApprovalWorkflowResourceTest,FlowEventPublisherTest,FlowDefinitionResourceTest`
+  （26 项、0 失败），覆盖并发幂等、消费回滚/重投、锁/事务、签核、网关与默认分支、循环检测、真实 CRUD/子流程以及真实浏览器闭环。Apps
+  UI `npm test`（23 项）、`npm run test:approvals`（5 组）、`npm run build`（含 TypeScript）通过；Deno `approval-members_test.ts`
+  （2 项）通过。两仓库 diff 检查通过。
+- 实际浏览器使用隔离 Quarkus/SQLite 后端和 Vite 5183，完成设计保存/刷新恢复/发布、记录提交/编辑禁用、审批中心签核、通过后解锁；已目视检查
+  1440 浅色及 1280 夜间截图：`flexmodel-apps-ui/artifacts/approvals-backend-designer.png`、
+  `approvals-backend-signing.png`、`approvals-backend-center-dark.png`。
+- 标准 `bash ./init.sh` 再次尝试，仍因现有用户开发服务占用 `flexmodel-server/target/flexmodel-server-dev.jar` 在 clean
+  阶段失败；未停止用户服务。非 clean 全模块编译已通过。可在用户自行停止 dev 服务后重跑完整入口。
+- 边界与已知限制：本版可靠事务以 SQL 数据库为前提，SQLite 实测通过，Mongo 会话未实现真实事务/行锁；目标 MySQL/PostgreSQL
+  需部署前验证。数据节点逐节点提交，后续拒绝不会撤销已执行变更；原生 SQL/DDL 不属于人工记录锁拦截范围。完成的 Outbox
+  暂无自动清理，需监控失败积压。全量 server suite 未宣称通过；额外试跑的既有 AppRecordResourceTest
+  空布局仍期待完整字段，与当前布局投影行为不符，本次未改变该既有行为。
+- 架构、配置、接口和复现命令见 `flexmodel-server/docs/approvals.md`。保留根仓库原有 `flexmodel-ui` 修改与未登记为子模块的
+  Apps UI 目录状态。
+
+**审批流程定义与 Flow 结构统一（2026-10-21，feat-088）**
+
+- 审批定义的接口、持久化和不可变发布快照统一为
+  `flow_module_id/flow_name/flow_key/flow_model/status/remark/archive/is_deleted/created_by/updated_by/created_at/updated_at`
+  ，保留 revision 与发布关联；flow_model 是包含 flowElementList 的 JSON 字符串。新增定义表
+  f_form_workflow_definition，避免直接改变旧表主键或丢失旧数据。
+- WorkflowModel 与 Apps UI approval-model 负责图模型和 FlowGram 内存树互转；审批、人员、数据操作配置保存在
+  properties.config，开始节点 properties.form 保存表单关联，properties.designer 仅保存父节点、顺序和空容器标记。服务端检查连线与设计器配置一致，拒绝无效
+  JSON、重复标识、循环/孤立层级和不一致的图。
+- 使用原生 type=6 排他网关与 type=1 条件连线；条件表达式由服务端根据类型化分支配置生成，按分支顺序优先匹配并保留默认分支。发布只注入服务端
+  handler、handlerOwner、releaseId 和 nodeId；自定义 flow_key 在存储与实际 Flow 发布中一致。
+- JavaScriptExpressionCalculator 提供本次 __flowVariables 快照，避免线程复用时网关读取上一次残留的变量；覆盖数字、字面量/变量、七种比较操作和缺失变量。
+- SchemaInitializationListener 为特性提供 schema 初始化后的数据升级钩子；WorkflowSchemaMigration
+  在事务和运行时行锁内迁移旧草稿与发布快照，保留旧表及旧运行部署，迁移标记防止定义删除后再次恢复。迁移以 SQL 审批运行时为前提。
+- 验证通过：`mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`；`mvn test -q -pl flexmodel-engine`；
+  `mvn test -q -pl flexmodel-server -am '-Dtest=WorkflowModelTest,ApprovalWorkflowResourceTest,FlowDefinitionResourceTest,ApprovalPolicyTest,EngineConfigTest,RuntimeProcessorTest,DefinitionProcessorTest' '-Dsurefire.failIfNoSpecifiedTests=false'`
+  （50 tests，0 failures，0 errors）。其中包含隔离 SQLite 与真实浏览器的设计保存/刷新/发布/提交/签核/解锁，以及审计身份、防篡改、指定
+  flow_key、旧草稿迁移和删除后不复活。
+- Apps UI `npm test`（23 tests）、`npm run test:approvals`（5 tests）、`npm run build`（含 TypeScript）通过；两仓库
+  `git diff --check` 通过。构建仅保留既有 chunk 大小及 logo 路径提示。
+- `bash ./init.sh` 已实际执行，仍因用户运行中的开发服务占用 flexmodel-server-dev.jar 在 clean 阶段失败；保留服务，使用上述非
+  clean 编译和引擎验证。完整 init.sh 需要该文件解除占用后重跑。
+- 协议与迁移边界见 flexmodel-server/docs/approvals.md。普通 Flow 模型仍需审批配置和设计器层级元数据才能在审批设计器中编辑，本次没有增加任意图导入能力。
+- 工作区进入本轮前已有大量暂存/未暂存修改（含 32 个暂存文件）及嵌套 Apps UI 仓库修改；为保留原有暂存边界，本轮没有自动提交或改写既有暂存内容。验证日志归档到忽略目录
+  logs/workflow-verification-2026-10-21.log。
+
+**审批基础能力收敛到服务端（2026-10-21，feat-089）**
+
+- 按用户约束移除 flexmodel-engine 中审批接入引入的全部 7 个文件改动，包括 DataMutationInterceptor、Session/SessionFactory
+  扩展、SQL 行锁接口和引擎回滚事件处理。已使用 `git diff HEAD --quiet -- flexmodel-engine` 及状态检查确认源代码、暂存区和工作区均与
+  HEAD 一致。原改动只读备份到忽略目录 logs/engine-approval-before-refactor.patch。
+- common/persistence 使用引擎已有公开的 SqlContext/SqlSession/SqlDataService/EventAwareDataService
+  实现服务端会话入口。ManagedSession 的事务状态、运行时行锁和提交后回调全部属于 server；ProjectUnitOfWork、应用数据
+  Repository、表单流程和 Flow 数据任务接入该入口。借用会话不能关闭或提交外层事务；显式回滚及关闭未提交会话丢弃对应事件和回调，同一会话内更早已提交的事件仍保留。
+- ApprovalRecordGuard 由服务端写入入口调用，支持字符串和类型化 Predicate 筛选、单条、批量和整表删除。独立引擎 SessionFactory
+  及原生 SQL/DDL 不引入审批业务策略；普通 Mongo 数据访问保持原实现，审批运行时继续要求 SQL。
+- GraphQL 复用引擎生成的 Schema、查询、@export/@transform 参数处理，仅替换 SQL 项目的 mutation
+  fetcher，使用服务端事务及锁保护。验证别名、片段和嵌套 _join_mutation 不能绕过锁；覆盖新增、修改、筛选删除及签核解锁后正常写入。修正
+  GraphQLResource 的 PathParam 导入，使实际 HTTP 项目参数可正确解析。保留原有 where 必填约束，不扩展无条件更新能力。
+- 按用户最新指示，SQLite 仅作为开发环境容错：连接 busy_timeout=1000ms；只有 SQLite BUSY/LOCKED 被转为“稍后重试”的
+  503（GraphQL 返回 errors），不自动重放业务操作、不跳过审批锁、不吞其他数据库错误，也未为 SQLite 新增引擎能力。事务归属、回滚事件及审批锁是各
+  SQL 数据库共有的要求，保留在 server。
+- 验证通过：
+  `mvn test -q -pl flexmodel-server -am '-Dtest=ServerSessionsTest,WorkflowModelTest,ApprovalWorkflowResourceTest,FlowDefinitionResourceTest,ApprovalPolicyTest,EngineConfigTest,RuntimeProcessorTest,DefinitionProcessorTest,ServiceTaskExecutorTest,FlowEventPublisherTest' '-Dserver.sessions.mysql=true' '-Dsurefire.failIfNoSpecifiedTests=false'`
+  （65 tests，0 failures/errors/skipped）。最后补充 GraphQL 新增/筛选删除和整表删除保护后，单独复跑
+  ApprovalWorkflowResourceTest（14 tests）全部通过，含隔离 SQLite 后端真实浏览器保存/发布/提交/签核/解锁。
+- ServerSessionsTest 已实际启动本地 MySQL 8.0 Testcontainer，并同时运行 SQLite；提交/回滚事件与回调、跨连接锁等待、SQLite
+  busy 容错共 5 项全部通过，无跳过。容器由测试自动清理。这里只验证 MySQL 会话及事务机制，完整审批业务的目标生产数据库验收仍需部署前验证。
+- 恢复后的引擎已执行 `mvn clean test -q -pl flexmodel-engine/flexmodel-core -am`（90 tests，全通过），确认不依赖旧编译类；规定的
+  `mvn test -q -pl flexmodel-engine` 及非 clean 全模块 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`
+  通过。标准 bash ./init.sh 已尝试，仍因用户现有开发服务锁定 flexmodel-server-dev.jar 而在 clean 阶段失败，未停止服务。两仓库
+  diff 检查通过。
+- 说明见 flexmodel-server/docs/approvals.md；详细日志位于忽略目录 logs/server-sessions-*.log。本轮无 UI
+  改动，沿用真实浏览器回归验证接口兼容性。保留其他既有暂存及嵌套仓库改动；只撤销了用户明确要求撤出的引擎改动，未混合提交其他已有修改。
+
+**移除自定义审批执行人脚本（2026-10-21，feat-090）**
+
+- 按用户要求移除自定义审批执行人脚本能力：回滚 Functions Runtime 审批专用路由、隔离执行 Worker、相关测试及 server.ts
+  注册，删除服务端 MemberScriptRunner 与 approval.script-secret 配置。其余 Functions Runtime 能力保留；
+  `git diff HEAD --quiet -- flexmodel-engine flexmodel-functions-runtime` 和状态检查均确认两个模块的源代码、暂存区、工作区与
+  HEAD 一致。
+- 审批执行人保留指定用户、角色、组织架构、流程发起人、上游审批节点和流程变量六种来源。设计器移除脚本来源和编辑器，模拟面板移除脚本返回成员配置，类型定义及新规则也不再生成
+  script/scriptMembers 字段。节点配置继续位于 Flow 节点 properties 中。
+- 旧配置若仍使用 script 来源，设计器校验提示重新选择；服务端发布校验与成员解析拒绝该来源。未自动替换为其他人员，避免改变原流程的审批对象。已同步当前协议文档及历史特性说明，feat-086/087
+  的脚本能力记录由本节取代。
+- 验证通过：
+  `mvn test -q -pl flexmodel-server -am '-Dtest=ApprovalPolicyTest,ApprovalWorkflowResourceTest,WorkflowModelTest,FlowDefinitionResourceTest,FlowEventPublisherTest' '-Dsurefire.failIfNoSpecifiedTests=false'`
+  （34 tests，0 failures/errors/skipped，含真实后端浏览器保存/发布/提交/签核/解锁和旧脚本来源拒绝）；Apps UI `npm test`（24
+  tests）、`npm run test:approvals`（5 tests，含六种来源与脚本选项已移除检查）、`npm run build`（含 TypeScript）通过。
+- `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 与 `mvn test -q -pl flexmodel-engine` 通过。标准
+  `bash ./init.sh` 已执行，仍因用户开发服务占用 flexmodel-server-dev.jar 在 clean 阶段失败，未停止该服务；保留非 clean
+  验证路径。根仓库和 Apps UI `git diff --check` 通过。构建仅保留既有 chunk 体积和 logo 路径提示。
+- 详细日志及回滚前补丁位于忽略目录 `logs/remove-approval-scripts-*.log`、`logs/approval-scripts-before-removal.patch`
+  。本次只撤销明确授权的脚本专用暂存文件；其余大量既有暂存/未暂存修改及嵌套仓库边界均保留，未混合提交。 **审批草稿与发布复用
+  Flow 原生存储（2026-10-21，feat-091）**
+
+- 按用户要求同时撤掉 `f_form_workflow_definition` 和 `f_form_workflow_release`
+  的新建表声明，没有增加替代的定义、草稿、发布或绑定表。FormWorkflowService 保存直接调用既有 Flow create/update；发布更新同一
+  flow_module_id 并调用原生 deploy，版本仅保存在 f_em_flow_deployment。原生 Flow 定义仍使用自身状态，审批 API 保持原有
+  1=草稿/2=启用/3=停用映射。
+- 并发 revision、当前 deploymentId 与子流程 children 部署关联存于节点 properties.workflow；节点配置仍在
+  properties.config/designer/form。元数据由服务端生成；草稿保存起即带处理器归属，通用 Flow 更新/部署/删除入口不能绕过业务处理器，普通
+  Flow 行为保持既有验证。
+- f_form_process_run 新实例直接写 flow_deploy_id；审批节点配置、历史标题、表单引用检查和子流程启动都读取原生部署。原
+  release_id 改为可空旧列，仅用于读取迁移关联，新实例不写入。修改草稿、重新发布、停用或软删除定义不会改写已有部署，也不会改变运行中实例或父流程固定的子流程版本。
+- WorkflowSchemaMigration 在同一事务和运行时行锁内迁移旧树形/Flow 草稿、发布关联、活动实例及子流程版本。旧发布对应的临时原生定义软删除，防止列表和
+  flow_key 出现重复；原有部署 ID、节点类型与连线不改动。只有缺少 config/designer 的最早旧部署把冻结业务视图放入同一部署的
+  properties.workflow.legacyDocument；新发布没有这项冗余快照。旧表仅保留迁移标记，不参与后续业务，也不会在新项目创建；迁移幂等且删除后不复活。
+- 验证：扩展命令
+  `mvn test -q -pl flexmodel-server -am '-Dtest=ServerSessionsTest,WorkflowModelTest,ApprovalWorkflowResourceTest,FlowDefinitionResourceTest,ApprovalPolicyTest,EngineConfigTest,RuntimeProcessorTest,DefinitionProcessorTest,ServiceTaskExecutorTest,FlowEventPublisherTest' '-Dserver.sessions.mysql=true' '-Dsurefire.failIfNoSpecifiedTests=false'`
+  中 52 项非审批回归全部通过。新增迁移测试初次因 fixture 将不可变 Map 传入原始 DataService.insert 而失败；修正 fixture
+  并补齐临时定义清理后，最终单独复跑 ApprovalWorkflowResourceTest 18 项全部通过。最终报告合计 70 项，0
+  failures/errors/skipped；SQLite/MySQL 会话测试无跳过，真实后端浏览器闭环通过。
+-
+
+新增覆盖：草稿立即存在于原生表；重复发布只有一个定义、多个部署；旧部署内容不随新版本变化；定义删除后活动审批继续签核；子流程重新发布/停用后父流程仍使用固定版本；旧活动审批在旧源表移除后仍能签核；迁移保持图拓扑且重复执行不会复活已删除定义。
+
+- Apps UI `npm test`（24 项）和 `npm run build`（含 TypeScript）通过，本轮没有修改 UI 源码。
+  `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 与 `mvn test -q -pl flexmodel-engine` 最终通过；根仓库和
+  Apps UI diff 检查通过。`git diff HEAD --quiet -- flexmodel-engine flexmodel-functions-runtime` 确认两个模块仍为零差异。
+- 标准 `bash ./init.sh` 已实际执行，仍因用户开发服务占用 flexmodel-server-dev.jar 在 clean 阶段失败，未停止服务；保留既有非
+  clean 编译与测试验证路径。当前协议见 flexmodel-server/docs/approvals.md，详细日志在忽略目录 logs/reuse-flow-drafts-*
+  .log。历史 feat-088 的独立定义及发布存储设计由本节取代；本轮继续保留其他既有暂存/未暂存和嵌套仓库修改，没有混合提交。
+  **审批存储复用 Flow、细粒度并发与 Approval 术语统一（2026-10-22，feat-092）**
+
+- 按用户确认的方案完成表收敛：审批新增存储只保留
+  f_approval_instance、f_approval_wait、f_approval_task、f_approval_record_lock 及通用 f_runtime_message。移除独立
+  f_form_node_log 和 f_runtime_lock 的建表及使用；定义与发布继续复用原生 Flow。审批关联从 f_form_process_run 统一命名为
+  f_approval_instance。
+- 节点变量只从 f_ei_instance_data 读取，启动前初始变量由启动命令承载；业务输入输出及幂等键进入
+  f_ei_node_instance_log.attributes/event_key。审批实例保留不可变提交快照、业务结果和引擎关联，运行中仅存 ACTIVE，接口派生
+  SUBMITTING/RUNNING；重复提交也返回派生状态。等待记录只保留冻结成员与聚合状态，节点 key、标题、签核模式从原生节点和部署读取。父子关系只保留
+  parent_task_id，通过原生节点实例反查父流程。
+- 提交与数据修改锁实际业务记录；签核和管理锁根审批关联行；Flow 修改/部署/删除锁定义，继续/回滚/终止锁引擎实例。筛选写入锁定并固定本次检查过的记录集合。移除项目级全局锁，非
+  SQLite 连接使用 READ_COMMITTED；MySQL 验证同一行等待、不同记录可在另一事务释放前独立提交。不同记录竞争同一提交幂等键时，约束冲突后读取已提交结果或返回
+  409，不重放业务操作。
+- Outbox 使用 ordering_key
+  按根审批实例排序，延迟重试不阻塞无关组。组内最早消息行为稳定协调点，事务内再次检查状态与顺序；后台以虚拟线程并行处理不同组，多个服务实例仍以数据库行锁协调。已完成消息暂不清理，以保留协调点。SQLite
+  保持 1 秒 BUSY/LOCKED 转可重试 503 的开发容错，没有引擎或 SQLite 专用补偿。
+- 用户要求业务统一 Approval：服务端迁入 dev.flexmodel.approval，采用
+  ApprovalCompiler/FlowService/Runtime/FlowState/Repository/RecordActions 等类名，元数据统一
+  properties.approval，外部处理器标识统一 approval-flow。通用 Flow 模块和接口结构
+  flow_module_id/flow_name/flow_key/flow_model 保留。前端的 Workflow 仅为第三方图标名称。
+- 用户随后明确不考虑历史兼容：删除草稿/发布/运行数据迁移器、Schema 初始化迁移钩子、旧表读取、legacyDocument、properties.workflow
+  回退、form-workflow 处理器别名、旧网关执行分支及 release_id；移除相应历史迁移测试。按当前结构初始化，没有自动迁移或删除用户已有数据库。feat-088/091
+  的历史兼容方案由本项取代。当前文档改为 flexmodel-server/docs/approvals.md，README 链接同步。
+- 首轮存储测试发现父子查询的泛型 IN 重载将 List<String> 当作单个参数，已改用数组并验证子流程推进及固定版本。扩展回归初次有
+  4 项原生 Flow 测试受 SQLite 后台消费竞争影响；关闭测试定时消费后 17 项原生 Flow
+  测试通过。审批测试独立使用手动消息推进，浏览器驱动也手动推进消息并将输出写入临时日志，避免定时消费干扰和超时等待。
+- 最终单次回归命令通过：mvn test -q -pl flexmodel-server -am
+  -Dtest=ServerSessionsTest,ApprovalFlowModelTest,ApprovalFlowResourceTest,FlowDefinitionResourceTest,ApprovalPolicyTest,EngineConfigTest,RuntimeProcessorTest,DefinitionProcessorTest,ServiceTaskExecutorTest,FlowEventPublisherTest
+  -Dserver.sessions.mysql=true -Dquarkus.scheduler.enabled=false -Dsurefire.failIfNoSpecifiedTests=false（70 tests，0
+  failures/errors/skipped）。含 6 项 SQLite/MySQL 8.0 真实会话/行锁、17
+  项审批接口及真实后端浏览器保存/发布/提交/签核/解锁，验证原生日志/变量、精简等待数据、父子实例查询、延迟消息隔离、并发提交/签核及
+  GraphQL/批量写保护。
+- Apps UI npm test（24 项）及 npm run build（含 TypeScript）通过；本轮没有调整 UI 视觉或业务源码，只同步浏览器测试入口注释。最终
+  mvn compile -q -pl !flexmodel-engine/flexmodel-maven-plugin 与 mvn test -q -pl flexmodel-engine 通过；根仓库和 Apps UI
+  工作区/暂存区 diff 检查通过；git diff HEAD --quiet -- flexmodel-engine flexmodel-functions-runtime 确认两个模块仍零差异。
+- 标准 bash ./init.sh 已实际运行，clean 仍因用户开发服务占用 flexmodel-server-dev.jar 失败；未停止服务，采用上述非 clean
+  编译和规定引擎验证。完整 init.sh 需文件解除占用后再运行。详细日志在忽略目录 logs/approval-storage-*
+  .log。现有大量暂存、未暂存及嵌套仓库修改均保留，没有混合提交其他已有工作；生产目标数据库的完整审批业务验收仍需部署环境验证。
+
+**MCP 应用审批与通用人员目录（2026-10-22，feat-093）**
+
+- 按用户确认，审批设计工具统一加入
+  AppTools：get_app_approval_capabilities、list_app_approval_flows、get_app_approval_flow、save_app_approval_flow、validate_app_approval_flow、set_app_approval_flow_status。复用
+  ApprovalFlowService 与原生 Flow 契约，不创建新的定义/发布存储。创建省略 flowId，更新和发布要求最新
+  revision；保存已启用流程转回草稿，发布/停用使用 status=2/3。
+- ApprovalCapabilities 提供真实表单/字段与子流程目录、节点配置和枚举、图/设计器结构要求、服务端保留属性、简单审批/网关的完整可校验示例。数据节点模板包括
+  conditions/assignments/match/output/queryMode，字面量类型与现有设计器保持 text/number/boolean，条件/赋值保留稳定
+  ID。表单和字段引用仍需按实际业务替换。
+- 根据用户补充，将 ApprovalDirectory 移至独立 directory/DirectoryService；审批编译、运行时、签核和既有目录 REST
+  接口统一引用通用服务，无审批模块反向依赖。新增独立 DirectoryTools.get_directory / resolve_members，不要求
+  appId；只返回启用人员的选择字段、角色及组织层级，人员规则和预览能力继续支持六种来源及四种相对范围，稳定去重且最多 1000 人。
+- McpAuthHandler 将本次校验通过的 Key 放入 RoutingContext；McpToolAccess 为新增工具设置项目/数据库和 api_key:<keyId>
+  服务审计身份，逐请求校验 Key 的项目范围与只读限制。服务身份不会作为真实审批人，预览 initiatorId/variables 不授权提交或签核。真实
+  MCP 测试覆盖同一会话切换只读凭证后不能写入，以及越项目请求和无 Key 请求被拒绝。
+- 真实 MCP 发布/停用测试发现既有缺陷：preserveCreated 对定义做局部更新时，引擎的固定默认值处理会把缺失的 status 补为
+  0，导致已停用流程仍被映射为启用。ApprovalRepository.updateDefinition 现在合并当前事务内的完整行后再更新，保留未变字段；状态映射按
+  Number 读取。测试同时断言原生存储、状态返回和后续详情均为已停用，未修改 flexmodel-engine。
+- 最终单次专项回归通过：
+  `mvn test -q -pl flexmodel-server -am '-Dtest=AppApprovalToolsTest,ApprovalPolicyTest,ApprovalFlowModelTest,ApprovalFlowResourceTest,FlowDefinitionResourceTest' '-Dquarkus.scheduler.enabled=false' '-Dquarkus.rabbitmq.devservices.enabled=false' '-Dsurefire.failIfNoSpecifiedTests=false'`
+  ，38 tests，0 failures/errors/skipped（MCP 4、规则 4、模型 3、审批接口及真实后端浏览器 17、Flow 接口 10）。MCP 使用真实 HTTP
+  初始化、工具发现、可选参数、简单/网关/数据模板校验、保存/读取/更新、版本冲突、无效草稿发布拒绝及目录预览。
+- 最终 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 与 `mvn test -q -pl flexmodel-engine`
+  通过；根仓库工作区/暂存区、文档站 diff 检查和新增文件空白检查通过；feature_list.json 可解析；engine/Functions Runtime 与
+  HEAD 零差异。服务端 README、审批接入文档和 flexmodel-website 的 MCP 教程已同步。详细验证日志保存在忽略目录
+  logs/mcp-approvals-*.log。
+- 首次扩大检查的现有 AppToolsTest 有 4 项失败：createsCompleteAppChain / createsAllCustomFieldsAndAcceptsStringOptions
+  仍期待创建字段后默认布局非空（当前为空）、cleansUpFormWhenFieldCreationFails 期待表单列表为空（当前含 3
+  个内置表单）、rejectsInvalidLayoutAndKeepsOriginalLayout 期待 SECTION.children 被拒绝（当前会忽略）。这些原有表单工具实现与测试本轮均未修改，未宣称
+  AppToolsTest 或完整 server suite 全部通过；初始失败日志见 logs/mcp-approvals-tests.log。
+- 开始时曾按原启动规范执行 init.sh，仍受已有开发服务占用 dev.jar 影响；用户随后明确“直接修改不执行
+  init.sh”，收到指示后未再执行，未停止用户服务。仅用上述非 clean
+  编译和针对性测试验证。工作区进入本轮前已有大量暂存/未暂存审批实现，新增工具依赖这些尚未提交的类；为保留原暂存边界并避免提交不能独立编译的片段，本轮未自动提交，也未混入其他既有工作。

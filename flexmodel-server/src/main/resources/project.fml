@@ -1,3 +1,80 @@
+model f_runtime_message {
+  id: Long @id @default(autoIncrement()),
+  message_id: String @unique,
+  type: String,
+  ordering_key: String @comment("同一实例的事件与命令有序，无关实例独立处理"),
+  payload: JSON,
+  state: String,
+  attempts: Int @default(0),
+  available_at: DateTime,
+  created_at: DateTime,
+  error?: String @length(10000),
+  @index(name: "IDX_RUNTIME_DELIVERY", fields: [state, available_at]),
+  @index(name: "IDX_RUNTIME_ORDER", fields: [ordering_key, id]),
+  @system,
+  @comment("可靠事件与命令 Outbox")
+}
+
+model f_approval_instance {
+  id: String @id,
+  request_key: String @unique,
+  flow_id: String,
+  flow_deploy_id: String @comment("绑定的 Flow 部署版本"),
+  form_name: String,
+  record_id: String,
+  initiator: String,
+  status: String,
+  snapshot: JSON,
+  flow_instance_id?: String,
+  parent_task_id?: String,
+  error?: String @length(10000),
+  created_at: DateTime,
+  updated_at: DateTime,
+  @index(name: "IDX_FORM_RUN_RECORD", fields: [form_name, record_id]),
+  @index(name: "IDX_FORM_RUN_ENGINE", fields: [flow_instance_id]),
+  @system,
+  @comment("表单流程实例及提交快照")
+}
+
+model f_approval_wait {
+  id: String @id,
+  run_id: String,
+  members: JSON,
+  status: String,
+  created_at: DateTime,
+  @system,
+  @comment("审批挂起任务")
+}
+
+model f_approval_task {
+  id: String @id,
+  wait_id: String,
+  run_id: String,
+  user_id: String,
+  position: Int,
+  status: String,
+  decision?: String,
+  request_key?: String,
+  comment?: String @length(2000),
+  decided_at?: DateTime,
+  created_at: DateTime,
+  @index(name: "IDX_APPROVAL_PERSONAL", fields: [user_id, status]),
+  @index(name: "UQ_APPROVAL_WAIT_USER", unique: true, fields: [wait_id, user_id]),
+  @system,
+  @comment("个人签核任务与决策记录")
+}
+
+model f_approval_record_lock {
+  id: String @id,
+  run_id: String,
+  schema_name: String,
+  model_name: String,
+  record_id: String,
+  @index(name: "UQ_APPROVAL_RECORD_LOCK", unique: true, fields: [schema_name, model_name, record_id]),
+  @system,
+  @comment("审批中的业务记录锁")
+}
+
 model f_bucket {
   id : String @id @default(uuid()),
   name : String @comment("Bucket 名称"),
@@ -57,7 +134,7 @@ model f_em_flow_definition {
   flow_module_id: String @comment("流程模型id") @unique,
   flow_name: String @comment("流程名称"),
   flow_key: String @comment("流程业务标识"),
-  flow_model?: String @length(10000) @comment("表单定义"),
+  flow_model?: String @length(1000000) @comment("表单定义"),
   status: Int @default(0) @comment("状态(1.初始态 2.编辑中 3.已下线)"),
   remark: String @length(512) @comment("备注"),
   archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
@@ -77,7 +154,7 @@ model f_em_flow_deployment {
   flow_module_id: String @comment("流程模型id"),
   flow_name: String @comment("流程名称"),
   flow_key: String @comment("流程业务标识"),
-  flow_model: String @length(10000) @comment("表单定义"),
+  flow_model: String @length(1000000) @comment("表单定义"),
   status: Int @default(0) @comment("状态(1.已部署 3.已下线)"),
   remark: String @length(512) @comment("备注"),
   archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
@@ -158,6 +235,8 @@ model f_ei_node_instance_log {
  status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
  trace_id? : String @length("64") @comment("链路追踪ID"),
+ event_key?: String @unique @comment("外部处理器的幂等消费标识"),
+ attributes?: JSON @comment("外部处理器的业务执行结果"),
  created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
@@ -174,7 +253,7 @@ model f_ei_instance_data {
   flow_deploy_id: String @comment("流程模型部署id"),
   flow_module_id: String @comment("流程模型id"),
   node_key: String @comment("节点唯一标识"),
-  instance_data: String @length(5000) @comment("数据列表json"),
+  instance_data: String @length(1000000) @comment("数据列表json"),
   type: Int @default(0) @comment("操作类型(1.实例初始化 2.系统执行 3.系统主动获取 4.上游更新 5.任务提交 6.任务撤回)"),
   archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
   created_by?: String @comment("创建人"),

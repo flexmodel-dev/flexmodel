@@ -28,6 +28,8 @@ import java.util.regex.Pattern;
  */
 @ApplicationScoped
 public class AppService {
+  @Inject
+  dev.flexmodel.approval.ApprovalLifecycle approvalLifecycle;
 
   private static final Pattern PROJECT_ID_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{1,62}$");
   private static final Set<String> ICON_NAMES = Set.of(
@@ -110,6 +112,7 @@ public class AppService {
 
   public void deleteApp(String appId) {
     Project project = requireAppProject(appId);
+    approvalLifecycle.beforeDelete(appId);
     workbenchRepository.deleteByProjectId(project.getId());
     projectService.deleteProject(project.getId());
   }

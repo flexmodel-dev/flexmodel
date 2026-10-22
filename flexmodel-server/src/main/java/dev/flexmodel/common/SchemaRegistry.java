@@ -111,13 +111,13 @@ public class SchemaRegistry {
         if (sessionFactory.isSchemaExists(actualSchemaName)) {
           log.info("SchemaProvider '{}' already registered from config, skipping dynamic registration",
               actualSchemaName);
-          return;
+        } else {
+          // 配置存在但SchemaProvider未注册，使用配置URL创建
+          AgroalDataSource ds = AgroalDataSourceFactory.createDataSource(configDs.url(), configDs.username().orElse(null), configDs.password().orElse(null));
+          SchemaProvider schemaProvider = new JdbcSchemaProvider(actualSchemaName, ds);
+          sessionFactory.registerSchemaProvider(schemaProvider);
+          log.info("Registered SchemaProvider '{}' from config URL: {}", actualSchemaName, configDs.url());
         }
-        // 配置存在但SchemaProvider未注册，使用配置URL创建
-        AgroalDataSource ds = AgroalDataSourceFactory.createDataSource(configDs.url(), configDs.username().orElse(null), configDs.password().orElse(null));
-        SchemaProvider schemaProvider = new JdbcSchemaProvider(actualSchemaName, ds);
-        sessionFactory.registerSchemaProvider(schemaProvider);
-        log.info("Registered SchemaProvider '{}' from config URL: {}", actualSchemaName, configDs.url());
       } else {
         // 配置文件中没有显式配置，使用projectUrlTemplate动态创建
         SchemaProvider schemaProvider = new JdbcSchemaProvider(actualSchemaName, buildJdbcDataSource(schemaName));

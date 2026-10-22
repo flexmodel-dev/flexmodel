@@ -24,6 +24,7 @@ public class SessionContext {
   private String projectId;
   private String projectDatabaseName;
   private String userId;
+  private boolean authenticatedUser;
 
   /**
    * 当前调用方被授予的权限串集合，由认证环节（如项目级 OIDC/Function Provider）

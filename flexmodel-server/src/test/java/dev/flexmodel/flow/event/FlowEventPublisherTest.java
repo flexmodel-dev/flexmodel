@@ -34,7 +34,7 @@ public class FlowEventPublisherTest {
   void publishFlowInstanceStartedEventFieldsPreserved() {
     capturingConsumer.captured().set(null);
 
-    String projectId = "proj-test";
+    String projectId = "dev_test";
     String initiator = "caller-test";
     String flowDeployId = "deploy-test";
     String flowInstanceId = "instance-test";

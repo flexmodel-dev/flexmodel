@@ -2919,3 +2919,16 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：`npm run build` 通过；`npm test` 27 项通过；`mvn test -pl flexmodel-server
   -Dtest=ApprovalFlowResourceTest#browserRoundTripAgainstRealBackend` 通过（真实后端浏览器闭环：待办中心打开记录详情抽屉→
   填写意见同意→右下进度显示已通过→记录解锁），截图 `flexmodel-apps-ui/artifacts/approvals-backend-signing.png`。
+
+**Apps UI - 抽屉更多菜单收纳表单设计入口（2026-10-23，feat-106）**
+
+- `BizDrawer` 新增 `moreMenu` 插槽，固定渲染在进度折叠按钮之后、关闭按钮之前；移除已无调用方的 `headerExtra`。
+- 新增 `components/biz/FormMoreMenu.tsx`：更多按钮（MoreHorizontal，title/aria-label=更多）+ 下拉菜单「表单设计」，
+  菜单内容使用 `z-[1100]`，高于抽屉的 `z-[1040]`。`AppRecordDrawer` 与 `AppRecordFormModal` 移除原头部 Settings
+  图标，改传 `moreMenu`，点击后关闭抽屉并跳转表单设计页。
+- 修复开发环境陈旧模块：Windows 下 Vite 原生文件监听偶发丢失，导致运行中出现
+  `ApprovalTaskDrawer is not defined`、`headerExtra is not defined`。`vite.config.ts` 启用
+  `server.watch.usePolling`（300ms），并重启 5180 开发服务后确认返回模块与源码一致。
+- 验证：`npm run build` 通过；`npm test` 27 项通过；Playwright 实测审批中心记录抽屉头部为
+  [收起审批][更多][关闭]，更多菜单可见并能跳转 `form-design`；新建产品抽屉同样显示更多按钮，页面无异常。
+  截图 `flexmodel-apps-ui/artifacts/drawer-more-menu.png`、`form-modal-more-menu.png`。

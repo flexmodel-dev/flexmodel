@@ -1040,6 +1040,16 @@
       ],
       "status": "done",
       "evidence": "ApprovalFeed 与 Notifications 的审批入口改为 AppRecordDrawer，传入 appId/formName/recordId 及 approvalInstanceId（待办/通知对应实例）；useRecordApproval 新增可选 instanceId，优先定位该审批实例解析当前用户 PENDING 任务并将右侧进度固定到该实例，未传时保持原「进行中实例优先」逻辑。AppRecordDrawer 新增 approvalInstanceId 透传并使用 progressInstanceId 渲染 ApprovalProgressPanel。删除 pages/Approvals/ApprovalTaskDrawer.tsx；回滚 AppRecordFormModal 中仅审批抽屉使用的 title/readOnly/footer/footerExtra/aside 参数及对应渲染分支，编辑表单回归统一默认标题、设计入口、保存/取消/发起流程底部。E2E approval-backend.mjs 同步新交互（先点同意再填意见后确认，抽屉标题与状态断言适配详情抽屉）。验证：npm run build 通过；npm test 27 项通过；mvn test -pl flexmodel-server -Dtest=ApprovalFlowResourceTest#browserRoundTripAgainstRealBackend 通过（真实后端浏览器闭环：待办中心打开记录详情抽屉、填写意见同意、进度显示已通过、记录解锁），截图 artifacts/approvals-backend-signing.png 显示统一后的详情抽屉与审批进度。"
+    },
+    {
+      "id": "feat-106",
+      "name": "Apps UI - 抽屉更多菜单收纳表单设计入口",
+      "description": "抽屉右上角关闭按钮左侧新增「更多」按钮，原独立的表单设计图标入口收进下拉菜单；记录详情抽屉与编辑/新建表单抽屉保持一致，并移除 BizDrawer 已无调用方的 headerExtra 插槽。",
+      "dependencies": [
+        "feat-105"
+      ],
+      "status": "done",
+      "evidence": "BizDrawer 新增 moreMenu 插槽并固定渲染在进度折叠按钮之后、关闭按钮之前；移除无人使用的 headerExtra 属性。新增 components/biz/FormMoreMenu.tsx：MoreHorizontal 触发按钮（title/aria-label=更多）+ 下拉菜单「表单设计」，DropdownMenuContent 使用 z-[1100] 保证浮于 z-[1040] 的抽屉之上。AppRecordDrawer 与 AppRecordFormModal 移除原头部 Settings 图标按钮，改传 moreMenu，点击表单设计先关闭当前抽屉再跳转 form-design。附带修复开发环境：Windows 原生文件事件偶发丢失导致 Vite 返回半更新模块（曾出现 headerExtra is not defined / ApprovalTaskDrawer is not defined），vite.config.ts 启用 server.watch.usePolling（300ms）。验证：npm run build 通过；npm test 27 项通过；Playwright 实测审批中心记录抽屉：头部仅剩 [收起审批][更多][关闭]，更多菜单可见且可跳转 form-design；新建产品抽屉同样显示更多按钮，页面无异常；截图 artifacts/drawer-more-menu.png、form-modal-more-menu.png。"
     }
   ]
 }

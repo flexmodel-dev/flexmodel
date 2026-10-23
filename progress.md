@@ -2933,6 +2933,23 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   [收起审批][更多][关闭]，更多菜单可见并能跳转 `form-design`；新建产品抽屉同样显示更多按钮，页面无异常。
   截图 `flexmodel-apps-ui/artifacts/drawer-more-menu.png`、`form-modal-more-menu.png`。
 
+**Apps UI - 多层抽屉递减宽度（2026-10-23，feat-108）**
+
+- 统一在 `flexmodel-apps-ui/src/components/ui/drawer.tsx` 的 `DrawerContent` 中按 Portal 打开顺序管理右侧抽屉，
+  支持兄弟与嵌套组件。上层最大宽度取下层实际宽度减留边：桌面 `3rem`（48px），窄屏 `1rem`（16px）；
+  更窄的自定义抽屉保持原宽度，首层布局保持原有宽度。
+- 使用 `ResizeObserver` 跟踪下层尺寸，窗口缩放时重新计算；组件卸载时清理叠层及观察器，关闭后重开无残留。
+  `MobileNavDrawer` 为左侧导航，通过 `stacked={false}` 不参与右侧叠层。
+- 验证：`npm run build` 通过；`npm test` 27 项通过；`npm run test:records` 4 项通过。
+  Playwright 临时组件页面（使用项目实际 Drawer，含 React StrictMode）验证了兄弟/嵌套三层、较窄自定义宽度、
+  桌面与窄屏切换、Escape 逐层关闭及重开，无浏览器异常。1440px 视口下宽度为 `1184/1136/1088px`，
+  375px 视口下为 `375/359/343px`；自定义窄抽屉为 `1184/720/672px`。
+  已检查浅色、深色及窄屏截图：`flexmodel-apps-ui/artifacts/drawer-stack-desktop.png`、
+  `drawer-stack-dark.png`、`drawer-stack-mobile.png`；临时页面已移除。Apps UI 提交 `e5aa108`。
+- 原生 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 与 `mvn test -q -pl flexmodel-engine` 通过。
+  `bash ./init.sh` 的 clean 仍被运行中后端锁定的 `flexmodel-server-dev.jar` 阻塞，沿用不清理的等价验证，
+  保留现有服务。未改动已有 `flexmodel-ui` 工作区内容及根仓库中 Apps UI 的独立仓库结构。
+
 **Apps UI - 表单编辑回填与保存后详情同步（2026-10-23，feat-107）**
 
 - 列表行直接编辑传入 `initialMode="edit"` 后仅加载了 `record`，没有初始化 `values`；

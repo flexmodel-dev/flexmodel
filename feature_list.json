@@ -1020,6 +1020,26 @@
       ],
       "status": "done",
       "evidence": "platform.fml 合并全部原 project.fml 模型并增加 project_id；唯一约束改为 [project_id, ...]（如 UQ_RUNTIME_MESSAGE、UQ_APPROVAL_INSTANCE_REQUEST、UQ_FLOW_DEFINITION_MODULE、UQ_FUNCTION_PROJECT_NAME、UQ_PAGE_SITE_PROJECT），f_auth_provider_config 改为 uuid 主键 + [project_id, name] 唯一，f_page_site 每项目唯一。删除 project.fml 与 SchemaInitializer；pom.xml 的 system schema 仅导入 platform.fml，dev_test schema 仅导入 dev_test.fml；dev_test 平台表种子数据迁入 platform.fml 并携带 project_id=dev_test。Java 访问层统一改为 AbstractRepository.getPlatformSession + project_id 过滤（flow、approval、scheduling、functions、storage、pages、auditlog、apilog、projectauth、ReliableMessages）；新增 ProjectUnitOfWork.executePlatform 与平台事务复用，NotificationRepository 复用平台事务；ProcessEngineImpl、ApprovalFlowService、ApprovalService 的流程/审批写操作改为平台事务；项目/分支删除新增 ProjectPlatformDataCleaner 清理平台表数据。审批 Repository 改为实体类入参（ApprovalInstance.class 等）+ System 字段元模型，更新/删除使用 DSL 的 Class API；Resource 不再注入 Repository（记录审批历史、通知、系统选项、函数模板分别经 ApprovalService、NotificationService、SystemOptionService、FunctionService）。按用户要求不考虑历史兼容，未提供旧库数据迁移。随后按模型拆分出 ApprovalInstanceRepository、ApprovalTaskRepository、ApprovalWaitRepository、ApprovalRecordLockRepository、ApprovalFlowDefinitionRepository、ApprovalFlowDeploymentRepository、ApprovalInstanceDataRepository、ApprovalNodeInstanceRepository、ApprovalNodeInstanceLogRepository 与 RuntimeMessageRepository，每个 Repository 内部自动附加 project_id 过滤且只暴露语义化查询方法，删除 ApprovalRepository 与 AbstractPlatformRepository；Repository 注入字段统一命名为 XxxRepository 形式。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test-compile -pl flexmodel-server -am -DskipTests 通过（按用户要求未执行测试）；mvn test -pl flexmodel-engine 通过；ApprovalFlowResourceTest 在本地 SQLite 环境下仍有失败，待后续修复。"
+    },
+    {
+      "id": "feat-104",
+      "name": "Apps UI - 审批进度突出展示审批意见",
+      "description": "审批进度时间线不再把审批意见拼在姓名后的灰色小字中，改为独立的「审批意见」块；节点卡片补充会签方式、节点状态、审批人头像、决策结果与决策时间，提升窄侧栏和长意见下的可读性。",
+      "dependencies": [
+        "feat-100"
+      ],
+      "status": "done",
+      "evidence": "重写 pages/Approvals/ApprovalProgress.tsx：节点头部展示标题、会签方式（会签/或签/依次审批）与节点状态（进行中/已通过/已拒绝）；审批人行使用首字头像、姓名、决策状态图标与文案（已同意/已拒绝/待处理/等待前序审批/已关闭）及决策时间；非空审批意见使用独立引用块展示，带「审批意见」标签、左侧强调色（同意绿/拒绝红）和 whitespace-pre-wrap + break-words，长文本与换行不再被姓名行挤压。InstanceDrawer 与 AppRecordDrawer 共用组件同步生效（待办入口随后由 feat-105 统一为 AppRecordDrawer）。验证：flexmodel-apps-ui npm run build 通过；npm test 通过（27 tests）；连接本地 dev 后端（plm_system 真实审批实例 11651de9，意见“同意”）Playwright 实测明暗两种模式均展示「审批意见」块，截图 artifacts/approvals-progress-comment.png、approvals-progress-comment-dark.png。"
+    },
+    {
+      "id": "feat-105",
+      "name": "Apps UI - 审批入口统一为记录详情抽屉",
+      "description": "待办中心与消息中心的审批入口不再使用独立的编辑表单抽屉，统一复用记录列表页的记录详情抽屉 AppRecordDrawer：查看记录、右侧流程进度、底部同意/不同意均与列表页详情一致；移除冗余的 ApprovalTaskDrawer 及 AppRecordFormModal 仅为其服务的 title/readOnly/footer/aside 分支。",
+      "dependencies": [
+        "feat-104"
+      ],
+      "status": "done",
+      "evidence": "ApprovalFeed 与 Notifications 的审批入口改为 AppRecordDrawer，传入 appId/formName/recordId 及 approvalInstanceId（待办/通知对应实例）；useRecordApproval 新增可选 instanceId，优先定位该审批实例解析当前用户 PENDING 任务并将右侧进度固定到该实例，未传时保持原「进行中实例优先」逻辑。AppRecordDrawer 新增 approvalInstanceId 透传并使用 progressInstanceId 渲染 ApprovalProgressPanel。删除 pages/Approvals/ApprovalTaskDrawer.tsx；回滚 AppRecordFormModal 中仅审批抽屉使用的 title/readOnly/footer/footerExtra/aside 参数及对应渲染分支，编辑表单回归统一默认标题、设计入口、保存/取消/发起流程底部。E2E approval-backend.mjs 同步新交互（先点同意再填意见后确认，抽屉标题与状态断言适配详情抽屉）。验证：npm run build 通过；npm test 27 项通过；mvn test -pl flexmodel-server -Dtest=ApprovalFlowResourceTest#browserRoundTripAgainstRealBackend 通过（真实后端浏览器闭环：待办中心打开记录详情抽屉、填写意见同意、进度显示已通过、记录解锁），截图 artifacts/approvals-backend-signing.png 显示统一后的详情抽屉与审批进度。"
     }
   ]
 }

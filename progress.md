@@ -2890,3 +2890,32 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   已删除，流程种子迁至平台库），增加 monorepo 相对路径回退，独立引擎构建中取不到文件时跳过而不是失败；验证 `flexmodel-core`
   90 项测试全部通过（`FmlParserTest` 11 项）。附带发现：`integration-tests` 下 10 个 IT 模块的 `AgroalDataSource` 未设置
   `maxSize`，当前 Agroal 版本报 `max size attribute is mandatory`，与本次改动无关，待单独修复。
+
+**Apps UI - 审批进度突出展示审批意见（2026-10-23，feat-104）**
+
+- 用户反馈审批进度中已提交的审批意见看不到。排查确认后端 `GET /apps/{appId}/approval-instances/{id}` 的 `tasks[].comment`
+  已正确返回，
+  问题在展示：`ApprovalTimeline` 把意见作为姓名后的 `text-muted-foreground` 小字内联渲染，窄侧栏下与姓名混在一起、几乎不可辨。
+- 重写 `flexmodel-apps-ui/src/pages/Approvals/ApprovalProgress.tsx`：节点卡片头部增加会签方式与节点状态（进行中/已通过/已拒绝）；
+  审批人行增加首字头像、决策状态图标与文案（已同意/已拒绝/待处理/等待前序审批/已关闭）和决策时间；非空意见改为独立的
+  「审批意见」引用块，按决策结果使用绿/红左侧强调色，正文 `whitespace-pre-wrap break-words` 保留换行并适配长文本。
+  `InstanceDrawer` 与 `AppRecordDrawer` 共用该组件，均同步生效（待办入口随后由 feat-105 统一为 AppRecordDrawer）。
+- 验证：`flexmodel-apps-ui` `npm run build` 通过；`npm test` 27 项通过；连接本地 dev 后端（8080 + `plm_system` 真实审批实例
+  11651de9，意见“同意”）用 Playwright 实测明暗两种模式，侧栏均展示「审批意见」块，截图位于
+  `flexmodel-apps-ui/artifacts/approvals-progress-comment.png` 与 `approvals-progress-comment-dark.png`。
+
+**Apps UI - 审批入口统一为记录详情抽屉（2026-10-23，feat-105）**
+
+- 用户反馈审批存在两套入口：待办中心进入 `ApprovalTaskDrawer`（自研只读编辑表单），表单列表进入 `AppRecordDrawer`
+  （记录详情抽屉）。统一为后者：`ApprovalFeed` 与 `Notifications` 的审批入口均改为打开 `AppRecordDrawer`，
+  传入 `appId`、`formName`、`recordId` 和 `approvalInstanceId`。
+- `useRecordApproval` 新增可选 `instanceId`：传入时优先定位该审批实例（含子流程任务实例）解析当前用户 PENDING 任务，
+  并让右侧流程进度固定展示该实例；未传入时保持原“进行中实例优先”行为，记录列表入口不受影响。
+  `AppRecordDrawer` 新增 `approvalInstanceId` 透传，aside 改用 `progressInstanceId`。
+- 删除 `pages/Approvals/ApprovalTaskDrawer.tsx`；回滚 `AppRecordFormModal` 中仅服务于该审批抽屉的
+  `title`/`readOnly`/`footer`/`footerExtra`/`aside` 参数与分支，编辑表单恢复统一默认标题、设计入口和保存/取消/发起流程底部。
+- `e2e/approval-backend.mjs` 适配新交互：先点「同意」打开意见弹窗，再填写并「确认同意」；记录标题与状态断言改为
+  详情抽屉的 heading 与局部状态，避免与表单字段/列表重复文本产生 strict mode 冲突。
+- 验证：`npm run build` 通过；`npm test` 27 项通过；`mvn test -pl flexmodel-server
+  -Dtest=ApprovalFlowResourceTest#browserRoundTripAgainstRealBackend` 通过（真实后端浏览器闭环：待办中心打开记录详情抽屉→
+  填写意见同意→右下进度显示已通过→记录解锁），截图 `flexmodel-apps-ui/artifacts/approvals-backend-signing.png`。

@@ -147,8 +147,8 @@ mvn test -pl flexmodel-server -am \
 
 ## 启动与验证
 
-启动时统一经 `SchemaRegistry.registerSchema` 注册主应用及分支，再同步 `project.fml`
-，显式配置的已有数据源也同步。审批按当前模型初始化，不包含历史数据迁移、旧字段回退或旧处理器别名。
+启动时平台级模型由 `platform.fml` 统一导入 system schema，项目业务库仅承载用户自定义模型；`SchemaRegistry.registerSchema`
+只负责注册主应用及分支的数据源。审批按当前模型初始化，不包含历史数据迁移、旧字段回退或旧处理器别名。
 
 ```bash
 mvn test -pl flexmodel-server -am \

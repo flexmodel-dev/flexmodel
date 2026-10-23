@@ -58,8 +58,7 @@ public class ProjectService {
   @Inject
   SchemaRegistry schemaRegistry;
   @Inject
-  SchemaInitializer schemaInitializer;
-
+  ProjectPlatformDataCleaner platformDataCleaner;
   @Inject
   SessionContext sessionContext;
   @Inject
@@ -119,8 +118,7 @@ public class ProjectService {
   }
 
   /**
-   * 根据项目当前活跃分支解析对应的 databaseName。
-   * 优先从 f_branch 表查询，若未找到则回退到 project.databaseName（向后兼容），最终回退到 projectId。
+   * 解析项目对应的业务库 databaseName。
    */
   public String resolveDatabaseName(String projectId) {
     Project project = findProject(projectId);
@@ -173,13 +171,10 @@ public class ProjectService {
     // 2. 注册 SchemaProvider 到 SessionFactory（必须在初始化表结构之前）
     schemaRegistry.registerSchema(mainDatabaseName);
 
-    // 3. 用 project.fml 初始化表结构
-    schemaInitializer.init(mainDatabaseName);
-
-    // 4. 保存 f_project 记录
+    // 3. 保存 f_project 记录
     Project saved = projectRepository.save(project);
 
-    // 5. 创建 main 分支记录
+    // 4. 创建 main 分支记录
     Branch mainBranch = new Branch();
     mainBranch.setProjectId(saved.getId());
     mainBranch.setName("main");
@@ -188,10 +183,10 @@ public class ProjectService {
     mainBranch.setCreatedBy(project.getOwnerId());
     branchRepository.save(mainBranch);
 
-    // 6. 为新项目生成 GraphQL Schema
+    // 5. 为新项目生成 GraphQL Schema
     graphQLEventConsumer.refreshProject(saved);
 
-    // 7. 初始化 Pages 站点配置和默认欢迎页
+    // 6. 初始化 Pages 站点配置和默认欢迎页
     try {
       pageService.initPageSite(saved.getId());
     } catch (Exception e) {
@@ -243,6 +238,7 @@ public class ProjectService {
         // 物理 Schema 删除失败不阻断流程
       }
       graphQLEventConsumer.removeProject(bp.getId());
+      platformDataCleaner.clean(bp.getId());
       projectRepository.delete(bp.getId());
       eventBus.publish("project.deleted", new ProjectDeletedEvent(bp.getId()));
     }
@@ -279,7 +275,10 @@ public class ProjectService {
     // 5. 删除 f_project 记录
     projectRepository.delete(projectId);
 
-    // 6. 发布 project.deleted 事件，清理 Quartz 中残留的调度作业（f_qrtz_* 位于系统 Schema，需显式删除）
+    // 6. 清理平台库中该项目的数据
+    platformDataCleaner.clean(projectId);
+
+    // 7. 发布 project.deleted 事件，清理 Quartz 中残留的调度作业（f_qrtz_* 位于系统 Schema，需显式删除）
     eventBus.publish("project.deleted", new ProjectDeletedEvent(projectId));
   }
 

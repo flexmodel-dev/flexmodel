@@ -1,5 +1,6 @@
 package dev.flexmodel.system;
 
+import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
 import dev.flexmodel.apps.dto.AppFormFieldResponse;
@@ -10,6 +11,7 @@ import dev.flexmodel.apps.dto.AppFormLayoutRecord;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.auth.dto.ResourceTreeResponse;
 import dev.flexmodel.auth.service.ResourceService;
+import dev.flexmodel.codegen.entity.UserDepartment;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.common.config.EngineConfig;
@@ -58,6 +60,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class SystemFormService {
 
+  // 与 User/Department/Role 的 @ModelClass 模型名一致；switch 常量表达式要求编译期常量，故保留字面量
   public static final String USER_FORM = "f_user";
   public static final String DEPARTMENT_FORM = "f_department";
   public static final String ROLE_FORM = "f_role";
@@ -96,7 +99,7 @@ public class SystemFormService {
   private static final Map<String, List<SystemFormItemRecord>> SUBFORMS = Map.of(
     USER_FORM, List.of(new SystemFormItemRecord(
       "SUBFORM", "departments", "任职", null, "FULL", false, false,
-      "f_user_department", "user_id")));
+      ReflectionUtils.getModelNameFromClass(UserDepartment.class), "user_id")));
 
   @Inject
   ModelService modelService;

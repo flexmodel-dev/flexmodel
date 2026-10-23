@@ -51,7 +51,7 @@ public class EngineConfig {
         schemas.add(branch.getDatabaseName());
       }
     }
-    // registerSchema installs the provider before applying project.fml (including runtime tables).
+    // registerSchema 仅注册项目业务库的数据源；平台级表统一存于 system schema
     schemas.forEach(schemaRegistry::registerSchema);
     log.info("========== Engine init successful in {} ms!", System.currentTimeMillis() - beginTime);
   }

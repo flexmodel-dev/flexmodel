@@ -47,8 +47,8 @@ public class AuditEventListener implements EventListener {
     }
     String modelName = event.getModelName();
     try {
-      // schemaName 为项目数据库名，反查 projectId
-      Project project = projectRepository.findProjectByDatabaseName(event.getSchemaName());
+      // 平台级表带 project_id 时优先按 project_id 归属；业务表按项目库名反查
+      Project project = resolveProject(event);
       if (project == null) {
         log.debug("Audit skip: project not found for schemaName={}", event.getSchemaName());
         return;
@@ -107,6 +107,22 @@ public class AuditEventListener implements EventListener {
     return "INSERTED".equals(eventType)
       || "UPDATED".equals(eventType)
       || "DELETED".equals(eventType);
+  }
+
+  private Project resolveProject(ChangedEvent event) {
+    String projectId = dataProjectId(event.getNewData());
+    if (projectId == null) projectId = dataProjectId(event.getOldData());
+    if (projectId != null) {
+      Project project = projectRepository.findProject(projectId);
+      if (project != null) return project;
+    }
+    return projectRepository.findProjectByDatabaseName(event.getSchemaName());
+  }
+
+  private String dataProjectId(Map<String, Object> data) {
+    if (data == null) return null;
+    Object value = data.get("project_id");
+    return value == null || value.toString().isBlank() ? null : value.toString();
   }
 
   @Override

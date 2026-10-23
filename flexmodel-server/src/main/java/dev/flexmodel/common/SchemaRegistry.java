@@ -1,11 +1,9 @@
 package dev.flexmodel.common;
 
 import dev.flexmodel.SchemaProvider;
-import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.config.AgroalDataSourceFactory;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.utils.StringUtils;
-import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.sql.JdbcSchemaProvider;
@@ -16,12 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.ConfigProvider;
 
 import javax.sql.DataSource;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -46,12 +39,6 @@ public class SchemaRegistry {
   @Inject
   FlexmodelConfig flexmodelConfig;
 
-  @Inject
-  ProjectService projectService;
-
-  @Inject
-  SchemaInitializer schemaInitializer;
-
   @SuppressWarnings("all")
   public Map<String, Object> getSystemVariables() {
     Map all = new HashMap<>();
@@ -73,37 +60,18 @@ public class SchemaRegistry {
     return StringUtils.simpleRenderTemplate(template, getSystemVariables());
   }
 
-  public List<String> getPhysicsModelNames(Project project) {
-    List<String> list = new ArrayList<>();
-    String databaseName = projectService.resolveDatabaseName(project.getId());
-    FlexmodelConfig.DatasourceConfig datasource = flexmodelConfig.datasources().get(EngineConfig.SYSTEM_DS_KEY);
-    String jdbcUrl = flexmodelConfig.projectUrlTemplate().replace("{{databaseName}}", databaseName);
-    String username = datasource.username().orElse(null);
-    String password = datasource.password().orElse(null);
-    try (var conn = DriverManager.getConnection(jdbcUrl, username, password);
-        ResultSet tables = conn.getMetaData().getTables(null, null, "%", new String[] { "TABLE" })) {
-      while (tables.next()) {
-        String tableName = tables.getString("TABLE_NAME");
-        list.add(tableName);
-      }
-      return list;
-    } catch (SQLException e) {
-      return list;
-    }
-  }
-
-  public void add(Project project) {
-    registerSchema(projectService.resolveDatabaseName(project.getId()));
-  }
-
   /**
    * 注册指定 Schema 的 SchemaProvider 到 SessionFactory。
    *
    * @param schemaName Schema 名称
    */
   public void registerSchema(String schemaName) {
+    if (EngineConfig.SYSTEM_DS_KEY.equals(schemaName)) {
+      // 平台库由 EngineConfig 的默认 SchemaProvider 提供，无需重复注册
+      return;
+    }
     try {
-      String actualSchemaName = "system".equals(schemaName) ? "flexmodel" : schemaName;
+      String actualSchemaName = schemaName;
       // 如果配置文件中有该数据源的显式配置，使用配置中的URL而非模板URL
       FlexmodelConfig.DatasourceConfig configDs = flexmodelConfig.datasources().get(schemaName);
       if (configDs != null) {
@@ -127,15 +95,6 @@ public class SchemaRegistry {
     } catch (Exception e) {
       log.error("Session dataSource create error: {}", e.getMessage(), e);
       return;
-    }
-    // 注册成功后，对项目级 Schema 执行 project.fml，将 project.fml 变更同步到项目数据库
-    // applyFML 是幂等的：会比较已有模型与 FML 定义，跳过未变更项，仅对变更项执行 DDL
-    if (!EngineConfig.SYSTEM_DS_KEY.equals(schemaName)) {
-      try {
-        schemaInitializer.init(schemaName);
-      } catch (Exception e) {
-        log.warn("Failed to apply project.fml for schema '{}': {}", schemaName, e.getMessage(), e);
-      }
     }
   }
 
@@ -181,20 +140,6 @@ public class SchemaRegistry {
     String username = datasource.username().orElse(null);
     String password = datasource.password().orElse(null);
     return AgroalDataSourceFactory.createDataSource(getContent(jdbcUrl), getContent(username), getContent(password));
-  }
-
-  public void delete(Project project) {
-    sessionFactory.unregisterSchemaProvider(projectService.resolveDatabaseName(project.getId()));
-  }
-
-  @SuppressWarnings("all")
-  public NativeQueryResult executeNativeQuery(Project project, String statement, Map<String, Object> parameters) {
-    try (Session session = sessionFactory.createSession(projectService.resolveDatabaseName(project.getId()))) {
-      long beginTime = System.currentTimeMillis();
-      Object result = session.data().executeNative(statement, parameters);
-      long endTime = System.currentTimeMillis() - beginTime;
-      return new NativeQueryResult(endTime, result);
-    }
   }
 
 }

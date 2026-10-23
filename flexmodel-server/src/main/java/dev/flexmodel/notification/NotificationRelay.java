@@ -1,5 +1,7 @@
 package dev.flexmodel.notification;
 
+import dev.flexmodel.reflect.ReflectionUtils;
+import dev.flexmodel.codegen.entity.NotificationEvent;
 import dev.flexmodel.common.FlexmodelConfig;
 import dev.flexmodel.common.persistence.ServerSessions;
 import io.quarkus.scheduler.Scheduled;
@@ -67,7 +69,7 @@ public class NotificationRelay {
       boolean broker = config.events().rabbitmq().enabled();
       if (broker) connect();
       try (var session = sessions.openOwned("system")) {
-        var pending = session.dsl().selectFrom("f_notification_event").where(field("published").eq(false)).limit(200).execute();
+        var pending = session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(NotificationEvent.class)).where(field("published").eq(false)).limit(200).execute();
         for (var event : pending) {
           String user = text(event, "recipient_id");
           if (broker) synchronized (this) {
@@ -75,7 +77,7 @@ public class NotificationRelay {
             channel.waitForConfirmsOrDie(3000);
           }
           streams.wake(user);
-          session.mergeUpdate("f_notification_event", text(event, "id"), Map.of("published", true));
+          session.mergeUpdate(ReflectionUtils.getModelNameFromClass(NotificationEvent.class), text(event, "id"), Map.of("published", true));
         }
       }
     } catch (Exception error) {

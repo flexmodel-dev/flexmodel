@@ -16,7 +16,7 @@ import java.util.Map;
 @Slf4j
 public class DirectoryTools {
   @Inject
-  DirectoryService directory;
+  DirectoryService directoryService;
   @Inject
   McpToolAccess access;
 
@@ -29,7 +29,7 @@ public class DirectoryTools {
   public String get_directory() {
     try {
       access.requireDirectory();
-      var result = new LinkedHashMap<>(directory.directory());
+      var result = new LinkedHashMap<>(directoryService.directory());
       result.put("memberRule", Map.of(
         "sources", DirectoryService.SOURCES,
         "scopes", DirectoryService.SCOPES,
@@ -57,7 +57,7 @@ public class DirectoryTools {
   ) {
     try {
       access.requireDirectory();
-      return JsonUtils.toJsonString(directory.resolve(JsonUtils.parseToMapList(rulesJson),
+      return JsonUtils.toJsonString(directoryService.resolve(JsonUtils.parseToMapList(rulesJson),
         initiatorId == null ? "" : initiatorId,
         variablesJson == null || variablesJson.isBlank() ? Map.of() : JsonUtils.parseToMap(variablesJson)));
     } catch (Exception exception) {

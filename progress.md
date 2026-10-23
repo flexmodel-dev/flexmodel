@@ -2816,3 +2816,71 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 开始时曾按原启动规范执行 init.sh，仍受已有开发服务占用 dev.jar 影响；用户随后明确“直接修改不执行
   init.sh”，收到指示后未再执行，未停止用户服务。仅用上述非 clean
   编译和针对性测试验证。工作区进入本轮前已有大量暂存/未暂存审批实现，新增工具依赖这些尚未提交的类；为保留原暂存边界并避免提交不能独立编译的片段，本轮未自动提交，也未混入其他既有工作。
+
+**platform.fml 平台级表合并（2026-10-23，feat-103）**
+
+- `project.fml` 全部模型上收至 `platform.fml`，统一存于 `system` schema：`f_runtime_message`、`f_approval_*`、`f_bucket`、
+  `f_auth_provider_config`、`f_api_request_log`、`f_em_flow_*`、`f_ei_*`、`f_trigger`、`f_job_execution_log`、
+  `f_function(_log)`、`f_audit_log`、`f_page_site`；每表新增 `project_id`，唯一约束改为 `[project_id, ...]`。
+  `f_auth_provider_config` 改用 uuid 主键 + `[project_id, name]` 唯一，`f_page_site` 按 `project_id` 每项目一行。
+- 删除 `project.fml` 与 `SchemaInitializer`；`pom.xml` 的 system schema 仅导入 `platform.fml`，dev_test schema 仅导入
+  `dev_test.fml`；native-image 元数据移除 `project.fml`。dev_test 平台表种子数据迁入 `platform.fml` 并携带
+  `project_id=dev_test`。
+- Java 访问层统一改为 `AbstractRepository.getPlatformSession()` + 显式 `project_id`
+  过滤（flow/approval/scheduling/functions/storage/pages/auditlog/apilog/projectauth/ReliableMessages）；删除不再使用的
+  `getProjectSession` 与 ProjectUnitOfWork 的项目 session 借用入口。
+- 新增 `ProjectUnitOfWork.executePlatform`：以 `ServerSessions.openOwned("system")` 开启平台事务，支持嵌套复用与业务事务内嵌套；
+  `ProcessEngineImpl`、`ApprovalFlowService`、`ApprovalService`、`ReliableMessages` 的平台表写操作改用平台事务，
+  `NotificationRepository` 复用当前平台事务。
+- 新增 `ProjectPlatformDataCleaner`：项目/分支删除时按 `project_id` 清理平台表数据；SQLite 开发环境 `busy_timeout` 提升至
+  5s。
+- 按用户要求不保留历史兼容：未提供旧项目库平台数据的迁移脚本，升级已有开发库需重建这些表或手工搬迁数据；同时删除
+  `AbstractRepository.getProjectSession`、`ProjectUnitOfWork.borrow/active`、`SchemaRegistry` 的
+  `getPhysicsModelNames/add/delete/executeNativeQuery` 与 `system→flexmodel` 映射、platform.fml 中已无意义的 `@migration`
+  标记与引用不存在字段的 API Key 索引。
+- 审计归属修正：`AuditEventListener` 优先按数据的 `project_id` 定位项目，平台表变更不再被记到默认项目；触发器监听器对未知
+  schema 不再 NPE；分支创建后同步初始化分支项目的 Pages 站点记录。
+- 模型化访问：`ApprovalRepository` 的 `list/get/optional/insert/update/delete` 改为接收实体类（`ApprovalInstance.class`
+  等）而非字符串模型名，条件统一使用 `System.xxx` 字段元模型；`updateDefinition`/`update` 直接使用
+  `DSL.update(FlowDefinition.class)`、`delete` 使用 `DSL.deleteFrom(Class)`，模型名解析统一使用框架的
+  `ReflectionUtils.getModelNameFromClass`（不再新增 `Models`/`AbstractRepository.model`）。`ApprovalFlowState` 的模型查询统一通过
+  `ApprovalRepository`（实体类入参，内部自动附加 `project_id`），不在业务类中直接操作 Session/DSL。Flow/审批锁、
+  `ReliableMessages`、`NotificationRepository`、`NotificationRelay`、`DirectoryService`、`ProjectPlatformDataCleaner`、
+  `ProjectLogSettings`、`AppFormService` 的内置表单清单同步改为实体类。
+- Resource 只依赖 Service：`ApprovalFlowResource` 的记录审批历史查询移入 `ApprovalService.recordHistory`；
+  `NotificationResource` 改用 `NotificationService`；`SystemOptionResource` 新增并使用 `SystemOptionService`；
+  `FunctionTemplateResource` 改用 `FunctionService.list()`；Resource 中不再注入 Repository。
+- 验证：`mvn compile -pl flexmodel-server -am -DskipTests` 通过；`mvn test -pl flexmodel-engine` 通过。
+  `ApprovalFlowResourceTest` 在本地 SQLite 环境仍存在失败（通知顺序 1 项断言失败、平台表锁竞争相关的错误），未宣称服务端测试通过，待后续修复。
+- Repository 拆分与下沉：删除包含通用 `list/get/optional/insert/update/delete` 的 `ApprovalRepository`，按模型拆出
+  `ApprovalInstanceRepository`、`ApprovalTaskRepository`、`ApprovalWaitRepository`、`ApprovalRecordLockRepository`、
+  `ApprovalFlowDefinitionRepository`、`ApprovalFlowDeploymentRepository`、`ApprovalInstanceDataRepository`、
+  `ApprovalNodeInstanceRepository`、`ApprovalNodeInstanceLogRepository` 与 `RuntimeMessageRepository`。每个 Repository
+  内部自动附加 `project_id` 过滤，只暴露语义化方法（如 `findByRunId`、`findByFormRecord`、`deployedFlow`、`findPending`、
+  `findBySchemaAndModel`），不再提供通用查询入口；删除 `AbstractPlatformRepository`，公共能力下沉到各自 Repository。
+  `ApprovalService`、`ApprovalRuntime`、`ApprovalFlowState`、`ApprovalFlowService`、`ApprovalLifecycle`、
+  `ApprovalRecordGuard` 及对应测试均改为注入专用 Repository。
+- 注入字段命名统一：Repository 字段使用 `XxxRepository`（类型名首字母小写），如 `approvalInstanceRepository`、
+  `approvalTaskRepository`、`approvalFlowDeploymentRepository`、`runtimeMessageRepository`；Service 字段统一使用
+  `XxxService` 形式，覆盖 Approval、Notification、MCP、Flow 及测试类：`approvals`→`approvalsService`、`notifications`→
+  `notificationService`、`directory`→`directoryService`、`approvalFlows`/`flows`→`approvalFlowService`、`engine`→
+  `processService`、`apps`→`appService`、`forms`→`appFormService`、`records`→`appRecordService`、`projects`→
+  `projectService`、`jwt`→`jwtService`、`keys`/`apiKeys`→`apiKeyService`、`service`→对应服务名。同时修正
+  `ApprovalService.decide` 中局部变量 `tasks` 遮蔽 Repository 字段的问题，局部变量重命名为 `waitTasks`。
+- 验证：`mvn compile -pl flexmodel-server -am -DskipTests` 通过；`mvn test-compile -pl flexmodel-server -am -DskipTests`
+  通过（按用户要求未执行测试用例）。
+- 验证（Service 字段重命名后）：`mvn compile -pl flexmodel-server -am -DskipTests` 与
+  `mvn test-compile -pl flexmodel-server -am -DskipTests` 再次通过。
+- `ProjectUnitOfWork` 收敛：`execute` 与 `executePlatform` 合并为私有 `transaction(projectId, targetSchema, action)` 模板，
+  `targetSchema` 为 null 时查询项目业务库，否则使用指定 schema；schema 查询抽取为 `projectSchema`。嵌套规则统一为“同 schema
+  复用、跨 schema 开启独立事务并恢复外层上下文”，顶层行为与合并前一致；差异仅在“业务事务嵌在平台事务内”时不再静默复用平台会话，而是开启真实业务事务。
+- 验证：`mvn compile -pl flexmodel-server -am -DskipTests` 通过。`ServerSessionsTest` 6 项中 3 项 MySQL 用例按开关跳过，
+  `sqliteContentionReturnsRetryableFailureWithoutRunningBusinessWork` 失败原因为连接级 `PRAGMA busy_timeout=5000` 与用例
+  4s 断言冲突（该用例走 `openOwned`，不经过 `ProjectUnitOfWork`）。`NotificationResourceTest` 7 项中 5 项通过：
+  `sourceRollbackCannotDeliverAndRetryPreservesReadState` 反映平台库独立事务下 outbox
+  消息不随业务回滚撤销（与平台库非原子设计一致，合并前后代码路径相同），`browserRoundTripAgainstRealBackend` 失败于离线断流后
+  `streams.size` 未归零的轮询断言，均为既有环境/设计问题，未在本次改动中引入。
+- 测试修复：`FmlParserTest.testParseProjectFml` 改名为 `testParsePlatformFml` 并改读 `platform.fml`（`project.fml`
+  已删除，流程种子迁至平台库），增加 monorepo 相对路径回退，独立引擎构建中取不到文件时跳过而不是失败；验证 `flexmodel-core`
+  90 项测试全部通过（`FmlParserTest` 11 项）。附带发现：`integration-tests` 下 10 个 IT 模块的 `AgroalDataSource` 未设置
+  `maxSize`，当前 Agroal 版本报 `max size attribute is mandatory`，与本次改动无关，待单独修复。

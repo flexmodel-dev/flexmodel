@@ -1,5 +1,8 @@
 package dev.flexmodel.flow.service;
 
+import dev.flexmodel.reflect.ReflectionUtils;
+import dev.flexmodel.codegen.entity.FlowDefinition;
+import dev.flexmodel.codegen.entity.FlowInstance;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.utils.StringUtils;
@@ -31,15 +34,15 @@ public class ProcessEngineImpl implements ProcessService {
   public CreateFlowResult createFlow(CreateFlowParam createFlowParam) {
     createFlowParam.setCreatedBy(sessionContext.getUserId());
     createFlowParam.setUpdatedBy(sessionContext.getUserId());
-    return unitOfWork.execute(createFlowParam.getProjectId(), () -> definitionProcessor.create(createFlowParam));
+    return unitOfWork.executePlatform(createFlowParam.getProjectId(), () -> definitionProcessor.create(createFlowParam));
   }
 
   @Override
   public UpdateFlowResult updateFlow(UpdateFlowParam updateFlowParam) {
     updateFlowParam.setCreatedBy(sessionContext.getUserId());
     updateFlowParam.setUpdatedBy(sessionContext.getUserId());
-    return unitOfWork.execute(updateFlowParam.getProjectId(), () -> {
-      dev.flexmodel.common.ProjectUnitOfWork.lock(updateFlowParam.getProjectId(), "f_em_flow_definition", "flow_module_id", updateFlowParam.getFlowModuleId());
+    return unitOfWork.executePlatform(updateFlowParam.getProjectId(), () -> {
+      dev.flexmodel.common.ProjectUnitOfWork.lock(updateFlowParam.getProjectId(), ReflectionUtils.getModelNameFromClass(FlowDefinition.class), "flow_module_id", updateFlowParam.getFlowModuleId());
       taskOwnership.module(updateFlowParam.getProjectId(), updateFlowParam.getFlowModuleId());
       return definitionProcessor.update(updateFlowParam);
     });
@@ -49,8 +52,8 @@ public class ProcessEngineImpl implements ProcessService {
   public DeployFlowResult deployFlow(DeployFlowParam deployFlowParam) {
     deployFlowParam.setCreatedBy(sessionContext.getUserId());
     deployFlowParam.setUpdatedBy(sessionContext.getUserId());
-    return unitOfWork.execute(deployFlowParam.getProjectId(), () -> {
-      dev.flexmodel.common.ProjectUnitOfWork.lock(deployFlowParam.getProjectId(), "f_em_flow_definition", "flow_module_id", deployFlowParam.getFlowModuleId());
+    return unitOfWork.executePlatform(deployFlowParam.getProjectId(), () -> {
+      dev.flexmodel.common.ProjectUnitOfWork.lock(deployFlowParam.getProjectId(), ReflectionUtils.getModelNameFromClass(FlowDefinition.class), "flow_module_id", deployFlowParam.getFlowModuleId());
       taskOwnership.module(deployFlowParam.getProjectId(), deployFlowParam.getFlowModuleId());
       return definitionProcessor.deploy(deployFlowParam);
     });
@@ -66,7 +69,7 @@ public class ProcessEngineImpl implements ProcessService {
     if (StringUtils.isBlank(startProcessParam.getInitiator())) {
       startProcessParam.setInitiator(sessionContext.getUserId());
     }
-    return unitOfWork.execute(startProcessParam.getProjectId(), () -> {
+    return unitOfWork.executePlatform(startProcessParam.getProjectId(), () -> {
       taskOwnership.deployment(startProcessParam.getProjectId(), startProcessParam.getFlowDeployId(), startProcessParam.getFlowModuleId());
       return runtimeProcessor.startProcess(startProcessParam);
     });
@@ -74,8 +77,8 @@ public class ProcessEngineImpl implements ProcessService {
 
   @Override
   public CommitTaskResult commitTask(CommitTaskParam commitTaskParam) {
-    return unitOfWork.execute(commitTaskParam.getProjectId(), () -> {
-      dev.flexmodel.common.ProjectUnitOfWork.lock(commitTaskParam.getProjectId(), "f_ei_flow_instance", "flow_instance_id", commitTaskParam.getFlowInstanceId());
+    return unitOfWork.executePlatform(commitTaskParam.getProjectId(), () -> {
+      dev.flexmodel.common.ProjectUnitOfWork.lock(commitTaskParam.getProjectId(), ReflectionUtils.getModelNameFromClass(FlowInstance.class), "flow_instance_id", commitTaskParam.getFlowInstanceId());
       taskOwnership.instance(commitTaskParam.getProjectId(), commitTaskParam.getFlowInstanceId(), null);
       runtimeProcessor.checkIsSubFlowInstance(commitTaskParam.getProjectId(), commitTaskParam.getFlowInstanceId());
       return runtimeProcessor.commit(commitTaskParam);
@@ -84,8 +87,8 @@ public class ProcessEngineImpl implements ProcessService {
 
   @Override
   public RollbackTaskResult rollbackTask(RollbackTaskParam rollbackTaskParam) {
-    return unitOfWork.execute(rollbackTaskParam.getProjectId(), () -> {
-      dev.flexmodel.common.ProjectUnitOfWork.lock(rollbackTaskParam.getProjectId(), "f_ei_flow_instance", "flow_instance_id", rollbackTaskParam.getFlowInstanceId());
+    return unitOfWork.executePlatform(rollbackTaskParam.getProjectId(), () -> {
+      dev.flexmodel.common.ProjectUnitOfWork.lock(rollbackTaskParam.getProjectId(), ReflectionUtils.getModelNameFromClass(FlowInstance.class), "flow_instance_id", rollbackTaskParam.getFlowInstanceId());
       taskOwnership.instance(rollbackTaskParam.getProjectId(), rollbackTaskParam.getFlowInstanceId(), null);
       runtimeProcessor.checkIsSubFlowInstance(rollbackTaskParam.getProjectId(), rollbackTaskParam.getFlowInstanceId());
       return runtimeProcessor.rollback(rollbackTaskParam);
@@ -99,8 +102,8 @@ public class ProcessEngineImpl implements ProcessService {
 
   @Override
   public TerminateResult terminateProcess(String projectId, String flowInstanceId, boolean effectiveForSubFlowInstance) {
-    return unitOfWork.execute(projectId, () -> {
-      dev.flexmodel.common.ProjectUnitOfWork.lock(projectId, "f_ei_flow_instance", "flow_instance_id", flowInstanceId);
+    return unitOfWork.executePlatform(projectId, () -> {
+      dev.flexmodel.common.ProjectUnitOfWork.lock(projectId, ReflectionUtils.getModelNameFromClass(FlowInstance.class), "flow_instance_id", flowInstanceId);
       taskOwnership.instance(projectId, flowInstanceId, null);
       runtimeProcessor.checkIsSubFlowInstance(projectId, flowInstanceId);
       return runtimeProcessor.terminateProcess(projectId, flowInstanceId, effectiveForSubFlowInstance);
@@ -154,8 +157,8 @@ public class ProcessEngineImpl implements ProcessService {
 
   @Override
   public void deleteFlow(String projectId, String flowModuleId) {
-    unitOfWork.execute(projectId, () -> {
-      dev.flexmodel.common.ProjectUnitOfWork.lock(projectId, "f_em_flow_definition", "flow_module_id", flowModuleId);
+    unitOfWork.executePlatform(projectId, () -> {
+      dev.flexmodel.common.ProjectUnitOfWork.lock(projectId, ReflectionUtils.getModelNameFromClass(FlowDefinition.class), "flow_module_id", flowModuleId);
       taskOwnership.module(projectId, flowModuleId);
       definitionProcessor.delete(projectId, flowModuleId);
       return null;

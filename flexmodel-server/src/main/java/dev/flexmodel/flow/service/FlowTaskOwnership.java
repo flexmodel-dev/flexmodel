@@ -3,46 +3,43 @@ package dev.flexmodel.flow.service;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.codegen.entity.FlowDeployment;
 import dev.flexmodel.codegen.entity.FlowInstance;
-import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.flow.dto.model.FlowModel;
-import dev.flexmodel.session.Session;
+import dev.flexmodel.flow.repository.FlowDefinitionRepository;
+import dev.flexmodel.flow.repository.FlowDeploymentRepository;
+import dev.flexmodel.flow.repository.FlowInstanceRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.ForbiddenException;
 
 import java.util.Objects;
 
-import static dev.flexmodel.codegen.System.*;
-
 @ApplicationScoped
-public class FlowTaskOwnership extends AbstractRepository {
+public class FlowTaskOwnership {
+
+  @Inject
+  FlowDefinitionRepository flowDefinitionRepository;
+  @Inject
+  FlowDeploymentRepository flowDeploymentRepository;
+  @Inject
+  FlowInstanceRepository flowInstanceRepository;
 
   public void module(String projectId, String moduleId) {
-    try (Session session = getProjectSession(projectId)) {
-      var definition = session.dsl().selectFrom(dev.flexmodel.codegen.entity.FlowDefinition.class)
-        .where(flowDefinition.flowModuleId.eq(moduleId)).executeOne();
-      if (definition != null && definition.getFlowModel() != null && !definition.getFlowModel().isBlank())
-        checkModel(definition.getFlowModel(), null);
-    }
+    var definition = flowDefinitionRepository.selectByModuleId(projectId, moduleId);
+    if (definition != null && definition.getFlowModel() != null && !definition.getFlowModel().isBlank())
+      checkModel(definition.getFlowModel(), null);
   }
 
   public void deployment(String projectId, String deploymentId, String moduleId) {
-    try (Session session = getProjectSession(projectId)) {
-      var query = session.dsl().selectFrom(FlowDeployment.class);
-      FlowDeployment deployment = deploymentId != null && !deploymentId.isBlank()
-        ? query.where(flowDeployment.flowDeployId.eq(deploymentId)).executeOne()
-        : query.where(flowDeployment.flowModuleId.eq(moduleId)).orderByDesc(flowDeployment.id).limit(1).executeOne();
-      check(deployment, null);
-    }
+    FlowDeployment deployment = deploymentId != null && !deploymentId.isBlank()
+      ? flowDeploymentRepository.findByDeployId(projectId, deploymentId)
+      : flowDeploymentRepository.findRecentByFlowModuleId(projectId, moduleId);
+    check(deployment, null);
   }
 
   public void instance(String projectId, String instanceId, String nodeKey) {
-    try (Session session = getProjectSession(projectId)) {
-      FlowInstance instance = session.dsl().selectFrom(FlowInstance.class).where(flowInstance.flowInstanceId.eq(instanceId)).executeOne();
-      if (instance == null) return;
-      FlowDeployment deployment = session.dsl().selectFrom(FlowDeployment.class)
-        .where(flowDeployment.flowDeployId.eq(instance.getFlowDeployId())).executeOne();
-      check(deployment, nodeKey);
-    }
+    FlowInstance instance = flowInstanceRepository.selectByFlowInstanceId(projectId, instanceId);
+    if (instance == null) return;
+    check(flowDeploymentRepository.findByDeployId(projectId, instance.getFlowDeployId()), nodeKey);
   }
 
   private void check(FlowDeployment deployment, String nodeKey) {

@@ -4,7 +4,13 @@ import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.config.web.jwt.JwtService;
 import dev.flexmodel.common.messaging.ReliableMessages;
-import dev.flexmodel.approval.ApprovalRepository;
+import dev.flexmodel.common.messaging.RuntimeMessageRepository;
+import dev.flexmodel.approval.ApprovalFlowDefinitionRepository;
+import dev.flexmodel.approval.ApprovalFlowDeploymentRepository;
+import dev.flexmodel.approval.ApprovalInstanceRepository;
+import dev.flexmodel.approval.ApprovalRecordLockRepository;
+import dev.flexmodel.approval.ApprovalTaskRepository;
+import dev.flexmodel.approval.ApprovalWaitRepository;
 import dev.flexmodel.notification.NotificationRepository;
 import dev.flexmodel.session.SessionFactory;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -46,7 +52,7 @@ class ApprovalFlowResourceTest {
   }
 
   @Inject
-  JwtService jwt;
+  JwtService jwtService;
   @Inject
   NotificationRepository inbox;
   @Inject
@@ -58,7 +64,19 @@ class ApprovalFlowResourceTest {
   @Inject
   ReliableMessages messages;
   @Inject
-  ApprovalRepository repository;
+  ApprovalInstanceRepository approvalInstanceRepository;
+  @Inject
+  ApprovalTaskRepository approvalTaskRepository;
+  @Inject
+  ApprovalWaitRepository approvalWaitRepository;
+  @Inject
+  ApprovalRecordLockRepository approvalRecordLockRepository;
+  @Inject
+  ApprovalFlowDefinitionRepository approvalFlowDefinitionRepository;
+  @Inject
+  ApprovalFlowDeploymentRepository approvalFlowDeploymentRepository;
+  @Inject
+  RuntimeMessageRepository runtimeMessageRepository;
   @Inject
   dev.flexmodel.approval.ApprovalFlowState flowState;
   @Inject
@@ -68,7 +86,7 @@ class ApprovalFlowResourceTest {
   final String base = "/apps/dev_test";
 
   RequestSpecification api(String user) {
-    return given().header("Authorization", "Bearer " + jwt.sign(user, Duration.ofMinutes(10))).contentType("application/json");
+    return given().header("Authorization", "Bearer " + jwtService.sign(user, Duration.ofMinutes(10))).contentType("application/json");
   }
 
   String form() {
@@ -111,7 +129,7 @@ class ApprovalFlowResourceTest {
   void drain() {
     for (int i = 0; i < 100; i++) {
       messages.drain("dev_test", 100);
-      if (repository.list("dev_test", "f_runtime_message", field("state").eq("PENDING")).isEmpty()) return;
+      if (runtimeMessageRepository.findPending("dev_test").isEmpty()) return;
       try {
         Thread.sleep(20);
       } catch (InterruptedException error) {
@@ -122,7 +140,7 @@ class ApprovalFlowResourceTest {
   }
 
   List<Map<String, Object>> tasks(String run) {
-    return repository.list("dev_test", "f_approval_task", field("run_id").eq(run));
+    return approvalTaskRepository.findByRunId("dev_test", run);
   }
 
   String task(String run, String user) {
@@ -153,8 +171,8 @@ class ApprovalFlowResourceTest {
     api("admin").delete(base + "/forms/" + form + "/records/" + record).then().statusCode(409);
     drain();
     assertEquals(2, tasks(run).size());
-    var state = repository.get("dev_test", "f_approval_instance", run);
-    api("admin").body(Map.of("taskInstanceId", text(repository.list("dev_test", "f_approval_wait", field("run_id").eq(run)).getFirst(), "id"))).post("/projects/dev_test/flows/instances/" + text(state, "flow_instance_id") + "/commit").then().statusCode(403);
+    var state = approvalInstanceRepository.get("dev_test", run);
+    api("admin").body(Map.of("taskInstanceId", text(approvalWaitRepository.findByRunId("dev_test", run).getFirst(), "id"))).post("/projects/dev_test/flows/instances/" + text(state, "flow_instance_id") + "/commit").then().statusCode(403);
     api("approval_peer").body(Map.of("decision", "approve", "requestKey", "spoof", "comment", "")).post(base + "/approval-tasks/" + task(run, "admin") + "/decision").then().statusCode(403);
     decide(run, "admin", "approve", "approve-admin", 200);
     decide(run, "admin", "approve", "approve-admin", 200);
@@ -215,8 +233,8 @@ class ApprovalFlowResourceTest {
     decide(run, "admin", "approve", "first", 200);
     decide(run, "approval_peer", "reject", "second", 200);
     drain();
-    assertEquals("REJECTED", text(repository.get("dev_test", "f_approval_instance", run), "status"));
-    assertTrue(repository.list("dev_test", "f_approval_record_lock", field("run_id").eq(run)).isEmpty());
+    assertEquals("REJECTED", text(approvalInstanceRepository.get("dev_test", run), "status"));
+    assertTrue(approvalRecordLockRepository.findByRunId("dev_test", run).isEmpty());
   }
 
   @Test
@@ -233,11 +251,11 @@ class ApprovalFlowResourceTest {
     var parent = publish(form, List.of(gateway, node("sub", "subflow", Map.of("kind", "subflow", "flowId", text(child, "flow_module_id"), "inputs", List.of(), "outputs", List.of()))));
     String run = submit(form, record, text(parent, "flow_module_id"), record);
     drain();
-    var children = flowState.children("dev_test", repository.get("dev_test", "f_approval_instance", run));
+    var children = flowState.children("dev_test", approvalInstanceRepository.get("dev_test", run));
     assertEquals(1, children.size());
     decide(text(children.getFirst(), "id"), "admin", "approve", "child-sign", 200);
     drain();
-    assertEquals("APPROVED", text(repository.get("dev_test", "f_approval_instance", run), "status"));
+    assertEquals("APPROVED", text(approvalInstanceRepository.get("dev_test", run), "status"));
     api("admin").queryParam("search", "流程生成").get(base + "/forms/" + form + "/records").then().statusCode(200).body("total", equalTo(1));
     drain();
     api("admin").queryParam("search", "流程生成").get(base + "/forms/" + form + "/records").then().body("total", equalTo(1));
@@ -281,7 +299,7 @@ class ApprovalFlowResourceTest {
       .body("created_by", equalTo("admin")).body("updated_by", equalTo("admin"))
       .body("archive", equalTo(0)).body("is_deleted", equalTo(0)).body("definition", nullValue())
       .extract().as(Map.class);
-    var stored = repository.definition("dev_test", text(created, "flow_module_id"));
+    var stored = approvalFlowDefinitionRepository.get("dev_test", text(created, "flow_module_id"));
     assertEquals(created.get("flow_model"), dev.flexmodel.approval.ApprovalFlowModel.encode(dev.flexmodel.approval.ApprovalFlowModel.decode(stored)).get("flow_model"));
     assertEquals(1, dev.flexmodel.approval.ApprovalFlowModel.metadata(stored).get("revision"));
     assertFalse(stored.containsKey("document"));
@@ -289,7 +307,7 @@ class ApprovalFlowResourceTest {
       .body("flow_key", equalTo(created.get("flow_key"))).body("flow_model", equalTo(created.get("flow_model")));
     api("admin").body(Map.of("status", 2, "revision", created.get("revision")))
       .post(base + "/approval-flows/" + text(created, "flow_module_id") + "/status").then().statusCode(200).body("flow_key", equalTo(flowKey));
-    assertEquals(1, repository.list("dev_test", "f_em_flow_definition", field("flow_key").eq(flowKey)).size());
+    assertEquals(1, approvalFlowDefinitionRepository.findByFlowKey("dev_test", flowKey).size());
   }
 
 
@@ -299,17 +317,17 @@ class ApprovalFlowResourceTest {
     var created = api("admin").body(flow(form, List.of(approval("old_review", "all", List.of("admin")))))
       .post(base + "/approval-flows").then().statusCode(201).extract().as(Map.class);
     String id = text(created, "flow_module_id");
-    assertEquals(id, text(repository.definition("dev_test", id), "flow_module_id"));
-    assertTrue(repository.list("dev_test", "f_em_flow_deployment", field("flow_module_id").eq(id)).isEmpty());
+    assertEquals(id, text(approvalFlowDefinitionRepository.get("dev_test", id), "flow_module_id"));
+    assertTrue(approvalFlowDeploymentRepository.findByModuleId("dev_test", id).isEmpty());
     api("admin").body(Map.of("flowName", "绕过审批保存", "flowKey", "bypass", "flowModel", created.get("flow_model")))
       .put("/projects/dev_test/flows/" + id).then().statusCode(403);
     var first = api("admin").body(Map.of("status", 2, "revision", created.get("revision")))
       .post(base + "/approval-flows/" + id + "/status").then().statusCode(200).extract().as(Map.class);
-    String firstDeployment = text(dev.flexmodel.approval.ApprovalFlowModel.metadata(repository.definition("dev_test", id)), "deploymentId");
-    String frozen = text(repository.deployment("dev_test", firstDeployment), "flow_model");
+    String firstDeployment = text(dev.flexmodel.approval.ApprovalFlowModel.metadata(approvalFlowDefinitionRepository.get("dev_test", id)), "deploymentId");
+    String frozen = text(approvalFlowDeploymentRepository.get("dev_test", firstDeployment), "flow_model");
     String run = submit(form, record, id, record);
     drain();
-    assertEquals(firstDeployment, text(repository.get("dev_test", "f_approval_instance", run), "flow_deploy_id"));
+    assertEquals(firstDeployment, text(approvalInstanceRepository.get("dev_test", run), "flow_deploy_id"));
     var changed = flow(form, List.of(approval("new_review", "any", List.of("admin"))));
     changed.put("revision", first.get("revision"));
     changed.put("flow_name", "新版本审批");
@@ -317,24 +335,24 @@ class ApprovalFlowResourceTest {
       .body("status", equalTo(1)).body("flow_module_id", equalTo(id)).extract().as(Map.class);
     api("admin").body(Map.of("status", 2, "revision", saved.get("revision")))
       .post(base + "/approval-flows/" + id + "/status").then().statusCode(200).body("flow_module_id", equalTo(id));
-    String secondDeployment = text(dev.flexmodel.approval.ApprovalFlowModel.metadata(repository.definition("dev_test", id)), "deploymentId");
+    String secondDeployment = text(dev.flexmodel.approval.ApprovalFlowModel.metadata(approvalFlowDefinitionRepository.get("dev_test", id)), "deploymentId");
     assertNotEquals(firstDeployment, secondDeployment);
-    assertEquals(1, repository.list("dev_test", "f_em_flow_definition", field("flow_module_id").eq(id)).size());
-    assertEquals(2, repository.list("dev_test", "f_em_flow_deployment", field("flow_module_id").eq(id)).size());
-    assertEquals(frozen, text(repository.deployment("dev_test", firstDeployment), "flow_model"));
+    assertNotNull(approvalFlowDefinitionRepository.find("dev_test", id));
+    assertEquals(2, approvalFlowDeploymentRepository.findByModuleId("dev_test", id).size());
+    assertEquals(frozen, text(approvalFlowDeploymentRepository.get("dev_test", firstDeployment), "flow_model"));
     api("admin").get(base + "/approval-instances/" + run).then().statusCode(200).body("title", equalTo("真实审批测试"));
     decide(run, "admin", "approve", "old-version-sign", 200);
     drain();
-    assertEquals("APPROVED", text(repository.get("dev_test", "f_approval_instance", run), "status"));
+    assertEquals("APPROVED", text(approvalInstanceRepository.get("dev_test", run), "status"));
     String nextRecord = record(form, "新版本记录"), nextRun = submit(form, nextRecord, id, nextRecord);
     drain();
-    assertEquals(secondDeployment, text(repository.get("dev_test", "f_approval_instance", nextRun), "flow_deploy_id"));
-    assertEquals("new_review", text(flowState.waitView("dev_test", repository.list("dev_test", "f_approval_wait", field("run_id").eq(nextRun)).getFirst()), "node_key"));
+    assertEquals(secondDeployment, text(approvalInstanceRepository.get("dev_test", nextRun), "flow_deploy_id"));
+    assertEquals("new_review", text(flowState.waitView("dev_test", approvalWaitRepository.findByRunId("dev_test", nextRun).getFirst()), "node_key"));
     api("admin").delete(base + "/approval-flows/" + id).then().statusCode(204);
     api("admin").get(base + "/approval-flows/" + id).then().statusCode(404);
     decide(nextRun, "admin", "approve", "deleted-definition-sign", 200);
     drain();
-    assertEquals("APPROVED", text(repository.get("dev_test", "f_approval_instance", nextRun), "status"));
+    assertEquals("APPROVED", text(approvalInstanceRepository.get("dev_test", nextRun), "status"));
   }
 
   @Test
@@ -342,7 +360,7 @@ class ApprovalFlowResourceTest {
     String form = form(), record = record(form, "子流程固定版本");
     var child = publish(form, List.of(approval("child_original", "all", List.of("admin"))));
     String childId = text(child, "flow_module_id");
-    String childDeployment = text(dev.flexmodel.approval.ApprovalFlowModel.metadata(repository.definition("dev_test", childId)), "deploymentId");
+    String childDeployment = text(dev.flexmodel.approval.ApprovalFlowModel.metadata(approvalFlowDefinitionRepository.get("dev_test", childId)), "deploymentId");
     var parent = publish(form, List.of(approval("before_child", "all", List.of("admin")),
       node("child", "subflow", Map.of("kind", "subflow", "flowId", childId, "inputs", List.of(), "outputs", List.of()))));
     String run = submit(form, record, text(parent, "flow_module_id"), record);
@@ -356,12 +374,12 @@ class ApprovalFlowResourceTest {
       .post(base + "/approval-flows/" + childId + "/status").then().statusCode(200);
     decide(run, "admin", "approve", "enter-child", 200);
     drain();
-    var childRun = flowState.children("dev_test", repository.get("dev_test", "f_approval_instance", run)).getFirst();
+    var childRun = flowState.children("dev_test", approvalInstanceRepository.get("dev_test", run)).getFirst();
     assertEquals(childDeployment, text(childRun, "flow_deploy_id"));
-    assertEquals("child_original", text(flowState.waitView("dev_test", repository.list("dev_test", "f_approval_wait", field("run_id").eq(text(childRun, "id"))).getFirst()), "node_key"));
+    assertEquals("child_original", text(flowState.waitView("dev_test", approvalWaitRepository.findByRunId("dev_test", text(childRun, "id")).getFirst()), "node_key"));
     decide(text(childRun, "id"), "admin", "approve", "pinned-child-sign", 200);
     drain();
-    assertEquals("APPROVED", text(repository.get("dev_test", "f_approval_instance", run), "status"));
+    assertEquals("APPROVED", text(approvalInstanceRepository.get("dev_test", run), "status"));
   }
 
 
@@ -371,9 +389,9 @@ class ApprovalFlowResourceTest {
     var flow = publish(form, List.of(approval("isolated_review", "all", List.of("admin"))));
     String one = record(form, "等待重试"), two = record(form, "可独立推进");
     String blocked = submit(form, one, text(flow, "flow_module_id"), one);
-    var start = repository.list("dev_test", "f_runtime_message", field("message_id").eq("start:" + blocked)).getFirst();
+    var start = runtimeMessageRepository.findByMessageId("dev_test", "start:" + blocked).getFirst();
     transactions.execute("dev_test", () -> {
-      repository.update("dev_test", "f_runtime_message", text(start, "id"), Map.of("available_at", java.time.LocalDateTime.now().plusHours(1)));
+      runtimeMessageRepository.update("dev_test", text(start, "id"), Map.of("available_at", java.time.LocalDateTime.now().plusHours(1)));
       return null;
     });
     String independent = submit(form, two, text(flow, "flow_module_id"), two);
@@ -381,7 +399,7 @@ class ApprovalFlowResourceTest {
     assertEquals(1, tasks(independent).size());
     assertTrue(tasks(blocked).isEmpty());
     transactions.execute("dev_test", () -> {
-      repository.update("dev_test", "f_runtime_message", text(start, "id"), Map.of("available_at", java.time.LocalDateTime.now()));
+      runtimeMessageRepository.update("dev_test", text(start, "id"), Map.of("available_at", java.time.LocalDateTime.now()));
       return null;
     });
     drain();
@@ -402,11 +420,11 @@ class ApprovalFlowResourceTest {
     } finally {
       FailingDelivery.failing = false;
     }
-    var suspended = repository.list("dev_test", "f_runtime_message", field("type").eq("flow.event")).stream()
+    var suspended = runtimeMessageRepository.findByType("dev_test", "flow.event").stream()
       .filter(message -> text(object(message.get("payload")), "nodeKey").equals("retry_review") && text(object(object(message.get("payload")).get("variables")), "__runId").equals(run)).findFirst().orElseThrow();
     assertTrue(((Number) suspended.get("attempts")).intValue() >= 1);
     transactions.execute("dev_test", () -> {
-      repository.update("dev_test", "f_runtime_message", text(suspended, "id"), Map.of("available_at", java.time.LocalDateTime.now()));
+      runtimeMessageRepository.update("dev_test", text(suspended, "id"), Map.of("available_at", java.time.LocalDateTime.now()));
       return null;
     });
     drain();
@@ -416,7 +434,7 @@ class ApprovalFlowResourceTest {
     assertEquals(1, tasks(run).size());
     decide(run, "admin", "approve", "recover", 200);
     drain();
-    assertEquals("APPROVED", text(repository.get("dev_test", "f_approval_instance", run), "status"));
+    assertEquals("APPROVED", text(approvalInstanceRepository.get("dev_test", run), "status"));
   }
 
   @Test
@@ -433,8 +451,8 @@ class ApprovalFlowResourceTest {
     var b = java.util.concurrent.CompletableFuture.runAsync(() -> decide(run, "approval_peer", "approve", "parallel-b", 200));
     java.util.concurrent.CompletableFuture.allOf(a, b).join();
     drain();
-    assertEquals("APPROVED", text(repository.get("dev_test", "f_approval_instance", run), "status"));
-    assertEquals(1, flowState.logs("dev_test", repository.get("dev_test", "f_approval_instance", run)).stream().filter(log -> "approval".equals(text(log, "kind"))).count());
+    assertEquals("APPROVED", text(approvalInstanceRepository.get("dev_test", run), "status"));
+    assertEquals(1, flowState.logs("dev_test", approvalInstanceRepository.get("dev_test", run)).stream().filter(log -> "approval".equals(text(log, "kind"))).count());
   }
 
   @Test
@@ -451,10 +469,10 @@ class ApprovalFlowResourceTest {
     assertEquals(1, tasks(run).size());
     api("admin").get(base + "/forms/" + form + "/records/" + record).then().log().ifValidationFails().statusCode(200).body("name", equalTo("流程内改写"));
     api("admin").body(Map.of("name", "人工写入")).put(base + "/forms/" + form + "/records/" + record).then().statusCode(409);
-    var state = repository.get("dev_test", "f_approval_instance", run);
+    var state = approvalInstanceRepository.get("dev_test", run);
     assertEquals("ACTIVE", state.get("status"));
     assertFalse(state.containsKey("variables"));
-    var wait = repository.list("dev_test", "f_approval_wait", field("run_id").eq(run)).getFirst();
+    var wait = approvalWaitRepository.findByRunId("dev_test", run).getFirst();
     assertFalse(wait.containsKey("variables"));
     assertFalse(wait.containsKey("node_key"));
     assertFalse(wait.containsKey("sign_mode"));
@@ -610,7 +628,7 @@ class ApprovalFlowResourceTest {
     var published = publish(form, List.of(gateway));
     String run = submit(form, record, text(published, "flow_module_id"), record);
     drain();
-    assertEquals("first_review", text(flowState.waitView("dev_test", repository.list("dev_test", "f_approval_wait", field("run_id").eq(run)).getFirst()), "node_key"));
+    assertEquals("first_review", text(flowState.waitView("dev_test", approvalWaitRepository.findByRunId("dev_test", run).getFirst()), "node_key"));
     decide(run, "admin", "approve", "priority-sign", 200);
     drain();
     var a = api("admin").body(flow(form, List.of())).post(base + "/approval-flows").then().statusCode(201).extract().as(Map.class);
@@ -630,7 +648,7 @@ class ApprovalFlowResourceTest {
     var outputFile = java.nio.file.Files.createTempFile("approval-browser-", ".log");
     var builder = new ProcessBuilder("node", script.toString()).redirectErrorStream(true).redirectOutput(outputFile.toFile());
     builder.environment().put("APPROVAL_TEST_API", "http://127.0.0.1:" + io.restassured.RestAssured.port);
-    builder.environment().put("APPROVAL_TEST_TOKEN", jwt.sign("admin", Duration.ofMinutes(10)));
+    builder.environment().put("APPROVAL_TEST_TOKEN", jwtService.sign("admin", Duration.ofMinutes(10)));
     var process = builder.start();
     long deadline = System.nanoTime() + java.time.Duration.ofSeconds(180).toNanos();
     boolean finished = false;

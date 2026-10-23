@@ -13,6 +13,7 @@ import dev.flexmodel.model.EnumDefinition;
 import dev.flexmodel.model.NativeQueryDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.model.field.TypedField;
+import dev.flexmodel.pages.PageService;
 import dev.flexmodel.project.dto.BranchMergeRequest;
 import dev.flexmodel.project.dto.BranchProgressEvent;
 import dev.flexmodel.query.Query;
@@ -77,6 +78,12 @@ public class BranchService {
 
   @Inject
   ManagedExecutor managedExecutor;
+
+  @Inject
+  ProjectPlatformDataCleaner platformDataCleaner;
+
+  @Inject
+  PageService pageService;
 
   private final SchemaManager schemaManager = new JdbcSchemaManager();
 
@@ -227,9 +234,16 @@ public class BranchService {
     branchProject.setEnabled(true);
     projectRepository.save(branchProject);
 
+    // 9. 初始化分支项目的 Pages 站点配置
+    try {
+      pageService.initPageSite(branchProjectId);
+    } catch (Exception e) {
+      log.warn("Failed to initialize page site for branch project {}: {}", branchProjectId, e.getMessage());
+    }
+
     emitStage(progressListener, BranchProgressEvent.Operation.CREATE, BranchProgressEvent.Stage.REFRESHING_GRAPHQL, 95, null);
 
-    // 9. 刷新父项目的所有分支 GraphQL
+    // 10. 刷新父项目的所有分支 GraphQL
     graphQLEventConsumer.refreshProject(project);
 
     emitCompleted(progressListener, BranchProgressEvent.Operation.CREATE, saved);
@@ -263,6 +277,7 @@ public class BranchService {
     // 3. 删除分支项目记录
     String branchProjectId = rootProjectId + "_" + branchName;
     graphQLManager.removeGraphQL(branchProjectId);
+    platformDataCleaner.clean(branchProjectId);
     projectRepository.delete(branchProjectId);
 
     // 4. 删除分支记录

@@ -21,18 +21,18 @@ import static dev.flexmodel.query.Expressions.*;
 @ApplicationScoped
 public class ApprovalRecordActions {
   @Inject
-  AppFormService forms;
+  AppFormService appFormService;
   @Inject
-  AppRecordService records;
+  AppRecordService appRecordService;
   @Inject
-  ProjectService projects;
+  ProjectService projectService;
   @Inject
   dev.flexmodel.common.persistence.ServerSessions sessions;
 
   public String schema(String appId, String form) {
-    var metadata = forms.findForm(appId, form);
+    var metadata = appFormService.findForm(appId, form);
     if (metadata.builtin()) throw new ValidationException("审批流程仅支持应用业务表单");
-    return projects.resolveDatabaseName(appId);
+    return projectService.resolveDatabaseName(appId);
   }
 
   public Map<String, Object> snapshot(String appId, String form, String id) {
@@ -48,7 +48,7 @@ public class ApprovalRecordActions {
     for (var assignment : objects(cfg.get("assignments")))
       assignments.put(text(assignment, "field"), value(object(assignment.get("value")), variables));
     if (kind.equals("create")) {
-      var created = records.createRecord(appId, form, assignments, null, null, null);
+      var created = appRecordService.createRecord(appId, form, assignments, null, null, null);
       return snapshot(appId, form, text(created, "id"));
     }
     Predicate filter = predicate(objects(cfg.get("conditions")), text(cfg, "match"), variables);
@@ -62,10 +62,10 @@ public class ApprovalRecordActions {
       for (var record : selected) {
         String id = text(record, "id");
         if (kind.equals("update")) {
-          records.updateRecord(appId, form, id, assignments, null, null, null);
+          appRecordService.updateRecord(appId, form, id, assignments, null, null, null);
           changed.add(snapshot(appId, form, id));
         } else {
-          records.deleteRecord(appId, form, id, null, null, null);
+          appRecordService.deleteRecord(appId, form, id, null, null, null);
           changed.add(record);
         }
       }

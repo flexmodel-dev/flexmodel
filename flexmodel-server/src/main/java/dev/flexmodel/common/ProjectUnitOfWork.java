@@ -1,6 +1,7 @@
 package dev.flexmodel.common;
 
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,6 +17,8 @@ import java.util.function.Supplier;
  */
 @ApplicationScoped
 public class ProjectUnitOfWork {
+  private static final String PLATFORM_SCHEMA = "system";
+
   private record State(String projectId, String schema, Session session, List<Runnable> committed) {
   }
 
@@ -25,19 +28,40 @@ public class ProjectUnitOfWork {
   @Inject
   dev.flexmodel.common.persistence.ServerSessions sessions;
 
+  /**
+   * 开启项目业务库事务。
+   */
   public <T> T execute(String projectId, Supplier<T> action) {
+    return transaction(projectId, null, action);
+  }
+
+  /**
+   * 在平台库中开启事务。
+   * <p>
+   * 平台级表统一存于 system schema，无法与业务库事务保持原子性，
+   * 因此平台表写入使用独立事务。
+   */
+  public <T> T executePlatform(String projectId, Supplier<T> action) {
+    return transaction(projectId, PLATFORM_SCHEMA, action);
+  }
+
+  /**
+   * 事务模板。targetSchema 为 null 时使用项目业务库，否则使用指定 schema。
+   * <p>
+   * 同 schema 嵌套复用当前事务；跨 schema 嵌套开启独立事务，结束后恢复外层上下文。
+   */
+  private <T> T transaction(String projectId, String targetSchema, Supplier<T> action) {
     State existing = CURRENT.get();
     if (existing != null) {
-      if (!Objects.equals(projectId, existing.projectId())) throw new IllegalStateException("禁止嵌套跨项目事务");
-      return action.get();
+      boolean sameSchema = targetSchema == null
+        ? !PLATFORM_SCHEMA.equals(existing.schema())
+        : targetSchema.equals(existing.schema());
+      if (sameSchema) {
+        if (!Objects.equals(projectId, existing.projectId())) throw new IllegalStateException("禁止嵌套跨项目事务");
+        return action.get();
+      }
     }
-    String schema;
-    try (Session system = sessionFactory.createSession()) {
-      Project project = system.dsl().selectFrom(Project.class)
-        .where(dev.flexmodel.codegen.System.project.id.eq(projectId)).executeOne();
-      if (project == null) throw new NotFoundException("应用不存在");
-      schema = project.getDatabaseName();
-    }
+    String schema = targetSchema != null ? targetSchema : projectSchema(projectId);
     List<Runnable> committed = new ArrayList<>();
     try (var session = sessions.openOwned(schema)) {
       session.startTransaction();
@@ -51,16 +75,27 @@ public class ProjectUnitOfWork {
         committed.clear();
         throw error;
       } finally {
-        CURRENT.remove();
+        // 恢复外层事务上下文，支持业务事务与平台事务相互嵌套
+        if (existing == null) CURRENT.remove();
+        else CURRENT.set(existing);
       }
     } finally {
       for (Runnable callback : committed) callback.run();
     }
   }
 
-  public static Session borrow(String projectId) {
+  private String projectSchema(String projectId) {
+    try (Session system = sessionFactory.createSession()) {
+      Project project = system.dsl().selectFrom(Project.class)
+        .where(dev.flexmodel.codegen.System.project.id.eq(projectId)).executeOne();
+      if (project == null) throw new NotFoundException("应用不存在");
+      return project.getDatabaseName();
+    }
+  }
+
+  public static Session borrowPlatform() {
     State state = CURRENT.get();
-    return state != null && Objects.equals(projectId, state.projectId()) ? lease(state.session()) : null;
+    return state != null && PLATFORM_SCHEMA.equals(state.schema()) ? lease(state.session()) : null;
   }
 
   public static Session borrowSchema(String schema) {
@@ -68,15 +103,15 @@ public class ProjectUnitOfWork {
     return state != null && Objects.equals(schema, state.schema()) ? lease(state.session()) : null;
   }
 
-  public static boolean active() {
-    return CURRENT.get() != null;
-  }
-
   public static int lock(String projectId, String model, String column, Object value) {
     var state = CURRENT.get();
     if (state == null || !Objects.equals(projectId, state.projectId()))
       throw new IllegalStateException("行锁必须使用当前项目事务");
     return dev.flexmodel.common.persistence.ServerSessions.managed(state.session()).lockRow(model, column, value);
+  }
+
+  public static int lock(String projectId, Class<?> model, String column, Object value) {
+    return lock(projectId, ReflectionUtils.getModelNameFromClass(model), column, value);
   }
 
   public <T> T adopt(String projectId, Session session, Supplier<T> action) {

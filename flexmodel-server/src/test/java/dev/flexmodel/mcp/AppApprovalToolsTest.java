@@ -4,7 +4,7 @@ import dev.flexmodel.JsonUtils;
 import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.approval.ApprovalFlowModel;
 import dev.flexmodel.approval.ApprovalFlowService;
-import dev.flexmodel.approval.ApprovalRepository;
+import dev.flexmodel.approval.ApprovalFlowDefinitionRepository;
 import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.auth.dto.CreateApiKeyRequest;
 import dev.flexmodel.auth.service.ApiKeyService;
@@ -31,15 +31,15 @@ import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTestResource(SQLiteTestResource.class)
 class AppApprovalToolsTest {
   @Inject
-  ApiKeyService keys;
+  ApiKeyService apiKeyService;
   @Inject
   AppTools apps;
   @Inject
-  ApprovalFlowService flows;
+  ApprovalFlowService approvalFlowService;
   @Inject
-  ApprovalRepository repository;
+  ApprovalFlowDefinitionRepository approvalFlowDefinitionRepository;
   @Inject
-  AppFormService forms;
+  AppFormService appFormService;
 
   private final List<String> keyIds = new ArrayList<>();
   private final List<String> flowIds = new ArrayList<>();
@@ -51,7 +51,7 @@ class AppApprovalToolsTest {
 
   @BeforeEach
   void setup() {
-    var credential = keys.create(new CreateApiKeyRequest("approval-mcp-test", "dev_test", false));
+    var credential = apiKeyService.create(new CreateApiKeyRequest("approval-mcp-test", "dev_test", false));
     keyIds.add(credential.getId());
     key = credential.getKey();
     keyId = credential.getId();
@@ -70,11 +70,11 @@ class AppApprovalToolsTest {
 
   @AfterEach
   void cleanup() {
-    for (String id : flowIds) flows.delete("dev_test", id);
+    for (String id : flowIds) approvalFlowService.delete("dev_test", id);
     if (form != null) {
-      forms.deleteForm("dev_test", form);
+      appFormService.deleteForm("dev_test", form);
     }
-    keyIds.forEach(keys::delete);
+    keyIds.forEach(apiKeyService::delete);
   }
 
   @Test
@@ -126,7 +126,7 @@ class AppApprovalToolsTest {
     assertTrue(call("save_app_approval_flow", Map.of("appId", "dev_test", "flowId", id, "flowJson", JsonUtils.toJsonString(edited))).startsWith("Error:"));
     var republished = status(id, 2, saved);
     var disabled = status(id, 3, republished);
-    assertEquals(3, ((Number) repository.definition("dev_test", id).get("status")).intValue(), "persisted native Flow status");
+    assertEquals(3, ((Number) approvalFlowDefinitionRepository.get("dev_test", id).get("status")).intValue(), "persisted native Flow status");
     assertEquals(3, disabled.get("status"));
     assertEquals(3, JsonUtils.parseToMap(call("get_app_approval_flow", Map.of("appId", "dev_test", "flowId", id))).get("status"));
   }
@@ -176,7 +176,7 @@ class AppApprovalToolsTest {
     var body = object(object(JsonUtils.parseToMap(call("get_app_approval_capabilities", Map.of("appId", "dev_test"))).get("examples")).get("simple"));
     var draft = createDraft(body);
     String id = draft.get("flow_module_id").toString();
-    var readonly = keys.create(new CreateApiKeyRequest("read-only", "dev_test", true));
+    var readonly = apiKeyService.create(new CreateApiKeyRequest("read-only", "dev_test", true));
     keyIds.add(readonly.getId());
     key = readonly.getKey();
     assertFalse(call("get_app_approval_flow", Map.of("appId", "dev_test", "flowId", id)).startsWith("Error:"));

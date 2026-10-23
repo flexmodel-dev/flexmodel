@@ -3,7 +3,6 @@ package dev.flexmodel.auditlog;
 import dev.flexmodel.codegen.entity.AuditLog;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Direction;
-import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,7 +23,8 @@ public class AuditLogFmRepository extends AbstractRepository implements AuditLog
 
   @Override
   public AuditLog save(String projectId, AuditLog log) {
-    try (Session session = getProjectSession(projectId)) {
+    log.setProjectId(projectId);
+    try (Session session = openSession()) {
       session.dsl().mergeInto(AuditLog.class).values(log).execute();
     }
     return log;
@@ -32,10 +32,10 @@ public class AuditLogFmRepository extends AbstractRepository implements AuditLog
 
   @Override
   public List<AuditLog> find(String projectId, Predicate filter, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(AuditLog.class)
-        .where(filter)
+        .where(auditLog.projectId.eq(projectId).and(filter))
         .page(page, size)
         .orderBy(auditLog.createdAt, Direction.DESC)
         .execute();
@@ -44,10 +44,10 @@ public class AuditLogFmRepository extends AbstractRepository implements AuditLog
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(AuditLog.class)
-        .where(filter)
+        .where(auditLog.projectId.eq(projectId).and(filter))
         .count();
     }
   }
@@ -57,10 +57,10 @@ public class AuditLogFmRepository extends AbstractRepository implements AuditLog
     if (traceId == null || traceId.isEmpty()) {
       return List.of();
     }
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(AuditLog.class)
-        .where(Expressions.TRUE.and(auditLog.traceId.eq(traceId)))
+        .where(auditLog.projectId.eq(projectId).and(auditLog.traceId.eq(traceId)))
         .orderBy(auditLog.createdAt, Direction.DESC)
         .page(1, limit)
         .execute();
@@ -69,10 +69,10 @@ public class AuditLogFmRepository extends AbstractRepository implements AuditLog
 
   @Override
   public void delete(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl()
         .deleteFrom(AuditLog.class)
-        .where(filter)
+        .where(auditLog.projectId.eq(projectId).and(filter))
         .execute();
     }
   }

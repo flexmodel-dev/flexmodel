@@ -62,6 +62,7 @@ public class TriggerDataChangedEventListener implements EventListener {
     try {
       String groupName = event.getSchemaName() + "_" + event.getModelName();
       Project project = projectRepository.findProjectByDatabaseName(event.getSchemaName());
+      if (project == null) return;
       String projectId = project.getId();
       // 最多支持触发100个事件
       List<Trigger> triggers = triggerRepository.find(projectId,
@@ -99,6 +100,7 @@ public class TriggerDataChangedEventListener implements EventListener {
     try {
       String groupName = event.getSchemaName() + "_" + event.getModelName();
       Project project = projectRepository.findProjectByDatabaseName(event.getSchemaName());
+      if (project == null) return;
       String projectId = project.getId();
       // 最多支持触发100个事件
       List<Trigger> triggers = triggerRepository.find(projectId,

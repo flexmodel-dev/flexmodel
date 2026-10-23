@@ -15,12 +15,12 @@ import java.util.Map;
 @ApplicationScoped
 public class ApprovalCapabilities {
   @Inject
-  AppFormService forms;
+  AppFormService appFormService;
   @Inject
-  ApprovalFlowService flows;
+  ApprovalFlowService approvalFlowService;
 
   public Map<String, Object> describe(String appId) {
-    var availableForms = forms.findForms(appId).stream().filter(form -> !form.builtin()).toList();
+    var availableForms = appFormService.findForms(appId).stream().filter(form -> !form.builtin()).toList();
     String formName = availableForms.isEmpty() ? "replace_with_form_name" : availableForms.getFirst().name();
     var form = Map.of("kind", "app", "name", formName);
     var rule = Map.of("id", "initiator", "source", "initiator", "values", List.of(), "scope", "self", "includeChildren", false);
@@ -72,7 +72,7 @@ public class ApprovalCapabilities {
       "bindingKind", List.of("literal", "variable"), "valueType", List.of("text", "number", "boolean"),
       "queryMode", List.of("one", "many")));
     result.put("forms", availableForms);
-    result.put("subflows", flows.list(appId).stream().map(flow -> Map.of(
+    result.put("subflows", approvalFlowService.list(appId).stream().map(flow -> Map.of(
       "flow_module_id", flow.get("id"), "flow_name", flow.get("name"), "status", flow.get("status"))).toList());
     result.put("examples", Map.of(
       "simple", example(formName, List.of(node("review", "审批", approval))),

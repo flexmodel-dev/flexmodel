@@ -1,6 +1,11 @@
 package dev.flexmodel.approval;
 
+import dev.flexmodel.codegen.entity.ApprovalInstance;
+import dev.flexmodel.codegen.entity.ApprovalTask;
+import dev.flexmodel.codegen.entity.ApprovalWait;
+import dev.flexmodel.codegen.entity.RuntimeMessage;
 import dev.flexmodel.common.*;
+import dev.flexmodel.common.messaging.RuntimeMessageRepository;
 import dev.flexmodel.directory.DirectoryService;
 import dev.flexmodel.common.authz.PermissionHelper;
 import dev.flexmodel.flow.event.*;
@@ -15,6 +20,10 @@ import java.util.*;
 
 import static dev.flexmodel.approval.ApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
+import static dev.flexmodel.codegen.System.approvalInstance;
+import static dev.flexmodel.codegen.System.approvalTask;
+import static dev.flexmodel.codegen.System.approvalWait;
+import static dev.flexmodel.codegen.System.runtimeMessage;
 import static dev.flexmodel.query.Expressions.field;
 
 /**
@@ -23,21 +32,29 @@ import static dev.flexmodel.query.Expressions.field;
 @ApplicationScoped
 public class ApprovalService implements DurableFlowListener {
   @Inject
-  dev.flexmodel.notification.NotificationService notifications;
+  dev.flexmodel.notification.NotificationService notificationService;
   @Inject
-  ApprovalRepository repository;
+  ApprovalInstanceRepository approvalInstanceRepository;
+  @Inject
+  ApprovalTaskRepository approvalTaskRepository;
+  @Inject
+  ApprovalWaitRepository approvalWaitRepository;
+  @Inject
+  ApprovalFlowDeploymentRepository approvalFlowDeploymentRepository;
+  @Inject
+  RuntimeMessageRepository runtimeMessageRepository;
   @Inject
   ApprovalFlowState state;
   @Inject
   ApprovalRuntime runtime;
   @Inject
-  DirectoryService directory;
+  DirectoryService directoryService;
   @Inject
   ProjectUnitOfWork transactions;
   @Inject
   SessionContext current;
   @Inject
-  ProjectRepository projects;
+  ProjectRepository projectRepository;
 
   @Override
   public void onEvent(String appId, String eventId, String routingKey, Map<String, Object> event) {
@@ -46,19 +63,19 @@ public class ApprovalService implements DurableFlowListener {
     Map<String, Object> run = runtime.eventRun(appId, event);
     if (run == null || !Set.of("RUNNING", "SUBMITTING").contains(text(run, "status"))) return;
     String taskId = text(event, "nodeInstanceId");
-    if (repository.optional(appId, "f_approval_wait", taskId) != null) return;
+    if (approvalWaitRepository.find(appId, taskId) != null) return;
     Map<String, Object> node = runtime.node(appId, run, text(event, "nodeKey"));
     Map<String, Object> cfg = config(node), variables = object(event.get("variables"));
-    List<String> members = directory.resolve(objects(cfg.get("rules")), text(run, "initiator"), variables);
+    List<String> members = directoryService.resolve(objects(cfg.get("rules")), text(run, "initiator"), variables);
     if (members.isEmpty())
       throw new ValidationException("审批节点未解析出有效执行人：" + text(object(node.get("data")), "title"));
     String mode = text(cfg, "signMode");
-    repository.insert(appId, "f_approval_wait", Map.of("id", taskId, "run_id", text(run, "id"), "members", members, "status", "WAITING", "created_at", LocalDateTime.now()));
+    approvalWaitRepository.insert(appId, Map.of("id", taskId, "run_id", text(run, "id"), "members", members, "status", "WAITING", "created_at", LocalDateTime.now()));
     for (int i = 0; i < members.size(); i++) {
-      repository.insert(appId, "f_approval_task", Map.of("id", taskId + ":" + i, "wait_id", taskId, "run_id", text(run, "id"), "user_id", members.get(i),
+      approvalTaskRepository.insert(appId, Map.of("id", taskId + ":" + i, "wait_id", taskId, "run_id", text(run, "id"), "user_id", members.get(i),
         "position", i, "status", mode.equals("sequential") && i > 0 ? "WAITING" : "PENDING", "created_at", LocalDateTime.now()));
       if (!mode.equals("sequential") || i == 0)
-        notifications.pending(appId, text(run, "id"), taskId + ":" + i, members.get(i), text(object(node.get("data")), "title"));
+        notificationService.pending(appId, text(run, "id"), taskId + ":" + i, members.get(i), text(object(node.get("data")), "title"));
     }
   }
 
@@ -67,13 +84,13 @@ public class ApprovalService implements DurableFlowListener {
       throw new ValidationException("签核参数无效");
     String actor = current.getUserId();
     if (!current.isAuthenticatedUser()) throw new ForbiddenException("请使用个人账号登录后签核");
-    if (objects(directory.directory().get("members")).stream().noneMatch(member -> text(member, "id").equals(actor)))
+    if (objects(directoryService.directory().get("members")).stream().noneMatch(member -> text(member, "id").equals(actor)))
       throw new ForbiddenException("需要有效用户登录后签核");
-    var initialTask = repository.get(appId, "f_approval_task", id);
+    var initialTask = approvalTaskRepository.get(appId, id);
     String root = state.rootId(appId, state.run(appId, text(initialTask, "run_id")));
-    return transactions.execute(appId, () -> {
+    return transactions.executePlatform(appId, () -> {
       state.lock(appId, text(initialTask, "run_id"), root);
-      var task = repository.get(appId, "f_approval_task", id);
+      var task = approvalTaskRepository.get(appId, id);
       if (!actor.equals(text(task, "user_id"))) throw new ForbiddenException("只能处理自己的待办");
       if (key.equals(text(task, "request_key"))) {
         if (!decision.equals(text(task, "decision")) || !comment.equals(text(task, "comment")))
@@ -81,37 +98,37 @@ public class ApprovalService implements DurableFlowListener {
         return task;
       }
       if (!text(task, "status").equals("PENDING")) throw new ClientErrorException("该任务已处理或尚未轮到你审批", 409);
-      var wait = state.waitView(appId, repository.get(appId, "f_approval_wait", text(task, "wait_id")));
+      var wait = state.waitView(appId, approvalWaitRepository.get(appId, text(task, "wait_id")));
       var run = state.run(appId, text(task, "run_id"));
       if (!text(wait, "status").equals("WAITING") || !text(run, "status").equals("RUNNING"))
         throw new ClientErrorException("审批已结束或暂停", 409);
-      repository.update(appId, "f_approval_task", id, Map.of("status", "DONE", "decision", decision, "comment", comment, "request_key", key, "decided_at", LocalDateTime.now()));
-      var tasks = repository.list(appId, "f_approval_task", field("wait_id").eq(text(wait, "id"))).stream()
+      approvalTaskRepository.update(appId, id, Map.of("status", "DONE", "decision", decision, "comment", comment, "request_key", key, "decided_at", LocalDateTime.now()));
+      var waitTasks = approvalTaskRepository.findByWaitId(appId, text(wait, "id")).stream()
         .sorted(Comparator.comparingInt(item -> ((Number) item.get("position")).intValue())).toList();
-      String outcome = SignPolicy.outcome(text(wait, "sign_mode"), tasks.stream().map(item -> text(item, "decision")).toList());
+      String outcome = SignPolicy.outcome(text(wait, "sign_mode"), waitTasks.stream().map(item -> text(item, "decision")).toList());
       if (outcome.equals("WAITING")) {
         if (text(wait, "sign_mode").equals("sequential"))
-          tasks.stream().filter(item -> text(item, "status").equals("WAITING")).findFirst()
+          waitTasks.stream().filter(item -> text(item, "status").equals("WAITING")).findFirst()
             .ifPresent(next -> {
-              repository.update(appId, "f_approval_task", text(next, "id"), Map.of("status", "PENDING"));
-              notifications.pending(appId, text(run, "id"), text(next, "id"), text(next, "user_id"), text(wait, "title"));
+              approvalTaskRepository.update(appId, text(next, "id"), Map.of("status", "PENDING"));
+              notificationService.pending(appId, text(run, "id"), text(next, "id"), text(next, "user_id"), text(wait, "title"));
             });
       } else {
-        repository.update(appId, "f_approval_wait", text(wait, "id"), Map.of("status", outcome));
-        for (var peer : tasks)
+        approvalWaitRepository.update(appId, text(wait, "id"), Map.of("status", outcome));
+        for (var peer : waitTasks)
           if (Set.of("PENDING", "WAITING").contains(text(peer, "status")))
-            repository.update(appId, "f_approval_task", text(peer, "id"), Map.of("status", "CANCELLED"));
+            approvalTaskRepository.update(appId, text(peer, "id"), Map.of("status", "CANCELLED"));
         if (outcome.equals("REJECTED")) runtime.terminate(appId, run, "REJECTED");
         else {
           Map<String, Object> variables = new LinkedHashMap<>(state.variables(appId, run));
           Map<String, Object> nodeMembers = new LinkedHashMap<>(object(variables.get("nodeMembers")));
-          nodeMembers.put(text(wait, "node_key"), tasks.stream().filter(item -> text(item, "decision").equals("approve")).map(item -> text(item, "user_id")).toList());
+          nodeMembers.put(text(wait, "node_key"), waitTasks.stream().filter(item -> text(item, "decision").equals("approve")).map(item -> text(item, "user_id")).toList());
           variables.put("nodeMembers", nodeMembers);
-          runtime.log(appId, text(wait, "id"), text(run, "id"), runtime.node(appId, run, text(wait, "node_key")), object(run.get("snapshot")), Map.of("members", wait.get("members"), "decisions", tasks), variables);
+          runtime.log(appId, text(wait, "id"), text(run, "id"), runtime.node(appId, run, text(wait, "node_key")), object(run.get("snapshot")), Map.of("members", wait.get("members"), "decisions", waitTasks), variables);
           runtime.complete(appId, run, text(wait, "id"), variables);
         }
       }
-      return repository.get(appId, "f_approval_task", id);
+      return approvalTaskRepository.get(appId, id);
     });
   }
 
@@ -119,14 +136,14 @@ public class ApprovalService implements DurableFlowListener {
     if (!current.isAuthenticatedUser()) throw new ForbiddenException("请使用个人账号查看审批任务");
     String actor = current.getUserId();
     List<Map<String, Object>> result = new ArrayList<>();
-    for (var project : projects.findTopLevelProjects()) {
+    for (var project : projectRepository.findTopLevelProjects()) {
       if (appId != null && !appId.isBlank() && !appId.equals(project.getId())) continue;
       if ("default".equals(project.getId())) continue;
-      for (var task : repository.list(project.getId(), "f_approval_task", field("user_id").eq(actor))) {
+      for (var task : approvalTaskRepository.findByUser(project.getId(), actor)) {
         if (!(view.equals("handled") ? text(task, "status").equals("DONE") : text(task, "status").equals("PENDING")))
           continue;
         var run = state.run(project.getId(), text(task, "run_id"));
-        var wait = state.waitView(project.getId(), repository.get(project.getId(), "f_approval_wait", text(task, "wait_id")));
+        var wait = state.waitView(project.getId(), approvalWaitRepository.get(project.getId(), text(task, "wait_id")));
         Map<String, Object> item = summary(project.getId(), project.getName(), run);
         item.putAll(Map.of("taskId", text(task, "id"), "nodeTitle", text(wait, "title"), "taskStatus", text(task, "status"), "decision", text(task, "decision")));
         if (text(item, "title").contains(search) || text(item, "nodeTitle").contains(search)) result.add(item);
@@ -138,10 +155,10 @@ public class ApprovalService implements DurableFlowListener {
   public List<Map<String, Object>> initiated(String appId, String search) {
     if (!current.isAuthenticatedUser()) throw new ForbiddenException("请使用个人账号查看审批实例");
     List<Map<String, Object>> result = new ArrayList<>();
-    for (var project : projects.findTopLevelProjects()) {
+    for (var project : projectRepository.findTopLevelProjects()) {
       if ("default".equals(project.getId()) || appId != null && !appId.isBlank() && !appId.equals(project.getId()))
         continue;
-      for (var run : repository.list(project.getId(), "f_approval_instance", field("initiator").eq(current.getUserId())))
+      for (var run : approvalInstanceRepository.findByInitiator(project.getId(), current.getUserId()))
         if (text(run, "parent_task_id").isEmpty()) {
           var item = summary(project.getId(), project.getName(), run);
           if (text(item, "title").contains(search)) result.add(item);
@@ -156,25 +173,34 @@ public class ApprovalService implements DurableFlowListener {
 
   public Map<String, Object> summary(String appId, String appName, Map<String, Object> run) {
     run = state.run(appId, text(run, "id"));
-    var deployment = repository.deployment(appId, text(run, "flow_deploy_id"));
+    var deployment = approvalFlowDeploymentRepository.get(appId, text(run, "flow_deploy_id"));
     return new LinkedHashMap<>(Map.ofEntries(Map.entry("id", text(run, "id")), Map.entry("appId", appId), Map.entry("appName", appName), Map.entry("title", text(deployment, "flow_name")),
       Map.entry("formName", text(run, "form_name")), Map.entry("recordId", text(run, "record_id")), Map.entry("initiator", text(run, "initiator")), Map.entry("status", text(run, "status")), Map.entry("createdAt", run.get("created_at"))));
   }
 
+  public List<Map<String, Object>> recordHistory(String appId, String form, String recordId) {
+    return approvalInstanceRepository.findByFormRecord(appId, form, recordId).stream()
+      .filter(run -> text(run, "parent_task_id").isEmpty())
+      .map(run -> summary(appId, "", run)).toList();
+  }
+
   public Map<String, Object> detail(String appId, String id) {
     var run = state.run(appId, id);
-    boolean involved = current.getUserId() != null && (current.getUserId().equals(text(run, "initiator")) || !repository.list(appId, "f_approval_task", field("run_id").eq(id).and(field("user_id").eq(current.getUserId()))).isEmpty());
+    boolean involved = current.getUserId() != null && (current.getUserId().equals(text(run, "initiator"))
+      || !approvalTaskRepository.findByRunAndUser(appId, id, current.getUserId()).isEmpty());
     var parent = run;
     while (!involved && !text(parent, "parent_task_id").isBlank()) {
       parent = state.parent(appId, parent);
-      involved = Objects.equals(current.getUserId(), text(parent, "initiator")) || !repository.list(appId, "f_approval_task", field("run_id").eq(text(parent, "id")).and(field("user_id").eq(current.getUserId()))).isEmpty();
+      involved = Objects.equals(current.getUserId(), text(parent, "initiator"))
+        || !approvalTaskRepository.findByRunAndUser(appId, text(parent, "id"), current.getUserId()).isEmpty();
     }
     if (!current.isAuthenticatedUser() || !involved && !admin()) throw new ForbiddenException("无权查看该审批");
     Map<String, Object> result = summary(appId, "", run);
     result.putAll(Map.of("snapshot", run.get("snapshot"), "variables", state.variables(appId, run), "error", text(run, "error"),
-      "tasks", repository.list(appId, "f_approval_task", field("run_id").eq(id)), "waits", repository.list(appId, "f_approval_wait", field("run_id").eq(id)).stream().map(wait -> state.waitView(appId, wait)).toList(),
+      "tasks", approvalTaskRepository.findByRunId(appId, id),
+      "waits", approvalWaitRepository.findByRunId(appId, id).stream().map(wait -> state.waitView(appId, wait)).toList(),
       "logs", state.logs(appId, run), "children", state.children(appId, run).stream().map(child -> summary(appId, "", child)).toList()));
-    List<Map<String, Object>> failures = repository.list(appId, "f_runtime_message", field("state").ne("DONE")).stream().filter(message -> {
+    List<Map<String, Object>> failures = runtimeMessageRepository.findUndone(appId).stream().filter(message -> {
       var payload = object(message.get("payload"));
       return text(payload, "instanceId").equals(text(run, "flow_instance_id")) && !text(run, "flow_instance_id").isEmpty()
         || text(payload, "flowInstanceId").equals(text(run, "flow_instance_id")) && !text(run, "flow_instance_id").isEmpty()
@@ -190,11 +216,11 @@ public class ApprovalService implements DurableFlowListener {
     if (!current.isAuthenticatedUser()) return false;
     if (current.getPermissions() != null)
       return PermissionHelper.hasPermission(current.getPermissions(), "flow:deploy");
-    return objects(directory.directory().get("members")).stream().anyMatch(member -> text(member, "id").equals(current.getUserId()) && strings(member.get("roleIds")).contains("admin"));
+    return objects(directoryService.directory().get("members")).stream().anyMatch(member -> text(member, "id").equals(current.getUserId()) && strings(member.get("roleIds")).contains("admin"));
   }
 
   private List<Map<String, Object>> notificationDelivery(String app, String id) {
-    return repository.list(app, "f_runtime_message", field("type").eq("notification.deliver").and(field("state").ne("DONE"))).stream()
+    return runtimeMessageRepository.findByTypeUndone(app, "notification.deliver").stream()
       .filter(message -> text(object(message.get("payload")), "instance_id").equals(id))
       .map(message -> Map.of("messageId", message.get("message_id"), "state", message.get("state"), "attempts", message.get("attempts"), "error", text(message, "error"))).toList();
   }
@@ -202,12 +228,12 @@ public class ApprovalService implements DurableFlowListener {
   public void retryNotifications(String app, String id) {
     if (!admin()) throw new ForbiddenException("需要流程管理权限");
     String root = state.rootId(app, state.run(app, id));
-    transactions.execute(app, () -> {
+    transactions.executePlatform(app, () -> {
       state.lock(app, id, root);
       for (var failure : notificationDelivery(app, id))
         if (text(failure, "state").equals("FAILED")) {
-          for (var message : repository.list(app, "f_runtime_message", field("message_id").eq(failure.get("messageId"))))
-            repository.update(app, "f_runtime_message", text(message, "id"), Map.of("state", "PENDING", "attempts", 0, "error", "", "available_at", LocalDateTime.now()));
+          for (var message : runtimeMessageRepository.findByMessageId(app, String.valueOf(failure.get("messageId"))))
+            runtimeMessageRepository.update(app, text(message, "id"), Map.of("state", "PENDING", "attempts", 0, "error", "", "available_at", LocalDateTime.now()));
         }
       return null;
     });
@@ -216,7 +242,7 @@ public class ApprovalService implements DurableFlowListener {
   public void manage(String appId, String id, String action) {
     if (!admin()) throw new ForbiddenException("需要流程管理权限");
     String root = state.rootId(appId, state.run(appId, id));
-    transactions.execute(appId, () -> {
+    transactions.executePlatform(appId, () -> {
       var run = state.lock(appId, id, root);
       if (Set.of("APPROVED", "REJECTED", "TERMINATED").contains(text(run, "status")))
         throw new ClientErrorException("审批已结束", 409);
@@ -225,8 +251,8 @@ public class ApprovalService implements DurableFlowListener {
         var detail = detail(appId, id);
         for (var failure : objects(detail.get("delivery")))
           if (text(failure, "state").equals("FAILED")) {
-            for (var message : repository.list(appId, "f_runtime_message", field("message_id").eq(failure.get("messageId"))))
-              repository.update(appId, "f_runtime_message", text(message, "id"), Map.of("state", "PENDING", "attempts", 0, "available_at", LocalDateTime.now()));
+            for (var message : runtimeMessageRepository.findByMessageId(appId, String.valueOf(failure.get("messageId"))))
+              runtimeMessageRepository.update(appId, text(message, "id"), Map.of("state", "PENDING", "attempts", 0, "available_at", LocalDateTime.now()));
           }
       } else throw new ValidationException("操作无效");
       return null;

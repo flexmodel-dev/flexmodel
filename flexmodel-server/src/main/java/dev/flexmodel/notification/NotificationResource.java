@@ -15,16 +15,14 @@ public class NotificationResource {
   @Inject
   SessionContext current;
   @Inject
-  NotificationRepository repository;
+  NotificationService notificationService;
   @Inject
   NotificationStream streams;
   @Inject
-  ApprovalService approvals;
-  @Inject
-  dev.flexmodel.project.ProjectRepository projects;
+  ApprovalService approvalsService;
 
   private String user() {
-    if (!current.isAuthenticatedUser() || !repository.activeUser(current.getUserId()))
+    if (!current.isAuthenticatedUser() || !notificationService.activeUser(current.getUserId()))
       throw new ForbiddenException("请使用有效个人账号查看通知");
     return current.getUserId();
   }
@@ -34,25 +32,24 @@ public class NotificationResource {
                      @QueryParam("appId") String app, @QueryParam("page") @DefaultValue("1") int page, @QueryParam("size") @DefaultValue("30") int size) {
     if (!Set.of("unread", "all").contains(status) || category != null && !category.isBlank() && !Set.of("approval", "workflow").contains(category))
       throw new BadRequestException("通知筛选参数无效");
-    return repository.list(user(), status, category, app, page, size);
+    return notificationService.list(user(), status, category, app, page, size);
   }
 
   @GET
   @Path("summary")
   public Object summary() {
-    return repository.summary(user());
+    return notificationService.summary(user());
   }
 
   @GET
   @Path("{id}")
   public Object detail(@PathParam("id") String id) {
-    var result = repository.detail(user(), id);
-    result.put("canNavigate", false);
-    if (result.get("instanceId") != null && !result.get("instanceId").toString().isBlank() && projects.findProject(result.get("appId").toString()) != null) {
+    var result = notificationService.detail(user(), id);
+    if (Boolean.TRUE.equals(result.get("canNavigate"))) {
       try {
-        result.put("approval", approvals.detail(result.get("appId").toString(), result.get("instanceId").toString()));
-        result.put("canNavigate", true);
+        result.put("approval", approvalsService.detail(result.get("appId").toString(), result.get("instanceId").toString()));
       } catch (dev.flexmodel.common.NotFoundException | ForbiddenException | IllegalArgumentException ignored) {
+        result.put("canNavigate", false);
       }
     }
     return result;
@@ -61,7 +58,7 @@ public class NotificationResource {
   @PUT
   @Path("{id}/read")
   public Object read(@PathParam("id") String id) {
-    return Map.of("updated", repository.read(user(), id, null, null));
+    return Map.of("updated", notificationService.read(user(), id, null, null));
   }
 
   @POST
@@ -72,7 +69,7 @@ public class NotificationResource {
     String category = filters.get("category");
     if (category != null && !category.isBlank() && !Set.of("approval", "workflow").contains(category))
       throw new BadRequestException("通知分类无效");
-    return Map.of("updated", repository.read(user(), null, category, filters.get("appId")));
+    return Map.of("updated", notificationService.read(user(), null, category, filters.get("appId")));
   }
 
   @GET

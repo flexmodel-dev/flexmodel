@@ -1010,6 +1010,16 @@
       ],
       "status": "done",
       "evidence": "AppRecordFormModal 主体改为 space-y-4 布局：主表单字段（SECTION+FIELD）包进 rounded-xl border bg-card p-4 shadow-sm 卡片，子表单移到卡片外；entries 按 FormLayoutEntry 类型收窄预过滤（mainEntries/subformEntries），与 AppRecordDrawer 布局逻辑一致。验证：npm run build 通过；npm test 通过（27 tests）；Playwright 实测审批中心已处理（已拒绝→可编辑表单）：卡片渲染、主表单 11 字段在卡片内、BOM明细子表在卡片外。"
+    },
+    {
+      "id": "feat-103",
+      "name": "System - project.fml 合并为平台级表",
+      "description": "原 project.fml 中的流程、审批、触发器、作业日志、函数、存储、认证提供商、Pages、API 日志、审计日志、Outbox 等系统表全部上收为平台级表：统一在 platform.fml 声明并存于 system schema，每表增加 project_id 并按 project_id 重建唯一索引与查询索引；删除 project.fml 及项目库初始化路径。",
+      "dependencies": [
+        "feat-102"
+      ],
+      "status": "done",
+      "evidence": "platform.fml 合并全部原 project.fml 模型并增加 project_id；唯一约束改为 [project_id, ...]（如 UQ_RUNTIME_MESSAGE、UQ_APPROVAL_INSTANCE_REQUEST、UQ_FLOW_DEFINITION_MODULE、UQ_FUNCTION_PROJECT_NAME、UQ_PAGE_SITE_PROJECT），f_auth_provider_config 改为 uuid 主键 + [project_id, name] 唯一，f_page_site 每项目唯一。删除 project.fml 与 SchemaInitializer；pom.xml 的 system schema 仅导入 platform.fml，dev_test schema 仅导入 dev_test.fml；dev_test 平台表种子数据迁入 platform.fml 并携带 project_id=dev_test。Java 访问层统一改为 AbstractRepository.getPlatformSession + project_id 过滤（flow、approval、scheduling、functions、storage、pages、auditlog、apilog、projectauth、ReliableMessages）；新增 ProjectUnitOfWork.executePlatform 与平台事务复用，NotificationRepository 复用平台事务；ProcessEngineImpl、ApprovalFlowService、ApprovalService 的流程/审批写操作改为平台事务；项目/分支删除新增 ProjectPlatformDataCleaner 清理平台表数据。审批 Repository 改为实体类入参（ApprovalInstance.class 等）+ System 字段元模型，更新/删除使用 DSL 的 Class API；Resource 不再注入 Repository（记录审批历史、通知、系统选项、函数模板分别经 ApprovalService、NotificationService、SystemOptionService、FunctionService）。按用户要求不考虑历史兼容，未提供旧库数据迁移。随后按模型拆分出 ApprovalInstanceRepository、ApprovalTaskRepository、ApprovalWaitRepository、ApprovalRecordLockRepository、ApprovalFlowDefinitionRepository、ApprovalFlowDeploymentRepository、ApprovalInstanceDataRepository、ApprovalNodeInstanceRepository、ApprovalNodeInstanceLogRepository 与 RuntimeMessageRepository，每个 Repository 内部自动附加 project_id 过滤且只暴露语义化查询方法，删除 ApprovalRepository 与 AbstractPlatformRepository；Repository 注入字段统一命名为 XxxRepository 形式。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test-compile -pl flexmodel-server -am -DskipTests 通过（按用户要求未执行测试）；mvn test -pl flexmodel-engine 通过；ApprovalFlowResourceTest 在本地 SQLite 环境下仍有失败，待后续修复。"
     }
   ]
 }

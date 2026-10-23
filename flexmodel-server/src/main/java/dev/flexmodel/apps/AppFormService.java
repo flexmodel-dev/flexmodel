@@ -1,5 +1,6 @@
 package dev.flexmodel.apps;
 
+import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormCreateRequest;
 import dev.flexmodel.apps.dto.AppFormItemRecord;
@@ -17,7 +18,13 @@ import dev.flexmodel.apps.dto.AppFormUpdateRequest;
 import dev.flexmodel.apps.dto.AppFormViewTabRecord;
 import dev.flexmodel.apps.dto.AppMenuRecord;
 import dev.flexmodel.apps.dto.AppMenuTargetRecord;
+import dev.flexmodel.codegen.entity.Department;
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.codegen.entity.Role;
+import dev.flexmodel.codegen.entity.RoleResource;
+import dev.flexmodel.codegen.entity.User;
+import dev.flexmodel.codegen.entity.UserDepartment;
+import dev.flexmodel.codegen.entity.UserRole;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
@@ -86,10 +93,10 @@ public class AppFormService {
   private static final Set<String> BUILTIN_FIELDS = Set.of(
     "id", "created_by", "updated_by", "created_at", "updated_at");
   private static final Set<String> RESERVED_SYSTEM_FORM_NAMES = Set.of(
-    "f_user", "f_department", "f_role", "f_user_department", "f_user_role",
-    "f_role_resource");
+    ReflectionUtils.getModelNameFromClass(User.class), ReflectionUtils.getModelNameFromClass(Department.class), ReflectionUtils.getModelNameFromClass(Role.class),
+    ReflectionUtils.getModelNameFromClass(UserDepartment.class), ReflectionUtils.getModelNameFromClass(UserRole.class), ReflectionUtils.getModelNameFromClass(RoleResource.class));
   private static final Set<String> BUILTIN_SYSTEM_FORM_NAMES = Set.of(
-    "f_user", "f_department", "f_role");
+    ReflectionUtils.getModelNameFromClass(User.class), ReflectionUtils.getModelNameFromClass(Department.class), ReflectionUtils.getModelNameFromClass(Role.class));
   private static final Set<String> FIELD_TYPES = Set.of(
     "TEXT", "NTEXT", "PHONE", "EMAIL", "URL", "SERIES", "PICKLIST", "SELECT",
     "NUMBER", "DECIMAL", "DATE", "DATETIME", "TIME", "CLASSIFICATION",

@@ -183,17 +183,13 @@
             <schemas>
               <schema>
                 <name>system</name>
-                <import-script>src/main/resources/platform.fml,
-                  src/main/resources/project.fml
-                </import-script>
+                <import-script>src/main/resources/platform.fml</import-script>
                 <packageName>dev.flexmodel.codegen</packageName>
                 <replaceString>^f_ei_|^f_em_|^f_|^em_|^ei_</replaceString>
               </schema>
               <schema>
                 <name>dev_test</name>
-                <import-script>src/main/resources/project.fml,
-                  src/main/resources/dev_test.fml
-                </import-script>
+                <import-script>src/main/resources/dev_test.fml</import-script>
                 <packageName>dev.flexmodel.test.codegen</packageName>
                 <replaceString>^f_ei_|^f_em_|^f_</replaceString>
               </schema>

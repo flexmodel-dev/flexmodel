@@ -38,7 +38,7 @@ public class ServerSessions {
       if ("SQLite".equalsIgnoreCase(connection.getMetaData().getDatabaseProductName())) {
         // Development-only contention tolerance; never retry business operations implicitly.
         try (var statement = connection.createStatement()) {
-          statement.execute("PRAGMA busy_timeout=1000");
+          statement.execute("PRAGMA busy_timeout=5000");
         }
       } else connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
       SqlContext context = new SqlContext(schema, new NamedParameterSqlExecutor(connection), factory.getModelRegistry(), factory);
@@ -55,6 +55,6 @@ public class ServerSessions {
 
   public static ManagedSession managed(Session session) {
     if (session instanceof ManagedSession managed) return managed;
-    throw new IllegalArgumentException("审批事务必须使用 ServerSessions 创建的会话");
+    throw new IllegalArgumentException("服务端事务必须使用 ServerSessions 创建的会话");
   }
 }

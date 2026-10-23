@@ -23,7 +23,7 @@ public class McpToolAccess {
   @Inject
   SessionContext current;
   @Inject
-  ProjectService projects;
+  ProjectService projectService;
 
   public void requireDirectory() {
     AuthApiKey key = request.get(API_KEY_ATTRIBUTE);
@@ -45,6 +45,6 @@ public class McpToolAccess {
       throw new ForbiddenException("Read-only API Key cannot modify approval flows");
     }
     current.setProjectId(appId);
-    current.setProjectDatabaseName(projects.resolveDatabaseName(appId));
+    current.setProjectDatabaseName(projectService.resolveDatabaseName(appId));
   }
 }

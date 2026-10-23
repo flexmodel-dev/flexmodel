@@ -1,6 +1,13 @@
 package dev.flexmodel.settings;
 
+import dev.flexmodel.reflect.ReflectionUtils;
+import dev.flexmodel.codegen.entity.AuthProviderConfig;
+import dev.flexmodel.codegen.entity.Bucket;
+import dev.flexmodel.codegen.entity.FlowDefinition;
+import dev.flexmodel.codegen.entity.FlowDeployment;
+import dev.flexmodel.codegen.entity.Function;
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.codegen.entity.Trigger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,12 +41,12 @@ public final class ProjectLogSettings {
    * 默认审计资源白名单：仅这些配置定义表的增删改记审计日志。
    */
   public static final List<String> DEFAULT_AUDIT_RESOURCES = List.of(
-    "f_trigger",
-    "f_em_flow_definition",
-    "f_em_flow_deployment",
-    "f_function",
-    "f_bucket",
-    "f_auth_provider_config"
+    ReflectionUtils.getModelNameFromClass(Trigger.class),
+    ReflectionUtils.getModelNameFromClass(FlowDefinition.class),
+    ReflectionUtils.getModelNameFromClass(FlowDeployment.class),
+    ReflectionUtils.getModelNameFromClass(Function.class),
+    ReflectionUtils.getModelNameFromClass(Bucket.class),
+    ReflectionUtils.getModelNameFromClass(AuthProviderConfig.class)
   );
 
   private ProjectLogSettings() {

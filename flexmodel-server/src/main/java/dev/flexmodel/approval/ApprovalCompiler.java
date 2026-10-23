@@ -20,9 +20,9 @@ import static dev.flexmodel.common.Values.*;
 @ApplicationScoped
 public class ApprovalCompiler {
   @Inject
-  AppFormService forms;
+  AppFormService appFormService;
   @Inject
-  DirectoryService directory;
+  DirectoryService directoryService;
   private static final Set<String> KINDS = Set.of("start", "end", "approval", "notification", "gateway", "branch", "create", "update", "query", "delete", "subflow");
 
   public List<Map<String, String>> validate(String appId, Map<String, Object> flow, List<Map<String, Object>> flows) {
@@ -83,7 +83,7 @@ public class ApprovalCompiler {
             validateBinding(Map.of("kind", "variable", "value", variable), upstream, id, issues);
           if (Set.of("users", "roles", "organizations").contains(source)) {
             String section = source.equals("users") ? "members" : source;
-            Set<String> available = new HashSet<>(objects(directory.directory().get(section)).stream().map(item -> text(item, "id")).toList());
+            Set<String> available = new HashSet<>(objects(directoryService.directory().get(section)).stream().map(item -> text(item, "id")).toList());
             if (!available.containsAll(strings(rule.get("values"))))
               issue(issues, id, "选择的用户、角色或组织已失效，请重新选择");
           }
@@ -167,7 +167,7 @@ public class ApprovalCompiler {
   private AppFormResponse requireForm(String appId, Map<String, Object> ref, String id, List<Map<String, String>> issues) {
     try {
       if (!"app".equals(text(ref, "kind"))) throw new IllegalArgumentException();
-      var form = forms.findForm(appId, text(ref, "name"));
+      var form = appFormService.findForm(appId, text(ref, "name"));
       if (form.builtin()) throw new IllegalArgumentException();
       return form;
     } catch (Exception error) {

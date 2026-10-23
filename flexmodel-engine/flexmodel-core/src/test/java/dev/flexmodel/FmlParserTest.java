@@ -298,17 +298,21 @@ public class FmlParserTest {
     }
 
     @Test
-    void testParseProjectFml() throws Exception {
-        // 解析实际的 dev_test.fml 文件，验证包含复杂 JSON 的 seed 数据
-        java.io.InputStream is = getClass().getClassLoader().getResourceAsStream("dev_test.fml");
+    void testParsePlatformFml() throws Exception {
+      // 解析平台模型文件 platform.fml，验证包含复杂 JSON 的 seed 数据（流程模型 JSON 不能被截断）
+      java.io.InputStream is = getClass().getClassLoader().getResourceAsStream("platform.fml");
         if (is == null) {
-            // 尝试从 flexmodel-server 加载
-            java.nio.file.Path path = java.nio.file.Paths.get("../../flexmodel-server/src/main/resources/dev_test.fml");
+          // 尝试从 monorepo 的 flexmodel-server 模块加载
+          for (String candidate : List.of("../../flexmodel-server/src/main/resources/platform.fml",
+            "flexmodel-server/src/main/resources/platform.fml")) {
+            java.nio.file.Path path = java.nio.file.Paths.get(candidate);
             if (java.nio.file.Files.exists(path)) {
-                is = java.nio.file.Files.newInputStream(path);
+              is = java.nio.file.Files.newInputStream(path);
+              break;
             }
+          }
         }
-        assertNotNull(is, "dev_test.fml not found");
+      org.junit.jupiter.api.Assumptions.assumeTrue(is != null, "platform.fml 在独立引擎构建中不可用，跳过");
 
         ModelParser parser = new ModelParser(new java.io.InputStreamReader(is, "UTF-8"));
         List<ModelParser.ASTNode> ast = parser.CompilationUnit();
@@ -333,7 +337,7 @@ public class FmlParserTest {
                 + ", name=" + rec.get("flow_name")
                 + ", flow_model_len=" + fmVal.length());
         }
-        // dev_test.fml 的 f_em_flow_definition 应有 4 条记录（全 JSON 格式）
+      // platform.fml 的 f_em_flow_definition 应有 4 条记录（全 JSON 格式）
         assertEquals(4, flowDefSeed.records.size(), "Expected 4 flow definition records (all JSON format)");
 
         // 验证所有记录的 flow_model 字段被正确解析

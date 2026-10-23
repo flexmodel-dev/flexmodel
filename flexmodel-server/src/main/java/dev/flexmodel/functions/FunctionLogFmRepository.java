@@ -19,9 +19,9 @@ public class FunctionLogFmRepository extends AbstractRepository implements Funct
 
   @Override
   public List<FunctionLog> find(String projectId, Predicate filter, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(FunctionLog.class)
-        .where(filter)
+        .where(functionLog.projectId.eq(projectId).and(filter))
         .orderBy(functionLog.createdAt, Direction.DESC)
         .page(page, size)
         .execute();
@@ -30,20 +30,20 @@ public class FunctionLogFmRepository extends AbstractRepository implements Funct
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(FunctionLog.class)
-        .where(filter)
+        .where(functionLog.projectId.eq(projectId).and(filter))
         .count();
     }
   }
 
   @Override
   public void delete(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl()
         .deleteFrom(FunctionLog.class)
-        .where(filter)
+        .where(functionLog.projectId.eq(projectId).and(filter))
         .execute();
     }
   }

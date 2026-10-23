@@ -1,5 +1,11 @@
 package dev.flexmodel.directory;
 
+import dev.flexmodel.reflect.ReflectionUtils;
+import dev.flexmodel.codegen.entity.Department;
+import dev.flexmodel.codegen.entity.Role;
+import dev.flexmodel.codegen.entity.User;
+import dev.flexmodel.codegen.entity.UserDepartment;
+import dev.flexmodel.codegen.entity.UserRole;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
@@ -23,12 +29,12 @@ public class DirectoryService {
 
   public Map<String, Object> directory() {
     try (Session session = sessions.createSession()) {
-      List<Map<String, Object>> roles = session.data().findAll("f_role", new Query());
-      List<Map<String, Object>> organizations = session.data().findAll("f_department", new Query());
-      var userRoles = session.data().findAll("f_user_role", new Query());
-      var userDepartments = session.data().findAll("f_user_department", new Query());
+      List<Map<String, Object>> roles = session.data().findAll(ReflectionUtils.getModelNameFromClass(Role.class), new Query());
+      List<Map<String, Object>> organizations = session.data().findAll(ReflectionUtils.getModelNameFromClass(Department.class), new Query());
+      var userRoles = session.data().findAll(ReflectionUtils.getModelNameFromClass(UserRole.class), new Query());
+      var userDepartments = session.data().findAll(ReflectionUtils.getModelNameFromClass(UserDepartment.class), new Query());
       List<Map<String, Object>> members = new ArrayList<>();
-      for (var user : session.data().findAll("f_user", new Query()))
+      for (var user : session.data().findAll(ReflectionUtils.getModelNameFromClass(User.class), new Query()))
         if ("ACTIVE".equals(text(user, "status"))) {
           String id = text(user, "id");
           List<String> roleIds = userRoles.stream().filter(item -> id.equals(text(item, "user_id"))).map(item -> text(item, "role_id")).sorted().toList();

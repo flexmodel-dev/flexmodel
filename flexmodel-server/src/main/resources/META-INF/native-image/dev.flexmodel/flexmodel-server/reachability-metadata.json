@@ -6431,9 +6431,6 @@
   ],
   "resources": [
     {
-      "glob": "project.fml"
-    },
-    {
       "glob": "platform.fml"
     },
     {

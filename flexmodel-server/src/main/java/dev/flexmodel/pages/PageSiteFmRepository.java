@@ -18,17 +18,19 @@ public class PageSiteFmRepository extends AbstractRepository implements PageSite
 
   @Override
   public PageSite findByProjectId(String projectId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .select()
         .from(PageSite.class)
+        .where(pageSite.projectId.eq(projectId))
         .executeOne();
     }
   }
 
   @Override
   public PageSite save(String projectId, PageSite pageSite) {
-    try (Session session = getProjectSession(projectId)) {
+    pageSite.setProjectId(projectId);
+    try (Session session = openSession()) {
       session.dsl()
         .mergeInto(PageSite.class)
         .values(pageSite)
@@ -39,11 +41,11 @@ public class PageSiteFmRepository extends AbstractRepository implements PageSite
 
   @Override
   public List<PageSite> find(String projectId, Predicate filter, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .select()
         .from(PageSite.class)
-        .where(filter)
+        .where(pageSite.projectId.eq(projectId).and(filter))
         .page(page, size)
         .orderByDesc(pageSite.createdAt)
         .execute();
@@ -52,11 +54,11 @@ public class PageSiteFmRepository extends AbstractRepository implements PageSite
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .select()
         .from(PageSite.class)
-        .where(filter)
+        .where(pageSite.projectId.eq(projectId).and(filter))
         .count();
     }
   }

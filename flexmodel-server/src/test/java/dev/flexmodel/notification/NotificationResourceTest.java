@@ -32,7 +32,7 @@ class NotificationResourceTest {
   @Inject
   NotificationRepository repository;
   @Inject
-  NotificationService service;
+  NotificationService notificationService;
   @Inject
   dev.flexmodel.common.ProjectUnitOfWork transactions;
   @Inject
@@ -40,9 +40,9 @@ class NotificationResourceTest {
   @Inject
   SessionFactory sessions;
   @Inject
-  JwtService jwt;
+  JwtService jwtService;
   @Inject
-  dev.flexmodel.auth.service.ApiKeyService apiKeys;
+  dev.flexmodel.auth.service.ApiKeyService apiKeyService;
 
   String user() {
     String id = "notice_" + UUID.randomUUID().toString().replace("-", "");
@@ -53,7 +53,7 @@ class NotificationResourceTest {
   }
 
   io.restassured.specification.RequestSpecification api(String user) {
-    return given().header("Authorization", "Bearer " + jwt.sign(user, Duration.ofMinutes(5))).contentType("application/json");
+    return given().header("Authorization", "Bearer " + jwtService.sign(user, Duration.ofMinutes(5))).contentType("application/json");
   }
 
   Map<String, Object> payload(String category) {
@@ -85,20 +85,20 @@ class NotificationResourceTest {
   void sourceRollbackCannotDeliverAndRetryPreservesReadState() {
     String user = user(), key = UUID.randomUUID().toString();
     assertThrows(IllegalStateException.class, () -> transactions.execute("dev_test", () -> {
-      service.enqueue("dev_test", key, "", "", "workflow", "标题", "正文", List.of(user));
+      notificationService.enqueue("dev_test", key, "", "", "workflow", "标题", "正文", List.of(user));
       throw new IllegalStateException("rollback");
     }));
     messages.drain("dev_test", 100);
     assertEquals(0L, NotificationRepository.number(repository.state(user), "version"));
     transactions.execute("dev_test", () -> {
-      service.enqueue("dev_test", key, "", "", "workflow", "标题", "正文", List.of(user));
+      notificationService.enqueue("dev_test", key, "", "", "workflow", "标题", "正文", List.of(user));
       return null;
     });
     messages.drain("dev_test", 100);
     var list = repository.list(user, "all", null, null, 1, 30);
     @SuppressWarnings("unchecked") var row = ((List<Map<String, Object>>) list.get("list")).getFirst();
     repository.read(user, row.get("id").toString(), null, null);
-    service.handle("dev_test", "notification:" + key, new HashMap<>(Map.of("recipients", List.of(user), "category", "workflow", "title", "重复标题", "content", "重复内容", "app_name", "测试应用", "occurred_at", LocalDateTime.now().toString())));
+    notificationService.handle("dev_test", "notification:" + key, new HashMap<>(Map.of("recipients", List.of(user), "category", "workflow", "title", "重复标题", "content", "重复内容", "app_name", "测试应用", "occurred_at", LocalDateTime.now().toString())));
     assertEquals(0L, NotificationRepository.number(repository.state(user), "unread"));
   }
 
@@ -134,7 +134,7 @@ class NotificationResourceTest {
     String base = "http://localhost:" + io.restassured.RestAssured.port + "/api/notifications/stream";
     var client = HttpClient.newHttpClient();
     try {
-      var request = HttpRequest.newBuilder(URI.create(base)).header("Authorization", "Bearer " + jwt.sign(user, Duration.ofMinutes(5))).build();
+      var request = HttpRequest.newBuilder(URI.create(base)).header("Authorization", "Bearer " + jwtService.sign(user, Duration.ofMinutes(5))).build();
       var response = client.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream()).get(8, TimeUnit.SECONDS);
       assertEquals(200, response.statusCode());
       assertEquals("no", response.headers().firstValue("X-Accel-Buffering").orElse(""));
@@ -149,7 +149,7 @@ class NotificationResourceTest {
         repository.read(user, repository.events(user, 0, 1).getFirst().get("payload") instanceof Map<?, ?> p ? ((Map<?, ?>) p.get("notification")).get("id").toString() : "", null, null);
         frame(reader, "notification.read");
       }
-      var reconnect = HttpRequest.newBuilder(URI.create(base)).header("Authorization", "Bearer " + jwt.sign(user, Duration.ofMinutes(5))).header("Last-Event-ID", "0").build();
+      var reconnect = HttpRequest.newBuilder(URI.create(base)).header("Authorization", "Bearer " + jwtService.sign(user, Duration.ofMinutes(5))).header("Last-Event-ID", "0").build();
       var replay = client.sendAsync(reconnect, HttpResponse.BodyHandlers.ofInputStream()).get(8, TimeUnit.SECONDS);
       try (var reader = new BufferedReader(new InputStreamReader(replay.body()))) {
         assertEquals(true, frame(reader, "notification.created").data.get("replay"));
@@ -181,7 +181,7 @@ class NotificationResourceTest {
     var client = HttpClient.newHttpClient();
     try {
       var request = HttpRequest.newBuilder(URI.create("http://localhost:" + io.restassured.RestAssured.port + "/api/notifications/stream"))
-        .header("Authorization", "Bearer " + jwt.sign(user, Duration.ofSeconds(4))).header("Last-Event-ID", "0").build();
+        .header("Authorization", "Bearer " + jwtService.sign(user, Duration.ofSeconds(4))).header("Last-Event-ID", "0").build();
       var response = client.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream()).get(4, TimeUnit.SECONDS);
       try (var reader = new BufferedReader(new InputStreamReader(response.body()))) {
         assertEquals("1001", frame(reader, "snapshot").data.get("version"));
@@ -201,7 +201,7 @@ class NotificationResourceTest {
 
   @Test
   void serviceKeysCannotReadPersonalInboxAndConcurrentRetriesStayUnique() throws Exception {
-    var key = apiKeys.create(new dev.flexmodel.auth.dto.CreateApiKeyRequest("notification-service", null, false));
+    var key = apiKeyService.create(new dev.flexmodel.auth.dto.CreateApiKeyRequest("notification-service", null, false));
     given().header("Authorization", "Bearer " + key.getKey()).get("/notifications/summary").then().statusCode(403);
     given().header("Authorization", "Bearer " + key.getKey()).get("/notifications/stream").then().statusCode(403);
     String user = user();
@@ -224,7 +224,7 @@ class NotificationResourceTest {
     var output = java.nio.file.Files.createTempFile("notification-browser-", ".log");
     var builder = new ProcessBuilder("node", script.toString()).redirectErrorStream(true).redirectOutput(output.toFile());
     builder.environment().put("NOTIFICATION_TEST_API", "http://127.0.0.1:" + io.restassured.RestAssured.port);
-    builder.environment().put("NOTIFICATION_TEST_TOKEN", jwt.sign("admin", Duration.ofMinutes(10)));
+    builder.environment().put("NOTIFICATION_TEST_TOKEN", jwtService.sign("admin", Duration.ofMinutes(10)));
     var process = builder.start();
     boolean finished = false;
     long deadline = System.nanoTime() + Duration.ofSeconds(150).toNanos();

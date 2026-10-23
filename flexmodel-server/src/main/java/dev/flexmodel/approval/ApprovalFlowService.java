@@ -2,6 +2,7 @@ package dev.flexmodel.approval;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.AppService;
+import dev.flexmodel.codegen.entity.FlowDefinition;
 import dev.flexmodel.common.*;
 import dev.flexmodel.flow.common.ErrorEnum;
 import dev.flexmodel.flow.common.FlowDefinitionStatus;
@@ -17,6 +18,7 @@ import java.util.*;
 
 import static dev.flexmodel.approval.ApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
+import static dev.flexmodel.codegen.System.flowDefinition;
 import static dev.flexmodel.query.Expressions.field;
 
 /**
@@ -25,21 +27,21 @@ import static dev.flexmodel.query.Expressions.field;
 @ApplicationScoped
 public class ApprovalFlowService {
   @Inject
-  ApprovalRepository repository;
+  ApprovalFlowDefinitionRepository approvalFlowDefinitionRepository;
   @Inject
   ProjectUnitOfWork transactions;
   @Inject
   ApprovalCompiler compiler;
   @Inject
-  ProcessService engine;
+  ProcessService processService;
   @Inject
   SessionContext current;
   @Inject
-  AppService apps;
+  AppService appService;
 
   public List<Map<String, Object>> list(String appId) {
-    apps.findApp(appId);
-    return repository.list(appId, "f_em_flow_definition", field("is_deleted").eq(false)).stream()
+    appService.findApp(appId);
+    return approvalFlowDefinitionRepository.findAllActive(appId).stream()
       .filter(ApprovalFlowModel::managed).map(row -> response(appId, row))
       .sorted(Comparator.comparing((Map<String, Object> value) -> text(value, "updatedAt")).reversed()).toList();
   }
@@ -49,15 +51,15 @@ public class ApprovalFlowService {
   }
 
   private Map<String, Object> managedDefinition(String appId, String id) {
-    var row = repository.definition(appId, id);
+    var row = approvalFlowDefinitionRepository.get(appId, id);
     if (!ApprovalFlowModel.managed(row)) throw new NotFoundException("审批流程不存在");
     return row;
   }
 
   public Map<String, Object> save(String appId, String id, Map<String, Object> body) {
-    apps.findApp(appId);
-    return transactions.execute(appId, () -> {
-      if (id != null) ProjectUnitOfWork.lock(appId, "f_em_flow_definition", "flow_module_id", id);
+    appService.findApp(appId);
+    return transactions.executePlatform(appId, () -> {
+      if (id != null) approvalFlowDefinitionRepository.lock(appId, id);
       var old = id == null ? null : managedDefinition(appId, id);
       int revision = old == null ? 0 : revision(old);
       if (old != null && revision != ((Number) body.getOrDefault("revision", -1)).intValue())
@@ -85,7 +87,7 @@ public class ApprovalFlowService {
           create.setFlowKey(key);
           create.setFlowName(text(draft, "name"));
           create.setRemark(text(draft, "description"));
-          var created = engine.createFlow(create);
+          var created = processService.createFlow(create);
           success(created);
           moduleId = created.getFlowModuleId();
         }
@@ -105,8 +107,8 @@ public class ApprovalFlowService {
   }
 
   public Map<String, Object> status(String appId, String id, String state, int revision) {
-    return transactions.execute(appId, () -> {
-      ProjectUnitOfWork.lock(appId, "f_em_flow_definition", "flow_module_id", id);
+    return transactions.executePlatform(appId, () -> {
+      approvalFlowDefinitionRepository.lock(appId, id);
       var row = managedDefinition(appId, id);
       var flow = response(appId, row);
       if (revision(row) != revision) throw new ClientErrorException("流程版本已变化，请刷新", 409);
@@ -128,14 +130,14 @@ public class ApprovalFlowService {
           update(appId, id, flow, Map.of("revision", revision + 1, "children", children));
           var deploy = new DeployFlowParam(appId, current.getUserId());
           deploy.setFlowModuleId(id);
-          var deployed = engine.deployFlow(deploy);
+          var deployed = processService.deployFlow(deploy);
           success(deployed);
           return deployed.getFlowDeployId();
         });
         metadata = new LinkedHashMap<>(Map.of("revision", revision + 1, "deploymentId", deploymentId));
       }
       String model = JsonUtils.toJsonString(compiler.compile(flow, metadata));
-      repository.updateDefinition(appId, id, Map.of("flow_model", model, "status", state.equals("disabled") ? FlowDefinitionStatus.DISABLED : FlowDefinitionStatus.EDITING,
+      approvalFlowDefinitionRepository.update(appId, id, Map.of("flow_model", model, "status", state.equals("disabled") ? FlowDefinitionStatus.DISABLED : FlowDefinitionStatus.EDITING,
         "updated_by", current.getUserId(), "updated_at", LocalDateTime.now()));
       preserveCreated(appId, id, row);
       return get(appId, id);
@@ -143,13 +145,13 @@ public class ApprovalFlowService {
   }
 
   public void delete(String appId, String id) {
-    transactions.execute(appId, () -> {
-      ProjectUnitOfWork.lock(appId, "f_em_flow_definition", "flow_module_id", id);
+    transactions.executePlatform(appId, () -> {
+      approvalFlowDefinitionRepository.lock(appId, id);
       managedDefinition(appId, id);
       boolean referenced = list(appId).stream().filter(flow -> !id.equals(text(flow, "id"))).anyMatch(flow -> flatten(objects(object(flow.get("definition")).get("nodes"))).stream().anyMatch(node -> "subflow".equals(text(node, "type")) && id.equals(text(config(node), "flowId"))));
       if (referenced) throw new ValidationException("该流程被其他流程引用，请先解除关联");
       ExternalTaskAccess.as("approval-flow", () -> {
-        engine.deleteFlow(appId, id);
+        processService.deleteFlow(appId, id);
         return null;
       });
       return null;
@@ -163,13 +165,13 @@ public class ApprovalFlowService {
     update.setFlowName(text(flow, "name"));
     update.setRemark(text(flow, "description"));
     update.setFlowModel(JsonUtils.toJsonString(compiler.compile(flow, metadata)));
-    success(engine.updateFlow(update));
+    success(processService.updateFlow(update));
   }
 
   private void preserveCreated(String appId, String id, Map<String, Object> old) {
     Map<String, Object> created = new LinkedHashMap<>();
     for (String key : List.of("created_by", "created_at")) if (old.get(key) != null) created.put(key, old.get(key));
-    if (!created.isEmpty()) repository.updateDefinition(appId, id, created);
+    if (!created.isEmpty()) approvalFlowDefinitionRepository.update(appId, id, created);
   }
 
   private int revision(Map<String, Object> row) {

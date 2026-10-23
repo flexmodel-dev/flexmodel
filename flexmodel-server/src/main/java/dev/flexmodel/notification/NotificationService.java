@@ -19,12 +19,39 @@ public class NotificationService implements ReliableMessageHandler {
   @Inject
   NotificationRepository inbox;
   @Inject
-  DirectoryService directory;
+  DirectoryService directoryService;
   @Inject
   ProjectRepository projects;
 
   public String type() {
     return "notification.deliver";
+  }
+
+  public boolean activeUser(String user) {
+    return inbox.activeUser(user);
+  }
+
+  public Map<String, Object> list(String user, String status, String category, String app, int page, int size) {
+    return inbox.list(user, status, category, app, page, size);
+  }
+
+  public Map<String, Object> summary(String user) {
+    return inbox.summary(user);
+  }
+
+  public Map<String, Object> detail(String user, String id) {
+    var result = new LinkedHashMap<>(inbox.detail(user, id));
+    result.put("canNavigate", false);
+    Object appId = result.get("appId"), instanceId = result.get("instanceId");
+    if (instanceId != null && !instanceId.toString().isBlank() && appId != null
+      && projects.findProject(appId.toString()) != null) {
+      result.put("canNavigate", true);
+    }
+    return result;
+  }
+
+  public long read(String user, String id, String category, String app) {
+    return inbox.read(user, id, category, app);
   }
 
   @SuppressWarnings("unchecked")
@@ -55,7 +82,7 @@ public class NotificationService implements ReliableMessageHandler {
     List<String> recipients;
     String title, content;
     try {
-      recipients = directory.resolve((List<Map<String, Object>>) cfg.get("rules"), initiator, variables);
+      recipients = directoryService.resolve((List<Map<String, Object>>) cfg.get("rules"), initiator, variables);
       if (recipients.isEmpty()) return Map.of("status", "skipped", "reason", "未解析到有效接收人");
       title = NotificationTemplates.render(Objects.toString(cfg.get("titleTemplate"), ""), variables, 200);
       content = NotificationTemplates.render(Objects.toString(cfg.get("contentTemplate"), ""), variables, 5000);

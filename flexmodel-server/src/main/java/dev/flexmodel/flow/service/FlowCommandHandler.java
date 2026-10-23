@@ -15,7 +15,7 @@ import java.util.Map;
 @ApplicationScoped
 public class FlowCommandHandler implements ReliableMessageHandler {
   @Inject
-  ProcessService engine;
+  ProcessService processService;
 
   public String type() {
     return "flow.command";
@@ -32,16 +32,16 @@ public class FlowCommandHandler implements ReliableMessageHandler {
         param.setFlowDeployId(String.valueOf(command.get("deploymentId")));
         param.setInitiator(String.valueOf(command.get("initiator")));
         param.setVariables((Map<String, Object>) command.getOrDefault("variables", Map.of()));
-        result = engine.startProcess(param);
+        result = processService.startProcess(param);
       } else if (action.equals("complete")) {
         CommitTaskParam param = new CommitTaskParam();
         param.setProjectId(projectId);
         param.setFlowInstanceId(String.valueOf(command.get("instanceId")));
         param.setTaskInstanceId(String.valueOf(command.get("taskId")));
         param.setVariables((Map<String, Object>) command.getOrDefault("variables", Map.of()));
-        result = engine.commitTask(param);
+        result = processService.commitTask(param);
       } else if (action.equals("terminate")) {
-        result = engine.terminateProcess(projectId, String.valueOf(command.get("instanceId")));
+        result = processService.terminateProcess(projectId, String.valueOf(command.get("instanceId")));
       } else throw new IllegalArgumentException("未知流程命令: " + action);
       if (result == null || !ErrorEnum.isSuccess(result.getErrCode()))
         throw new IllegalStateException(result == null ? "流程执行未返回结果" : result.getErrMsg());

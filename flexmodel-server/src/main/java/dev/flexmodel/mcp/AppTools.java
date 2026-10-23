@@ -58,7 +58,7 @@ public class AppTools {
   WorkbenchDataService workbenchDataService;
 
   @Inject
-  ApprovalFlowService approvalFlows;
+  ApprovalFlowService approvalFlowService;
 
   @Inject
   ApprovalCapabilities approvalCapabilities;
@@ -479,7 +479,7 @@ public class AppTools {
     @ToolArg(description = "The app ID") String appId
   ) {
     return approvalTool("list_app_approval_flows", appId, false,
-      () -> approvalFlows.list(appId).stream().map(ApprovalFlowModel::encode).toList());
+      () -> approvalFlowService.list(appId).stream().map(ApprovalFlowModel::encode).toList());
   }
 
   @Tool(description = "Get an app approval flow and its latest revision before editing or changing status.")
@@ -488,7 +488,7 @@ public class AppTools {
     @ToolArg(description = "flow_module_id returned by list_app_approval_flows or save_app_approval_flow") String flowId
   ) {
     return approvalTool("get_app_approval_flow", appId, false,
-      () -> ApprovalFlowModel.encode(approvalFlows.get(appId, flowId)));
+      () -> ApprovalFlowModel.encode(approvalFlowService.get(appId, flowId)));
   }
 
   @Tool(description = """
@@ -509,7 +509,7 @@ public class AppTools {
       if (!bodyId.isBlank() && !bodyId.equals(flowId)) {
         throw new IllegalArgumentException("flow_module_id must match flowId; omit both to create a new flow");
       }
-      return ApprovalFlowModel.encode(approvalFlows.save(appId, isBlank(flowId) ? null : flowId, ApprovalFlowModel.decode(body)));
+      return ApprovalFlowModel.encode(approvalFlowService.save(appId, isBlank(flowId) ? null : flowId, ApprovalFlowModel.decode(body)));
     });
   }
 
@@ -524,7 +524,7 @@ public class AppTools {
     @ToolArg(description = "JSON object string of the complete approval Flow contract, including flow_module_id when validating an existing flow") String flowJson
   ) {
     return approvalTool("validate_app_approval_flow", appId, false,
-      () -> approvalFlows.validate(appId, ApprovalFlowModel.decode(JsonUtils.parseToMap(flowJson))));
+      () -> approvalFlowService.validate(appId, ApprovalFlowModel.decode(JsonUtils.parseToMap(flowJson))));
   }
 
   @Tool(description = """
@@ -542,7 +542,7 @@ public class AppTools {
   ) {
     return approvalTool("set_app_approval_flow_status", appId, true, () -> {
       if (status != 2 && status != 3) throw new IllegalArgumentException("status must be 2 (enabled) or 3 (disabled)");
-      return ApprovalFlowModel.encode(approvalFlows.status(appId, flowId, status == 2 ? "enabled" : "disabled", revision));
+      return ApprovalFlowModel.encode(approvalFlowService.status(appId, flowId, status == 2 ? "enabled" : "disabled", revision));
     });
   }
 

@@ -115,9 +115,11 @@ public class ProjectUnitOfWork {
   }
 
   public <T> T adopt(String projectId, Session session, Supplier<T> action) {
-    if (CURRENT.get() != null) {
-      if (!Objects.equals(projectId, CURRENT.get().projectId())) throw new IllegalStateException("禁止嵌套跨项目事务");
-      return action.get();
+    State existing = CURRENT.get();
+    if (existing != null) {
+      if (!Objects.equals(projectId, existing.projectId())) throw new IllegalStateException("禁止嵌套跨项目事务");
+      // 仅同一会话才能复用；跨库嵌套（如平台事务内写业务表）必须为传入会话开启独立事务
+      if (existing.session() == session) return action.get();
     }
     List<Runnable> committed = new ArrayList<>();
     var managed = dev.flexmodel.common.persistence.ServerSessions.managed(session);
@@ -134,7 +136,8 @@ public class ProjectUnitOfWork {
       committed.clear();
       throw error;
     } finally {
-      CURRENT.remove();
+      if (existing == null) CURRENT.remove();
+      else CURRENT.set(existing);
     }
   }
 

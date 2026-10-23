@@ -2880,6 +2880,12 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   `sourceRollbackCannotDeliverAndRetryPreservesReadState` 反映平台库独立事务下 outbox
   消息不随业务回滚撤销（与平台库非原子设计一致，合并前后代码路径相同），`browserRoundTripAgainstRealBackend` 失败于离线断流后
   `streams.size` 未归零的轮询断言，均为既有环境/设计问题，未在本次改动中引入。
+- 修复 Outbox “行锁必须位于事务内”：根因是 `ProjectUnitOfWork.adopt` 仅比较
+  projectId，在平台事务已存在时直接复用而不校验会话身份，导致数据节点在平台事务内打开的无事务业务会话上执行行锁。现改为仅在
+  `existing.session() == session` 时复用，否则为传入会话开启独立事务并在结束后恢复外层上下文；`ApprovalRecordActions`
+  的数据节点 create/update/delete 改为包在 `transactions.execute(appId, ...)` 内，让节点写入独立提交且锁在节点事务内生效（query
+  仍只读）。验证：新增 `ApprovalFlowResourceTest.platformTransactionDoesNotReuseBusinessSessionLock`，回退 adopt 时稳定复现
+  `ServerSqlSession.lockRow` 抛“行锁必须位于事务内”，修复后 1 项测试通过。
 - 测试修复：`FmlParserTest.testParseProjectFml` 改名为 `testParsePlatformFml` 并改读 `platform.fml`（`project.fml`
   已删除，流程种子迁至平台库），增加 monorepo 相对路径回退，独立引擎构建中取不到文件时跳过而不是失败；验证 `flexmodel-core`
   90 项测试全部通过（`FmlParserTest` 11 项）。附带发现：`integration-tests` 下 10 个 IT 模块的 `AgroalDataSource` 未设置

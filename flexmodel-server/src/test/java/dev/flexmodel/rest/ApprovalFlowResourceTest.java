@@ -615,6 +615,19 @@ class ApprovalFlowResourceTest {
   }
 
   @Test
+  void platformTransactionDoesNotReuseBusinessSessionLock() {
+    String form = form(), record = record(form, "原始值");
+    transactions.executePlatform("dev_test", () -> {
+      // 平台事务内直接打开的业务会话没有事务，行锁必须为其单独开启业务事务
+      try (var session = serverSessions.openOwned("dev_test")) {
+        session.data().updateById(form, Map.of("name", "平台事务内更新"), record);
+      }
+      return null;
+    });
+    api("admin").get(base + "/forms/" + form + "/records/" + record).then().statusCode(200).body("name", equalTo("平台事务内更新"));
+  }
+
+  @Test
   void gatewayUsesFirstMatchingBranchAndRejectsSubflowCycles() {
     String form = form(), record = record(form, "匹配");
     List<Map<String, Object>> branches = new ArrayList<>();

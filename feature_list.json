@@ -1042,6 +1042,16 @@
       "evidence": "ApprovalFeed 与 Notifications 的审批入口改为 AppRecordDrawer，传入 appId/formName/recordId 及 approvalInstanceId（待办/通知对应实例）；useRecordApproval 新增可选 instanceId，优先定位该审批实例解析当前用户 PENDING 任务并将右侧进度固定到该实例，未传时保持原「进行中实例优先」逻辑。AppRecordDrawer 新增 approvalInstanceId 透传并使用 progressInstanceId 渲染 ApprovalProgressPanel。删除 pages/Approvals/ApprovalTaskDrawer.tsx；回滚 AppRecordFormModal 中仅审批抽屉使用的 title/readOnly/footer/footerExtra/aside 参数及对应渲染分支，编辑表单回归统一默认标题、设计入口、保存/取消/发起流程底部。E2E approval-backend.mjs 同步新交互（先点同意再填意见后确认，抽屉标题与状态断言适配详情抽屉）。验证：npm run build 通过；npm test 27 项通过；mvn test -pl flexmodel-server -Dtest=ApprovalFlowResourceTest#browserRoundTripAgainstRealBackend 通过（真实后端浏览器闭环：待办中心打开记录详情抽屉、填写意见同意、进度显示已通过、记录解锁），截图 artifacts/approvals-backend-signing.png 显示统一后的详情抽屉与审批进度。"
     },
     {
+      "id": "feat-107",
+      "name": "Apps UI - 表单编辑回填与保存后详情同步",
+      "description": "修复列表直接编辑记录未回填、输入控件显示 undefined，以及详情编辑保存后仍显示旧记录的问题；覆盖记录异步加载与再次编辑。",
+      "dependencies": [
+        "feat-105"
+      ],
+      "status": "done",
+      "evidence": "AppRecordDrawer 在表单与记录异步加载完成后通过 toEditValues 初始化编辑值，并用 dirty 保护已输入内容；记录未加载或加载失败时禁用输入、保存与子表编辑，避免空值覆盖。save 成功后使用完整响应 setRecord(saved)，详情标题、字段、关联显示值和再次编辑即时同步；抽屉重置覆盖 appId/formName。FieldControl 将 null/undefined 归一为空字符串，保留 0/false。新增 npm run test:records（Playwright API mock）：列表编辑回填与切换记录、详情编辑保存与再次编辑、加载失败禁止保存、新建后详情共 4 项通过；npm test 27 项通过；npm run build（tsc -b + vite build）通过；原生 mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin' 与 mvn test -q -pl flexmodel-engine 通过；git diff --check 通过。bash ./init.sh 在 clean 阶段被运行中后端锁定的 flexmodel-server-dev.jar 阻塞，已以不清理的原生编译和引擎测试验证，未停止现有服务。Apps UI 提交 4bfc6bc。"
+    },
+    {
       "id": "feat-106",
       "name": "Apps UI - 抽屉更多菜单收纳表单设计入口",
       "description": "抽屉右上角关闭按钮左侧新增「更多」按钮，原独立的表单设计图标入口收进下拉菜单；记录详情抽屉与编辑/新建表单抽屉保持一致，并移除 BizDrawer 已无调用方的 headerExtra 插槽。",

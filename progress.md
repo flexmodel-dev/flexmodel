@@ -2932,3 +2932,22 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：`npm run build` 通过；`npm test` 27 项通过；Playwright 实测审批中心记录抽屉头部为
   [收起审批][更多][关闭]，更多菜单可见并能跳转 `form-design`；新建产品抽屉同样显示更多按钮，页面无异常。
   截图 `flexmodel-apps-ui/artifacts/drawer-more-menu.png`、`form-modal-more-menu.png`。
+
+**Apps UI - 表单编辑回填与保存后详情同步（2026-10-23，feat-107）**
+
+- 列表行直接编辑传入 `initialMode="edit"` 后仅加载了 `record`，没有初始化 `values`；
+  `FieldControl` 又将缺失值直接 `String(value)`，导致输入框显示 `undefined`。
+  `AppRecordDrawer` 现等待表单与记录都就绪后调用 `toEditValues`，用 `dirty` 防止覆盖用户输入；
+  `FieldControl` 对空值统一使用空字符串，正常保留数字 0 和布尔 false。
+- 保存成功后原先仅切换至查看态，仍渲染旧的 `record`。现直接以接口返回的完整记录
+  `setRecord(saved)`，同步详情标题、主表字段、关联显示值及再次编辑的初始值。
+- 记录尚未加载或加载失败时禁用输入、保存和子表编辑，防止提交未回填的空值；切换应用、表单时重置抽屉状态。
+- 新增 `e2e/records.spec.ts`、`playwright.records.config.ts` 和 `npm run test:records`。
+  Playwright API mock 回归 4 项通过，覆盖列表直接编辑、重开另一条记录、详情保存后即时刷新与再次编辑、
+  加载失败禁止保存、新建后详情；修复前已复现保存后仍显示原始标题，以及加载中保存按钮可用。
+- 验证：`npm run build` 通过（含 TypeScript 检查，仅既有 logo 路径与 chunk 体积提示）；`npm test` 27 项通过；
+  `npm run test:records` 4 项通过；原生 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`
+  与 `mvn test -q -pl flexmodel-engine` 通过；`git diff --check` 通过。Apps UI 提交 `4bfc6bc`。
+- 环境限制：`bash ./init.sh` 的 `clean` 被运行中后端锁定的 `flexmodel-server-dev.jar` 阻塞。
+  已使用不执行 clean 的原生 Maven 验证，保留现有服务；完整 init 需要先释放该 JAR 文件锁。
+  未改动已有 `flexmodel-ui` 工作区内容及 Apps UI 的 `.tmp-verify-back.mjs`。

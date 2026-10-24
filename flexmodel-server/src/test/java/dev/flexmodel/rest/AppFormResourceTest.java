@@ -788,6 +788,80 @@ public class AppFormResourceTest {
     }
   }
 
+  @Test
+  void testFieldConfigRoundTripDefaultsAndServerValidation() {
+    String formName = "field_config_" + TEST_SUFFIX;
+    createForm("""
+      {"label":"字段属性","name":"%s","createDisplayField":false}
+      """.formatted(formName), 201);
+    String formPath = BASE_PATH + "/" + formName;
+    try {
+      createField(formName, """
+        {"name":"code","label":"编号","type":"TEXT","required":true,
+         "config":{"defaultValue":"AB123","maxLength":5,"pattern":"[A-Z]{2}[0-9]{3}",
+                   "commonValues":["CD456"],"updatable":false}}
+        """, 201).then().body("config.maxLength", equalTo(5));
+      createField(formName, """
+        {"name":"amount","label":"金额","type":"DECIMAL","required":true,
+         "config":{"defaultValue":0,"allowNegative":false,"decimalPlaces":2,"prefix":"¥","suffix":"元"}}
+        """, 201);
+      createField(formName, """
+        {"name":"enabled","label":"启用","type":"BOOL","config":{"defaultValue":false}}
+        """, 201);
+      createField(formName, """
+        {"name":"tags","label":"多选","type":"MULTISELECT","required":true,
+         "options":[{"id":"a","text":"甲","defaultSelected":true},{"id":"b","text":"乙","defaultSelected":true}],
+         "config":{"displayStyle":"DROPDOWN"}}
+        """, 201);
+      createField(formName, """
+        {"name":"day","label":"日期","type":"DATE","config":{"defaultNow":true,"dateFormat":"yyyy/MM/dd"}}
+        """, 201);
+      // 编号不在布局中，仍须由后端补齐必填默认值。
+      saveLayout(formName, """
+        {"items":[{"type":"FIELD","name":"amount"},{"type":"FIELD","name":"enabled"},
+                  {"type":"FIELD","name":"tags"},{"type":"FIELD","name":"day"}]}
+        """, 200);
+      Response created = given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON).body("{}")
+        .post(formPath + "/records").then().statusCode(201)
+        .body("enabled", equalTo(false)).body("tags", contains("a", "b"))
+        .body("day", notNullValue()).extract().response();
+      String id = created.path("id");
+      saveLayout(formName, """
+        {"items":[{"type":"FIELD","name":"code"},{"type":"FIELD","name":"amount"},
+                  {"type":"FIELD","name":"enabled"},{"type":"FIELD","name":"tags"}]}
+        """, 200);
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .get(formPath + "/records/" + id).then().statusCode(200).body("code", equalTo("AB123"));
+      for (String invalid : List.of("{\"amount\":-1}", "{\"amount\":1.234}", "{\"tags\":[\"missing\"]}",
+        "{\"tags\":[]}", "{\"code\":\"CD456\"}")) {
+        given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+          .contentType(ContentType.JSON).body(invalid).put(formPath + "/records/" + id).then().statusCode(400);
+      }
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON).body("{\"code\":\"bad\"}").post(formPath + "/records").then().statusCode(400);
+      // 普通字段编辑未携带 config/options 时，保留原有属性和选项。
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType(ContentType.JSON).body("{\"label\":\"多选新名称\",\"required\":true}")
+        .put(formPath + "/fields/tags").then().statusCode(200)
+        .body("options.id", contains("a", "b")).body("config.displayStyle", equalTo("DROPDOWN"));
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .get(formPath).then().statusCode(200)
+        .body("fields.find { it.name == 'amount' }.config.decimalPlaces", equalTo(2))
+        .body("fields.find { it.name == 'code' }.config.updatable", equalTo(false));
+      createField(formName, """
+        {"name":"invalid","label":"不合法","type":"TEXT","config":{"decimalPlaces":2}}
+        """, 400);
+      createField(formName, """
+        {"name":"invalid","label":"不合法","type":"TEXT","config":{"pattern":"["}}
+        """, 400);
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .get(formPath).then().statusCode(200).body("fields.name", not(hasItem("invalid")));
+    } finally {
+      deleteFormQuietly(formName);
+    }
+  }
+
   private Response createForm(String body, int expectedStatus) {
     Response response = given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())

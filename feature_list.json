@@ -1,6 +1,14 @@
 {
   "features": [
     {
+      "id": "feat-109",
+      "name": "Apps - 字段类型属性完善",
+      "description": "参考 REBUILD 字段文档，在应用层补齐默认值、读写限制、文本常用值和校验、数字精度与格式、日期格式和选项显示属性，接通配置、持久化、记录校验与展示，不修改 engine。",
+      "dependencies": ["feat-025"],
+      "status": "done",
+      "evidence": "AppFieldConfig 存入应用表单与系统扩展字段 metadata；创建、批量建表、修改和响应保留属性，不修改 flexmodel-engine。补齐默认值、创建/修改限制、文本常用值/最大长度/Java正则、负数限制/小数位/千分位/前后缀、当前日期默认值/日期格式、选项编辑与默认项/显示样式；多选按数组、布尔按是/否/空处理，记录API强制验证，列表与详情共用格式。字段管理和设计器共用编辑器，MCP 创建字段说明同步更新。验证：全模块原生 Maven 编译、规定引擎测试通过；AppFieldRulesTest 4 + AppRecordServiceTest 6 + 新增字段属性REST闭环1 + SystemFormResourceTest 5 共16项通过（含系统扩展字段默认值与禁止修改）；Apps UI build通过、npm test 32项、test:records 4项、test:fields 2项通过，明暗截图已检查；git diff --check通过。Apps UI提交9a32a5c。扩大后端回归37项有7项既有布局投影/系统鉴权失败，未扩展修复；init.sh clean仍被运行中dev.jar锁定，保留服务并完成非clean等价验证。详见progress.md与flexmodel-server/docs/field-properties.md。"
+    },
+    {
       "id": "feat-108",
       "name": "Apps UI - 多层抽屉递减宽度",
       "description": "同时打开多个右侧 Drawer 时，上层宽度小于下层，保留下层可见边缘；支持兄弟与嵌套抽屉、视口缩放及关闭后重开。",

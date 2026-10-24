@@ -1,5 +1,36 @@
 # Session Progress Log
 
+## Apps - 字段类型属性完善（2026-10-24，feat-109）
+
+- 根据用户提供的 REBUILD 字段文档补齐常用类型属性，全部实现在 server 和 Apps UI，`flexmodel-engine` 无代码改动。
+  新增 `AppFieldConfig`，通过 `config` 保存到应用表单、系统表单扩展字段 metadata，支持创建、批量建表、读取与编辑。
+- 属性包括：默认值与创建/修改限制；TEXT/NTEXT 常用值、最大长度、Java 正则及错误提示；数值负数限制、0–6位小数、
+  千分位与显示前后缀；日期/日期时间/时间的当前值默认值和显示格式；单选/多选显示样式。
+  选项编辑支持标识、文本和默认项；多选完整保存数组与多个默认值，布尔保留是/否/空，0和false不被当作空值。
+- `AppFieldRules` 在记录接口执行校验，未布局且未显式传入的字段也由后端补齐默认值；部分修改不重设默认值。
+  配置在修改物理字段前检查。未传 config/options 时保留旧值，`{}`/`[]` 可显式清空。
+  系统表单扩展字段同步保留并执行配置，MCP 建表说明补充 config 属性。
+- Apps UI 的字段管理和设计器添加字段共用 `FieldConfigEditor`；记录创建/编辑、列表、详情接入默认值、限制与格式，
+  修复多选误用单选控件，以及更新字段时选项被重置的问题。多选下拉使用高于抽屉的 Popover 层级。
+  说明见 `flexmodel-server/docs/field-properties.md`，服务端 README 已加入入口。
+- 验证通过：
+  - 原生 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`；`mvn test -q -pl flexmodel-engine`。
+  - `mvn test -q -pl flexmodel-server '-Dtest=AppFieldRulesTest,AppRecordServiceTest,AppFormResourceTest#testFieldConfigRoundTripDefaultsAndServerValidation,SystemFormResourceTest'`
+    配合关闭测试 scheduler、RabbitMQ devservices、文件日志的命令行参数，16 tests，0 failures/errors。
+    覆盖属性保存回读、未布局必填默认值、直接API绕过前端的校验、系统扩展字段默认值与禁止修改。
+  - `flexmodel-apps-ui`：`npm run build`、`npm test`（32）、`npm run test:records`（4）、`npm run test:fields`（2）。
+    新浏览器测试校验保存回填、默认值、多选、精度错误提示、统一格式与禁止修改字段不提交，无浏览器异常。
+    已检查 `artifacts/field-config-editor.png`、`field-config-editor-dark.png`、`field-config-record.png`。
+  - 根仓库及 Apps UI `git diff --check` 通过。Apps UI 提交 `9a32a5c`，构建生成的 `tsconfig.tsbuildinfo` 已恢复。
+- 扩大运行 AppFormResourceTest、AppRecordResourceTest 等37项时，有7项与本次无关的既有失败：空布局投影导致6项旧断言取不到字段，
+  以及系统 Apps 表单入口返回401的1项鉴权断言。相关投影和鉴权逻辑未修改；本次没有扩展修复这些问题。
+  测试启动时还存在 SQLite 并发锁和本机函数运行时9999未启动的后台日志，定向验证最终全部通过。
+- `bash ./init.sh` 已实际运行，clean 仍受现有服务占用 `flexmodel-server-dev.jar` 阻塞；未停止用户服务，
+  已完成非 clean 原生 Maven 等价检查。完整 init 需释放该文件锁。日志位于忽略目录 `logs/field-config-*.log`。
+  保留原有 `flexmodel-ui` 工作区改动，以及根仓库将 Apps UI 作为未跟踪独立仓库的现状。
+- 边界：属性约束用于 Apps/系统表单记录接口；底层 Data/GraphQL 不经过这些规则。此次没有实现编号规则、公式、富文本、
+  扫码、脱敏、附件限制或引用级联等独立能力，详见字段属性文档。
+
 ## 修复: AppRecordFormModal 主表单卡片缺失（2026-10-22）
 
 **现象:** 编辑页（AppRecordFormModal：审批记录抽屉可编辑态、子表记录、系统表单、页面详情编辑）主表单

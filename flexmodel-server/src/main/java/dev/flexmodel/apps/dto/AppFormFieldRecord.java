@@ -22,6 +22,11 @@ public record AppFormFieldRecord(
   boolean required,
   @JsonAlias("system") boolean builtin,
   List<AppFormFieldOptionResponse> options,
-  String referenceForm
+  String referenceForm,
+  AppFieldConfig config
 ) {
+  public AppFormFieldRecord(String name, String label, String type, boolean required, boolean builtin,
+                            List<AppFormFieldOptionResponse> options, String referenceForm) {
+    this(name, label, type, required, builtin, options, referenceForm, null);
+  }
 }

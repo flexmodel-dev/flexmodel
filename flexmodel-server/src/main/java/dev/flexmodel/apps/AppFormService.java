@@ -3,6 +3,7 @@ package dev.flexmodel.apps;
 import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormCreateRequest;
+import dev.flexmodel.apps.dto.AppFieldConfig;
 import dev.flexmodel.apps.dto.AppFormItemRecord;
 import dev.flexmodel.apps.dto.AppFormLayoutRecord;
 import dev.flexmodel.apps.dto.AppFormLayoutRequest;
@@ -233,7 +234,7 @@ public class AppFormService {
         preparedField.required(),
         false,
         preparedField.options(),
-        preparedField.referenceForm()));
+        preparedField.referenceForm(), preparedField.config()));
     }
     return fieldRecords;
   }
@@ -280,7 +281,8 @@ public class AppFormService {
         field.type(),
         field.required(),
         normalizeOptions(field.type(), field.options()),
-        normalizeReferenceForm(appId, field.type(), field.referenceForm()));
+        normalizeReferenceForm(appId, field.type(), field.referenceForm()),
+        AppFieldRules.validateConfig(field.type(), field.config()));
     }).toList();
   }
 
@@ -577,6 +579,7 @@ public class AppFormService {
     String entityName = entity.getName();
     String fieldName = resolveFieldName(entity, request.name(), request.label());
     List<AppFormFieldOptionResponse> options = normalizeOptions(request.type(), request.options());
+    AppFieldConfig config = AppFieldRules.validateConfig(request.type(), request.config());
     String referenceForm = normalizeReferenceForm(appId, request.type(), request.referenceForm());
     TypedField<?, ?> field = buildField(entityName, fieldName, request.type(), request.label().trim(),
       request.required());
@@ -588,7 +591,7 @@ public class AppFormService {
       request.required(),
       false,
       options,
-      referenceForm);
+      referenceForm, config);
     try {
       AppFormRecord current = findFormRecord(project, entityName).orElseGet(() -> defaultRecord(project, entity));
       List<AppFormFieldRecord> fields = new ArrayList<>(current.fields());
@@ -637,8 +640,18 @@ public class AppFormService {
       && !request.referenceForm().trim().equals(currentReferenceForm)) {
       throw new ValidationException("子表单引用字段不允许修改引用表单");
     }
-    List<AppFormFieldOptionResponse> options = normalizeOptions(currentType, request.options());
-    String referenceForm = normalizeReferenceForm(appId, currentType, request.referenceForm());
+    List<AppFormFieldOptionResponse> currentOptions = resolved.record() == null ? null : resolved.record().fields().stream()
+      .filter(item -> item.name().equals(fieldName)).map(AppFormFieldRecord::options)
+      .filter(Objects::nonNull).findFirst().orElse(null);
+    List<AppFormFieldOptionResponse> options = normalizeOptions(currentType,
+      request.options() == null ? currentOptions : request.options());
+    AppFieldConfig currentConfig = resolved.record() == null ? null : resolved.record().fields().stream()
+      .filter(item -> item.name().equals(fieldName)).map(AppFormFieldRecord::config)
+      .filter(Objects::nonNull).findFirst().orElse(null);
+    AppFieldConfig config = AppFieldRules.validateConfig(currentType,
+      request.config() == null ? currentConfig : request.config());
+    String referenceForm = normalizeReferenceForm(appId, currentType,
+      request.referenceForm() == null ? currentReferenceForm : request.referenceForm());
     field.setComment(request.label().trim());
     field.setNullable(!request.required());
     modelingService.modifyField(appId, field);
@@ -650,7 +663,7 @@ public class AppFormService {
       request.required(),
       false,
       options,
-      referenceForm);
+      referenceForm, config);
     AppFormRecord current = findFormRecord(project, entityName).orElseGet(() -> defaultRecord(project, entity));
     List<AppFormFieldRecord> fields = current.fields().stream()
       .map(item -> item.name().equals(fieldName) ? updatedRecord : item)
@@ -738,7 +751,8 @@ public class AppFormService {
     String type,
     boolean required,
     List<AppFormFieldOptionResponse> options,
-    String referenceForm
+    String referenceForm,
+    AppFieldConfig config
   ) {
   }
 
@@ -839,10 +853,14 @@ public class AppFormService {
     if (!OPTION_TYPES.contains(type)) {
       return null;
     }
-    if (options == null || options.isEmpty()) {
+    if (options == null) {
       return List.of(
         new AppFormFieldOptionResponse("1", "选项一", null, false),
         new AppFormFieldOptionResponse("2", "选项二", null, false));
+    }
+    if (!"MULTISELECT".equals(type) && options.stream().filter(Objects::nonNull)
+      .filter(option -> Boolean.TRUE.equals(option.defaultSelected())).count() > 1) {
+      throw new ValidationException("单选字段只能设置一个默认选项");
     }
     LinkedHashSet<String> ids = new LinkedHashSet<>();
     return options.stream()
@@ -850,7 +868,7 @@ public class AppFormService {
         if (option == null || isBlank(option.id()) || isBlank(option.text())) {
           throw new ValidationException("字段选项的ID和展示文本不能为空");
         }
-        if (!ids.add(option.id())) {
+        if (!ids.add(option.id().trim())) {
           throw new ValidationException("字段选项ID重复: " + option.id());
         }
         return new AppFormFieldOptionResponse(
@@ -921,7 +939,7 @@ public class AppFormService {
       record == null ? !field.isNullable() : record.required(),
       BUILTIN_FIELDS.contains(field.getName()) || (record != null && record.builtin()),
       record == null ? null : record.options(),
-      referenceForm);
+      referenceForm, false, false, record == null ? null : record.config());
   }
 
   private String referenceForm(Project project, TypedField<?, ?> field) {
@@ -945,7 +963,7 @@ public class AppFormService {
       record == null ? !field.isNullable() : record.required(),
       BUILTIN_FIELDS.contains(field.getName()) || (record != null && record.builtin()),
       record == null ? null : record.options(),
-      record == null ? null : record.referenceForm());
+      record == null ? null : record.referenceForm(), record == null ? null : record.config());
   }
 
   private String inferFieldType(TypedField<?, ?> field) {

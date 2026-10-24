@@ -1,6 +1,8 @@
 package dev.flexmodel.system;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.apps.AppFieldRules;
+import dev.flexmodel.apps.dto.AppFormFieldResponse;
 import dev.flexmodel.auth.dto.UserDepartmentRequest;
 import dev.flexmodel.auth.repository.DepartmentRepository;
 import dev.flexmodel.auth.repository.ResourceRepository;
@@ -210,13 +212,20 @@ public class SystemRecordService {
       if (field.readonly()) {
         throw new ValidationException("只读字段不允许写入: " + name);
       }
+      if (field.config() != null && !AppFieldRules.writable(appField(field), creating)) {
+        throw new ValidationException("字段不允许" + (creating ? "新建时填写: " : "修改: ") + field.label());
+      }
       if (creating && field.required() && isEmpty(value) && !"password".equals(name)) {
         throw new ValidationException("必填字段不能为空: " + field.label());
       }
-      values.put(name, value);
+      values.put(name, field.config() == null ? value : AppFieldRules.validateValue(appField(field), value));
     });
     if (creating) {
       fields.values().forEach(field -> {
+        if (field.config() != null && !field.virtual() && !field.readonly() && !values.containsKey(field.name())) {
+          Object defaultValue = AppFieldRules.defaultValue(appField(field));
+          if (defaultValue != null) values.put(field.name(), AppFieldRules.validateValue(appField(field), defaultValue));
+        }
         if (field.required() && !field.virtual() && !field.readonly()
           && isEmpty(values.get(field.name()))) {
           throw new ValidationException("必填字段不能为空: " + field.label());
@@ -224,6 +233,11 @@ public class SystemRecordService {
       });
     }
     return values;
+  }
+
+  private AppFormFieldResponse appField(SystemFormFieldRecord field) {
+    return new AppFormFieldResponse(field.name(), field.label(), field.type(), field.required(), false,
+      field.options(), field.referenceForm(), field.locked(), field.extension(), field.config());
   }
 
   private void prepareCreate(

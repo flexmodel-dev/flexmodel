@@ -25,6 +25,11 @@ public record AppFormFieldCreateRequest(
   String type,
   boolean required,
   List<AppFormFieldOptionResponse> options,
-  String referenceForm
+  String referenceForm,
+  AppFieldConfig config
 ) {
+  public AppFormFieldCreateRequest(String label, String name, String type, boolean required,
+                                   List<AppFormFieldOptionResponse> options, String referenceForm) {
+    this(label, name, type, required, options, referenceForm, null);
+  }
 }

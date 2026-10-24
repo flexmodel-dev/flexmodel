@@ -96,8 +96,10 @@ public class SystemFormResourceTest {
       .put("locked", false)
       .put("extension", true)
       .put("virtual", false)
-      .put("readonly", false));
+      .put("readonly", false)
+      .put("config", new JsonObject().put("defaultValue", "默认扩展值").put("maxLength", 30).put("updatable", false)));
 
+    String configuredUserId = null;
     try {
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -107,8 +109,23 @@ public class SystemFormResourceTest {
         .put(BASE_PATH + "/f_user")
         .then()
         .statusCode(200)
-        .body("fields.findAll { it.name == 'extension_test_field' }.extension", hasItem(true));
+        .body("fields.findAll { it.name == 'extension_test_field' }.extension", hasItem(true))
+        .body("fields.find { it.name == 'extension_test_field' }.config.maxLength", equalTo(30))
+        .body("fields.find { it.name == 'extension_test_field' }.config.updatable", equalTo(false));
+      configuredUserId = given()
+        .header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType("application/json")
+        .body("{\"name\":\"字段属性测试用户\",\"password\":\"123456\",\"status\":\"ACTIVE\"}")
+        .post(BASE_PATH + "/f_user/records").then().statusCode(201)
+        .body("extension_test_field", equalTo("默认扩展值")).extract().path("id");
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .contentType("application/json").body("{\"extension_test_field\":\"修改\"}")
+        .put(BASE_PATH + "/f_user/records/" + configuredUserId).then().statusCode(400);
     } finally {
+      if (configuredUserId != null) {
+        given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+          .delete(BASE_PATH + "/f_user/records/" + configuredUserId).then().statusCode(204);
+      }
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .contentType("application/json")

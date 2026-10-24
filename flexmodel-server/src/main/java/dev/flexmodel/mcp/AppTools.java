@@ -187,7 +187,13 @@ public class AppTools {
     @ToolArg(description = """
       JSON array string of fields, for example: \
       [{"label":"Amount","name":"amount","type":"DECIMAL","required":true}]. \
-      Each item may contain label, name, type, required, options, and referenceForm.\
+      Each item may contain label, name, type, required, options, referenceForm, and config. \
+      config supports defaultValue and creatable/updatable; TEXT/NTEXT also support \
+      maxLength, commonValues, pattern (Java full-match regex), validationMessage; \
+      NUMBER/DECIMAL support allowNegative, thousandsSeparator, prefix, suffix; \
+      DECIMAL supports decimalPlaces (0-6). DATE/DATETIME/TIME support defaultNow \
+      and dateFormat. PICKLIST/SELECT support displayStyle DROPDOWN or RADIO; \
+      MULTISELECT supports CHECKBOX or DROPDOWN. Only use properties applicable to the type.\
       """) String fieldsJson
   ) {
     log.info("create_app_form called, appId={}, name={}", appId, name);

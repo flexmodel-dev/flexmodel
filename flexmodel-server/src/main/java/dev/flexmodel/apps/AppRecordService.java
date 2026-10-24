@@ -452,17 +452,24 @@ public class AppRecordService {
       if (field.builtin()) {
         throw new ValidationException("内置字段不允许写入: " + name);
       }
-      if (field.required() && isEmpty(value)) {
+      if (!AppFieldRules.writable(field, creating)) {
+        throw new ValidationException("字段不允许" + (creating ? "新建时填写: " : "修改: ") + field.label());
+      }
+      if (field.required() && AppFieldRules.isEmpty(value)) {
         throw new ValidationException("必填字段不能为空: " + field.label());
       }
-      values.put(name, value);
+      values.put(name, AppFieldRules.validateValue(field, value));
     });
     if (context != null) {
       values.put(context.referenceField(), context.mainRecordId());
     }
     if (creating) {
       fields.values().forEach(field -> {
-        if (!field.builtin() && field.required() && isEmpty(values.get(field.name()))) {
+        if (!field.builtin() && !values.containsKey(field.name())) {
+          Object defaultValue = AppFieldRules.defaultValue(field);
+          if (defaultValue != null) values.put(field.name(), AppFieldRules.validateValue(field, defaultValue));
+        }
+        if (!field.builtin() && field.required() && AppFieldRules.isEmpty(values.get(field.name()))) {
           throw new ValidationException("必填字段不能为空: " + field.label());
         }
       });
@@ -677,16 +684,6 @@ public class AppRecordService {
       return id == null ? null : String.valueOf(id);
     }
     return String.valueOf(value);
-  }
-
-  private boolean isEmpty(Object value) {
-    if (value == null) {
-      return true;
-    }
-    if (value instanceof String text) {
-      return text.isBlank();
-    }
-    return false;
   }
 
   private String currentUserId() {

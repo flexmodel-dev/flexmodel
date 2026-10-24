@@ -77,6 +77,8 @@ java -jar target/flexmodel-server-dev.jar
 
 Apps 的个人收件箱、SSE 实时通知与浏览器提醒见 [实时站内通知](docs/notifications.md)。
 
+应用表单字段的默认值、输入校验与显示格式见 [字段类型属性](docs/field-properties.md)。
+
 ## 📄 许可证
 
 本项目源码仅供学习研究使用，**禁止用于商业用途**。如需合作定制开发，请联系作者。详见 [LICENSE](../LICENSE)。

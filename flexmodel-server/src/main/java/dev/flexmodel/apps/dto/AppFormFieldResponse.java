@@ -22,8 +22,14 @@ public record AppFormFieldResponse(
   List<AppFormFieldOptionResponse> options,
   String referenceForm,
   boolean locked,
-  boolean extension
+  boolean extension,
+  AppFieldConfig config
 ) {
+  public AppFormFieldResponse(String name, String label, String type, boolean required, boolean builtin,
+                              List<AppFormFieldOptionResponse> options, String referenceForm,
+                              boolean locked, boolean extension) {
+    this(name, label, type, required, builtin, options, referenceForm, locked, extension, null);
+  }
   public AppFormFieldResponse(
     String name,
     String label,
@@ -33,6 +39,6 @@ public record AppFormFieldResponse(
     List<AppFormFieldOptionResponse> options,
     String referenceForm
   ) {
-    this(name, label, type, required, builtin, options, referenceForm, false, false);
+    this(name, label, type, required, builtin, options, referenceForm, false, false, null);
   }
 }

@@ -19,6 +19,11 @@ public record AppFormFieldUpdateRequest(
   String label,
   boolean required,
   List<AppFormFieldOptionResponse> options,
-  String referenceForm
+  String referenceForm,
+  AppFieldConfig config
 ) {
+  public AppFormFieldUpdateRequest(String label, boolean required,
+                                   List<AppFormFieldOptionResponse> options, String referenceForm) {
+    this(label, required, options, referenceForm, null);
+  }
 }

@@ -187,7 +187,7 @@ public class SystemFormService {
       false,
       false,
       request.options(),
-      request.referenceForm());
+      request.referenceForm(), dev.flexmodel.apps.AppFieldRules.validateConfig(request.type(), request.config()));
     List<SystemFormFieldRecord> fields = new ArrayList<>(current.fields());
     fields.add(field);
     SystemFormResponse saved = saveForm(formName, withFields(current, fields));
@@ -211,7 +211,8 @@ public class SystemFormService {
       existing.virtual(),
       existing.readonly(),
       request.options(),
-      request.referenceForm());
+      request.referenceForm(), dev.flexmodel.apps.AppFieldRules.validateConfig(existing.type(),
+        request.config() == null ? existing.config() : request.config()));
     List<SystemFormFieldRecord> fields = current.fields().stream()
       .map(item -> item.name().equals(existing.name()) ? updated : item)
       .toList();
@@ -267,7 +268,7 @@ public class SystemFormService {
         item.options(),
         item.referenceForm(),
         item.locked(),
-        item.extension()))
+        item.extension(), item.config()))
       .orElseThrow(() -> new NotFoundException("字段不存在: " + fieldName));
   }
 
@@ -373,7 +374,7 @@ public class SystemFormService {
         field.options(),
         field.referenceForm(),
         field.locked(),
-        field.extension())).toList(),
+        field.extension(), field.config())).toList(),
       new AppFormLayoutRecord(form.layout().items().stream().map(item -> new AppFormItemRecord(
         item.type(),
         item.name(),
@@ -492,7 +493,7 @@ public class SystemFormService {
         !actualCore.contains(name),
         false,
         field.options(),
-        field.referenceForm()));
+        field.referenceForm(), field.config()));
     });
 
     entity.getFields().stream()
@@ -512,7 +513,8 @@ public class SystemFormService {
           false,
           false,
           configuredField == null ? null : configuredField.options(),
-          configuredField == null ? null : configuredField.referenceForm()));
+          configuredField == null ? null : configuredField.referenceForm(),
+          configuredField == null ? null : configuredField.config()));
       });
     return result;
   }
@@ -580,6 +582,7 @@ public class SystemFormService {
       if (!FIELD_TYPES.contains(field.type())) {
         throw new ValidationException("字段类型不合法: " + field.type());
       }
+      dev.flexmodel.apps.AppFieldRules.validateConfig(field.type(), field.config());
       if (isBlank(field.label())) {
         throw new ValidationException("字段展示名不能为空: " + name);
       }
@@ -691,7 +694,7 @@ public class SystemFormService {
           !actualCoreField && coreField,
           false,
           field.options(),
-          field.referenceForm());
+          field.referenceForm(), dev.flexmodel.apps.AppFieldRules.validateConfig(field.type(), field.config()));
       })
       .toList();
   }

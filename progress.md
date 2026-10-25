@@ -1,5 +1,28 @@
 # Session Progress Log
 
+## Apps UI - 表单设置页面视觉与返回导航统一（2026-10-25，feat-111）
+
+- 用户反馈应用设置/表单下页面 UI 不统一，并要求返回按钮。新增 `SettingsPageHeader`，让表单列表、基本信息、字段管理、
+  设计器使用相同的页头间距、标题层级、返回按钮和操作排列；加载中与接口失败时同样保留返回入口。
+  表单详情返回当前应用表单列表，列表返回应用管理；系统角色设计器返回角色权限，其他系统设计器返回部门用户，均不依赖历史记录。
+- 新增 `FormSettingsNav` 统一基本信息、表单设计、字段管理的路由与选中态。桌面侧栏调整为与应用设置一致的独立卡片，
+  主内容与列表页对齐；1024px以下使用页头下的横向导航，避免两个侧栏压缩内容。路由参数由 useParams 读取，避免重复编码。
+- 表单列表移除重复标题及虚线新建卡片，改为带图标、描述、内部标识、字段数量的卡片，保留单一“新建表单”按钮；
+  基本信息使用 dl 信息分组并显示主显字段名称，删除操作独立放在底部；字段列表统一状态标识与轻量操作，手机使用带无障碍名称的图标按钮。
+  窄屏徽标保持单行，夜间删除操作使用可读的语义文字颜色。
+- 设计器复用页头，窄屏时画布与字段面板在内容区内上下排列和滚动；保留此前字段属性编辑、保存与草稿行为。
+  本次未修改后端或 `flexmodel-engine`。
+- 验证：`npm run build` 通过；`npm test` 32项通过；`npm run test:settings` 7项通过（页面导航与页头对齐、直达返回、
+  手机/平板无溢出、错误和加载中返回、新建表单、系统设计器返回）；`npm run test:fields` 5项、`npm run test:records` 4项通过。
+  已检查明暗截图与375px手机截图；768/960px平板检查无横向及页面外层滚动。截图在 Apps UI 忽略目录
+  `artifacts/forms-settings-{list,base,fields,designer,fields-dark,mobile-base,mobile-fields,mobile-form-design}.png`。
+  构建日志 `artifacts/forms-settings-build.log`；浏览器测试采集的页面异常为空。
+- 原生全模块 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`、规定 `mvn test -q -pl flexmodel-engine` 通过；
+  根仓库及 Apps UI `git diff --check` 通过。Apps UI提交 `66eb414`，构建生成的 `tsconfig.tsbuildinfo` 已恢复。
+- 标准 `bash ./init.sh` 已实际执行，clean 仍受现有开发服务占用 `flexmodel-server-dev.jar` 阻塞，未停止服务；
+  已完成非clean原生 Maven 等价验证。日志位于根仓库忽略目录 `logs/forms-settings-ui-*.log`。
+  保留原有 `flexmodel-ui` 工作区改动和 Apps UI 在根仓库中作为未跟踪独立仓库的现状。
+
 ## Apps UI - 布局字段编辑接入类型属性（2026-10-25，feat-110）
 
 - 用户指出表单设计器“表单布局”里的“修改字段”入口尚未接入新增属性。现复用 `FieldConfigEditor`，支持字段名称、

@@ -613,6 +613,9 @@ public class AppFormService {
     String fieldName,
     AppFormFieldUpdateRequest request
   ) {
+    if (BUILTIN_SYSTEM_FORM_NAMES.contains(formName)) {
+      return systemFormService.updateField(formName, fieldName, request);
+    }
     requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);

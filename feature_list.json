@@ -1,6 +1,14 @@
 {
   "features": [
     {
+      "id": "feat-110",
+      "name": "Apps UI - 布局字段编辑接入类型属性",
+      "description": "表单设计器布局中的修改字段入口支持完整类型属性，保存后同步字段定义并保留未保存布局；内置字段只调整布局。",
+      "dependencies": ["feat-109"],
+      "status": "done",
+      "evidence": "FormDesigner 布局修改字段复用 FieldConfigEditor，回填并保存必填、默认值、校验、选项和显示格式，区分字段名称与布局显示名称。字段更新后同步父子组件字段定义并携带当前布局草稿，保存失败保留草稿可重试；未改变字段属性及内置字段不发字段更新请求，内置字段只编辑布局。补齐 AppFormService 到 SystemFormService 的扩展字段更新分派，保留核心字段保护，不改 engine。验证：Apps UI build通过、npm test 32项、test:fields 5项、test:records 4项通过；已检查明暗主题截图；后端定向10项通过；原生全模块compile与规定引擎测试通过；git diff --check通过。Apps UI提交c82f77c。init.sh仍受运行中dev.jar锁阻塞，保留服务并执行非clean等价验证。"
+    },
+    {
       "id": "feat-109",
       "name": "Apps - 字段类型属性完善",
       "description": "参考 REBUILD 字段文档，在应用层补齐默认值、读写限制、文本常用值和校验、数字精度与格式、日期格式和选项显示属性，接通配置、持久化、记录校验与展示，不修改 engine。",

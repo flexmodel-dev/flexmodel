@@ -1,5 +1,26 @@
 # Session Progress Log
 
+## Apps UI - 布局字段编辑接入类型属性（2026-10-25，feat-110）
+
+- 用户指出表单设计器“表单布局”里的“修改字段”入口尚未接入新增属性。现复用 `FieldConfigEditor`，支持字段名称、
+  必填、默认值、常用值、格式验证、数字/日期显示格式、选项与默认项；类型及内部标识只读，引用字段可选择目标表单。
+- 字段名称与可选的布局显示名称分开编辑，保留填写提示、只读和隐藏。字段属性保存立即调用字段接口，布局仍在右上角保存；
+  仅修改布局、内置字段或锁定字段不会调用字段更新接口。弹窗说明了两种保存时机，防止误解。
+- 字段保存成功后更新当前字段定义和父组件，并携带全部尚未保存的布局，避免 initialForm 回传将分栏、顺序、宽度和提示重置。
+  取消不改元数据；保存失败展示服务端错误并保留草稿可重试；提交中禁用输入、保存、取消与关闭，避免重复提交和中途丢失输入。
+- 同时补齐 `AppFormService.updateField` 对系统表单扩展字段的转发，与已有创建路径一致；现有 `SystemFormService`
+  核心字段保护继续生效。`SystemFormResourceTest` 覆盖经该入口更新扩展属性，以及核心字段禁止修改。
+  字段属性文档已补充布局编辑入口及保存行为，`flexmodel-engine` 无改动。
+- 验证：Apps UI `npm run build` 通过，`npm test` 32项通过；`npm run test:fields` 5项通过（新增3项：
+  完整属性保存/回填及未保存分栏保留、失败重试与多选保持、内置字段仅编辑布局）；`npm run test:records` 4项通过。
+  浏览器无异常，已检查 `artifacts/layout-field-config.png` 与 `layout-field-config-dark.png`。
+- 后端 `AppFieldRulesTest` 4 + 字段属性 REST 闭环1 + `SystemFormResourceTest` 5，共10项通过；
+  原生全模块 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 和规定 `mvn test -q -pl flexmodel-engine` 通过。
+  根仓库及 Apps UI `git diff --check` 通过。Apps UI 提交 `c82f77c`，构建生成的 `tsconfig.tsbuildinfo` 已恢复。
+- 标准 `bash ./init.sh` 实际执行，clean 仍被运行中 `flexmodel-server-dev.jar` 文件锁阻塞；未停止现有服务，
+  已完成非clean的原生 Maven 等价验证。日志在忽略目录 `logs/field-layout-*.log`。
+  保留已有 `flexmodel-ui` 工作区改动及根仓库中 Apps UI 独立仓库未跟踪的现状。
+
 ## Apps - 字段类型属性完善（2026-10-24，feat-109）
 
 - 根据用户提供的 REBUILD 字段文档补齐常用类型属性，全部实现在 server 和 Apps UI，`flexmodel-engine` 无代码改动。

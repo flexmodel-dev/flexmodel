@@ -1,6 +1,10 @@
 package dev.flexmodel.rest;
 
 import dev.flexmodel.SQLiteTestResource;
+import dev.flexmodel.apps.AppFormService;
+import dev.flexmodel.apps.dto.AppFieldConfig;
+import dev.flexmodel.apps.dto.AppFormFieldUpdateRequest;
+import dev.flexmodel.common.ValidationException;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.response.Response;
@@ -11,6 +15,8 @@ import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
@@ -20,6 +26,9 @@ public class SystemFormResourceTest {
 
   @Inject
   TestTokenHelper testTokenHelper;
+
+  @Inject
+  AppFormService appFormService;
 
   @Test
   void testFindFormsUnauthorized() {
@@ -112,6 +121,15 @@ public class SystemFormResourceTest {
         .body("fields.findAll { it.name == 'extension_test_field' }.extension", hasItem(true))
         .body("fields.find { it.name == 'extension_test_field' }.config.maxLength", equalTo(30))
         .body("fields.find { it.name == 'extension_test_field' }.config.updatable", equalTo(false));
+      AppFieldConfig editedConfig = new AppFieldConfig();
+      editedConfig.setDefaultValue("默认扩展值");
+      editedConfig.setMaxLength(40);
+      editedConfig.setUpdatable(false);
+      var updated = appFormService.updateField("system", "f_user", "extension_test_field",
+        new AppFormFieldUpdateRequest("扩展测试", false, null, null, editedConfig));
+      assertEquals(40, updated.config().getMaxLength());
+      assertThrows(ValidationException.class, () -> appFormService.updateField("system", "f_user", "name",
+        new AppFormFieldUpdateRequest("核心字段", true, null, null)));
       configuredUserId = given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .contentType("application/json")

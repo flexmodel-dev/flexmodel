@@ -32,6 +32,7 @@ import static dev.flexmodel.query.Expressions.*;
 @ApplicationScoped
 public class ApprovalFlowState {
   private static final Logger LOGGER = LoggerFactory.getLogger(ApprovalFlowState.class);
+  private static final Set<String> FINISHED = Set.of("APPROVED", "REJECTED", "TERMINATED");
   @Inject
   ApprovalInstanceRepository approvalInstanceRepository;
   @Inject
@@ -60,6 +61,20 @@ public class ApprovalFlowState {
     }
     var starts = runtimeMessageRepository.findByMessageId(app, "start:" + text(run, "id"));
     return starts.isEmpty() ? new LinkedHashMap<>() : new LinkedHashMap<>(object(object(starts.getFirst().get("payload")).get("variables")));
+  }
+
+  public Map<String, Object> ending(String app, Map<String, Object> run) {
+    if (!FINISHED.contains(text(run, "status")) || text(run, "flow_deploy_id").isBlank()) return null;
+    try {
+      var reached = approvalNodeInstanceRepository.findByFlowInstance(app, text(run, "flow_instance_id")).stream()
+        .map(row -> text(row, "node_key")).toList();
+      var ending = ApprovalForecast.ending(approvalFlowDeploymentRepository.deployedFlow(app, text(run, "flow_deploy_id")), reached);
+      if (ending != null) ending.put("status", text(run, "status"));
+      return ending;
+    } catch (RuntimeException error) {
+      LOGGER.warn("审批结束节点读取失败.||runId={}", text(run, "id"), error);
+      return null;
+    }
   }
 
   public List<Map<String, Object>> upcoming(String app, Map<String, Object> run, List<Map<String, Object>> waits) {

@@ -12,6 +12,7 @@ import static dev.flexmodel.common.Values.*;
  */
 public final class ApprovalForecast {
   private static final int MAX_NODES = 12;
+  private static final Set<String> AUTO_KINDS = Set.of("notification", "create", "update", "query", "delete");
   private static final Map<String, String> DEFAULT_TITLES = Map.of(
     "approval", "审批", "notification", "通知", "create", "新增数据", "update", "更新数据",
     "query", "查询数据", "delete", "删除数据", "subflow", "子流程", "end", "流程结束", "gateway", "条件分流");
@@ -42,7 +43,7 @@ public final class ApprovalForecast {
       }
       var node = frame.nodes.get(frame.index++);
       String kind = text(node, "type");
-      if (kind.equals("start") || kind.equals("branch")) continue;
+      if (kind.equals("start") || kind.equals("branch") || AUTO_KINDS.contains(kind)) continue;
       if (kind.equals("gateway")) {
         var branch = choose(node, variables);
         if (branch == null) {
@@ -98,13 +99,26 @@ public final class ApprovalForecast {
     return true;
   }
 
+  public static Map<String, Object> ending(Map<String, Object> flow, Collection<String> reachedKeys) {
+    var ends = flatten(objects(object(flow.get("definition")).get("nodes"))).stream()
+      .filter(node -> text(node, "type").equals("end")).toList();
+    if (ends.isEmpty()) return null;
+    var node = ends.stream().filter(item -> reachedKeys.contains(text(item, "id"))).findFirst().orElse(ends.getFirst());
+    return baseView(node);
+  }
+
   private static Map<String, Object> view(Map<String, Object> node) {
+    var view = baseView(node);
+    view.put("certain", true);
+    return view;
+  }
+
+  private static Map<String, Object> baseView(Map<String, Object> node) {
     var view = new LinkedHashMap<String, Object>();
     view.put("id", text(node, "id"));
     view.put("title", title(node));
     view.put("kind", text(node, "type"));
     if (text(node, "type").equals("approval")) view.put("sign_mode", text(config(node), "signMode"));
-    view.put("certain", true);
     return view;
   }
 
@@ -120,8 +134,11 @@ public final class ApprovalForecast {
   }
 
   private static Map<String, Object> first(Map<String, Object> branch) {
-    for (var node : objects(branch.get("blocks")))
-      if (!text(node, "type").equals("start") && !text(node, "type").equals("branch")) return view(node);
+    for (var node : objects(branch.get("blocks"))) {
+      String kind = text(node, "type");
+      if (kind.equals("start") || kind.equals("branch") || AUTO_KINDS.contains(kind)) continue;
+      return view(node);
+    }
     return null;
   }
 

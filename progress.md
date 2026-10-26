@@ -3,19 +3,22 @@
 ## Apps UI - 详情流程进度节点预测（2026-10-26，feat-117）
 
 - 详情面板新增“后续节点”预测：后端 `ApprovalForecast` 从 `flow_deploy_id` 的部署快照出发，以当前
-  `WAITING` 审批节点的 `node_key` 为起点向后推演线性路径；审批、通知、数据节点、子流程与结束节点按顺序返回。
+  `WAITING` 审批节点的 `node_key` 为起点向后推演线性路径；只保留审批、子流程与结束节点，
+  通知、新增、更新、查询、删除等自动节点跳过，分支候选同样跳过自动节点后取首个可展示节点。
   网关条件复用 `ApprovalRecordActions.matches` 与当前实例变量求值，条件引用了尚未产出的变量时不猜测走向，
   返回各分支首个节点作为候选并停止推演；最多返回 12 个节点，部署快照解析异常时降级为空，不影响详情接口。
   实例详情响应新增 `upcoming`，前端只消费该字段，不需要拉取流程定义。
+- 流程结束（已通过/已拒绝/已终止）时详情接口返回部署快照中的结束节点，优先取实际执行到的 end 节点；
+  时间线末尾以实际状态色展示该节点，不再显示为灰色预测。未完成时结束节点仅作为灰色预测出现。
 - 前端预测节点直接接在现有审批时间线末尾，不新增独立分区；沿用原节点标记、标题、元信息与竖线结构，
   以 `muted` 灰阶和“预计/待定”徽标区分，分支候选在网关条目下以“可能进入”列出。
-  实例抽屉的“签核进度”复用同一时间线，同样展示预测节点。
+  实例抽屉的“签核进度”复用同一时间线，同样展示预测节点与结束节点。
   预测只覆盖“全部同意”的主路径，驳回/终止走向与子流程内部节点不在此次范围内。
-- 验证：`ApprovalForecastTest` 4 项通过（线性路径、条件命中并汇合、变量缺失返回候选、未知起点返回空）；
-  `mvn -pl flexmodel-server -am -Dtest=ApprovalForecastTest test` 通过（测试时关闭文件日志以避开运行中
-  dev.jar 的日志文件锁）。Apps UI `npx tsc -b`、`npm run build` 通过，`npm test` 34 项通过；另用 Playwright
-  加 mock 接口实际渲染面板，检查浅色与深色下预测节点与审批记录连成一条灰色时间线，临时脚本与截图已删除。
-  未改动已有未提交内容，未提交。
+- 验证：`ApprovalForecastTest` 5 项通过（自动节点跳过、条件命中并汇合、变量缺失返回候选、结束节点解析、
+  未知起点返回空）；`mvn -pl flexmodel-server -am -Dtest=ApprovalForecastTest test` 通过（测试时关闭文件日志
+  以避开运行中 dev.jar 的日志文件锁）。Apps UI `npx tsc -b`、`npm run build` 通过，`npm test` 34 项通过；
+  另用 Playwright 加 mock 接口分别渲染进行态与完成态，检查浅色与深色下灰色预测节点及绿色结束节点，
+  临时脚本与截图已删除。未改动已有未提交内容，未提交。
 
 ## Apps UI - 列表附件气泡框（2026-10-26，feat-115）
 
@@ -3160,3 +3163,27 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：`npm run build` 通过；`npm test` 34 项通过；Playwright 实测通知审批全宽、个人设置无左侧栏且展示真实账号、
   表单设计画布字段高度 32-34px、表单设计返回列表；截图 `flexmodel-apps-ui/artifacts/notification-approval-current.png`、
   `user-settings-new.png`、`form-designer-compact.png`、`standalone-detail-refresh.png`。
+
+**Apps UI - 文件中心接入存储能力（2026-10-26，feat-118）**
+
+- `FilesDocs` 移除 `fileTree` mock，改为通过应用 `projectId` 读取默认 Bucket（缺失时沿用 `ensureBucket` 自动创建）：
+  文件页签列出桶根目录并过滤 `appId` 附件目录，展示共享文件/目录；附件页签以 `appId/` 为前缀，
+  按表单目录浏览上传附件，展示时去掉文件名中的 uuid 前缀。上传沿用 `appId/formId/uuid_文件名` 约定，
+  文件页签则保留原始文件名。
+- 上传按钮右侧箭头改为受控下拉菜单：新建目录（PUT `?folder=true`）、移动文件、删除文件（确认弹窗）、
+  批量下载（选中文件夹时递归展开）。移动弹窗支持逐级选择目标目录，排除选中目录及其子目录，并禁止移动到当前目录。
+- 后端补齐缺失的移动能力：`StorageOperations.moveFile`，Local 使用 `Files.move`，S3 使用 CopyObject + 批量 Delete；
+  `BucketService` 校验空路径/相同路径/移入自身子目录/源不存在/目标同名，`BucketResource` 新增
+  `POST /projects/{projectId}/buckets/{bucketName}/move`。
+- 右侧文件/文件夹卡片右上角新增悬浮“更多”按钮，悬停展开下拉菜单，支持直接删除单个文件或目录，
+  复用删除确认弹窗与列表刷新逻辑；按钮阻止冒泡，不影响卡片进入目录或勾选。
+- 修复卡片下拉悬浮时反复弹出：Radix 模态菜单打开时会禁用外部指针事件，使 trigger 触发 mouseleave→关闭→mouseenter→重新打开。
+  卡片菜单改为 `modal={false}`，实测真实鼠标悬浮仅打开一次，移开后正常关闭，`body` pointer-events 保持原值。
+- 卡片“更多”菜单新增“详情”，展示名称、类型、大小（文件夹显示文件数）、修改时间与所在位置。
+- 附件页签改为只读：上传按钮禁用并提示由表单上传；工具栏新建目录、移动、删除禁用；卡片菜单仅保留“详情”。
+  批量下载属于只读操作，勾选后仍可用；相关写操作在事件处理入口同样加了只读保护。
+- 验证：Apps UI `tsc -b`、`npm run build` 通过，`npm test` 34 项通过；真实后端与 5180 页面实测两个页签数据、
+  上传（共享根目录保留原名、应用附件目录保留 uuid 前缀）、新建目录、移动、删除、批量下载均成功（批量下载对象 GET 200），
+  卡片悬浮“更多”按钮在文件与文件夹上均可展开下拉并完成单文件删除；测试文件/目录已清理，原有产品附件未受影响。
+  `LocalStorageOperationsTest` 16 项通过（新增文件与目录移动），`BucketAttachmentResourceTest` 3 项通过
+  （新增移动往返、相同路径 400、移入子目录 400）。原生全模块 compile（排除 maven-plugin）与引擎测试通过；未改 engine。

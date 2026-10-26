@@ -43,6 +43,9 @@ public class BucketResource {
 
   public record UploadedObject(String url, String path, String name) {}
 
+  public record MoveObjectRequest(String source, String target) {
+  }
+
   // ==================== Bucket CRUD ====================
 
   @APIResponse(name = "200", responseCode = "200", description = "OK",
@@ -165,6 +168,19 @@ public class BucketResource {
     return Response.ok(stream)
       .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
       .build();
+  }
+
+  @APIResponse(name = "204", responseCode = "204", description = "移动成功")
+  @Operation(summary = "移动对象")
+  @POST
+  @Path("/{bucketName}/move")
+  public Response moveObject(
+    @PathParam("projectId") String projectId,
+    @PathParam("bucketName") String bucketName,
+    MoveObjectRequest request) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    bucketService.moveFile(bucket, request.source(), request.target());
+    return Response.noContent().build();
   }
 
   @APIResponse(name = "200", responseCode = "200", description = "删除成功")

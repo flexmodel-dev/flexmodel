@@ -60,6 +60,43 @@ class BucketAttachmentResourceTest {
   }
 
   @Test
+  void movesObjectBetweenFolders() {
+    String name = "attachment-move-" + UUID.randomUUID();
+    String bucket = "/projects/dev_test/buckets/" + name;
+    String auth = tokens.getAuthorizationHeader();
+    given().header("Authorization", auth).contentType("application/json")
+      .body(Map.of("name", name, "visibility", "PRIVATE"))
+      .post("/projects/dev_test/buckets").then().statusCode(200);
+    try {
+      byte[] content = "move me".getBytes(StandardCharsets.UTF_8);
+      given().header("Authorization", auth).contentType("application/octet-stream")
+        .body(content).put(bucket + "/objects/source/file.txt").then().statusCode(200);
+
+      given().header("Authorization", auth).contentType("application/json")
+        .body(Map.of("source", "source/file.txt", "target", "target/file.txt"))
+        .post(bucket + "/move").then().statusCode(204);
+
+      given().header("Authorization", auth).get(bucket + "/objects?prefix=source")
+        .then().statusCode(200).body("size()", equalTo(0));
+      given().header("Authorization", auth).get(bucket + "/objects?prefix=target")
+        .then().statusCode(200).body("[0].name", equalTo("file.txt"));
+
+      byte[] moved = given().header("Authorization", auth)
+        .get(bucket + "/objects/target/file.txt").then().statusCode(200).extract().asByteArray();
+      assertArrayEquals(content, moved);
+
+      given().header("Authorization", auth).contentType("application/json")
+        .body(Map.of("source", "target/file.txt", "target", "target/file.txt"))
+        .post(bucket + "/move").then().statusCode(400);
+      given().header("Authorization", auth).contentType("application/json")
+        .body(Map.of("source", "target", "target", "target/nested"))
+        .post(bucket + "/move").then().statusCode(400);
+    } finally {
+      given().header("Authorization", auth).queryParam("force", true).delete(bucket).then().statusCode(204);
+    }
+  }
+
+  @Test
   void uploadedUrlRoundTripsEncodedNamesAndRequiresAuthentication() {
     String name = "attachment-test-" + UUID.randomUUID();
     String bucket = "/projects/dev_test/buckets/" + name;

@@ -1,6 +1,16 @@
 {
   "features": [
     {
+      "id": "feat-118",
+      "name": "Apps UI - 文件中心接入存储能力",
+      "description": "文件页签展示项目默认桶根目录的共享文件，附件页签按 appId 前缀展示当前应用上传的附件；上传、新建目录、移动、删除、批量下载全部接入 Bucket 接口，并补充对象移动接口。",
+      "dependencies": [
+        "feat-113"
+      ],
+      "status": "done",
+      "evidence": "FilesDocs 移除 fileTree mock，改为按应用 projectId 读取默认 Bucket：文件页签列出桶根目录并过滤 appId 附件目录，附件页签以 appId/ 为前缀浏览表单目录，文件名去掉 uuid 前缀；上传按当前目录写对象并在附件页签保留 uuid_ 前缀。右侧箭头改为下拉菜单，新建目录走 PUT folder=true，移动走新增的 POST /buckets/{name}/move，删除走 DELETE object，批量下载按选中文件递归展开文件夹并逐个下载；文件/文件夹卡片右上角悬浮显示更多按钮（非模态避免悬浮循环弹出），下拉提供详情与删除；详情展示名称、类型、大小、修改时间和位置。附件页签只读，禁用上传、新建目录、移动与删除，卡片仅保留详情，批量下载保持可用。后端 StorageOperations 新增 moveFile，Local 使用 Files.move，S3 使用 copy+批量 delete，BucketService 校验空路径、相同路径、移入自身子目录、源不存在与目标同名冲突，BucketResource 暴露 POST /{bucketName}/move。验证：Apps UI tsc -b 与 npm run build 通过，npm test 34 项通过；真实后端实测文件/附件页签数据、上传、新建目录、移动、删除与批量下载（GET 200），操作后测试文件与目录已清理，产品附件保持原状；LocalStorageOperationsTest 16 项通过（新增文件/目录移动），BucketAttachmentResourceTest 3 项通过（新增 move 往返、相同路径与移入子目录 400）。原生全模块 compile（排除 maven-plugin）与引擎测试通过，未改 engine。"
+    },
+    {
       "id": "feat-117",
       "name": "Apps UI - 详情流程进度节点预测",
       "description": "在详情流程进度面板中基于部署快照、当前审批节点与实例变量预测后续线性节点；条件无法判定时展示分支候选，统一用灰色时间线呈现。",
@@ -8,7 +18,7 @@
         "feat-116"
       ],
       "status": "done",
-      "evidence": "新增 ApprovalForecast 从 flow_deploy_id 的部署快照按当前 WAITING 节点向后推演，条件用 ApprovalRecordActions.matches 与实例变量求值，引用未产出变量的网关返回候选分支；实例详情新增 upcoming 字段，推演失败降级为空。预测节点直接并入 ApprovalTimeline 末尾，沿用原时间线结构并以灰阶及“预计/待定”徽标区分，分支候选列在网关条目下；实例抽屉签核进度同步复用。验证：ApprovalForecastTest 4 项通过（线性路径、条件命中、候选分支、未知起点）；Apps UI tsc -b 与 npm run build 通过；npm test 34 项通过；Playwright + mock 接口实测明暗两种主题面板渲染，临时脚本与截图已移除。未提交，保留仓库既有未提交改动。"
+      "evidence": "新增 ApprovalForecast 从 flow_deploy_id 的部署快照按当前 WAITING 节点向后推演，条件用 ApprovalRecordActions.matches 与实例变量求值，引用未产出变量的网关返回候选分支；预测仅保留审批、子流程与结束节点，跳过通知和数据类自动节点。实例详情新增 upcoming 与 ending 字段：流程结束时返回实际结束节点，推演失败降级为空。预测节点直接并入 ApprovalTimeline 末尾，沿用原时间线结构并以灰阶及“预计/待定”徽标区分，分支候选列在网关条目下；结束时按实例状态色展示结束节点；实例抽屉签核进度同步复用。验证：ApprovalForecastTest 5 项通过（自动节点跳过、条件命中、候选分支、结束节点、未知起点）；Apps UI tsc -b 与 npm run build 通过；npm test 34 项通过；Playwright + mock 接口实测明暗两种主题面板渲染，临时脚本与截图已移除。未提交，保留仓库既有未提交改动。"
     },
     {
       "id": "feat-116",

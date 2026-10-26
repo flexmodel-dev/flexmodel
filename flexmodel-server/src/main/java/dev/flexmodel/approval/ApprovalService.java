@@ -200,6 +200,7 @@ public class ApprovalService implements DurableFlowListener {
     result.putAll(Map.of("snapshot", run.get("snapshot"), "variables", state.variables(appId, run), "error", text(run, "error"),
       "tasks", approvalTaskRepository.findByRunId(appId, id), "waits", waits, "upcoming", state.upcoming(appId, run, waits),
       "logs", state.logs(appId, run), "children", state.children(appId, run).stream().map(child -> summary(appId, "", child)).toList()));
+    result.put("ending", state.ending(appId, run));
     List<Map<String, Object>> failures = runtimeMessageRepository.findUndone(appId).stream().filter(message -> {
       var payload = object(message.get("payload"));
       return text(payload, "instanceId").equals(text(run, "flow_instance_id")) && !text(run, "flow_instance_id").isEmpty()

@@ -12,18 +12,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class ApprovalForecastTest {
 
   @Test
-  void predictsLinearNodesUntilEnd() {
+  void skipsAutomaticNodesAndStopsAtEnd() {
     var flow = flow(List.of(
       node("start", "start", "发起", Map.of("kind", "start")),
       node("review", "approval", "主管审批", Map.of("kind", "approval", "signMode", "all")),
       node("notify", "notification", "通知申请人", Map.of("kind", "notification")),
+      node("manager", "approval", "经理审批", Map.of("kind", "approval", "signMode", "any")),
+      node("archive", "create", "归档数据", Map.of("kind", "create")),
       node("end", "end", "", Map.of("kind", "end"))
     ));
 
     var result = ApprovalForecast.forecast(flow, List.of("review"), Map.of("record", Map.of()));
 
-    assertEquals(List.of("notify", "end"), ids(result));
-    assertEquals("notification", text(result.getFirst(), "kind"));
+    assertEquals(List.of("manager", "end"), ids(result));
+    assertEquals(List.of("approval", "end"), result.stream().map(node -> text(node, "kind")).toList());
     assertEquals(Boolean.TRUE, result.getFirst().get("certain"));
     assertEquals("流程结束", text(result.getLast(), "title"));
   }
@@ -37,7 +39,7 @@ class ApprovalForecastTest {
     assertEquals("any", text(high.getFirst(), "sign_mode"));
 
     var low = ApprovalForecast.forecast(flow, List.of("review"), Map.of("record", Map.of("amount", 100)));
-    assertEquals(List.of("notify", "end"), ids(low));
+    assertEquals(List.of("end"), ids(low));
   }
 
   @Test
@@ -48,13 +50,25 @@ class ApprovalForecastTest {
     var gateway = result.getFirst();
     assertEquals("route", text(gateway, "id"));
     assertEquals(Boolean.FALSE, gateway.get("certain"));
-    assertEquals(List.of("finance", "notify"), ids(objects(gateway.get("candidates"))));
+    assertEquals(List.of("finance"), ids(objects(gateway.get("candidates"))));
+  }
+
+  @Test
+  void resolvesReachedEndNode() {
+    var flow = flow(List.of(
+      node("start", "start", "发起", Map.of("kind", "start")),
+      node("end", "end", "完成归档", Map.of("kind", "end"))
+    ));
+
+    assertEquals("完成归档", text(ApprovalForecast.ending(flow, List.of("end")), "title"));
+    assertEquals("end", text(ApprovalForecast.ending(flow, List.of()), "id"));
   }
 
   @Test
   void ignoresUnknownCurrentNode() {
     assertTrue(ApprovalForecast.forecast(expenseFlow(), List.of("missing"), Map.of()).isEmpty());
     assertTrue(ApprovalForecast.forecast(expenseFlow(), List.of(), Map.of()).isEmpty());
+    assertNull(ApprovalForecast.ending(flow(List.of(node("start", "start", "发起", Map.of("kind", "start")))), List.of()));
   }
 
   private static Map<String, Object> expenseFlow() {
@@ -62,10 +76,11 @@ class ApprovalForecastTest {
       node("start", "start", "发起", Map.of("kind", "start")),
       node("review", "approval", "主管审批", Map.of("kind", "approval", "signMode", "all")),
       gateway("route", "条件分流", List.of(
-        branch("high", "金额较大", false, List.of(condition("record.amount", "gt", "1000")),
-          List.of(node("finance", "approval", "财务审批", Map.of("kind", "approval", "signMode", "any")))),
+        branch("high", "金额较大", false, List.of(condition("record.amount", "gt", "1000")), List.of(
+          node("notify", "notification", "通知申请人", Map.of("kind", "notification")),
+          node("finance", "approval", "财务审批", Map.of("kind", "approval", "signMode", "any")))),
         branch("fallback", "默认分支", true, List.of(),
-          List.of(node("notify", "notification", "通知申请人", Map.of("kind", "notification"))))
+          List.of(node("archive", "create", "归档数据", Map.of("kind", "create"))))
       )),
       node("end", "end", "", Map.of("kind", "end"))
     ));

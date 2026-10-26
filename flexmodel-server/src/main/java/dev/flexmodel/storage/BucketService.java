@@ -135,6 +135,29 @@ public class BucketService {
     ops.deleteFile(path);
   }
 
+  public void moveFile(Bucket bucket, String source, String target) {
+    String normalizedSource = normalizeObjectPath(source);
+    String normalizedTarget = normalizeObjectPath(target);
+    if (normalizedSource.isEmpty() || normalizedTarget.isEmpty()) {
+      throw new ValidationException("源路径和目标路径不能为空");
+    }
+    if (normalizedSource.equals(normalizedTarget)) {
+      throw new ValidationException("源路径和目标路径不能相同");
+    }
+    if (normalizedTarget.startsWith(normalizedSource + "/")) {
+      throw new ValidationException("不能将文件移动到自身或其子目录");
+    }
+
+    StorageOperations ops = storageOperationsFactory.forBucket(bucket);
+    if (ops.getFile(normalizedSource) == null) {
+      throw new NotFoundException("File not found: " + source);
+    }
+    if (ops.getFile(normalizedTarget) != null) {
+      throw new ValidationException("目标位置已存在同名文件或目录");
+    }
+    ops.moveFile(normalizedSource, normalizedTarget);
+  }
+
   public InputStream getInputStream(Bucket bucket, String path) {
     StorageOperations ops = storageOperationsFactory.forBucket(bucket);
     return ops.getInputStream(path);
@@ -153,5 +176,19 @@ public class BucketService {
 
   private String buildPrefix(Bucket bucket) {
     return bucket.getOwnerType() + "/" + bucket.getOwnerId() + "/" + bucket.getName();
+  }
+
+  private static String normalizeObjectPath(String path) {
+    if (path == null) {
+      return "";
+    }
+    String normalized = path.replace('\\', '/');
+    while (normalized.startsWith("/")) {
+      normalized = normalized.substring(1);
+    }
+    while (normalized.endsWith("/")) {
+      normalized = normalized.substring(0, normalized.length() - 1);
+    }
+    return normalized;
   }
 }

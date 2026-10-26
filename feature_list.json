@@ -1,6 +1,16 @@
 {
   "features": [
     {
+      "id": "feat-115",
+      "name": "Apps UI - 列表附件气泡框",
+      "description": "列表附件点击后使用贴近单元格的气泡框展示全部文件，保留预览下载，支持外部点击和Esc关闭，主列表与子表一致。",
+      "dependencies": [
+        "feat-114"
+      ],
+      "status": "in_progress",
+      "evidence": "准备复用Popover组件；原生全模块编译通过，init.sh clean仍受运行中dev.jar文件锁阻塞。"
+    },
+    {
       "id": "feat-114",
       "name": "Apps UI - 列表附件紧凑展示",
       "description": "主记录和子表列表将附件URL改为缩略图/文件图标、文件名及数量，点击查看全部附件并预览下载，保持紧凑行高。",

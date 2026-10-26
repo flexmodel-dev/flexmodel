@@ -1,5 +1,22 @@
 # Session Progress Log
 
+## Apps UI - 详情流程进度节点预测（2026-10-26，feat-117）
+
+- 详情面板新增“后续节点”预测：后端 `ApprovalForecast` 从 `flow_deploy_id` 的部署快照出发，以当前
+  `WAITING` 审批节点的 `node_key` 为起点向后推演线性路径；审批、通知、数据节点、子流程与结束节点按顺序返回。
+  网关条件复用 `ApprovalRecordActions.matches` 与当前实例变量求值，条件引用了尚未产出的变量时不猜测走向，
+  返回各分支首个节点作为候选并停止推演；最多返回 12 个节点，部署快照解析异常时降级为空，不影响详情接口。
+  实例详情响应新增 `upcoming`，前端只消费该字段，不需要拉取流程定义。
+- 前端预测节点直接接在现有审批时间线末尾，不新增独立分区；沿用原节点标记、标题、元信息与竖线结构，
+  以 `muted` 灰阶和“预计/待定”徽标区分，分支候选在网关条目下以“可能进入”列出。
+  实例抽屉的“签核进度”复用同一时间线，同样展示预测节点。
+  预测只覆盖“全部同意”的主路径，驳回/终止走向与子流程内部节点不在此次范围内。
+- 验证：`ApprovalForecastTest` 4 项通过（线性路径、条件命中并汇合、变量缺失返回候选、未知起点返回空）；
+  `mvn -pl flexmodel-server -am -Dtest=ApprovalForecastTest test` 通过（测试时关闭文件日志以避开运行中
+  dev.jar 的日志文件锁）。Apps UI `npx tsc -b`、`npm run build` 通过，`npm test` 34 项通过；另用 Playwright
+  加 mock 接口实际渲染面板，检查浅色与深色下预测节点与审批记录连成一条灰色时间线，临时脚本与截图已删除。
+  未改动已有未提交内容，未提交。
+
 ## Apps UI - 列表附件气泡框（2026-10-26，feat-115）
 
 - 根据用户要求，列表附件点击后的完整附件列表改为共用 `Popover`，贴近单元格显示，取消居中模态列表。
@@ -3126,3 +3143,20 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 环境限制：`bash ./init.sh` 的 `clean` 被运行中后端锁定的 `flexmodel-server-dev.jar` 阻塞。
   已使用不执行 clean 的原生 Maven 验证，保留现有服务；完整 init 需要先释放该 JAR 文件锁。
   未改动已有 `flexmodel-ui` 工作区内容及 Apps UI 的 `.tmp-verify-back.mjs`。
+
+**Apps UI - 消息审批全宽、个人设置精简与表单设计紧凑（2026-10-26，feat-108）**
+
+- 消息中心 → 消息详情 → 查看审批：抽屉组件的层叠逻辑会按上一个抽屉宽度减去 `--drawer-stack-gap` 限制最大宽度，
+  通知抽屉 600px 导致审批详情被压到 552px，表单与右侧进度被截断。`BizDrawer` 与 `AppRecordDrawer` 新增
+  `stacked` 透传，`Notifications` 打开审批详情时传 `stacked={false}`；1440 视口下审批抽屉恢复为 1184px（x=256），
+  完全覆盖通知抽屉且无横向溢出。
+- 个人设置页移除全部 mock：删除 `currentUser`、`loginLogs`、部门/工作电话、登录日志、第三方授权、
+  临时授权/个人秘钥及假保存弹窗，改为读取 `getAuthSession()` 展示当前用户名、邮箱、用户 ID；
+  继续使用 `AppLayout hideNavigation` 隐藏左侧菜单。
+- 表单设计「表单布局」画布收紧：外层与画布 padding `p-4→p-3`，行列 `gap-3→gap-2`，
+  字段卡片 `py-2→py-1.5`、分区 `h-9→h-8`、子表单 `min-h-14→min-h-11`。
+- 复测用户提及的既有问题：表单设计返回固定跳转 `/admin/apps/{appId}/settings/forms` 表单列表；
+  列表行编辑回填与详情编辑保存后刷新沿用 feat-107 的修复，实测记录 2323 在抽屉与独立详情页均正常，无 `undefined`。
+- 验证：`npm run build` 通过；`npm test` 34 项通过；Playwright 实测通知审批全宽、个人设置无左侧栏且展示真实账号、
+  表单设计画布字段高度 32-34px、表单设计返回列表；截图 `flexmodel-apps-ui/artifacts/notification-approval-current.png`、
+  `user-settings-new.png`、`form-designer-compact.png`、`standalone-detail-refresh.png`。

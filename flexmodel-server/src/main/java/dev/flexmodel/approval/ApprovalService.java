@@ -195,10 +195,10 @@ public class ApprovalService implements DurableFlowListener {
         || !approvalTaskRepository.findByRunAndUser(appId, text(parent, "id"), current.getUserId()).isEmpty();
     }
     if (!current.isAuthenticatedUser() || !involved && !admin()) throw new ForbiddenException("无权查看该审批");
+    var waits = approvalWaitRepository.findByRunId(appId, id).stream().map(wait -> state.waitView(appId, wait)).toList();
     Map<String, Object> result = summary(appId, "", run);
     result.putAll(Map.of("snapshot", run.get("snapshot"), "variables", state.variables(appId, run), "error", text(run, "error"),
-      "tasks", approvalTaskRepository.findByRunId(appId, id),
-      "waits", approvalWaitRepository.findByRunId(appId, id).stream().map(wait -> state.waitView(appId, wait)).toList(),
+      "tasks", approvalTaskRepository.findByRunId(appId, id), "waits", waits, "upcoming", state.upcoming(appId, run, waits),
       "logs", state.logs(appId, run), "children", state.children(appId, run).stream().map(child -> summary(appId, "", child)).toList()));
     List<Map<String, Object>> failures = runtimeMessageRepository.findUndone(appId).stream().filter(message -> {
       var payload = object(message.get("payload"));

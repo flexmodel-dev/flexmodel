@@ -1,6 +1,27 @@
 {
   "features": [
     {
+      "id": "feat-117",
+      "name": "Apps UI - 详情流程进度节点预测",
+      "description": "在详情流程进度面板中基于部署快照、当前审批节点与实例变量预测后续线性节点；条件无法判定时展示分支候选，统一用灰色时间线呈现。",
+      "dependencies": [
+        "feat-116"
+      ],
+      "status": "done",
+      "evidence": "新增 ApprovalForecast 从 flow_deploy_id 的部署快照按当前 WAITING 节点向后推演，条件用 ApprovalRecordActions.matches 与实例变量求值，引用未产出变量的网关返回候选分支；实例详情新增 upcoming 字段，推演失败降级为空。预测节点直接并入 ApprovalTimeline 末尾，沿用原时间线结构并以灰阶及“预计/待定”徽标区分，分支候选列在网关条目下；实例抽屉签核进度同步复用。验证：ApprovalForecastTest 4 项通过（线性路径、条件命中、候选分支、未知起点）；Apps UI tsc -b 与 npm run build 通过；npm test 34 项通过；Playwright + mock 接口实测明暗两种主题面板渲染，临时脚本与截图已移除。未提交，保留仓库既有未提交改动。"
+    },
+    {
+      "id": "feat-116",
+      "name": "Apps UI - 详情流程进度面板重构",
+      "description": "重构详情流程进度的状态概览、纵向节点时间线及审批人和意见层级，突出当前节点，适配窄屏并保留审批操作。",
+      "dependencies": [
+        "feat-104",
+        "feat-105"
+      ],
+      "status": "in_progress",
+      "evidence": "已检查现有面板及共享抽屉布局，原生全模块编译通过；标准init.sh clean仍受现有dev.jar锁阻塞。"
+    },
+    {
       "id": "feat-115",
       "name": "Apps UI - 列表附件气泡框",
       "description": "列表附件点击后使用贴近单元格的气泡框展示全部文件，保留预览下载，支持外部点击和Esc关闭，主列表与子表一致。",
@@ -1126,6 +1147,17 @@
       ],
       "status": "done",
       "evidence": "BizDrawer 新增 moreMenu 插槽并固定渲染在进度折叠按钮之后、关闭按钮之前；移除无人使用的 headerExtra 属性。新增 components/biz/FormMoreMenu.tsx：MoreHorizontal 触发按钮（title/aria-label=更多）+ 下拉菜单「表单设计」，DropdownMenuContent 使用 z-[1100] 保证浮于 z-[1040] 的抽屉之上。AppRecordDrawer 与 AppRecordFormModal 移除原头部 Settings 图标按钮，改传 moreMenu，点击表单设计先关闭当前抽屉再跳转 form-design。附带修复开发环境：Windows 原生文件事件偶发丢失导致 Vite 返回半更新模块（曾出现 headerExtra is not defined / ApprovalTaskDrawer is not defined），vite.config.ts 启用 server.watch.usePolling（300ms）。验证：npm run build 通过；npm test 27 项通过；Playwright 实测审批中心记录抽屉：头部仅剩 [收起审批][更多][关闭]，更多菜单可见且可跳转 form-design；新建产品抽屉同样显示更多按钮，页面无异常；截图 artifacts/drawer-more-menu.png、form-modal-more-menu.png。"
+    },
+    {
+      "id": "feat-108",
+      "name": "Apps UI - 消息审批全宽、个人设置精简与表单设计紧凑",
+      "description": "消息中心查看审批改为独占全宽抽屉，不再按上一层通知抽屉宽度收窄并留出间距；个人设置移除全部 mock 内容，仅展示当前登录账号并隐藏左侧菜单；表单设计画布与字段卡片间距收紧。",
+      "dependencies": [
+        "feat-106",
+        "feat-107"
+      ],
+      "status": "done",
+      "evidence": "DrawerContent 已有 stacked 层叠宽度限制，BizDrawer/AppRecordDrawer 新增 stacked 透传；Notifications 打开审批详情时传 stacked={false}，桌面 1440 下审批抽屉由 552px 恢复为 1184px（x=256），完全覆盖通知抽屉且无横向溢出。UserSettings 重写为读取 getAuthSession() 的真实账号（用户名/邮箱/用户 ID），删除 currentUser、loginLogs、部门、工作电话、登录日志、第三方授权、临时授权/秘钥及全部假保存弹窗，保留 AppLayout hideNavigation。FormDesigner 表单布局画布 p-4→p-3、行列 gap-3→gap-2、字段卡片 py-2→py-1.5、分区 h-9→h-8、子表单 min-h-14→min-h-11。表单设计返回按钮复测跳转 /admin/apps/plm_system/settings/forms；列表行编辑回填与详情保存刷新复用 feat-107 已验证。验证：npm run build 通过；npm test 34 项通过；Playwright 实测通知详情→查看审批全宽无溢出、个人设置无 aside 且展示 Admin/cjbi@outlook.com、表单设计画布卡片高度 32-34px、表单设计返回列表；截图 artifacts/notification-approval-current.png、user-settings-new.png、form-designer-compact.png。"
     }
   ]
 }

@@ -11,6 +11,8 @@ import dev.flexmodel.common.messaging.RuntimeMessageRepository;
 import dev.flexmodel.reflect.ReflectionUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -29,6 +31,7 @@ import static dev.flexmodel.query.Expressions.*;
  */
 @ApplicationScoped
 public class ApprovalFlowState {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ApprovalFlowState.class);
   @Inject
   ApprovalInstanceRepository approvalInstanceRepository;
   @Inject
@@ -57,6 +60,18 @@ public class ApprovalFlowState {
     }
     var starts = runtimeMessageRepository.findByMessageId(app, "start:" + text(run, "id"));
     return starts.isEmpty() ? new LinkedHashMap<>() : new LinkedHashMap<>(object(object(starts.getFirst().get("payload")).get("variables")));
+  }
+
+  public List<Map<String, Object>> upcoming(String app, Map<String, Object> run, List<Map<String, Object>> waits) {
+    var current = waits.stream().filter(wait -> "WAITING".equals(text(wait, "status")))
+      .map(wait -> text(wait, "node_key")).filter(key -> !key.isBlank()).distinct().toList();
+    if (current.isEmpty() || text(run, "flow_deploy_id").isBlank()) return List.of();
+    try {
+      return ApprovalForecast.forecast(approvalFlowDeploymentRepository.deployedFlow(app, text(run, "flow_deploy_id")), current, variables(app, run));
+    } catch (RuntimeException error) {
+      LOGGER.warn("审批节点预测失败.||runId={}", text(run, "id"), error);
+      return List.of();
+    }
   }
 
   private void storeVariables(String app, Map<String, Object> run, String nodeId, String nodeKey, String key, Map<String, Object> variables) {

@@ -1,6 +1,37 @@
 {
   "features": [
     {
+      "id": "feat-122",
+      "name": "默认头像对比度修复",
+      "description": "无头像时采用主题配对背景和文字色及细边框，提高姓名首字可读性。",
+      "status": "done",
+      "evidence": "UserAvatar 改用 bg-muted/text-foreground/border-border，保留图片加载逻辑；Apps UI build通过；Playwright实测浅色对比度15.45:1、暗色15.11:1，边框与首字渲染正常。"
+    },
+    {
+      "id": "feat-121",
+      "name": "流程进度用户头像",
+      "description": "人员目录返回头像，流程进度发起人和审批人使用共享图片头像组件。",
+      "status": "done",
+      "evidence": "DirectoryService 返回 avatar，审批成员缓存保留完整用户信息，进度侧栏发起人和审批人及实例抽屉时间线接入 UserAvatar。全模块非clean compile、规定引擎测试、Apps build、34项unit与diff --check通过；Playwright mock实际渲染验证发起人/审批人图片解码、Bearer鉴权、无头像首字回退及暗色/手机渲染。init.sh已知JAR锁仍在；保留前序未提交头像依赖改动。"
+    },
+    {
+      "id": "feat-120",
+      "name": "Apps 登录返回并展示用户头像",
+      "description": "认证响应包含 avatar，会话保留头像并在顶部组件鉴权加载，个人设置保存后同步更新。",
+      "status": "done",
+      "evidence": "全模块非clean Maven compile、规定引擎测试通过；AuthResourceTest 17项通过，新增 login/refresh/whoami 非空头像回归；Apps UI build、34项unit通过；Playwright mock登录验证头像图片实际解码、Bearer鉴权、刷新保留与无效图片文字回退；git diff --check通过。init.sh仍受运行中dev.jar文件锁阻塞。保留已有未提交个人设置改动，未混合提交。"
+    },
+    {
+      "id": "feat-119",
+      "name": "Apps UI - 个人设置接入后端",
+      "description": "个人设置页读取系统用户表单的姓名、邮箱、工作电话、头像与主部门，保存姓名/工作电话/头像；新增平台登录日志表并记录登录成功与失败，提供当前用户登录日志分页接口。",
+      "dependencies": [
+        "feat-118"
+      ],
+      "status": "done",
+      "evidence": "UserSettings 移除 currentUser/loginLogs mock，改为 GET/PUT /api/system/forms/f_user/records/{id}；f_user 新增 phone 字段并复用 avatar，保存 name/phone/avatar；头像上传默认项目 default Bucket 的 avatars/{userId}/ 路径，私有对象通过鉴权 Blob 预览。新增 f_login_log 模型（user_id/username/client_ip/user_agent/success/message/created_at）与 LoginLogRepository/Service/Response；AuthResource.login 记录成功和失败（含 IP、User-Agent），新增 GET /api/auth/login-logs 仅返回当前用户分页日志。验证：后端全模块 compile 通过；AuthResourceTest 16 项通过（新增登录日志查询、未认证 401）；真实服务实测登录日志返回成功与失败记录、f_user 读取/更新 phone 与 avatar、头像上传后重新加载可预览；清理测试手机号/头像与临时 Bucket；Apps UI npm run build 通过，npm test 34 项通过；未改页面样式。"
+    },
+    {
       "id": "feat-118",
       "name": "Apps UI - 文件中心接入存储能力",
       "description": "文件页签展示项目默认桶根目录的共享文件，附件页签按 appId 前缀展示当前应用上传的附件；上传、新建目录、移动、删除、批量下载全部接入 Bucket 接口，并补充对象移动接口。",

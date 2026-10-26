@@ -3187,3 +3187,41 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   卡片悬浮“更多”按钮在文件与文件夹上均可展开下拉并完成单文件删除；测试文件/目录已清理，原有产品附件未受影响。
   `LocalStorageOperationsTest` 16 项通过（新增文件与目录移动），`BucketAttachmentResourceTest` 3 项通过
   （新增移动往返、相同路径 400、移入子目录 400）。原生全模块 compile（排除 maven-plugin）与引擎测试通过；未改 engine。
+
+**Apps UI - 个人设置接入后端（2026-10-26，feat-119）**
+
+- `UserSettings` 移除 `currentUser/loginLogs` mock：个人信息改读 `GET /api/system/forms/f_user/records/{id}`，
+  展示用户 ID、主部门、姓名、工作电话与头像；保存走 `PUT`，提交 name/phone/avatar。
+- `f_user` 新增 `phone`（工作电话）字段，头像复用已有 `avatar`；`platform.fml` 同步表单字段配置。
+- 头像选择后上传到默认项目 default Bucket 的 `avatars/{userId}/`，保存相对 URL；私有对象通过带鉴权的
+  Blob 下载后再预览，刷新页面仍可显示。
+- 新增 `f_login_log` 平台表与登录日志链路：`AuthResource.login` 成功/失败均记录用户名、用户 ID、IP、
+  User-Agent 与失败原因；新增 `GET /api/auth/login-logs`，只返回当前登录用户的分页日志，未认证返回 401。
+- 验证：后端全模块 compile 通过；`AuthResourceTest` 16 项通过（新增登录日志查询与未认证 401）；真实服务实测
+  成功/失败登录日志、f_user 读取与更新 phone/avatar、头像上传后刷新可预览；测试手机号、头像与临时 Bucket 已清理。
+  Apps UI `npm run build` 通过，`npm test` 34 项通过；未修改页面样式。
+
+**Apps UI - 登录头像返回与展示（2026-10-26，feat-120）**
+
+- UserinfoResponse.UserResponse 新增 avatar，AuthResource 的 login/refresh/whoami 统一返回用户头像。
+- Apps 登录保留 avatar；UserAvatar 复用附件鉴权加载，处理取消、Blob URL释放和图片失败文字回退；顶部传入会话头像。
+- 个人设置保存后同步姓名、邮箱、头像到会话并通知顶部更新，监听跨窗口存储变化。
+- 验证：原生全模块非clean compile、规定引擎测试通过；AuthResourceTest 17项通过（新增非空头像三接口回归）；Apps UI
+  build、34项unit通过；Playwright mock验证登录图片解码、Bearer鉴权、刷新持久化与无效图片回退；diff --check通过。
+- init.sh 已执行但 clean 仍被运行中 flexmodel-server-dev.jar 文件锁阻塞，未停止用户服务。设计规范读取
+  flexmodel-ui/DESIGN.md；保留现有组件样式。
+- 仓库已有未提交 feat-119 改动与本次共享文件，Apps UI 为独立嵌套仓库且未跟踪；为避免混合提交既有工作，本次未提交。
+
+**流程进度用户头像（2026-10-26，feat-121）**
+
+- DirectoryService 人员目录返回 avatar；审批成员缓存保留完整成员，姓名映射继续复用缓存，useApprovalDetail 提供头像映射。
+- 详情流程进度的发起人与审批人、实例抽屉共用时间线接入 UserAvatar，复用鉴权加载和失败文字回退。
+- 验证：全模块非clean compile、规定引擎测试、Apps UI build、34项unit及diff --check通过；Playwright
+  mock渲染真实进度组件，验证两类图片解码、Bearer鉴权、未设置头像首字回退、暗色/375px渲染。
+- 标准init.sh的运行中dev.jar锁为前序已确认阻塞，本次保留服务并使用非clean验证。保留前序未提交头像组件依赖和个人设置工作，未混合提交。
+
+**默认头像可读性（2026-10-26，feat-122）**
+
+- 原灰色池包含浅色背景，但文字固定白色；UserAvatar 改用 bg-muted、text-foreground、border-border 和中等字重，统一适配明暗主题，图片头像逻辑保持。
+- 验证：Apps UI build通过；Playwright实测28px默认头像浅色对比度15.45:1、暗色15.11:
+  1，首字和细边框正常。仅修改共享组件样式，无后端变动。保留前序未提交工作，未混合提交。

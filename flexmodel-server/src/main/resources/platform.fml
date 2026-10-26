@@ -111,6 +111,7 @@ model f_user {
   id : String @id @default(uuid()),
   name? : String @length("255") @comment("名称"),
   email? : String @length("255") @comment("邮箱"),
+  phone? : String @length("50") @comment("工作电话"),
   avatar? : String @length("2048") @comment("头像"),
   password_hash : String @length("255") @comment("密码HASH"),
   manager_user_id? : String @length("64") @comment("直属主管用户ID"),
@@ -130,6 +131,7 @@ model f_user {
     fields: [
       {name: "name", label: "姓名", type: "TEXT", required: true},
       {name: "email", label: "邮箱", type: "EMAIL"},
+      {name: "phone", label: "工作电话", type: "PHONE"},
       {name: "password", label: "密码", type: "TEXT"},
       {name: "status", label: "状态", type: "SELECT", required: true, options: [
         {id: "ACTIVE", text: "启用"},
@@ -966,6 +968,21 @@ model f_audit_log {
   @index(name: "IDX_AUDIT_LOG_TRACE", fields: [project_id, trace_id]),
   @system,
   @comment("审计日志(配置变更)")
+}
+
+model f_login_log {
+  id : String @id @default(uuid()),
+  user_id? : String @length("64") @comment("用户ID"),
+  username : String @length("255") @comment("登录账号"),
+  client_ip? : String @length("45") @comment("IP地址"),
+  user_agent? : String @length("500") @comment("客户端"),
+  success : Boolean @default("true") @comment("是否成功"),
+  message? : String @length("500") @comment("失败原因"),
+  created_at : DateTime @default(now()) @comment("登录时间"),
+  @index(name: "IDX_LOGIN_LOG_USER", fields: [user_id, created_at]),
+  @index(name: "IDX_LOGIN_LOG_CREATED_AT", fields: [created_at]),
+  @system,
+  @comment("登录日志")
 }
 
 model f_page_site {

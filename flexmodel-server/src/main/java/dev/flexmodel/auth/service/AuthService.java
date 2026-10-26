@@ -22,6 +22,10 @@ public class AuthService {
     return userService.login(username, password);
   }
 
+  public User findByUsername(String username) {
+    return userService.findByUsername(username);
+  }
+
   public List<String> findPermissions(String userId) {
     List<String> roleIds = userRoleService.findRoleIdsByUserId(userId);
     return roleService.findPermissions(roleIds);

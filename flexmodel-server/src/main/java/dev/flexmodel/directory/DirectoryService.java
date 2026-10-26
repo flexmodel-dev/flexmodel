@@ -42,6 +42,7 @@ public class DirectoryService {
           Map<String, Object> member = new LinkedHashMap<>(Map.of("id", id, "name", text(user, "name"), "roleIds", roleIds, "organizationIds", orgIds,
             "role", roles.stream().filter(item -> roleIds.contains(text(item, "id"))).map(item -> text(item, "name")).reduce((a, b) -> a + "、" + b).orElse(""),
             "organization", orgIds.isEmpty() ? "" : orgIds.getFirst()));
+          member.put("avatar", text(user, "avatar"));
           member.put("managerId", text(user, "manager_user_id"));
           members.add(member);
         }

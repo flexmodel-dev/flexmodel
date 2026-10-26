@@ -28,6 +28,33 @@ class AuthResourceTest {
   @Inject
   TestTokenHelper testTokenHelper;
 
+  @Inject
+  dev.flexmodel.auth.repository.UserRepository userRepository;
+
+  @Test
+  void testAvatarIncludedInAuthenticationResponses() {
+    var user = userRepository.findByUsername("admin");
+    String originalAvatar = user.getAvatar();
+    String avatar = "/api/projects/default/buckets/default/objects/avatars/admin.png";
+    try {
+      user.setAvatar(avatar);
+      userRepository.save(user);
+      var response = given().contentType(ContentType.JSON)
+        .body(new dev.flexmodel.auth.AuthResource.LoginRequest("admin", "admin123"))
+        .post(Resources.ROOT_PATH + "/auth/login")
+        .then().statusCode(200).body("user.avatar", is(avatar)).extract();
+      given().header("Authorization", "Bearer " + response.path("token"))
+        .get(Resources.ROOT_PATH + "/auth/whoami")
+        .then().statusCode(200).body("user.avatar", is(avatar));
+      given().cookie("refreshToken", response.cookie("refreshToken"))
+        .post(Resources.ROOT_PATH + "/auth/refresh")
+        .then().statusCode(200).body("user.avatar", is(avatar));
+    } finally {
+      user.setAvatar(originalAvatar);
+      userRepository.save(user);
+    }
+  }
+
   /**
    * 测试登录成功
    */
@@ -247,6 +274,49 @@ class AuthResourceTest {
       .when()
       .header("Authorization", "Bearer " + tokenForNonExistentUser)
       .get(Resources.ROOT_PATH + "/auth/whoami")
+      .then()
+      .statusCode(401);
+  }
+
+  /**
+   * 测试登录日志记录与当前用户查询
+   */
+  @Test
+  void testLoginLogs() {
+    String accessToken = given()
+      .when()
+      .contentType(ContentType.JSON)
+      .body("""
+          {
+            "username": "admin",
+            "password": "admin123"
+          }
+        """)
+      .post(Resources.ROOT_PATH + "/auth/login")
+      .then()
+      .statusCode(200)
+      .extract()
+      .path("token");
+
+    given()
+      .when()
+      .header("Authorization", "Bearer " + accessToken)
+      .get(Resources.ROOT_PATH + "/auth/login-logs")
+      .then()
+      .statusCode(200)
+      .body("total", greaterThanOrEqualTo(1))
+      .body("list[0].createdAt", notNullValue())
+      .body("list[0].success", is(true));
+  }
+
+  /**
+   * 测试登录日志查询需要认证
+   */
+  @Test
+  void testLoginLogsRequiresAuthentication() {
+    given()
+      .when()
+      .get(Resources.ROOT_PATH + "/auth/login-logs")
       .then()
       .statusCode(401);
   }

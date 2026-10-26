@@ -657,6 +657,9 @@ public class AppFormService {
       request.referenceForm() == null ? currentReferenceForm : request.referenceForm());
     field.setComment(request.label().trim());
     field.setNullable(!request.required());
+    if (Set.of("FILE", "IMAGE", "AVATAR").contains(currentType) && field instanceof StringField stringField) {
+      stringField.setLength(Math.max(stringField.getLength() == null ? 0 : stringField.getLength(), 4000));
+    }
     modelingService.modifyField(appId, field);
 
     AppFormFieldRecord updatedRecord = new AppFormFieldRecord(
@@ -822,7 +825,8 @@ public class AppFormService {
   ) {
     TypedField<?, ?> field = switch (type) {
       case "NTEXT" -> new StringField(fieldName).setLength(4000);
-      case "PHONE", "EMAIL", "URL", "TAG", "FILE", "IMAGE", "AVATAR", "BARCODE", "LOCATION", "SIGN", "STATE" ->
+      case "FILE", "IMAGE", "AVATAR" -> new StringField(fieldName).setLength(4000);
+      case "PHONE", "EMAIL", "URL", "TAG", "BARCODE", "LOCATION", "SIGN", "STATE" ->
         new StringField(fieldName).setLength(512);
       case "SERIES" -> new StringField(fieldName).setLength(64);
       case "PICKLIST", "SELECT", "CLASSIFICATION" -> new StringField(fieldName).setLength(255);

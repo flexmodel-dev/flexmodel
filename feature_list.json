@@ -1,6 +1,14 @@
 {
   "features": [
     {
+      "id": "feat-113",
+      "name": "Apps - 附件字段上传与预览",
+      "description": "附件字段接入BucketResource，按appId/formId/file上传并获取URL；支持多文件逗号分隔保存、编辑回填、只读预览和下载。",
+      "dependencies": ["feat-109"],
+      "status": "done",
+      "evidence": "FILE/IMAGE/AVATAR共用上传与附件列表，主表/子表新建编辑及只读详情支持图片/PDF/音视频预览和鉴权下载。使用应用projectId的default桶，缺失自动创建PRIVATE；原始字节PUT到appId/formId/uuid_文件名，BucketResource返回url/path/name，多URL逗号分隔，中文与逗号文件名编码，同名不覆盖。上传中禁止保存/发起流程，支持部分失败重试、移除引用、关闭中止及迟到响应隔离。附件字段新建/编辑容量扩到4000。验证：Apps UI build、34项unit、5项附件E2E、4项记录及5项字段回归通过；明暗与手机截图已检查；BucketAttachmentResourceTest 2项通过，含真实上传下载鉴权、编码文件名、零字节、长URL列表记录保存读回；原生全模块compile及规定引擎测试、git diff --check通过。Apps UI提交009ad5f；未改engine。init.sh clean仍受运行中dev.jar锁阻塞，保留服务完成非clean验证。旧严格长度数据库字段需保存配置扩容，未批量迁移；未引用对象暂不自动回收。"
+    },
+    {
       "id": "feat-112",
       "name": "Apps UI - 表单管理四列紧凑布局",
       "description": "表单管理宽屏一行展示四张卡片，缩小卡片间距与内边距，窄屏保持自适应并保留返回导航。",

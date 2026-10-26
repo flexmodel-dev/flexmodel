@@ -1,5 +1,35 @@
 # Session Progress Log
 
+## Apps - 附件字段上传与预览（2026-10-26，feat-113）
+
+- 修复 `FILE` 字段落入普通文本输入框分支的问题；`FILE`、`IMAGE`、`AVATAR` 接入共用 `AttachmentField`，
+  主表和子表新建/编辑均支持多选上传、文件列表、移除引用；只读详情复用附件列表，图片缩略图及大图、PDF、音视频可预览，其他类型可下载。
+  使用现有语义样式与对话框，检查明暗主题及375px手机布局；无engine改动。
+- 新增 `services/attachments.ts`，通过应用 `projectId` 定位 `default` 存储桶，缺失时经 `BucketResource` 创建私有桶，
+  缓存纳入现有登出清理机制；路径为 `{appId}/{formId}/{uuid}_{原文件名}`，`formId` 使用 `AppForm.name`。
+  PUT原始字节（octet-stream），不使用multipart；逐段编码路径，随机前缀避免重名覆盖，文件名逗号以%2C保留。
+  `BucketResource` 上传成功返回 `{url,path,name}`，URL为含API前缀的同源相对地址，适配前端代理。
+- 文件上传成功后才将返回URL加入字段，多文件用逗号分隔，清空保存null；预览/下载通过带登录鉴权的GET读取Blob，
+  不将token写入文件URL，同源以外的URL不附加token，临时Blob URL关闭后释放。仅内嵌图片/PDF/音视频，HTML等提供下载。
+  部分失败保留已成功文件并提示文件名和错误，可重选重试；多字段并行上传时禁止保存、发起流程及主表自动保存。
+  关闭时中止请求，按应用/表单/记录区分控件实例，防止迟到响应写入下一条记录。
+- 附件类物理字段新建容量由512扩为4000；修改字段配置时也将旧容量至少扩到4000，避免多URL字符串很快溢出。
+  不做批量数据库迁移；已有MySQL等严格长度数据库字段需保存一次字段配置以扩容。
+  移除只解除引用，不删除存储对象；取消记录后可能留下已上传的未引用对象，暂不自动回收。
+  API契约、存储目录和边界已记录到 `flexmodel-server/docs/field-properties.md`。
+- 验证通过：Apps UI `npm run build`；`npm test` 34项；`npm run test:attachments` 5项（上传/返回URL/保存回填/清空、
+  图片PDF预览及下载、中文和逗号文件名、部分失败重试/同名不覆盖、多字段上传阻止保存、图片多选与类型限制、关闭迟到隔离、子表目录）；
+  `npm run test:records` 4项、`npm run test:fields` 5项。测试浏览器异常为空，截图在忽略目录
+  `artifacts/attachments-{image-preview,readonly-dark,mobile}.png`，日志 `artifacts/attachment-field-*.log`。
+- `BucketAttachmentResourceTest` 2项通过：真实私有桶PUT返回URL并GET逐字节读回、未登录401、中文/逗号编码、零字节文件；
+  创建附件字段物理容量4000、8个URL超过512字符保存及读回、修改字段配置、清空null。
+  原生全模块 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'` 和 `mvn test -q -pl flexmodel-engine` 通过。
+  后端定向测试关闭scheduler、RabbitMQ devservices与文件日志，仍有既有种子流程SQLite锁和函数运行时9999未启动的后台日志，测试断言均通过。
+- `bash ./init.sh` 已执行，clean仍受运行中 `flexmodel-server-dev.jar` 文件锁阻塞；保留现有服务并完成非clean等价检查。
+  根仓库日志在 `logs/attachment-{field-*,bucket-tests.log}`；根仓库和Apps UI `git diff --check` 通过。
+  Apps UI提交 `009ad5f`，构建生成的 `tsconfig.tsbuildinfo` 已恢复；使用独立提交索引，保留原有AppRecordDrawer暂存/未暂存的审批按钮文案修改。
+  保留 `flexmodel-ui` 工作区改动及根仓库中Apps UI未跟踪独立仓库的现状。
+
 ## Apps UI - 表单管理四列紧凑布局（2026-10-26，feat-112）
 
 - 根据用户要求，`FormManagementContent` 表单列表宽屏（≥1280px）改为每行四张卡片；640–1279px两列，手机单列。

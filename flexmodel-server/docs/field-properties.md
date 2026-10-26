@@ -50,7 +50,28 @@
 前端“当前时间”按浏览器本地时间预填；请求未传字段时，后端按服务部署时区补齐。
 
 这些约束作用于 Apps 与系统表单的记录接口。直接使用底层数据接口或 GraphQL 不经过应用表单规则。
-该变更不包含 REBUILD 的自动编号规则、公式、富文本、扫码、脱敏、附件上传限制、引用级联和回填等独立能力。
+该变更不包含 REBUILD 的自动编号规则、公式、富文本、扫码、脱敏、附件类型/数量配置、引用级联和回填等独立能力。
+
+## 附件上传与预览
+
+Apps 的 `FILE`、`IMAGE`、`AVATAR` 布局字段使用上传控件，支持单个或多个文件；图片类字段限制选择图片。
+新建、编辑（含子表单）和只读详情共用附件列表，支持图片、PDF、音视频预览及文件下载。
+
+- 使用应用 `projectId` 下的 `default` 存储桶，不存在时通过 `BucketResource` 创建私有桶。
+- 对象路径为 `{appId}/{formId}/{uuid}_{originalFilename}`，其中 `formId` 为表单内部标识（`AppForm.name`）。
+  路径逐段编码，随机前缀避免同名覆盖，文件名中的逗号编码为 `%2C`，不与多文件值分隔符冲突。
+- `PUT /api/projects/{projectId}/buckets/{bucketName}/objects/{path}` 接收 `application/octet-stream`，成功返回
+  `{"url":"/api/projects/.../objects/...","path":"appId/formId/file","name":"file"}`。
+  `url` 为带 `/api` 前缀的同源相对地址，预览/下载仍使用原有 GET 对象接口及登录鉴权。
+- 先上传成功再将返回 URL 写入字段，多文件使用 `url1,url2` 字符串，清空保存为 null。
+  上传期间禁止保存及发起流程；部分失败保留成功文件，失败项可重新选择重试。
+  关闭表单会中止未完成请求并忽略迟到结果。
+- 移除只解除字段中的文件引用，不删除对象，避免影响已保存记录或其他引用。
+  上传后取消记录可能留下未引用对象，当前不自动回收。
+- 附件类物理字段新建时长度为4000；修改已有附件字段配置时将旧的512长度至少扩到4000。
+  已有严格长度数据库的字段需保存一次字段配置以扩容，当前不进行批量数据库迁移。
+
+验证：`npm run test:attachments`；`mvn test -pl flexmodel-server -Dtest=BucketAttachmentResourceTest`。
 
 验证：
 

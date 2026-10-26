@@ -465,7 +465,7 @@ public class AppMenuService {
   }
 
   private String generateMenuId() {
-    return "menu_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    return "nav_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
   }
 
   private boolean isBlank(String value) {

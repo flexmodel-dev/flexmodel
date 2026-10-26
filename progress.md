@@ -1,5 +1,23 @@
 # Session Progress Log
 
+## Apps UI - 列表附件气泡框（2026-10-26，feat-115）
+
+- 根据用户要求，列表附件点击后的完整附件列表改为共用 `Popover`，贴近单元格显示，取消居中模态列表。
+  主列表和子表同步；气泡框宽360px，保留16px视口边距，高度受可用空间和24rem限制，附件多时内容内滚动。
+  点击外部、关闭按钮或Esc可关闭；图片/PDF等预览先收起气泡框，再打开独立预览窗，关闭预览后恢复触发按钮焦点。
+  下载时保留气泡框，事件继续在附件单元格阻止冒泡，不误开记录详情。未修改后端或 `flexmodel-engine`。
+- 验证：`npm run build` 通过；`npm run test:attachments` 7项通过，覆盖原有上传及子表场景，并校验
+  气泡框贴近单元格定位、背景可访问、键盘打开、预览与焦点返回、下载、Esc/关闭按钮/外部点击关闭、
+  子表气泡框浮于抽屉上方及375px视口边界。缩放后的定位使用expect.poll等待浏览器完成布局，不使用固定延时。
+  已检查忽略目录 `artifacts/attachment-popover-{light,dark,mobile}.png`，无浏览器异常；
+  构建及测试日志为 `artifacts/attachment-popover-{build,e2e}.log`。
+- 原生全模块 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`、规定 `mvn test -q -pl flexmodel-engine` 通过；
+  `bash ./init.sh` 已执行，clean仍被运行中 `flexmodel-server-dev.jar` 锁定，保留现有服务并完成非clean等价验证。
+  日志在根仓库忽略目录 `logs/attachment-popover-{init,compile,engine-tests}.log`。
+- 工作期间已有外部提交纳入气泡框实现（Apps UI `54f9cef`）与特性登记（根仓库 `9ea6892`），已检查与本次行为一致并保留；
+  额外提交Apps UI `636f29b`记录响应式测试等待。根仓库与Apps UI `git diff --check` 通过。
+  保留AppRecordDrawer审批文案的暂存/未暂存改动、`flexmodel-ui` 工作区改动及Apps UI独立仓库未跟踪的现状。
+
 ## Apps UI - 列表附件紧凑展示（2026-10-26，feat-114）
 
 - 用户反馈列表页仍显示附件链接。`RecordList` 原先走普通字符串格式化，子表列表则直接 `displayRecordText`，

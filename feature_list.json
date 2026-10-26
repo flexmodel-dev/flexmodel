@@ -7,8 +7,8 @@
       "dependencies": [
         "feat-114"
       ],
-      "status": "in_progress",
-      "evidence": "准备复用Popover组件；原生全模块编译通过，init.sh clean仍受运行中dev.jar文件锁阻塞。"
+      "status": "done",
+      "evidence": "AttachmentCell改为Popover，贴近单元格打开，宽度360px且受视口约束，列表内容可内滚动；主列表与子表一致，支持外部点击、关闭按钮、Esc和焦点恢复。列表预览经onPreview回调先收起气泡框，再打开独立预览窗，下载保留气泡框，不误开记录。验证：Apps UI build通过，附件E2E 7项通过，覆盖气泡定位、背景可交互、键盘、各关闭入口、预览焦点返回、下载、抽屉层级与375px边界及缩放后重定位；明暗和手机截图已检查。原生全模块Maven compile、规定引擎测试与git diff --check通过，未改后端或engine。实现已在Apps UI提交54f9cef，响应式测试等待提交636f29b。init.sh clean仍受现有dev.jar文件锁阻塞，保留服务完成非clean等价验证。"
     },
     {
       "id": "feat-114",

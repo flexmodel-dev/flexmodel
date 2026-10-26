@@ -1,5 +1,24 @@
 # Session Progress Log
 
+## Apps UI - 列表附件紧凑展示（2026-10-26，feat-114）
+
+- 用户反馈列表页仍显示附件链接。`RecordList` 原先走普通字符串格式化，子表列表则直接 `displayRecordText`，
+  两处都未识别附件类型。现由共用 `AttachmentCell` 渲染 `FILE/IMAGE/AVATAR`：图片缩略图或文件图标、
+  解码并去掉随机前缀的首个文件名，以及“+剩余数量”；单行28px、最大240px，长名称截断，空值显示“-”。
+- 点击或键盘Enter打开完整附件列表，复用此前鉴权预览/下载，不在表格里铺开所有附件；预览等弹窗事件在单元格阻止冒泡，
+  不误开记录详情，原有点击名称查看记录继续生效。缩略图只加载首个图片，完整列表按需加载。
+  主列表与子表同步，未修改后端或 `flexmodel-engine`。
+- 验证：`npm run build` 通过；`npm run test:attachments` 7项通过（新增列表2项，覆盖原文件名/数量/空值、
+  缩略图、键盘、完整列表/预览/下载不误开记录、四文件行高≤60px、子表、长文件名和375px页面不溢出）；
+  `npm run test:records` 4项通过，无浏览器异常。已检查 `artifacts/attachment-list-{light,dark,mobile}.png`，
+  构建及测试日志为忽略目录 `artifacts/attachment-list-{build,e2e,records}.log`。
+- 原生全模块 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`、规定 `mvn test -q -pl flexmodel-engine` 通过；
+  根仓库与Apps UI `git diff --check` 通过。Apps UI提交 `e2d9dec`，构建生成的 `tsconfig.tsbuildinfo` 已恢复，
+  原有AppRecordDrawer审批按钮文案暂存/未暂存改动均保留，未纳入提交。
+- `bash ./init.sh` 已执行，clean仍被运行中 `flexmodel-server-dev.jar` 文件锁阻塞，保留服务并完成非clean原生等价检查；
+  日志在忽略目录 `logs/attachment-list-{init,compile,engine-tests}.log`。
+  保留 `flexmodel-ui` 工作区改动及Apps UI在根仓库中未跟踪独立仓库的现状。
+
 ## Apps - 附件字段上传与预览（2026-10-26，feat-113）
 
 - 修复 `FILE` 字段落入普通文本输入框分支的问题；`FILE`、`IMAGE`、`AVATAR` 接入共用 `AttachmentField`，

@@ -1,6 +1,14 @@
 {
   "features": [
     {
+      "id": "feat-114",
+      "name": "Apps UI - 列表附件紧凑展示",
+      "description": "主记录和子表列表将附件URL改为缩略图/文件图标、文件名及数量，点击查看全部附件并预览下载，保持紧凑行高。",
+      "dependencies": ["feat-113"],
+      "status": "done",
+      "evidence": "新增AttachmentCell供RecordList与AppSubformRecords复用，FILE/IMAGE/AVATAR以首个文件缩略图或图标、解码后的原文件名及+剩余数量展示，长文件名截断、空值为-；点击/键盘进入完整附件列表，复用鉴权预览下载，阻止事件冒泡误开记录。验证：Apps UI build通过、附件E2E 7项（新增2项列表/子表/键盘/行高/长名/移动端/冒泡验证）、记录回归4项通过，明暗及375px截图已检查，四文件行高≤60px；原生全模块Maven compile、规定引擎测试、git diff --check通过。Apps UI提交e2d9dec；无后端或engine改动。init.sh clean仍受现有dev.jar锁阻塞，保留服务完成非clean等价验证。"
+    },
+    {
       "id": "feat-113",
       "name": "Apps - 附件字段上传与预览",
       "description": "附件字段接入BucketResource，按appId/formId/file上传并获取URL；支持多文件逗号分隔保存、编辑回填、只读预览和下载。",

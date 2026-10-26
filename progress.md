@@ -1,5 +1,21 @@
 # Session Progress Log
 
+## Apps UI - 表单管理四列紧凑布局（2026-10-26，feat-112）
+
+- 根据用户要求，`FormManagementContent` 表单列表宽屏（≥1280px）改为每行四张卡片；640–1279px两列，手机单列。
+  卡片间距与内边距由16px缩为12px，图标20px缩为16px，减少描述和底部留白，保留标题、标识、描述、字段数量和返回按钮。
+  内置徽标不收缩、不换行，长标题和描述仍按原方式截断。仅调整该列表样式，未修改后端及 `flexmodel-engine`。
+- 验证：`npm run build` 通过；`npm run test:settings` 7项通过（导航、返回、新建、加载与错误、移动端）。
+  临时Playwright检查使用8张卡片，1440/1280px确认四列、960/768px两列、375px单列，下一行正确换行，
+  无页面横向或外层溢出、返回按钮可见、浏览器异常为空；已检查明暗与手机截图。
+  证据在 Apps UI 忽略目录 `artifacts/form-grid-{1440,375,dark}.png`、`form-grid-check.json`，
+  构建和回归日志为 `artifacts/form-grid-{build,settings-tests}.log`。
+- 原生 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`、`mvn test -q -pl flexmodel-engine` 通过；
+  根仓库及 Apps UI `git diff --check` 通过。Apps UI提交 `f2f0bb9`，构建生成的 `tsconfig.tsbuildinfo` 已恢复。
+- `bash ./init.sh` 已执行，clean仍被现有开发服务占用的 `flexmodel-server-dev.jar` 阻塞；保留现有服务，完成非clean原生Maven等价验证。
+  日志位于根仓库忽略目录 `logs/form-grid-{init,compile,engine-tests}.log`。本次浏览器检查启动的5183端口服务已关闭。
+  保留原有 `flexmodel-ui` 工作区改动，以及 Apps UI 作为根仓库未跟踪独立仓库的现状。
+
 ## Apps UI - 表单设置页面视觉与返回导航统一（2026-10-25，feat-111）
 
 - 用户反馈应用设置/表单下页面 UI 不统一，并要求返回按钮。新增 `SettingsPageHeader`，让表单列表、基本信息、字段管理、

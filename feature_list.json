@@ -1,6 +1,14 @@
 {
   "features": [
     {
+      "id": "feat-112",
+      "name": "Apps UI - 表单管理四列紧凑布局",
+      "description": "表单管理宽屏一行展示四张卡片，缩小卡片间距与内边距，窄屏保持自适应并保留返回导航。",
+      "dependencies": ["feat-111"],
+      "status": "done",
+      "evidence": "FormManagementContent 网格改为 xl 四列、sm 两列、手机单列；卡片间距与内边距16→12px，缩小图标、描述行高和底部留白，内置徽标禁止挤压换行。验证：npm run build通过，test:settings 7项通过；Playwright用8张卡片实测1440/1280px四列、960/768px两列、375px单列，换行正确、无页面横向或外层溢出、返回按钮可见、无浏览器异常；明暗及手机截图已检查。原生全模块Maven编译、规定引擎测试、git diff --check通过。Apps UI提交f2f0bb9；未改后端及engine。init.sh clean仍受运行中dev.jar文件锁阻塞，保留现有服务并完成非clean等价验证。"
+    },
+    {
       "id": "feat-111",
       "name": "Apps UI - 表单设置页面视觉与返回导航统一",
       "description": "统一应用设置表单列表及基本信息、字段管理、设计器的页头、导航与内容样式，补齐加载/异常状态和直达页面的返回入口，适配窄屏和夜间模式。",

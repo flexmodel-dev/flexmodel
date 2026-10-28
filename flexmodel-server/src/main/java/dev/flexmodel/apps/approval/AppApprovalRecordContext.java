@@ -1,14 +1,14 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import java.util.function.Supplier;
 
 /**
  * A server-only capability limited to the owning root run.
  */
-public final class ApprovalRecordContext {
+public final class AppApprovalRecordContext {
   private static final ThreadLocal<String> RUN = new ThreadLocal<>();
 
-  private ApprovalRecordContext() {
+  private AppApprovalRecordContext() {
   }
 
   public static String runId() {

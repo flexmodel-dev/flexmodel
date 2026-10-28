@@ -36,10 +36,10 @@ handler/handlerOwner，通用 Flow 写入入口不能绕过审批服务。运行
 | `f_ei_flow_instance` / `f_ei_node_instance`     | 复用 Flow 运行状态与节点关系                                              |
 | `f_ei_instance_data`                            | 唯一运行变量存储；启动前由启动命令承载初始变量                            |
 | `f_ei_node_instance_log`                        | 复用执行日志，`event_key` 保证业务节点幂等，`attributes` 保存业务输入输出 |
-| `f_approval_instance`                           | 业务记录与 Flow 实例/部署关联、提交快照、幂等键和审批结果                 |
-| `f_approval_wait`                               | 冻结执行人和签核聚合状态，节点名称、配置和变量从 Flow 读取                |
-| `f_approval_task`                               | 每个人的待办、顺序及决定                                                  |
-| `f_approval_record_lock`                        | 审批期间的业务记录锁                                                      |
+| `f_app_approval_instance`                       | 业务记录与 Flow 实例/部署关联、提交快照、幂等键和审批结果                 |
+| `f_app_approval_wait`                           | 冻结执行人和签核聚合状态，节点名称、配置和变量从 Flow 读取                |
+| `f_app_approval_task`                           | 每个人的待办、顺序及决定                                                  |
+| `f_app_approval_record_lock`                    | 审批期间的业务记录锁                                                      |
 | `f_runtime_message`                             | 通用可靠事件与命令 Outbox                                                 |
 
 审批实例运行中只保存业务状态 ACTIVE，接口根据 Flow 实例关联显示 SUBMITTING/RUNNING。父子关系只保存父任务实例
@@ -121,7 +121,7 @@ Functions Runtime。发布和解析仅接受这六种人员来源。
 
 审批定义操作统一在 `AppTools`：`get_app_approval_capabilities`、`list_app_approval_flows`、`get_app_approval_flow`、
 `save_app_approval_flow`、`validate_app_approval_flow`、`set_app_approval_flow_status`。能力目录返回实际表单字段、可引用子流程、节点配置、枚举、约束及由
-`ApprovalFlowModel` 生成的完整简单/网关示例。
+`AppApprovalFlowModel` 生成的完整简单/网关示例。
 
 工具沿用 REST 的 Flow 契约。`save_app_approval_flow` 省略 flowId 创建草稿；更新需 flowId 与最新 revision。校验返回
 `{nodeId,message}[]`，发布/停用分别使用 status=2/3 并携带 revision。工具调用既有审批服务，不直接操作 Flow 表，也不增加另一套定义或发布模型。
@@ -164,6 +164,7 @@ npm run build
 npm run test:approvals
 ```
 
-`ApprovalFlowResourceTest` 会启动隔离的 SQLite 后端，并运行 `flexmodel-apps-ui/e2e/approval-backend.mjs` 的真实浏览器闭环，需要先安装
+`AppApprovalFlowResourceTest` 会启动隔离的 SQLite 后端，并运行 `flexmodel-apps-ui/e2e/approval-backend.mjs`
+的真实浏览器闭环，需要先安装
 Apps UI 依赖和 Playwright Chromium。该脚本使用独立的 5183 端口，测试登录凭证只通过子进程环境传递。截图保存在 Apps UI 的忽略目录
 `artifacts/approvals-backend-*.png`。

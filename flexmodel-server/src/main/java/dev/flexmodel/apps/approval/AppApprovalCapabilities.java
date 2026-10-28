@@ -1,4 +1,4 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.directory.DirectoryService;
@@ -13,11 +13,11 @@ import java.util.Map;
  * Machine-readable authoring contract; examples use the same Flow codec as the designer.
  */
 @ApplicationScoped
-public class ApprovalCapabilities {
+public class AppApprovalCapabilities {
   @Inject
   AppFormService appFormService;
   @Inject
-  ApprovalFlowService approvalFlowService;
+  AppApprovalFlowService appApprovalFlowService;
 
   public Map<String, Object> describe(String appId) {
     var availableForms = appFormService.findForms(appId).stream().filter(form -> !form.builtin()).toList();
@@ -72,7 +72,7 @@ public class ApprovalCapabilities {
       "bindingKind", List.of("literal", "variable"), "valueType", List.of("text", "number", "boolean"),
       "queryMode", List.of("one", "many")));
     result.put("forms", availableForms);
-    result.put("subflows", approvalFlowService.list(appId).stream().map(flow -> Map.of(
+    result.put("subflows", appApprovalFlowService.list(appId).stream().map(flow -> Map.of(
       "flow_module_id", flow.get("id"), "flow_name", flow.get("name"), "status", flow.get("status"))).toList());
     result.put("examples", Map.of(
       "simple", example(formName, List.of(node("review", "审批", approval))),
@@ -96,7 +96,7 @@ public class ApprovalCapabilities {
     nodes.add(node("start", "开始", Map.of("kind", "start")));
     nodes.addAll(tasks);
     nodes.add(node("end", "结束", Map.of("kind", "end")));
-    return ApprovalFlowModel.encode(Map.of("name", "审批流程", "description", "",
+    return AppApprovalFlowModel.encode(Map.of("name", "审批流程", "description", "",
       "form", Map.of("kind", "app", "name", formName), "definition", Map.of("nodes", nodes)));
   }
 

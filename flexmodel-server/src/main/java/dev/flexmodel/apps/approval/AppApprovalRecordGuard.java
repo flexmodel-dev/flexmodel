@@ -1,11 +1,10 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.reflect.ReflectionUtils;
-import dev.flexmodel.JsonUtils;
-import dev.flexmodel.codegen.entity.ApprovalInstance;
-import dev.flexmodel.codegen.entity.ApprovalRecordLock;
-import dev.flexmodel.codegen.entity.ApprovalTask;
-import dev.flexmodel.codegen.entity.ApprovalWait;
+import dev.flexmodel.codegen.entity.AppApprovalInstance;
+import dev.flexmodel.codegen.entity.AppApprovalRecordLock;
+import dev.flexmodel.codegen.entity.AppApprovalTask;
+import dev.flexmodel.codegen.entity.AppApprovalWait;
 import dev.flexmodel.codegen.entity.FlowDefinition;
 import dev.flexmodel.codegen.entity.FlowDeployment;
 import dev.flexmodel.codegen.entity.FlowInstance;
@@ -27,22 +26,20 @@ import jakarta.ws.rs.ClientErrorException;
 import java.util.*;
 import java.util.function.Supplier;
 
-import static dev.flexmodel.approval.ApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
-import static dev.flexmodel.codegen.System.approvalRecordLock;
 import static dev.flexmodel.query.Expressions.*;
 
 /**
  * Lock the selected business rows before checking approval locks, then mutate only that checked set.
  */
 @ApplicationScoped
-public class ApprovalRecordGuard {
+public class AppApprovalRecordGuard {
   private static final Set<String> INTERNAL = Set.of(
     ReflectionUtils.getModelNameFromClass(RuntimeMessage.class),
-    ReflectionUtils.getModelNameFromClass(ApprovalInstance.class),
-    ReflectionUtils.getModelNameFromClass(ApprovalWait.class),
-    ReflectionUtils.getModelNameFromClass(ApprovalTask.class),
-    ReflectionUtils.getModelNameFromClass(ApprovalRecordLock.class),
+    ReflectionUtils.getModelNameFromClass(AppApprovalInstance.class),
+    ReflectionUtils.getModelNameFromClass(AppApprovalWait.class),
+    ReflectionUtils.getModelNameFromClass(AppApprovalTask.class),
+    ReflectionUtils.getModelNameFromClass(AppApprovalRecordLock.class),
     ReflectionUtils.getModelNameFromClass(FlowDefinition.class),
     ReflectionUtils.getModelNameFromClass(FlowDeployment.class),
     ReflectionUtils.getModelNameFromClass(FlowInstance.class),
@@ -55,7 +52,7 @@ public class ApprovalRecordGuard {
   @Inject
   ProjectUnitOfWork transactions;
   @Inject
-  ApprovalRecordLockRepository approvalRecordLockRepository;
+  AppApprovalRecordLockRepository appApprovalRecordLockRepository;
 
   public Object intercept(Session session, String operation, Object[] args, Supplier<Object> proceed) {
     String model = args != null && args.length > 0 ? Objects.toString(args[0], "") : "";
@@ -81,8 +78,8 @@ public class ApprovalRecordGuard {
       if (rows.isEmpty()) return 0;
       var ids = rows.stream().map(row -> row.get(id)).toList();
       Set<String> selected = new HashSet<>(ids.stream().map(String::valueOf).toList());
-      boolean blocked = approvalRecordLockRepository.findBySchemaAndModel(app, session.getName(), model).stream()
-        .anyMatch(lock -> !text(lock, "run_id").equals(ApprovalRecordContext.runId()) && selected.contains(text(lock, "record_id")));
+      boolean blocked = appApprovalRecordLockRepository.findBySchemaAndModel(app, session.getName(), model).stream()
+        .anyMatch(lock -> !text(lock, "run_id").equals(AppApprovalRecordContext.runId()) && selected.contains(text(lock, "record_id")));
       if (blocked) throw new ClientErrorException("记录正在审批中，暂时不能编辑或删除", 409);
       if (operation.equals("deleteAll")) return session.data().delete(model, field(id).in(ids));
       if (!byId) {

@@ -1,5 +1,6 @@
 package dev.flexmodel.approval;
 
+import dev.flexmodel.apps.approval.AppApprovalForecast;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -9,7 +10,7 @@ import java.util.Map;
 import static dev.flexmodel.common.Values.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class ApprovalForecastTest {
+class AppApprovalForecastTest {
 
   @Test
   void skipsAutomaticNodesAndStopsAtEnd() {
@@ -22,7 +23,7 @@ class ApprovalForecastTest {
       node("end", "end", "", Map.of("kind", "end"))
     ));
 
-    var result = ApprovalForecast.forecast(flow, List.of("review"), Map.of("record", Map.of()));
+    var result = AppApprovalForecast.forecast(flow, List.of("review"), Map.of("record", Map.of()));
 
     assertEquals(List.of("manager", "end"), ids(result));
     assertEquals(List.of("approval", "end"), result.stream().map(node -> text(node, "kind")).toList());
@@ -34,17 +35,17 @@ class ApprovalForecastTest {
   void followsEvaluatedBranchAndJoinsAfterGateway() {
     var flow = expenseFlow();
 
-    var high = ApprovalForecast.forecast(flow, List.of("review"), Map.of("record", Map.of("amount", 5000)));
+    var high = AppApprovalForecast.forecast(flow, List.of("review"), Map.of("record", Map.of("amount", 5000)));
     assertEquals(List.of("finance", "end"), ids(high));
     assertEquals("any", text(high.getFirst(), "sign_mode"));
 
-    var low = ApprovalForecast.forecast(flow, List.of("review"), Map.of("record", Map.of("amount", 100)));
+    var low = AppApprovalForecast.forecast(flow, List.of("review"), Map.of("record", Map.of("amount", 100)));
     assertEquals(List.of("end"), ids(low));
   }
 
   @Test
   void returnsCandidatesWhenVariablesCannotDecideGateway() {
-    var result = ApprovalForecast.forecast(expenseFlow(), List.of("review"), Map.of());
+    var result = AppApprovalForecast.forecast(expenseFlow(), List.of("review"), Map.of());
 
     assertEquals(1, result.size());
     var gateway = result.getFirst();
@@ -60,15 +61,15 @@ class ApprovalForecastTest {
       node("end", "end", "完成归档", Map.of("kind", "end"))
     ));
 
-    assertEquals("完成归档", text(ApprovalForecast.ending(flow, List.of("end")), "title"));
-    assertEquals("end", text(ApprovalForecast.ending(flow, List.of()), "id"));
+    assertEquals("完成归档", text(AppApprovalForecast.ending(flow, List.of("end")), "title"));
+    assertEquals("end", text(AppApprovalForecast.ending(flow, List.of()), "id"));
   }
 
   @Test
   void ignoresUnknownCurrentNode() {
-    assertTrue(ApprovalForecast.forecast(expenseFlow(), List.of("missing"), Map.of()).isEmpty());
-    assertTrue(ApprovalForecast.forecast(expenseFlow(), List.of(), Map.of()).isEmpty());
-    assertNull(ApprovalForecast.ending(flow(List.of(node("start", "start", "发起", Map.of("kind", "start")))), List.of()));
+    assertTrue(AppApprovalForecast.forecast(expenseFlow(), List.of("missing"), Map.of()).isEmpty());
+    assertTrue(AppApprovalForecast.forecast(expenseFlow(), List.of(), Map.of()).isEmpty());
+    assertNull(AppApprovalForecast.ending(flow(List.of(node("start", "start", "发起", Map.of("kind", "start")))), List.of()));
   }
 
   private static Map<String, Object> expenseFlow() {

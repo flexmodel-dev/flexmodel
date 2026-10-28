@@ -1,11 +1,7 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.codegen.entity.ApprovalInstance;
-import dev.flexmodel.codegen.entity.InstanceData;
-import dev.flexmodel.codegen.entity.NodeInstance;
-import dev.flexmodel.codegen.entity.NodeInstanceLog;
-import dev.flexmodel.codegen.entity.RuntimeMessage;
+import dev.flexmodel.codegen.entity.AppApprovalInstance;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.messaging.RuntimeMessageRepository;
 import dev.flexmodel.reflect.ReflectionUtils;
@@ -17,44 +13,38 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.apps.approval.AppApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
-import static dev.flexmodel.codegen.System.approvalInstance;
-import static dev.flexmodel.codegen.System.instanceData;
-import static dev.flexmodel.codegen.System.nodeInstance;
-import static dev.flexmodel.codegen.System.nodeInstanceLog;
-import static dev.flexmodel.codegen.System.runtimeMessage;
-import static dev.flexmodel.query.Expressions.*;
 
 /**
  * Business views over Flow's existing instance data, node instances and execution log.
  */
 @ApplicationScoped
-public class ApprovalFlowState {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ApprovalFlowState.class);
+public class AppApprovalFlowState {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AppApprovalFlowState.class);
   private static final Set<String> FINISHED = Set.of("APPROVED", "REJECTED", "TERMINATED");
   @Inject
-  ApprovalInstanceRepository approvalInstanceRepository;
+  AppApprovalInstanceRepository appApprovalInstanceRepository;
   @Inject
-  ApprovalInstanceDataRepository approvalInstanceDataRepository;
+  AppApprovalInstanceDataRepository appApprovalInstanceDataRepository;
   @Inject
-  ApprovalNodeInstanceRepository approvalNodeInstanceRepository;
+  AppApprovalNodeInstanceRepository appApprovalNodeInstanceRepository;
   @Inject
-  ApprovalNodeInstanceLogRepository approvalNodeInstanceLogRepository;
+  AppApprovalNodeInstanceLogRepository appApprovalNodeInstanceLogRepository;
   @Inject
-  ApprovalFlowDeploymentRepository approvalFlowDeploymentRepository;
+  AppApprovalFlowDeploymentRepository appApprovalFlowDeploymentRepository;
   @Inject
   RuntimeMessageRepository runtimeMessageRepository;
 
   public Map<String, Object> run(String app, String id) {
-    var run = approvalInstanceRepository.get(app, id);
+    var run = appApprovalInstanceRepository.get(app, id);
     if ("ACTIVE".equals(text(run, "status")))
       run.put("status", text(run, "flow_instance_id").isEmpty() ? "SUBMITTING" : "RUNNING");
     return run;
   }
 
   public Map<String, Object> variables(String app, Map<String, Object> run) {
-    var rows = approvalInstanceDataRepository.findByFlowInstance(app, text(run, "flow_instance_id"));
+    var rows = appApprovalInstanceDataRepository.findByFlowInstance(app, text(run, "flow_instance_id"));
     if (!rows.isEmpty()) {
       var latest = rows.stream().max(Comparator.comparingLong(row -> ((Number) row.get("id")).longValue())).orElseThrow();
       return JsonUtils.parseToMap(text(latest, "instance_data"));
@@ -66,9 +56,9 @@ public class ApprovalFlowState {
   public Map<String, Object> ending(String app, Map<String, Object> run) {
     if (!FINISHED.contains(text(run, "status")) || text(run, "flow_deploy_id").isBlank()) return null;
     try {
-      var reached = approvalNodeInstanceRepository.findByFlowInstance(app, text(run, "flow_instance_id")).stream()
+      var reached = appApprovalNodeInstanceRepository.findByFlowInstance(app, text(run, "flow_instance_id")).stream()
         .map(row -> text(row, "node_key")).toList();
-      var ending = ApprovalForecast.ending(approvalFlowDeploymentRepository.deployedFlow(app, text(run, "flow_deploy_id")), reached);
+      var ending = AppApprovalForecast.ending(appApprovalFlowDeploymentRepository.deployedFlow(app, text(run, "flow_deploy_id")), reached);
       if (ending != null) ending.put("status", text(run, "status"));
       return ending;
     } catch (RuntimeException error) {
@@ -82,7 +72,7 @@ public class ApprovalFlowState {
       .map(wait -> text(wait, "node_key")).filter(key -> !key.isBlank()).distinct().toList();
     if (current.isEmpty() || text(run, "flow_deploy_id").isBlank()) return List.of();
     try {
-      return ApprovalForecast.forecast(approvalFlowDeploymentRepository.deployedFlow(app, text(run, "flow_deploy_id")), current, variables(app, run));
+      return AppApprovalForecast.forecast(appApprovalFlowDeploymentRepository.deployedFlow(app, text(run, "flow_deploy_id")), current, variables(app, run));
     } catch (RuntimeException error) {
       LOGGER.warn("审批节点预测失败.||runId={}", text(run, "id"), error);
       return List.of();
@@ -90,17 +80,17 @@ public class ApprovalFlowState {
   }
 
   private void storeVariables(String app, Map<String, Object> run, String nodeId, String nodeKey, String key, Map<String, Object> variables) {
-    var present = approvalInstanceDataRepository.findByDataKey(app, key);
+    var present = appApprovalInstanceDataRepository.findByDataKey(app, key);
     if (!present.isEmpty()) return;
     var data = new LinkedHashMap<String, Object>();
     data.putAll(Map.of("node_instance_id", nodeId, "flow_instance_id", text(run, "flow_instance_id"), "instance_data_id", key,
       "flow_deploy_id", text(run, "flow_deploy_id"), "flow_module_id", text(run, "flow_id"), "node_key", nodeKey,
       "instance_data", JsonUtils.toJsonString(variables), "type", 4, "archive", 0));
-    approvalInstanceDataRepository.insert(app, data);
+    appApprovalInstanceDataRepository.insert(app, data);
   }
 
   public boolean completed(String app, String nodeId) {
-    return approvalNodeInstanceLogRepository.existsByEventKey(app, "approval-node:" + nodeId);
+    return appApprovalNodeInstanceLogRepository.existsByEventKey(app, "approval-node:" + nodeId);
   }
 
   public void log(String app, Map<String, Object> run, String nodeId, Map<String, Object> node,
@@ -116,17 +106,17 @@ public class ApprovalFlowState {
   private void storeLog(String app, String instanceId, String nodeId, String nodeKey, String dataId,
                         Map<String, Object> attributes, Object created) {
     String event = "approval-node:" + nodeId;
-    if (approvalNodeInstanceLogRepository.existsByEventKey(app, event))
+    if (appApprovalNodeInstanceLogRepository.existsByEventKey(app, event))
       return;
     var log = new LinkedHashMap<String, Object>();
     log.putAll(Map.of("node_instance_id", nodeId, "flow_instance_id", instanceId,
       "instance_data_id", dataId, "node_key", nodeKey, "type", 2, "status", 1, "archive", 0,
       "event_key", event, "attributes", attributes, "created_at", created));
-    approvalNodeInstanceLogRepository.insert(app, log);
+    appApprovalNodeInstanceLogRepository.insert(app, log);
   }
 
   public List<Map<String, Object>> logs(String app, Map<String, Object> run) {
-    return approvalNodeInstanceLogRepository.findByFlowInstance(app, text(run, "flow_instance_id")).stream()
+    return appApprovalNodeInstanceLogRepository.findByFlowInstance(app, text(run, "flow_instance_id")).stream()
       .filter(row -> text(object(row.get("attributes")), "run_id").equals(text(run, "id")))
       .map(row -> {
         var view = new LinkedHashMap<>(object(row.get("attributes")));
@@ -139,7 +129,7 @@ public class ApprovalFlowState {
     var run = run(app, text(wait, "run_id"));
     var nativeNode = nodeInstance(app, text(wait, "id"));
     String key = text(nativeNode, "node_key");
-    var flow = approvalFlowDeploymentRepository.deployedFlow(app, text(run, "flow_deploy_id"));
+    var flow = appApprovalFlowDeploymentRepository.deployedFlow(app, text(run, "flow_deploy_id"));
     var node = flatten(objects(object(flow.get("definition")).get("nodes"))).stream().filter(value -> key.equals(text(value, "id"))).findFirst().orElseThrow();
     var view = new LinkedHashMap<>(wait);
     view.putAll(Map.of("node_key", key, "title", text(object(node.get("data")), "title"), "sign_mode", text(config(node), "signMode")));
@@ -147,19 +137,19 @@ public class ApprovalFlowState {
   }
 
   public Map<String, Object> nodeInstance(String app, String id) {
-    return approvalNodeInstanceRepository.getByNodeInstanceId(app, id);
+    return appApprovalNodeInstanceRepository.getByNodeInstanceId(app, id);
   }
 
   public Map<String, Object> parent(String app, Map<String, Object> run) {
     if (text(run, "parent_task_id").isEmpty()) return null;
     String instance = text(nodeInstance(app, text(run, "parent_task_id")), "flow_instance_id");
-    return approvalInstanceRepository.findByFlowInstanceId(app, instance).stream().findFirst().orElseThrow();
+    return appApprovalInstanceRepository.findByFlowInstanceId(app, instance).stream().findFirst().orElseThrow();
   }
 
   public List<Map<String, Object>> children(String app, Map<String, Object> run) {
-    var nodes = approvalNodeInstanceRepository.findByFlowInstance(app, text(run, "flow_instance_id"))
+    var nodes = appApprovalNodeInstanceRepository.findByFlowInstance(app, text(run, "flow_instance_id"))
       .stream().map(row -> text(row, "node_instance_id")).toList();
-    return approvalInstanceRepository.findByParentTaskIds(app, nodes);
+    return appApprovalInstanceRepository.findByParentTaskIds(app, nodes);
   }
 
   public String rootId(String app, Map<String, Object> run) {
@@ -169,7 +159,7 @@ public class ApprovalFlowState {
   }
 
   public Map<String, Object> lock(String app, String runId, String rootId) {
-    ProjectUnitOfWork.lock(app, ReflectionUtils.getModelNameFromClass(ApprovalInstance.class), "id", rootId);
+    ProjectUnitOfWork.lock(app, ReflectionUtils.getModelNameFromClass(AppApprovalInstance.class), "id", rootId);
     return run(app, runId);
   }
 }

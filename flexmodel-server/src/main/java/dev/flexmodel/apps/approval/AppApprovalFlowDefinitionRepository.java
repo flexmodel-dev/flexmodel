@@ -1,4 +1,4 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.codegen.entity.FlowDefinition;
 import dev.flexmodel.common.AbstractRepository;
@@ -18,7 +18,7 @@ import static dev.flexmodel.query.Expressions.TRUE;
 import static dev.flexmodel.query.Expressions.field;
 
 @ApplicationScoped
-public class ApprovalFlowDefinitionRepository extends AbstractRepository {
+public class AppApprovalFlowDefinitionRepository extends AbstractRepository {
 
   public Map<String, Object> get(String appId, String moduleId) {
     Map<String, Object> row = find(appId, moduleId);

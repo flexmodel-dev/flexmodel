@@ -90,13 +90,13 @@ public class NotificationRepository {
 
   public void deliver(String app, String key, String user, Map<String, Object> payload) {
     mutate(user, session -> {
-      var filter = field("app_id").eq(app).and(field("event_key").eq(key)).and(field("recipient_id").eq(user));
+      var filter = field("project_id").eq(app).and(field("event_key").eq(key)).and(field("recipient_id").eq(user));
       if (session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(Notification.class)).where(filter).count() > 0)
         return null;
       var row = new HashMap<>(payload);
       row.remove("recipients");
       row.remove("orderingKey");
-      row.putAll(Map.of("id", UUID.randomUUID().toString(), "app_id", app, "event_key", key, "recipient_id", user, "received_at", LocalDateTime.now()));
+      row.putAll(Map.of("id", UUID.randomUUID().toString(), "project_id", app, "event_key", key, "recipient_id", user, "received_at", LocalDateTime.now()));
       row.put("is_read", false);
       session.data().insert(ReflectionUtils.getModelNameFromClass(Notification.class), row);
       event(session, user, "notification.created", 1, Map.of("notification", dto(row, false)));
@@ -108,7 +108,7 @@ public class NotificationRepository {
     Predicate result = field("recipient_id").eq(user);
     if ("unread".equals(status)) result = result.and(field("is_read").eq(false));
     if (category != null && !category.isBlank()) result = result.and(field("category").eq(category));
-    if (app != null && !app.isBlank()) result = result.and(field("app_id").eq(app));
+    if (app != null && !app.isBlank()) result = result.and(field("project_id").eq(app));
     return result;
   }
 
@@ -134,12 +134,12 @@ public class NotificationRepository {
       var state = session.data().findById(ReflectionUtils.getModelNameFromClass(dev.flexmodel.codegen.entity.NotificationStream.class), user).orElseThrow();
       Map<String, Map<String, Object>> apps = new LinkedHashMap<>();
       Map<String, Long> categories = new LinkedHashMap<>(Map.of("approval", 0L, "workflow", 0L));
-      for (var row : session.dsl().select(s -> s.field("app_id").max("name", "app_name")).from(ReflectionUtils.getModelNameFromClass(Notification.class))
-        .where(field("recipient_id").eq(user)).groupBy("app_id").execute())
-        apps.put(text(row, "app_id"), new HashMap<>(Map.of("appId", text(row, "app_id"), "name", text(row, "name"), "unread", 0L)));
-      for (var row : session.dsl().select(s -> s.field("app_id").field("category").count("n", "id")).from(ReflectionUtils.getModelNameFromClass(Notification.class))
-        .where(filter(user, "unread", null, null)).groupBy("app_id", "category").execute()) {
-        var app = apps.get(text(row, "app_id"));
+      for (var row : session.dsl().select(s -> s.field("project_id").max("name", "app_name")).from(ReflectionUtils.getModelNameFromClass(Notification.class))
+        .where(field("recipient_id").eq(user)).groupBy("project_id").execute())
+        apps.put(text(row, "project_id"), new HashMap<>(Map.of("appId", text(row, "project_id"), "name", text(row, "name"), "unread", 0L)));
+      for (var row : session.dsl().select(s -> s.field("project_id").field("category").count("n", "id")).from(ReflectionUtils.getModelNameFromClass(Notification.class))
+        .where(filter(user, "unread", null, null)).groupBy("project_id", "category").execute()) {
+        var app = apps.get(text(row, "project_id"));
         app.put("unread", number(app, "unread") + number(row, "n"));
         categories.merge(text(row, "category"), number(row, "n"), Long::sum);
       }
@@ -177,7 +177,7 @@ public class NotificationRepository {
     Map<String, Object> dto = new LinkedHashMap<>();
     for (String key : List.of("id", "category", "title", "content"))
       dto.put(key, full || !key.equals("content") ? row.get(key) : text(row, key).substring(0, Math.min(140, text(row, key).length())));
-    for (var key : Map.of("appId", "app_id", "appName", "app_name", "instanceId", "instance_id", "taskId", "task_id", "receivedAt", "received_at", "occurredAt", "occurred_at", "readAt", "read_at").entrySet())
+    for (var key : Map.of("appId", "project_id", "appName", "app_name", "instanceId", "instance_id", "taskId", "task_id", "receivedAt", "received_at", "occurredAt", "occurred_at", "readAt", "read_at").entrySet())
       dto.put(key.getKey(), row.get(key.getValue()));
     return dto;
   }

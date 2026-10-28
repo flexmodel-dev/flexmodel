@@ -1,4 +1,4 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.codegen.entity.NodeInstance;
 import dev.flexmodel.common.AbstractRepository;
@@ -16,7 +16,7 @@ import static dev.flexmodel.query.Expressions.TRUE;
 import static dev.flexmodel.query.Expressions.field;
 
 @ApplicationScoped
-public class ApprovalNodeInstanceRepository extends AbstractRepository {
+public class AppApprovalNodeInstanceRepository extends AbstractRepository {
 
   public List<Map<String, Object>> findByFlowInstance(String appId, String flowInstanceId) {
     return findAll(appId, nodeInstance.flowInstanceId.eq(flowInstanceId));

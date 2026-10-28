@@ -1,5 +1,30 @@
 # Session Progress Log
 
+## 平台模型更名适配（2026-10-28）
+
+- 按 `platform.fml` 未提交改动同步 Java：`f_data_authorization` → `f_app_data_authorization`（`app_id` → `project_id`）、
+  `f_data_permission_control` → `f_app_data_permission_control`、`f_workbench` → `f_app_workbench`、
+  `f_approval_instance/wait/task/record_lock` → `f_app_approval_*`，`f_notification.app_id` → `project_id`。
+- codegen 生成的实体与 `System` 元模型变量随 FML 自动变更，源码改用 `AppWorkbench`、`AppApproval*`、`AppDataAuthorization`
+  等类型及 `appWorkbench`/`appApproval*`/`appDataAuthorization` 元模型；通知查询与 DTO 映射同步改用 `project_id`（对外
+  JSON 仍为 `appId`）。
+- 文档 `approvals.md`、`data-permissions.md`、`notifications.md` 同步表名与字段。按用户要求不做旧表/旧字段兼容。
+- 验证：`mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过（clean 仍受运行中 dev.jar 占用）；
+  `WorkbenchServiceTest`、`AppApprovalFlowResourceTest` 通过；`NotificationResourceTest` 7 项中 5 项通过，
+  2 项失败为 `progress.md` 已记录的既有 outbox/SSE 设计问题，与本次更名无关。
+- Apps UI 审批中心按入口区分布局：从应用菜单进入时保留应用导航并按当前 `appId` 过滤；从通知进入（`/approval/home` 无
+  `appId`）时
+  隐藏导航并显示返回按钮，采用居中 `max-w-5xl` 布局，新增“所属应用”筛选（复用 `getApps`）；`npx tsc -b` 通过，
+  浏览器验证应用入口请求携带 `appId`、独立入口切换应用筛选生效。
+
+## Apps UI - 审批中心隐藏 mock 导航（2026-10-28）
+
+- `/approval/home` 的 `AppLayout` 增加 `hideNavigation`，不再渲染来自 `src/data/mock.ts` 的顶部导航（工作台/客户/销售）
+  与左侧菜单（首页/客户/商机/产品/常用/项目），与通知页、个人设置页保持一致；审批列表仍走真实 `/api/approvals/*` 接口。
+- 验证：Apps UI `npx tsc -b` 通过；Playwright 内置浏览器加载 `#/approval/home` 后 `aside` 为空、页面无 mock 导航链接，
+  待处理/已处理列表接口数据正常。
+- 未提交。
+
 ## Apps - AppDataAuthorizationRepository 改用类型化 DSL（2026-10-28）
 
 - `AppDataAuthorizationRepository` 不再使用模型名常量与 Map 行，改用 `DSL#selectFrom(Class)` 类型化访问：
@@ -89,7 +114,7 @@
 
 ## Apps UI - 详情流程进度节点预测（2026-10-26，feat-117）
 
-- 详情面板新增“后续节点”预测：后端 `ApprovalForecast` 从 `flow_deploy_id` 的部署快照出发，以当前
+- 详情面板新增“后续节点”预测：后端 `AppApprovalForecast` 从 `flow_deploy_id` 的部署快照出发，以当前
   `WAITING` 审批节点的 `node_key` 为起点向后推演线性路径；只保留审批、子流程与结束节点，
   通知、新增、更新、查询、删除等自动节点跳过，分支候选同样跳过自动节点后取首个可展示节点。
   网关条件复用 `ApprovalRecordActions.matches` 与当前实例变量求值，条件引用了尚未产出的变量时不猜测走向，
@@ -101,7 +126,7 @@
   以 `muted` 灰阶和“预计/待定”徽标区分，分支候选在网关条目下以“可能进入”列出。
   实例抽屉的“签核进度”复用同一时间线，同样展示预测节点与结束节点。
   预测只覆盖“全部同意”的主路径，驳回/终止走向与子流程内部节点不在此次范围内。
-- 验证：`ApprovalForecastTest` 5 项通过（自动节点跳过、条件命中并汇合、变量缺失返回候选、结束节点解析、
+- 验证：`AppApprovalForecastTest` 5 项通过（自动节点跳过、条件命中并汇合、变量缺失返回候选、结束节点解析、
   未知起点返回空）；`mvn -pl flexmodel-server -am -Dtest=ApprovalForecastTest test` 通过（测试时关闭文件日志
   以避开运行中 dev.jar 的日志文件锁）。Apps UI `npx tsc -b`、`npm run build` 通过，`npm test` 34 项通过；
   另用 Playwright 加 mock 接口分别渲染进行态与完成态，检查浅色与深色下灰色预测节点及绿色结束节点，
@@ -3095,7 +3120,7 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   过滤（flow/approval/scheduling/functions/storage/pages/auditlog/apilog/projectauth/ReliableMessages）；删除不再使用的
   `getProjectSession` 与 ProjectUnitOfWork 的项目 session 借用入口。
 - 新增 `ProjectUnitOfWork.executePlatform`：以 `ServerSessions.openOwned("system")` 开启平台事务，支持嵌套复用与业务事务内嵌套；
-  `ProcessEngineImpl`、`ApprovalFlowService`、`ApprovalService`、`ReliableMessages` 的平台表写操作改用平台事务，
+  `ProcessEngineImpl`、`AppApprovalFlowService`、`AppApprovalService`、`ReliableMessages` 的平台表写操作改用平台事务，
   `NotificationRepository` 复用当前平台事务。
 - 新增 `ProjectPlatformDataCleaner`：项目/分支删除时按 `project_id` 清理平台表数据；SQLite 开发环境 `busy_timeout` 提升至
   5s。
@@ -3108,27 +3133,29 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 模型化访问：`ApprovalRepository` 的 `list/get/optional/insert/update/delete` 改为接收实体类（`ApprovalInstance.class`
   等）而非字符串模型名，条件统一使用 `System.xxx` 字段元模型；`updateDefinition`/`update` 直接使用
   `DSL.update(FlowDefinition.class)`、`delete` 使用 `DSL.deleteFrom(Class)`，模型名解析统一使用框架的
-  `ReflectionUtils.getModelNameFromClass`（不再新增 `Models`/`AbstractRepository.model`）。`ApprovalFlowState` 的模型查询统一通过
+  `ReflectionUtils.getModelNameFromClass`（不再新增 `Models`/`AbstractRepository.model`）。`AppApprovalFlowState` 的模型查询统一通过
   `ApprovalRepository`（实体类入参，内部自动附加 `project_id`），不在业务类中直接操作 Session/DSL。Flow/审批锁、
   `ReliableMessages`、`NotificationRepository`、`NotificationRelay`、`DirectoryService`、`ProjectPlatformDataCleaner`、
   `ProjectLogSettings`、`AppFormService` 的内置表单清单同步改为实体类。
-- Resource 只依赖 Service：`ApprovalFlowResource` 的记录审批历史查询移入 `ApprovalService.recordHistory`；
+- Resource 只依赖 Service：`AppApprovalFlowResource` 的记录审批历史查询移入 `ApprovalService.recordHistory`；
   `NotificationResource` 改用 `NotificationService`；`SystemOptionResource` 新增并使用 `SystemOptionService`；
   `FunctionTemplateResource` 改用 `FunctionService.list()`；Resource 中不再注入 Repository。
 - 验证：`mvn compile -pl flexmodel-server -am -DskipTests` 通过；`mvn test -pl flexmodel-engine` 通过。
-  `ApprovalFlowResourceTest` 在本地 SQLite 环境仍存在失败（通知顺序 1 项断言失败、平台表锁竞争相关的错误），未宣称服务端测试通过，待后续修复。
+  `AppApprovalFlowResourceTest` 在本地 SQLite 环境仍存在失败（通知顺序 1 项断言失败、平台表锁竞争相关的错误），未宣称服务端测试通过，待后续修复。
 - Repository 拆分与下沉：删除包含通用 `list/get/optional/insert/update/delete` 的 `ApprovalRepository`，按模型拆出
-  `ApprovalInstanceRepository`、`ApprovalTaskRepository`、`ApprovalWaitRepository`、`ApprovalRecordLockRepository`、
-  `ApprovalFlowDefinitionRepository`、`ApprovalFlowDeploymentRepository`、`ApprovalInstanceDataRepository`、
-  `ApprovalNodeInstanceRepository`、`ApprovalNodeInstanceLogRepository` 与 `RuntimeMessageRepository`。每个 Repository
+  `AppApprovalInstanceRepository`、`AppApprovalTaskRepository`、`AppApprovalWaitRepository`、
+  `AppApprovalRecordLockRepository`、
+  `AppApprovalFlowDefinitionRepository`、`AppApprovalFlowDeploymentRepository`、`AppApprovalInstanceDataRepository`、
+  `AppApprovalNodeInstanceRepository`、`AppApprovalNodeInstanceLogRepository` 与 `RuntimeMessageRepository`。每个
+  Repository
   内部自动附加 `project_id` 过滤，只暴露语义化方法（如 `findByRunId`、`findByFormRecord`、`deployedFlow`、`findPending`、
   `findBySchemaAndModel`），不再提供通用查询入口；删除 `AbstractPlatformRepository`，公共能力下沉到各自 Repository。
-  `ApprovalService`、`ApprovalRuntime`、`ApprovalFlowState`、`ApprovalFlowService`、`ApprovalLifecycle`、
-  `ApprovalRecordGuard` 及对应测试均改为注入专用 Repository。
-- 注入字段命名统一：Repository 字段使用 `XxxRepository`（类型名首字母小写），如 `approvalInstanceRepository`、
-  `approvalTaskRepository`、`approvalFlowDeploymentRepository`、`runtimeMessageRepository`；Service 字段统一使用
+  `AppApprovalService`、`AppApprovalRuntime`、`AppApprovalFlowState`、`AppApprovalFlowService`、`AppApprovalLifecycle`、
+  `AppApprovalRecordGuard` 及对应测试均改为注入专用 Repository。
+- 注入字段命名统一：Repository 字段使用 `XxxRepository`（类型名首字母小写），如 `appApprovalInstanceRepository`、
+  `appApprovalTaskRepository`、`appApprovalFlowDeploymentRepository`、`runtimeMessageRepository`；Service 字段统一使用
   `XxxService` 形式，覆盖 Approval、Notification、MCP、Flow 及测试类：`approvals`→`approvalsService`、`notifications`→
-  `notificationService`、`directory`→`directoryService`、`approvalFlows`/`flows`→`approvalFlowService`、`engine`→
+  `notificationService`、`directory`→`directoryService`、`approvalFlows`/`flows`→`appApprovalFlowService`、`engine`→
   `processService`、`apps`→`appService`、`forms`→`appFormService`、`records`→`appRecordService`、`projects`→
   `projectService`、`jwt`→`jwtService`、`keys`/`apiKeys`→`apiKeyService`、`service`→对应服务名。同时修正
   `ApprovalService.decide` 中局部变量 `tasks` 遮蔽 Repository 字段的问题，局部变量重命名为 `waitTasks`。
@@ -3147,7 +3174,7 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   `streams.size` 未归零的轮询断言，均为既有环境/设计问题，未在本次改动中引入。
 - 修复 Outbox “行锁必须位于事务内”：根因是 `ProjectUnitOfWork.adopt` 仅比较
   projectId，在平台事务已存在时直接复用而不校验会话身份，导致数据节点在平台事务内打开的无事务业务会话上执行行锁。现改为仅在
-  `existing.session() == session` 时复用，否则为传入会话开启独立事务并在结束后恢复外层上下文；`ApprovalRecordActions`
+  `existing.session() == session` 时复用，否则为传入会话开启独立事务并在结束后恢复外层上下文；`AppApprovalRecordActions`
   的数据节点 create/update/delete 改为包在 `transactions.execute(appId, ...)` 内，让节点写入独立提交且锁在节点事务内生效（query
   仍只读）。验证：新增 `ApprovalFlowResourceTest.platformTransactionDoesNotReuseBusinessSessionLock`，回退 adopt 时稳定复现
   `ServerSqlSession.lockRow` 抛“行锁必须位于事务内”，修复后 1 项测试通过。

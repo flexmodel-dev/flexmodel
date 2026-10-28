@@ -1,4 +1,4 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.codegen.entity.FlowDeployment;
 import dev.flexmodel.common.AbstractRepository;
@@ -16,7 +16,7 @@ import static dev.flexmodel.query.Expressions.TRUE;
 import static dev.flexmodel.query.Expressions.field;
 
 @ApplicationScoped
-public class ApprovalFlowDeploymentRepository extends AbstractRepository {
+public class AppApprovalFlowDeploymentRepository extends AbstractRepository {
 
   public Map<String, Object> get(String appId, String deploymentId) {
     var rows = findAll(appId, flowDeployment.flowDeployId.eq(deploymentId));
@@ -29,7 +29,7 @@ public class ApprovalFlowDeploymentRepository extends AbstractRepository {
   }
 
   public Map<String, Object> deployedFlow(String appId, String deploymentId) {
-    return ApprovalFlowModel.decode(get(appId, deploymentId));
+    return AppApprovalFlowModel.decode(get(appId, deploymentId));
   }
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {

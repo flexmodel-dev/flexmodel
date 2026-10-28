@@ -1,17 +1,17 @@
-model f_data_authorization {
+model f_app_data_authorization {
   id : String @id @default(uuid()) @length("64"),
-  app_id : String @length("64"),
+  project_id : String @length("64"),
   form_name : String @length("64"),
   name : String @length("255"),
   enabled : Boolean @default("true"),
   subjects : JSON,
   data_scope : JSON,
-  @index(name: "IDX_DATA_AUTH_FORM", fields: [app_id, form_name]),
+  @index(name: "IDX_DATA_AUTH_FORM", fields: [project_id, form_name]),
   @system,
   @comment("数据授权")
 }
 
-model f_data_permission_control {
+model f_app_data_permission_control {
   id : String @id @default(uuid()) @length("64"),
   authorization_id : String @length("64"),
   form_name : String @length("64"),
@@ -27,7 +27,7 @@ model f_data_permission_control {
 
 model f_notification {
   id: String @id,
-  app_id: String,
+  project_id: String,
   event_key: String @length("180"),
   recipient_id: String,
   category: String,
@@ -40,7 +40,7 @@ model f_notification {
   received_at: DateTime,
   read_at?: DateTime,
   is_read: Boolean,
-  @index(name: "UQ_NOTIFICATION_EVENT_USER", unique: true, fields: [app_id, event_key, recipient_id]),
+  @index(name: "UQ_NOTIFICATION_EVENT_USER", unique: true, fields: [project_id, event_key, recipient_id]),
   @index(name: "IDX_NOTIFICATION_INBOX", fields: [recipient_id, received_at]),
   @index(name: "IDX_NOTIFICATION_UNREAD", fields: [recipient_id, is_read, received_at]),
   @system
@@ -95,7 +95,7 @@ model f_branch {
   @comment("项目分支")
 }
 
-model f_workbench {
+model f_app_workbench {
   id : String @id @default(uuid()),
   project_id : String @comment("所属项目ID"),
   name : String @comment("工作台名称"),
@@ -613,7 +613,7 @@ model f_runtime_message {
   @comment("可靠事件与命令 Outbox")
 }
 
-model f_approval_instance {
+model f_app_approval_instance {
   id: String @id,
   project_id: String @comment("所属项目ID"),
   request_key: String,
@@ -636,7 +636,7 @@ model f_approval_instance {
   @comment("表单流程实例及提交快照")
 }
 
-model f_approval_wait {
+model f_app_approval_wait {
   id: String @id,
   project_id: String @comment("所属项目ID"),
   run_id: String,
@@ -648,7 +648,7 @@ model f_approval_wait {
   @comment("审批挂起任务")
 }
 
-model f_approval_task {
+model f_app_approval_task {
   id: String @id,
   project_id: String @comment("所属项目ID"),
   wait_id: String,
@@ -667,7 +667,7 @@ model f_approval_task {
   @comment("个人签核任务与决策记录")
 }
 
-model f_approval_record_lock {
+model f_app_approval_record_lock {
   id: String @id,
   project_id: String @comment("所属项目ID"),
   run_id: String,

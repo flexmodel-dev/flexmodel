@@ -2,9 +2,9 @@ package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.approval.ApprovalFlowModel;
-import dev.flexmodel.approval.ApprovalFlowService;
-import dev.flexmodel.approval.ApprovalFlowDefinitionRepository;
+import dev.flexmodel.apps.approval.AppApprovalFlowModel;
+import dev.flexmodel.apps.approval.AppApprovalFlowService;
+import dev.flexmodel.apps.approval.AppApprovalFlowDefinitionRepository;
 import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.auth.dto.CreateApiKeyRequest;
 import dev.flexmodel.auth.service.ApiKeyService;
@@ -35,9 +35,9 @@ class AppApprovalToolsTest {
   @Inject
   AppTools apps;
   @Inject
-  ApprovalFlowService approvalFlowService;
+  AppApprovalFlowService appApprovalFlowService;
   @Inject
-  ApprovalFlowDefinitionRepository approvalFlowDefinitionRepository;
+  AppApprovalFlowDefinitionRepository appApprovalFlowDefinitionRepository;
   @Inject
   AppFormService appFormService;
 
@@ -70,7 +70,7 @@ class AppApprovalToolsTest {
 
   @AfterEach
   void cleanup() {
-    for (String id : flowIds) approvalFlowService.delete("dev_test", id);
+    for (String id : flowIds) appApprovalFlowService.delete("dev_test", id);
     if (form != null) {
       appFormService.deleteForm("dev_test", form);
     }
@@ -100,11 +100,11 @@ class AppApprovalToolsTest {
       var config = object(object(capabilities.get("nodeConfigs")).get(kind));
       assertTrue(config.keySet().containsAll(List.of("form", "conditions", "assignments", "output", "queryMode", "match")));
       config.put("form", Map.of("kind", "app", "name", form));
-      var view = ApprovalFlowModel.decode(bindForm(object(object(capabilities.get("examples")).get("simple"))));
+      var view = AppApprovalFlowModel.decode(bindForm(object(object(capabilities.get("examples")).get("simple"))));
       var nodes = new ArrayList<>(objects(object(view.get("definition")).get("nodes")));
       nodes.set(1, Map.of("id", "data_task", "type", kind, "data", Map.of("title", kind, "config", config)));
       view.put("definition", Map.of("nodes", nodes));
-      assertEquals("[]", call("validate_app_approval_flow", Map.of("appId", "dev_test", "flowJson", JsonUtils.toJsonString(ApprovalFlowModel.encode(view)))));
+      assertEquals("[]", call("validate_app_approval_flow", Map.of("appId", "dev_test", "flowJson", JsonUtils.toJsonString(AppApprovalFlowModel.encode(view)))));
     }
     var draft = createDraft(object(object(capabilities.get("examples")).get("simple")));
     String id = draft.get("flow_module_id").toString();
@@ -126,7 +126,7 @@ class AppApprovalToolsTest {
     assertTrue(call("save_app_approval_flow", Map.of("appId", "dev_test", "flowId", id, "flowJson", JsonUtils.toJsonString(edited))).startsWith("Error:"));
     var republished = status(id, 2, saved);
     var disabled = status(id, 3, republished);
-    assertEquals(3, ((Number) approvalFlowDefinitionRepository.get("dev_test", id).get("status")).intValue(), "persisted native Flow status");
+    assertEquals(3, ((Number) appApprovalFlowDefinitionRepository.get("dev_test", id).get("status")).intValue(), "persisted native Flow status");
     assertEquals(3, disabled.get("status"));
     assertEquals(3, JsonUtils.parseToMap(call("get_app_approval_flow", Map.of("appId", "dev_test", "flowId", id))).get("status"));
   }
@@ -135,10 +135,10 @@ class AppApprovalToolsTest {
   void keepsInvalidDraftButRejectsPublishingAndMalformedModels() {
     var capabilities = JsonUtils.parseToMap(call("get_app_approval_capabilities", Map.of("appId", "dev_test")));
     var body = bindForm(object(object(capabilities.get("examples")).get("simple")));
-    var view = ApprovalFlowModel.decode(body);
+    var view = AppApprovalFlowModel.decode(body);
     var nodes = objects(object(view.get("definition")).get("nodes"));
     object(object(nodes.get(1).get("data")).get("config")).put("rules", List.of());
-    var draft = createDraft(ApprovalFlowModel.encode(view));
+    var draft = createDraft(AppApprovalFlowModel.encode(view));
     String id = draft.get("flow_module_id").toString();
     var issues = JsonUtils.parseToMapList(call("validate_app_approval_flow", Map.of("appId", "dev_test", "flowJson", JsonUtils.toJsonString(draft))));
     assertTrue(issues.stream().anyMatch(issue -> "review".equals(issue.get("nodeId"))));
@@ -196,9 +196,9 @@ class AppApprovalToolsTest {
   }
 
   private Map<String, Object> bindForm(Map<String, Object> source) {
-    var view = ApprovalFlowModel.decode(source);
+    var view = AppApprovalFlowModel.decode(source);
     view.put("form", Map.of("kind", "app", "name", form));
-    return ApprovalFlowModel.encode(view);
+    return AppApprovalFlowModel.encode(view);
   }
 
   private Map<String, Object> status(String id, int value, Map<String, Object> previous) {

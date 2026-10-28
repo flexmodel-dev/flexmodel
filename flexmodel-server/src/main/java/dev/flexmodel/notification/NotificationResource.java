@@ -1,6 +1,6 @@
 package dev.flexmodel.notification;
 
-import dev.flexmodel.approval.ApprovalService;
+import dev.flexmodel.apps.approval.AppApprovalService;
 import dev.flexmodel.common.SessionContext;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -19,7 +19,7 @@ public class NotificationResource {
   @Inject
   NotificationStream streams;
   @Inject
-  ApprovalService approvalsService;
+  AppApprovalService approvalsService;
 
   private String user() {
     if (!current.isAuthenticatedUser() || !notificationService.activeUser(current.getUserId()))

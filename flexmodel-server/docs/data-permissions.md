@@ -75,9 +75,9 @@ updated_at = now
 一条规则定义授权成员及共同的数据范围。数据范围对该规则下的所有控制明细生效；查看全部数据、修改本人数据等差异通过多条规则表达。
 
 ```fml
-model f_data_authorization {
+model f_app_data_authorization {
   id : String @id @default(uuid()) @length("64"),
-  app_id : String @length("64") @comment("应用ID"),
+  project_id : String @length("64") @comment("项目ID"),
   form_name : String @length("64") @comment("主表单名称"),
   name : String @length("255") @comment("规则名称"),
   enabled : Boolean @default("true") @comment("是否启用"),
@@ -85,7 +85,7 @@ model f_data_authorization {
   subjects : JSON @comment("授权成员：用户、角色、组织，多选"),
   data_scope : JSON @comment("数据范围：本人、下级、用户、角色、组织，多选"),
 
-  @index(name: "IDX_DATA_AUTH_FORM", fields: [app_id, form_name]),
+  @index(name: "IDX_DATA_AUTH_FORM", fields: [project_id, form_name]),
   @system,
   @comment("数据授权")
 }
@@ -96,7 +96,7 @@ model f_data_authorization {
 唯一键为 `(authorization_id, form_name)`，主表和各子表分别保存一条明细。没有对应明细即没有该规则对目标表的授权。
 
 ```fml
-model f_data_permission_control {
+model f_app_data_permission_control {
   id : String @id @default(uuid()) @length("64"),
   authorization_id : String @length("64") @comment("授权ID"),
   form_name : String @length("64") @comment("目标表单名称"),

@@ -24,7 +24,7 @@ skipped。模拟器仅预览。
 
 项目事务写入 `notification.deliver` Outbox，独立 ordering key 不阻塞业务流转。后台按首次执行时确定的收件人与内容投递到系统库：
 
-- `f_notification`：每用户一条消息，唯一约束为 app_id/event_key/recipient_id；保留收到时的应用名称和内容。
+- `f_notification`：每用户一条消息，唯一约束为 project_id/event_key/recipient_id；保留收到时的应用名称和内容。
 - `f_notification_stream`：用户事件版本与未读数。
 - `f_notification_event`：有序事件日志，也是实时分发的持久化待投递记录。
 

@@ -1,6 +1,6 @@
 package dev.flexmodel.common.persistence;
 
-import dev.flexmodel.approval.ApprovalRecordGuard;
+import dev.flexmodel.apps.approval.AppApprovalRecordGuard;
 import dev.flexmodel.common.SqlErrors;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.service.DataService;
@@ -28,11 +28,11 @@ final class ServerSqlSession extends SqlSession implements ManagedSession {
   private final List<Runnable> committedCallbacks = new ArrayList<>();
   private int eventBoundary;
 
-  ServerSqlSession(SqlContext context, ApprovalRecordGuard guard) {
+  ServerSqlSession(SqlContext context, AppApprovalRecordGuard guard) {
     this(context, guard, new CommitEvents(context));
   }
 
-  private ServerSqlSession(SqlContext context, ApprovalRecordGuard guard, CommitEvents events) {
+  private ServerSqlSession(SqlContext context, AppApprovalRecordGuard guard, CommitEvents events) {
     super(context, events);
     this.context = context;
     this.connection = context.getConnection();

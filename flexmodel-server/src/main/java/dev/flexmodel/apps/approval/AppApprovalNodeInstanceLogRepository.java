@@ -1,4 +1,4 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.codegen.entity.NodeInstanceLog;
 import dev.flexmodel.common.AbstractRepository;
@@ -16,7 +16,7 @@ import static dev.flexmodel.query.Expressions.TRUE;
 import static dev.flexmodel.query.Expressions.field;
 
 @ApplicationScoped
-public class ApprovalNodeInstanceLogRepository extends AbstractRepository {
+public class AppApprovalNodeInstanceLogRepository extends AbstractRepository {
 
   public boolean existsByEventKey(String appId, String eventKey) {
     return !findAll(appId, nodeInstanceLog.eventKey.eq(eventKey)).isEmpty();

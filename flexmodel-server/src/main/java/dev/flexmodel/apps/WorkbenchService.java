@@ -23,7 +23,7 @@ import dev.flexmodel.apps.dto.WorkbenchShortcutsConfig;
 import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
 import dev.flexmodel.apps.dto.WorkbenchTasksConfig;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.codegen.entity.Workbench;
+import dev.flexmodel.codegen.entity.AppWorkbench;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
@@ -70,9 +70,9 @@ public class WorkbenchService {
 
   public List<WorkbenchSummaryResponse> findWorkbenches(String appId) {
     Project project = appMenuRecordStore.requireAppProject(appId);
-    List<Workbench> workbenches = workbenchRepository.findByProjectId(project.getId());
+    List<AppWorkbench> workbenches = workbenchRepository.findByProjectId(project.getId());
     if (workbenches.isEmpty()) {
-      Workbench created = createEntity(project.getId(), DEFAULT_NAME, null, WorkbenchLayoutRecord.empty());
+      AppWorkbench created = createEntity(project.getId(), DEFAULT_NAME, null, WorkbenchLayoutRecord.empty());
       workbenches = List.of(created);
     }
     return workbenches.stream().map(this::toSummary).toList();
@@ -83,7 +83,7 @@ public class WorkbenchService {
   }
 
   public WorkbenchComponentRecord findComponent(String appId, String workbenchId, String componentId) {
-    Workbench workbench = requireWorkbench(appId, workbenchId);
+    AppWorkbench workbench = requireWorkbench(appId, workbenchId);
     WorkbenchLayoutRecord layout = validatedLayout(appId, toLayout(workbench));
     return layout.components().stream()
       .filter(component -> Objects.equals(component.id(), componentId))
@@ -113,13 +113,13 @@ public class WorkbenchService {
     WorkbenchLayoutRecord layout = request.layout() == null
       ? WorkbenchLayoutRecord.empty()
       : validatedLayout(appId, request.layout());
-    Workbench workbench = createEntity(project.getId(), name, request.description(), layout);
+    AppWorkbench workbench = createEntity(project.getId(), name, request.description(), layout);
     return toResponse(workbench);
   }
 
   public WorkbenchResponse patchWorkbench(String appId, String workbenchId, WorkbenchPatchRequest request) {
     Project project = appMenuRecordStore.requireAppProject(appId);
-    Workbench workbench = requireWorkbench(project.getId(), workbenchId);
+    AppWorkbench workbench = requireWorkbench(project.getId(), workbenchId);
 
     if (request.hasName()) {
       String name = validatedName(request.name());
@@ -144,14 +144,14 @@ public class WorkbenchService {
 
   public void deleteWorkbench(String appId, String workbenchId) {
     Project project = appMenuRecordStore.requireAppProject(appId);
-    Workbench workbench = requireWorkbench(project.getId(), workbenchId);
+    AppWorkbench workbench = requireWorkbench(project.getId(), workbenchId);
     if (workbenchRepository.countByProjectId(project.getId()) <= 1) {
       throw new ValidationException("至少保留一个工作台");
     }
     workbenchRepository.deleteByProjectIdAndId(project.getId(), workbenchId);
   }
 
-  private Workbench createEntity(
+  private AppWorkbench createEntity(
     String projectId,
     String name,
     String description,
@@ -159,7 +159,7 @@ public class WorkbenchService {
   ) {
     LocalDateTime now = LocalDateTime.now();
     String userId = currentUserId();
-    Workbench workbench = new Workbench();
+    AppWorkbench workbench = new AppWorkbench();
     workbench.setId(UUID.randomUUID().toString());
     workbench.setProjectId(projectId);
     workbench.setName(name);
@@ -172,9 +172,9 @@ public class WorkbenchService {
     return workbenchRepository.save(workbench);
   }
 
-  private Workbench requireWorkbench(String appId, String workbenchId) {
+  private AppWorkbench requireWorkbench(String appId, String workbenchId) {
     Project project = appMenuRecordStore.requireAppProject(appId);
-    Workbench workbench = workbenchRepository.findByProjectIdAndId(project.getId(), workbenchId);
+    AppWorkbench workbench = workbenchRepository.findByProjectIdAndId(project.getId(), workbenchId);
     if (workbench == null) {
       throw new NotFoundException("工作台不存在: " + workbenchId);
     }
@@ -199,7 +199,7 @@ public class WorkbenchService {
   }
 
   private void requireUniqueName(String projectId, String name, String ignoredWorkbenchId) {
-    Workbench existing = workbenchRepository.findByName(projectId, name);
+    AppWorkbench existing = workbenchRepository.findByName(projectId, name);
     if (existing != null && !Objects.equals(existing.getId(), ignoredWorkbenchId)) {
       throw new ValidationException("工作台名称已存在: " + name);
     }
@@ -518,14 +518,14 @@ public class WorkbenchService {
     return JsonUtils.convertValue(layout, Map.class);
   }
 
-  private WorkbenchLayoutRecord toLayout(Workbench workbench) {
+  private WorkbenchLayoutRecord toLayout(AppWorkbench workbench) {
     if (workbench.getLayout() == null) {
       return WorkbenchLayoutRecord.empty();
     }
     return JsonUtils.convertValue(workbench.getLayout(), WorkbenchLayoutRecord.class);
   }
 
-  private WorkbenchSummaryResponse toSummary(Workbench workbench) {
+  private WorkbenchSummaryResponse toSummary(AppWorkbench workbench) {
     return new WorkbenchSummaryResponse(
       workbench.getId(),
       workbench.getName(),
@@ -534,7 +534,7 @@ public class WorkbenchService {
       workbench.getUpdatedAt());
   }
 
-  private WorkbenchResponse toResponse(Workbench workbench) {
+  private WorkbenchResponse toResponse(AppWorkbench workbench) {
     return new WorkbenchResponse(
       workbench.getId(),
       workbench.getName(),

@@ -1,4 +1,4 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.JsonUtils;
 
@@ -6,8 +6,8 @@ import java.util.*;
 
 import static dev.flexmodel.common.Values.*;
 
-public final class ApprovalJson {
-  private ApprovalJson() {
+public final class AppApprovalJson {
+  private AppApprovalJson() {
   }
 
   public static Map<String, Object> config(Map<String, Object> node) {

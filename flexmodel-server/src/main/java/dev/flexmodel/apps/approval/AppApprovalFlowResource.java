@@ -1,7 +1,6 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.directory.DirectoryService;
-import dev.flexmodel.approval.ApprovalService;
 import dev.flexmodel.common.authz.RequiresPermissions;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -9,55 +8,54 @@ import jakarta.ws.rs.core.*;
 
 import java.util.*;
 
-import static dev.flexmodel.approval.ApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
 
 @Path("/apps/{appId}")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class ApprovalFlowResource {
+public class AppApprovalFlowResource {
   @Inject
-  ApprovalFlowService approvalFlowService;
+  AppApprovalFlowService appApprovalFlowService;
   @Inject
-  ApprovalRuntime runtime;
+  AppApprovalRuntime runtime;
   @Inject
   DirectoryService directoryService;
   @Inject
-  ApprovalService approvalsService;
+  AppApprovalService approvalsService;
 
   @GET
   @Path("/approval-flows")
   @RequiresPermissions("flow:view")
   public List<Map<String, Object>> list(@PathParam("appId") String appId) {
-    return approvalFlowService.list(appId).stream().map(ApprovalFlowModel::encode).toList();
+    return appApprovalFlowService.list(appId).stream().map(AppApprovalFlowModel::encode).toList();
   }
 
   @GET
   @Path("/approval-flows/{id}")
   @RequiresPermissions("flow:view")
   public Map<String, Object> get(@PathParam("appId") String appId, @PathParam("id") String id) {
-    return ApprovalFlowModel.encode(approvalFlowService.get(appId, id));
+    return AppApprovalFlowModel.encode(appApprovalFlowService.get(appId, id));
   }
 
   @POST
   @Path("/approval-flows")
   @RequiresPermissions("flow:create")
   public Response create(@PathParam("appId") String appId, Map<String, Object> body) {
-    return Response.status(201).entity(ApprovalFlowModel.encode(approvalFlowService.save(appId, null, ApprovalFlowModel.decode(body)))).build();
+    return Response.status(201).entity(AppApprovalFlowModel.encode(appApprovalFlowService.save(appId, null, AppApprovalFlowModel.decode(body)))).build();
   }
 
   @PUT
   @Path("/approval-flows/{id}")
   @RequiresPermissions("flow:update")
   public Map<String, Object> save(@PathParam("appId") String appId, @PathParam("id") String id, Map<String, Object> body) {
-    return ApprovalFlowModel.encode(approvalFlowService.save(appId, id, ApprovalFlowModel.decode(body)));
+    return AppApprovalFlowModel.encode(appApprovalFlowService.save(appId, id, AppApprovalFlowModel.decode(body)));
   }
 
   @POST
   @Path("/approval-flows/validate")
   @RequiresPermissions("flow:view")
   public Object validate(@PathParam("appId") String appId, Map<String, Object> body) {
-    return approvalFlowService.validate(appId, ApprovalFlowModel.decode(body));
+    return appApprovalFlowService.validate(appId, AppApprovalFlowModel.decode(body));
   }
 
   @POST
@@ -65,14 +63,14 @@ public class ApprovalFlowResource {
   @RequiresPermissions("flow:deploy")
   public Object status(@PathParam("appId") String appId, @PathParam("id") String id, Map<String, Object> body) {
     int status = ((Number) body.getOrDefault("status", -1)).intValue();
-    return ApprovalFlowModel.encode(approvalFlowService.status(appId, id, status == 2 ? "enabled" : status == 3 ? "disabled" : "invalid", ((Number) body.getOrDefault("revision", -1)).intValue()));
+    return AppApprovalFlowModel.encode(appApprovalFlowService.status(appId, id, status == 2 ? "enabled" : status == 3 ? "disabled" : "invalid", ((Number) body.getOrDefault("revision", -1)).intValue()));
   }
 
   @DELETE
   @Path("/approval-flows/{id}")
   @RequiresPermissions("flow:delete")
   public Response delete(@PathParam("appId") String appId, @PathParam("id") String id) {
-    approvalFlowService.delete(appId, id);
+    appApprovalFlowService.delete(appId, id);
     return Response.noContent().build();
   }
 
@@ -80,7 +78,7 @@ public class ApprovalFlowResource {
   @Path("/approval-directory")
   @RequiresPermissions("flow:view")
   public Object directory(@PathParam("appId") String appId) {
-    approvalFlowService.list(appId);
+    appApprovalFlowService.list(appId);
     return directoryService.directory();
   }
 

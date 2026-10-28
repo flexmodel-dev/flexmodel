@@ -1,5 +1,8 @@
 package dev.flexmodel.approval;
 
+import dev.flexmodel.apps.approval.AppApprovalCompiler;
+import dev.flexmodel.apps.approval.AppApprovalFlowModel;
+import dev.flexmodel.apps.approval.AppApprovalRecordActions;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.flow.common.util.impl.JavaScriptExpressionCalculator;
 
@@ -10,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static dev.flexmodel.common.Values.*;
 
-class ApprovalFlowModelTest {
+class AppApprovalFlowModelTest {
   Map<String, Object> node(String id, String kind) {
     return new LinkedHashMap<>(Map.of("id", id, "type", kind, "data", Map.of("title", id, "config", Map.of("kind", kind))));
   }
@@ -32,12 +35,12 @@ class ApprovalFlowModelTest {
   @Test
   void roundTripPreservesNestedEmptyBranchesAndUsesNativeGateway() {
     var source = draft();
-    var record = ApprovalFlowModel.encode(source);
-    var restored = ApprovalFlowModel.decode(record);
+    var record = AppApprovalFlowModel.encode(source);
+    var restored = AppApprovalFlowModel.decode(record);
     assertEquals(source.get("definition"), restored.get("definition"));
     assertFalse(record.containsKey("definition"));
     assertInstanceOf(String.class, record.get("flow_model"));
-    var model = new ApprovalCompiler().compile(restored, Map.of("revision", 1));
+    var model = new AppApprovalCompiler().compile(restored, Map.of("revision", 1));
     var gateway = model.getFlowElementList().stream().filter(e -> e.getKey().equals("gateway")).findFirst().orElseThrow();
     assertEquals(6, gateway.getType());
     assertFalse(gateway.getProperties().containsKey("handler"));
@@ -46,10 +49,10 @@ class ApprovalFlowModelTest {
 
   @Test
   void rejectsInvalidJsonAndConflictingConnectivity() {
-    assertThrows(ValidationException.class, () -> ApprovalFlowModel.decode(Map.of("flow_model", "{")));
-    var record = ApprovalFlowModel.encode(draft());
+    assertThrows(ValidationException.class, () -> AppApprovalFlowModel.decode(Map.of("flow_model", "{")));
+    var record = AppApprovalFlowModel.encode(draft());
     record.put("flow_model", text(record, "flow_model").replace("sequence_start", "broken_edge"));
-    assertThrows(ValidationException.class, () -> ApprovalFlowModel.decode(record));
+    assertThrows(ValidationException.class, () -> AppApprovalFlowModel.decode(record));
   }
 
   @Test
@@ -61,12 +64,12 @@ class ApprovalFlowModelTest {
         var config = Map.<String, Object>of("conditions", List.of(condition), "match", "all");
         for (var record : List.of(Map.of("amount", 3), Map.of("amount", 2), Map.of())) {
           var variables = Map.<String, Object>of("record", record, "limit", 2);
-          assertEquals(ApprovalRecordActions.matches(config, variables), calculator.calculate(ApprovalFlowModel.condition(config), variables), operator + ":" + binding + ":" + record);
+          assertEquals(AppApprovalRecordActions.matches(config, variables), calculator.calculate(AppApprovalFlowModel.condition(config), variables), operator + ":" + binding + ":" + record);
         }
       }
     }
     var config = Map.<String, Object>of("conditions", List.of(Map.of("field", "amount", "operator", "eq", "value", Map.of("kind", "literal", "value", "2", "valueType", "number"))), "match", "all");
-    assertTrue(calculator.calculate(ApprovalFlowModel.condition(config), Map.of("amount", 2)));
-    assertFalse(calculator.calculate(ApprovalFlowModel.condition(config), Map.of()), "不能读取同线程上一次计算残留的变量");
+    assertTrue(calculator.calculate(AppApprovalFlowModel.condition(config), Map.of("amount", 2)));
+    assertFalse(calculator.calculate(AppApprovalFlowModel.condition(config), Map.of()), "不能读取同线程上一次计算残留的变量");
   }
 }

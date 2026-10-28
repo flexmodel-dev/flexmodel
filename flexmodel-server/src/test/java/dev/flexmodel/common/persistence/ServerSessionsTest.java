@@ -1,7 +1,7 @@
 package dev.flexmodel.common.persistence;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
-import dev.flexmodel.approval.ApprovalRecordGuard;
+import dev.flexmodel.apps.approval.AppApprovalRecordGuard;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
@@ -69,7 +69,7 @@ class ServerSessionsTest {
     }
     ServerSessions result = new ServerSessions();
     result.factory = factory;
-    result.guard = new ApprovalRecordGuard() {
+    result.guard = new AppApprovalRecordGuard() {
       @Override
       public Object intercept(Session session, String operation, Object[] arguments, Supplier<Object> proceed) {
         return proceed.get();

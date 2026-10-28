@@ -1,5 +1,6 @@
 package dev.flexmodel.apps;
 
+import dev.flexmodel.apps.approval.AppApprovalLifecycle;
 import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormCreateRequest;
@@ -78,7 +79,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class AppFormService {
   @Inject
-  dev.flexmodel.approval.ApprovalLifecycle approvalLifecycle;
+  AppApprovalLifecycle appApprovalLifecycle;
 
   private static final String METADATA_APP_KEY = "app";
   private static final String METADATA_FORMS_KEY = "forms";
@@ -549,7 +550,7 @@ public class AppFormService {
 
   public void deleteForm(String appId, String formName) {
     requireNotBuiltinForm(formName);
-    approvalLifecycle.beforeDeleteForm(appId, formName);
+    appApprovalLifecycle.beforeDeleteForm(appId, formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();

@@ -1,8 +1,8 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import java.util.*;
 
-import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.apps.approval.AppApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
 
 /**
@@ -10,14 +10,14 @@ import static dev.flexmodel.common.Values.*;
  * A gateway whose conditions cannot be decided with the current variables stops the walk and
  * returns its branches as candidates, because the real decision happens when the flow reaches it.
  */
-public final class ApprovalForecast {
+public final class AppApprovalForecast {
   private static final int MAX_NODES = 12;
   private static final Set<String> AUTO_KINDS = Set.of("notification", "create", "update", "query", "delete");
   private static final Map<String, String> DEFAULT_TITLES = Map.of(
     "approval", "审批", "notification", "通知", "create", "新增数据", "update", "更新数据",
     "query", "查询数据", "delete", "删除数据", "subflow", "子流程", "end", "流程结束", "gateway", "条件分流");
 
-  private ApprovalForecast() {
+  private AppApprovalForecast() {
   }
 
   public static List<Map<String, Object>> forecast(Map<String, Object> flow, Collection<String> currentKeys,
@@ -68,7 +68,7 @@ public final class ApprovalForecast {
         continue;
       }
       if (!decidable(config, variables)) return null;
-      if (ApprovalRecordActions.matches(config, variables)) return branch;
+      if (AppApprovalRecordActions.matches(config, variables)) return branch;
     }
     return fallback;
   }
@@ -128,7 +128,7 @@ public final class ApprovalForecast {
     view.put("title", title(gateway));
     view.put("kind", "gateway");
     view.put("certain", false);
-    view.put("candidates", objects(gateway.get("blocks")).stream().map(ApprovalForecast::first)
+    view.put("candidates", objects(gateway.get("blocks")).stream().map(AppApprovalForecast::first)
       .filter(Objects::nonNull).toList());
     return view;
   }

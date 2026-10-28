@@ -1,6 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.apps.approval.AppApprovalLifecycle;
 import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.dto.AppResponse;
 import dev.flexmodel.apps.dto.AppUpdateRequest;
@@ -29,7 +30,7 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class AppService {
   @Inject
-  dev.flexmodel.approval.ApprovalLifecycle approvalLifecycle;
+  AppApprovalLifecycle appApprovalLifecycle;
 
   private static final Pattern PROJECT_ID_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{1,62}$");
   private static final Set<String> ICON_NAMES = Set.of(
@@ -115,7 +116,7 @@ public class AppService {
 
   public void deleteApp(String appId) {
     Project project = requireAppProject(appId);
-    approvalLifecycle.beforeDelete(appId);
+    appApprovalLifecycle.beforeDelete(appId);
     workbenchRepository.deleteByProjectId(project.getId());
     appDataAuthorizationService.deleteAppRules(appId);
     projectService.deleteProject(project.getId());

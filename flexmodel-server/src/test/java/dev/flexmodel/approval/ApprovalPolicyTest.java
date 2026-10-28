@@ -1,6 +1,7 @@
 package dev.flexmodel.approval;
 
-import dev.flexmodel.approval.ApprovalRecordActions;
+import dev.flexmodel.apps.approval.AppApprovalRecordActions;
+import dev.flexmodel.apps.approval.SignPolicy;
 import dev.flexmodel.directory.DirectoryService;
 
 import java.util.*;
@@ -37,8 +38,8 @@ class ApprovalPolicyTest {
   @Test
   void typedConditions() {
     Map<String, Object> number = Map.of("field", "record.amount", "operator", "gt", "value", Map.of("kind", "literal", "valueType", "number", "value", "100"));
-    assertTrue(ApprovalRecordActions.matches(Map.of("match", "all", "conditions", List.of(number)), Map.of("record", Map.of("amount", 101))));
-    assertFalse(ApprovalRecordActions.matches(Map.of("match", "all", "conditions", List.of(number)), Map.of("record", Map.of("amount", 9))));
+    assertTrue(AppApprovalRecordActions.matches(Map.of("match", "all", "conditions", List.of(number)), Map.of("record", Map.of("amount", 101))));
+    assertFalse(AppApprovalRecordActions.matches(Map.of("match", "all", "conditions", List.of(number)), Map.of("record", Map.of("amount", 9))));
   }
 
   @Test

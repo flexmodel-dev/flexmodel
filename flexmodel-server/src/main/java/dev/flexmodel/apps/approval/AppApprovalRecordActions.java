@@ -1,4 +1,4 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.apps.AppRecordService;
@@ -12,7 +12,7 @@ import jakarta.inject.Inject;
 
 import java.util.*;
 
-import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.apps.approval.AppApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
 import static dev.flexmodel.query.Expressions.*;
 
@@ -20,7 +20,7 @@ import static dev.flexmodel.query.Expressions.*;
  * Application metadata is resolved on the server. No datasource or raw filter is accepted from nodes.
  */
 @ApplicationScoped
-public class ApprovalRecordActions {
+public class AppApprovalRecordActions {
   @Inject
   AppFormService appFormService;
   @Inject

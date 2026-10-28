@@ -1,6 +1,6 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.codegen.entity.Workbench;
+import dev.flexmodel.codegen.entity.AppWorkbench;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
@@ -9,7 +9,7 @@ import jakarta.inject.Inject;
 
 import java.util.List;
 
-import static dev.flexmodel.codegen.System.workbench;
+import static dev.flexmodel.codegen.System.appWorkbench;
 
 @ApplicationScoped
 public class WorkbenchFmRepository implements WorkbenchRepository {
@@ -18,46 +18,46 @@ public class WorkbenchFmRepository implements WorkbenchRepository {
   SessionFactory sessionFactory;
 
   @Override
-  public List<Workbench> findAll() {
+  public List<AppWorkbench> findAll() {
     try (Session session = sessionFactory.createSession()) {
-      return session.dsl().selectFrom(Workbench.class)
-        .orderBy(workbench.createdAt, Direction.DESC)
+      return session.dsl().selectFrom(AppWorkbench.class)
+        .orderBy(appWorkbench.createdAt, Direction.DESC)
         .execute();
     }
   }
 
   @Override
-  public List<Workbench> findByProjectId(String projectId) {
+  public List<AppWorkbench> findByProjectId(String projectId) {
     try (Session session = sessionFactory.createSession()) {
-      return session.dsl().selectFrom(Workbench.class)
-        .where(workbench.projectId.eq(projectId))
-        .orderBy(workbench.createdAt, Direction.DESC)
+      return session.dsl().selectFrom(AppWorkbench.class)
+        .where(appWorkbench.projectId.eq(projectId))
+        .orderBy(appWorkbench.createdAt, Direction.DESC)
         .execute();
     }
   }
 
   @Override
-  public Workbench findByProjectIdAndId(String projectId, String workbenchId) {
+  public AppWorkbench findByProjectIdAndId(String projectId, String workbenchId) {
     try (Session session = sessionFactory.createSession()) {
-      return session.dsl().selectFrom(Workbench.class)
-        .where(workbench.projectId.eq(projectId).and(workbench.id.eq(workbenchId)))
+      return session.dsl().selectFrom(AppWorkbench.class)
+        .where(appWorkbench.projectId.eq(projectId).and(appWorkbench.id.eq(workbenchId)))
         .executeOne();
     }
   }
 
   @Override
-  public Workbench findByName(String projectId, String name) {
+  public AppWorkbench findByName(String projectId, String name) {
     try (Session session = sessionFactory.createSession()) {
-      return session.dsl().selectFrom(Workbench.class)
-        .where(workbench.projectId.eq(projectId).and(workbench.name.eq(name)))
+      return session.dsl().selectFrom(AppWorkbench.class)
+        .where(appWorkbench.projectId.eq(projectId).and(appWorkbench.name.eq(name)))
         .executeOne();
     }
   }
 
   @Override
-  public Workbench save(Workbench workbenchEntity) {
+  public AppWorkbench save(AppWorkbench workbenchEntity) {
     try (Session session = sessionFactory.createSession()) {
-      session.dsl().mergeInto(Workbench.class)
+      session.dsl().mergeInto(AppWorkbench.class)
         .values(workbenchEntity)
         .execute();
     }
@@ -67,8 +67,8 @@ public class WorkbenchFmRepository implements WorkbenchRepository {
   @Override
   public long countByProjectId(String projectId) {
     try (Session session = sessionFactory.createSession()) {
-      return session.dsl().selectFrom(Workbench.class)
-        .where(workbench.projectId.eq(projectId))
+      return session.dsl().selectFrom(AppWorkbench.class)
+        .where(appWorkbench.projectId.eq(projectId))
         .count();
     }
   }
@@ -76,8 +76,8 @@ public class WorkbenchFmRepository implements WorkbenchRepository {
   @Override
   public void deleteByProjectIdAndId(String projectId, String workbenchId) {
     try (Session session = sessionFactory.createSession()) {
-      session.dsl().deleteFrom(Workbench.class)
-        .where(workbench.projectId.eq(projectId).and(workbench.id.eq(workbenchId)))
+      session.dsl().deleteFrom(AppWorkbench.class)
+        .where(appWorkbench.projectId.eq(projectId).and(appWorkbench.id.eq(workbenchId)))
         .execute();
     }
   }
@@ -85,8 +85,8 @@ public class WorkbenchFmRepository implements WorkbenchRepository {
   @Override
   public void deleteByProjectId(String projectId) {
     try (Session session = sessionFactory.createSession()) {
-      session.dsl().deleteFrom(Workbench.class)
-        .where(workbench.projectId.eq(projectId))
+      session.dsl().deleteFrom(AppWorkbench.class)
+        .where(appWorkbench.projectId.eq(projectId))
         .execute();
     }
   }

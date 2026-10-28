@@ -1,20 +1,20 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.codegen.entity.Workbench;
+import dev.flexmodel.codegen.entity.AppWorkbench;
 
 import java.util.List;
 
 public interface WorkbenchRepository {
 
-  List<Workbench> findAll();
+  List<AppWorkbench> findAll();
 
-  List<Workbench> findByProjectId(String projectId);
+  List<AppWorkbench> findByProjectId(String projectId);
 
-  Workbench findByProjectIdAndId(String projectId, String workbenchId);
+  AppWorkbench findByProjectIdAndId(String projectId, String workbenchId);
 
-  Workbench findByName(String projectId, String name);
+  AppWorkbench findByName(String projectId, String name);
 
-  Workbench save(Workbench workbench);
+  AppWorkbench save(AppWorkbench workbench);
 
   long countByProjectId(String projectId);
 

@@ -1,24 +1,23 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.directory.DirectoryService;
-import dev.flexmodel.flow.dto.model.FlowElement;
 import dev.flexmodel.flow.dto.model.FlowModel;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.util.*;
 
-import static dev.flexmodel.approval.ApprovalJson.*;
+import static dev.flexmodel.apps.approval.AppApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
 
 /**
  * Validate the editor view and add trusted execution attributes to a Flow deployment.
  */
 @ApplicationScoped
-public class ApprovalCompiler {
+public class AppApprovalCompiler {
   @Inject
   AppFormService appFormService;
   @Inject
@@ -195,7 +194,7 @@ public class ApprovalCompiler {
   }
 
   public FlowModel compile(Map<String, Object> flow, Map<String, Object> metadata) {
-    FlowModel model = JsonUtils.parseToObject(text(ApprovalFlowModel.encode(flow), "flow_model"), FlowModel.class);
+    FlowModel model = JsonUtils.parseToObject(text(AppApprovalFlowModel.encode(flow), "flow_model"), FlowModel.class);
     for (var element : model.getFlowElementList()) {
       var properties = element.getProperties();
       String kind = text(object(properties.get("config")), "kind");

@@ -1,10 +1,10 @@
 package dev.flexmodel.project;
 
 import dev.flexmodel.codegen.entity.ApiRequestLog;
-import dev.flexmodel.codegen.entity.ApprovalInstance;
-import dev.flexmodel.codegen.entity.ApprovalRecordLock;
-import dev.flexmodel.codegen.entity.ApprovalTask;
-import dev.flexmodel.codegen.entity.ApprovalWait;
+import dev.flexmodel.codegen.entity.AppApprovalInstance;
+import dev.flexmodel.codegen.entity.AppApprovalRecordLock;
+import dev.flexmodel.codegen.entity.AppApprovalTask;
+import dev.flexmodel.codegen.entity.AppApprovalWait;
 import dev.flexmodel.codegen.entity.AuditLog;
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.codegen.entity.Bucket;
@@ -47,10 +47,10 @@ public class ProjectPlatformDataCleaner {
    */
   private static final List<Class<?>> PLATFORM_MODELS = List.of(
     RuntimeMessage.class,
-    ApprovalTask.class,
-    ApprovalWait.class,
-    ApprovalRecordLock.class,
-    ApprovalInstance.class,
+    AppApprovalTask.class,
+    AppApprovalWait.class,
+    AppApprovalRecordLock.class,
+    AppApprovalInstance.class,
     NodeInstanceLog.class,
     InstanceData.class,
     NodeInstance.class,

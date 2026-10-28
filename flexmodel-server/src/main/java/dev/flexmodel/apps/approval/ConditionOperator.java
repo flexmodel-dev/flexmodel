@@ -1,4 +1,4 @@
-package dev.flexmodel.approval;
+package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.query.FilterExpression;

@@ -3361,3 +3361,7 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   返回）；Apps npm run build、36项unit、菜单授权 Playwright 1项通过；git diff --check 通过。
 - 行内授权、编辑、删除（分组行含新增子菜单）按钮收进 gap-0.5 操作组并调整为主题尺寸 h-7 w-7，缩短图标间距；Apps build 与菜单授权
   Playwright 复测通过。
+- GET /api/apps 及详情、创建、更新响应中的 owner 改为按 project.ownerId 查询用户显示名称，用户不存在或名称为空时回退
+  ID；AppResourceTest
+  的列表、详情、创建、更新 4 项通过。完整测试类中 testCreateAppWithExplicitProjectId 删除应用后的 GET 仍由鉴权过滤器返回
+  401（既有行为，与本次改动无关）。

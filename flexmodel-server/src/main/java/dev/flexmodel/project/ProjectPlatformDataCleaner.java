@@ -18,7 +18,6 @@ import dev.flexmodel.codegen.entity.InstanceData;
 import dev.flexmodel.codegen.entity.JobExecutionLog;
 import dev.flexmodel.codegen.entity.NodeInstance;
 import dev.flexmodel.codegen.entity.NodeInstanceLog;
-import dev.flexmodel.codegen.entity.PageSite;
 import dev.flexmodel.codegen.entity.RuntimeMessage;
 import dev.flexmodel.codegen.entity.Trigger;
 import dev.flexmodel.session.Session;
@@ -63,7 +62,6 @@ public class ProjectPlatformDataCleaner {
     FunctionLog.class,
     Function.class,
     Bucket.class,
-    PageSite.class,
     AuthProviderConfig.class,
     ApiRequestLog.class,
     AuditLog.class

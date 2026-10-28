@@ -52,7 +52,6 @@ public class GlobalResource {
           @SchemaProperty(name = "projectBaseDomain", description = "项目基础域名，用于 CORS 和 URL 拼接"),
           @SchemaProperty(name = "routingMode", description = "路由模式：path 为路径模式，subdomain 为子域名模式"),
           @SchemaProperty(name = "edgeUrlTemplate", description = "边缘函数调用 URL，由 routingMode + projectBaseDomain 自动推导"),
-          @SchemaProperty(name = "pagesUrlTemplate", description = "Pages 站点 URL，由 routingMode + projectBaseDomain 自动推导"),
           @SchemaProperty(name = "version", description = "构建版本号"),
         }
       )
@@ -70,7 +69,6 @@ public class GlobalResource {
       "projectBaseDomain", config.projectBaseDomain().orElse(""),
       "routingMode", config.isSubdomainRouting() ? "subdomain" : "path",
       "edgeUrlTemplate", config.edgeUrlTemplate(),
-      "pagesUrlTemplate", config.pagesUrlTemplate(),
       "version", config.version()
     );
   }

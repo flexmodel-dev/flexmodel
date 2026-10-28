@@ -52,18 +52,6 @@ public interface FlexmodelConfig extends Serializable {
     return "/api/open/{{projectId}}/functions/{{name}}/invoke";
   }
 
-  /**
-   * 推导 Pages 站点 URL。
-   * - path 模式: /pages/{{projectId}}
-   * - subdomain 模式: https://{{projectId}}.{projectBaseDomain}（子域名根即站点）
-   */
-  default String pagesUrlTemplate() {
-    if (isSubdomainRouting()) {
-      return "https://{{projectId}}." + projectBaseDomain().orElse("");
-    }
-    return "/pages/{{projectId}}";
-  }
-
   @WithName("datasource")
   @WithUnnamedKey(DEFAULT_SCHEMA_NAME)
   Map<String, DatasourceConfig> datasources();
@@ -81,16 +69,6 @@ public interface FlexmodelConfig extends Serializable {
 
   @WithName("jwt")
   JwtConfig jwt();
-
-  @WithName("pages")
-  PagesConfig pages();
-
-  interface PagesConfig {
-
-    @WithName("root-path")
-    @WithDefault("./pages")
-    String rootPath();
-  }
 
   /**
    * 事件转发 RabbitMQ 桥接的业务开关。默认 false：不连 broker，桥接静默跳过。

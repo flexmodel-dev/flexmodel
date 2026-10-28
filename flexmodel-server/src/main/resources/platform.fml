@@ -1012,20 +1012,6 @@ model f_login_log {
   @comment("登录日志")
 }
 
-model f_page_site {
-  id : String @id @default(uuid()),
-  project_id : String @comment("所属项目ID"),
-  production_deployment_id? : String @comment("当前生产部署ID(UI镜像,真相=软链)"),
-  status : PageDeploymentStatus @default("READY") @comment("当前部署状态"),
-  file_count : Int @default(0) @comment("当前部署文件数"),
-  size_bytes : Long @default(0) @comment("当前部署总大小(字节)"),
-  error_message? : String @length("2000") @comment("部署错误信息"),
-  created_by? : String, updated_by? : String,
-  created_at? : DateTime @default(now()), updated_at? : DateTime @default(now()),
-  @index(name: "UQ_PAGE_SITE_PROJECT", unique: true, fields: [project_id]),
-  @system, @comment("Pages 站点(平台级,每项目一行,含当前部署状态)")
-}
-
 enum TriggerType {
   EVENT,
   SCHEDULE,
@@ -1050,8 +1036,6 @@ enum BucketVisibility {
   PUBLIC,
   @system
 }
-
-enum PageDeploymentStatus { READY, FAILED, @system }
 
 model f_function_template {
   id : String @id @default(uuid()),

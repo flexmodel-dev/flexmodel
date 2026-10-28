@@ -165,8 +165,7 @@ public class FlexmodelNativeProcessor {
           "dev.flexmodel.flow.dto.**",
           "dev.flexmodel.common.dto.**",
           "dev.flexmodel.metrics.dto.**",
-          "dev.flexmodel.storage.dto.**",
-          "dev.flexmodel.pages.dto.**"))
+          "dev.flexmodel.storage.dto.**"))
       .methods()
       .fields()
       .build();

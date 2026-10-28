@@ -1,5 +1,34 @@
 # Session Progress Log
 
+## Apps - 图标单一数据源、图标扩容与选择器分组搜索（2026-10-28）
+
+- 新增 `flexmodel-apps-ui/src/data/appIcons.ts`：252 个 Lucide 图标、9 个中文分组、派生 `AppIconName`、默认图标与
+  `resolveAppIconName`/`resolveAppIcon`；删除 `mock.ts` 的 `appIconOptions`/`appIcons`/`navIconOptions`/`navIcons`
+  与 `services/apps.ts` 的重复联合类型，应用与菜单全部改用它，未知图标名回落 `Boxes`（菜单显示无图标）。
+- `IconPicker` 顶部增加搜索框，图标按分组展示；分组标签为纯文字、无背景色、不吸顶；图标保持 44px 方块、
+  每行 10 个、间距 6px 左对齐并让分组标签与首列图标左边缘对齐；选中态沿用原边框 + 主色浅底；
+  搜索时展示扁平结果并隐藏分组。
+- 后端 `AppCreateRequest`/`AppUpdateRequest` 的 `@Pattern` 与 `AppService`/`AppMenuService` 校验改为
+  `^[A-Z][A-Za-z0-9]{0,63}$`（MCP 直连 service 仍受校验），MCP 描述与 `docs/plans/app-tools-mcp.md` 同步。
+- 验证：`npm run build`、`npm test`（36 项）、`mvn -pl flexmodel-server -am -DskipTests compile` 通过；
+  `AppMenuResourceTest` 10 项通过，`AppResourceTest` 12 项仅既有 `testCreateAppWithExplicitProjectId` 401 失败，
+  新增 Rocket 图标创建、非法图标 400 通过；浏览器实测图标数、分组标签背景透明、搜索与选中回填均正常。
+
+## Apps - 应用主色单一数据源与色板扩充（2026-10-28）
+
+- 新增 `flexmodel-apps-ui/src/theme/appPrimaryColors.ts` 作为主色唯一数据源：18 种颜色的 HSL token、派生类型、默认色兜底
+  `getAppPrimaryColor`、`applyAppPrimaryColor` 与幂等样式注入（模块加载时写入 `<style id="app-primary-theme">`，生成
+  `[data-primary='x']` 与 `.dark [data-primary='x'],.dark[data-primary='x']` 规则）。
+- 删除 `index.css` 的 12 段手写主色变量、`mock.ts` 的 `AppPrimaryColor`/`appPrimaryColors`、`services/apps.ts` 的重复联合类型
+  及 `AppManagement.tsx` 的 `appPrimaryStyles`；应用卡片改用自身 `data-primary` + `bg-primary/10 text-primary`
+  / `hover:border-primary/60` 自动着色。`amber` 中文名改为「琥珀」，「橙色」让给新增 `orange`。
+- 后端 `@Pattern` 与 `AppService.validatePrimaryColor` 改为 slug 格式校验 `^[a-z][a-z0-9-]{0,31}$`（MCP 直连 service
+  仍受校验），
+  MCP 工具描述与 `docs/plans/app-tools-mcp.md` 同步；`flexmodel-apps-ui/AGENTS.md` 记录新增主色只改 theme 文件。
+- 验证：`npm run build`、`npm test`（36 项）、`mvn -pl flexmodel-server -am -DskipTests compile` 通过；`AppResourceTest`
+  12 项中仅 `testCreateAppWithExplicitProjectId` 的既有 401 失败，新增自定义 slug 成功与非法 slug 400 两项通过。
+  浏览器实测：卡片图标/悬停色按各应用主色解析，夜间模式切换到 400 档变量，新建应用弹窗 18 个色板且标签唯一、选中高亮正常。
+
 ## 平台模型更名适配（2026-10-28）
 
 - 按 `platform.fml` 未提交改动同步 Java：`f_data_authorization` → `f_app_data_authorization`（`app_id` → `project_id`）、

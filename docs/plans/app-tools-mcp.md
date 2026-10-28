@@ -89,8 +89,8 @@ Flexmodel Apps 已具备应用、表单、菜单和记录的完整服务端能�
 
 允许值：
 
-- `iconName`：`ShoppingCart`、`Banknote`、`Boxes`、`Folder`、`Tags`、`TrendingUp`
-- `primaryColor`：`indigo`、`blue`、`green`、`amber`、`rose`、`black`
+- `iconName`：Lucide 图标名（PascalCase），例如 `ShoppingCart`、`Package`、`Rocket`
+- `primaryColor`：小写色名 slug，例如 `blue`、`sky`、`violet`、`gray`；默认 `blue`
 
 返回：完整 `AppResponse` JSON。
 
@@ -222,11 +222,10 @@ LOCATION, SIGN, BOOL, STATE
 - `targetType`：`BUILTIN` 或 `FORM`
 - `targetId`：内置页面 ID 或表单名
 
-允许菜单图标：
+允许菜单图标（Lucide 图标名，PascalCase）：
 
 ```text
-Home, User, TrendingUp, ShoppingCart, PieChart, Folder, BookUser,
-ClipboardCheck, Shapes, Tags, Boxes, Banknote
+Home, Package, Rocket, Shield, GraduationCap
 ```
 
 规则：

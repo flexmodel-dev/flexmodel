@@ -225,8 +225,55 @@ public class AppResourceTest {
       .body("""
         {
           "name": "非法图标应用",
-          "iconName": "NotExists",
+          "iconName": "not_exists",
           "primaryColor": "indigo"
+        }
+        """)
+      .when()
+      .post(BASE_PATH)
+      .then()
+      .statusCode(400);
+  }
+
+  @Test
+  void testCreateAppWithCustomPrimaryColorSlug() {
+    String createdId = given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "name": "自定义主色应用",
+          "iconName": "Rocket",
+          "primaryColor": "sky"
+        }
+        """)
+      .when()
+      .post(BASE_PATH)
+      .then()
+      .statusCode(201)
+      .body("iconName", equalTo("Rocket"))
+      .body("primaryColor", equalTo("sky"))
+      .extract()
+      .path("id");
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .delete(BASE_PATH + "/" + createdId)
+      .then()
+      .statusCode(204);
+  }
+
+  @Test
+  void testCreateAppWithMalformedPrimaryColorReturns400() {
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "name": "非法主色应用",
+          "iconName": "Boxes",
+          "primaryColor": "Sky!"
         }
         """)
       .when()

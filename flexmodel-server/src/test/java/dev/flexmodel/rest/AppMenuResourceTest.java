@@ -438,7 +438,7 @@ public class AppMenuResourceTest {
       {
         "type": "ITEM",
         "name": "非法图标",
-        "iconName": "NotExists",
+        "iconName": "not_valid",
         "target": {"type": "BUILTIN", "id": "files"}
       }
       """, 400);

@@ -130,8 +130,10 @@ public class AppTools {
 
   @Tool(description = """
     Create a Flexmodel App. This is step 1 of the app creation flow. \
-    iconName allows ShoppingCart, Banknote, Boxes, Folder, Tags, or TrendingUp. \
-    primaryColor allows blue, indigo, green, amber, rose, or black; blue is the default.\
+    iconName is a Lucide icon name in PascalCase, for example ShoppingCart, Package, \
+    or Rocket. \
+    primaryColor is a lower-case color slug such as blue, indigo, green, amber, rose, \
+    or black; blue is the default.\
     """)
   public String create_app(
     @ToolArg(description = "Human-readable app name, required") String name,
@@ -141,7 +143,7 @@ public class AppTools {
       If provided, it must match ^[a-z][a-z0-9_]{1,62}$.\
       """) String projectId,
     @ToolArg(description = "App icon name, optional") String iconName,
-    @ToolArg(description = "App primary color, optional") String primaryColor
+    @ToolArg(description = "App primary color slug, optional") String primaryColor
   ) {
     log.info("create_app called, name={}, projectId={}", name, projectId);
     try {
@@ -398,8 +400,7 @@ public class AppTools {
     menuType allows GROUP or ITEM. GROUP must not bind a target. ITEM must bind \
     targetType BUILTIN, FORM, or LINK. Use targetId=formName when binding a form, \
     or targetId=http/https URL when binding a link. \
-    iconName allows Home, User, TrendingUp, ShoppingCart, PieChart, Folder, \
-    BookUser, ClipboardCheck, Shapes, Tags, Boxes, or Banknote.\
+    iconName is a Lucide icon name in PascalCase, for example Home, Package, or Rocket.\
     """)
   public String create_app_menu(
     @ToolArg(description = "The app ID") String appId,

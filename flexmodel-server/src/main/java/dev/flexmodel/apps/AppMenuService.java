@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -41,9 +42,7 @@ public class AppMenuService {
   private static final String BUILTIN_TARGET_TYPE = "BUILTIN";
   private static final String FORM_TARGET_TYPE = "FORM";
   private static final String LINK_TARGET_TYPE = "LINK";
-  private static final Set<String> MENU_ICON_NAMES = Set.of(
-    "Home", "User", "TrendingUp", "ShoppingCart", "PieChart", "Folder", "BookUser",
-    "ClipboardCheck", "Shapes", "Tags", "Boxes", "Banknote");
+  private static final Pattern MENU_ICON_NAME_PATTERN = Pattern.compile("^[A-Z][A-Za-z0-9]{0,63}$");
   private static final Map<String, String> BUILTIN_TARGETS = builtInTargets();
 
   private record TargetLabels(Map<String, String> forms, String ownerId) {
@@ -173,7 +172,7 @@ public class AppMenuService {
     if (name.length() > 50) {
       throw new ValidationException("菜单名称长度不能超过50个字符");
     }
-    if (request.iconName() != null && !MENU_ICON_NAMES.contains(request.iconName())) {
+    if (request.iconName() != null && !MENU_ICON_NAME_PATTERN.matcher(request.iconName()).matches()) {
       throw new ValidationException("菜单图标不合法: " + request.iconName());
     }
 

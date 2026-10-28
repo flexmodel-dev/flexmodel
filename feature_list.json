@@ -1,6 +1,20 @@
 {
   "features": [
     {
+      "id": "feat-127",
+      "name": "Apps - 图标单一数据源、图标扩容与选择器分组搜索",
+      "description": "新增 src/data/appIcons.ts 作为应用与菜单图标唯一数据源，图标从 6/12 个扩充到 252 个并分 9 类；IconPicker 增加搜索与分组标签（标签行无背景），菜单图标同步共用；后端 iconName 改为 PascalCase 格式校验。",
+      "status": "done",
+      "evidence": "新增 flexmodel-apps-ui/src/data/appIcons.ts：252 个 Lucide 图标、9 个中文分组、派生 AppIconName、DEFAULT_APP_ICON 与 resolveAppIconName/resolveAppIcon；删除 mock.ts 的 appIconOptions/appIcons/navIconOptions/navIcons 与 services/apps.ts 的 AppIconName 联合类型，AppManagement/AppSettings/AppLauncher/AppTopHeader/appMenuNavigation/MenuEditorDialog/AppMenuManager 统一改用新数据源，未知图标名回落 Boxes 或显示无图标。IconPicker 弹窗顶部增加搜索框（sticky），图标按分组展示、分组标签为纯文字无背景，图标保持 44px 方块、每行 10 个、间距 6px 左对齐，分组标签与首列图标左边缘对齐，选中态 border-primary bg-primary/10 text-primary；搜索时展示扁平结果。后端 AppCreateRequest/AppUpdateRequest @Pattern 与 AppService/MenuService 校验改为 ^[A-Z][A-Za-z0-9]{0,63}$，MCP 描述与 docs/plans/app-tools-mcp.md 同步，apps-ui AGENTS.md 记录新增图标只改一处。验证：npm run build 通过（主包 2057.71 kB / gzip 647.57 kB）；npm test 36 项通过；mvn -pl flexmodel-server -am -DskipTests compile 通过；AppMenuResourceTest 10 项通过，AppResourceTest 12 项仅既有 testCreateAppWithExplicitProjectId 401 失败，新增 Rocket 图标与 sky 主色创建、非法 slug/非法图标 400 均通过；浏览器实测 252 个图标、9 个分组标签背景透明、6 列 44px 方块、搜索 rocket 命中 1 项且搜索态不显示分组、选中后触发器回填。"
+    },
+    {
+      "id": "feat-126",
+      "name": "Apps - 应用主色单一数据源与色板扩充",
+      "description": "将应用主色收敛到前端 src/theme/appPrimaryColors.ts 唯一数据源，删除 index.css 手写色块、mock 类型、services 重复联合类型与卡片按色类名表；可选配色由 6 种扩充到 18 种，后端改为 slug 格式校验。",
+      "status": "done",
+      "evidence": "新增 src/theme/appPrimaryColors.ts：18 种颜色的 HSL token、派生 AppPrimaryColor 类型、默认色兜底 getAppPrimaryColor、applyAppPrimaryColor 与幂等 installAppPrimaryColorStyles（模块加载时注入 [data-primary='x'] 与 .dark [data-primary='x'],.dark[data-primary='x'] 规则）。index.css 删除 12 段手写变量；mock.ts 删除类型与 appPrimaryColors；services/apps.ts 删除重复联合类型并在 normalizeApp 兜底；AppManagement 删除 appPrimaryStyles，卡片改用自身 data-primary + bg-primary/10 text-primary + hover:border-primary/60；AppSettings 只读展示与 AppLayout 属性设置改用数据源；amber 中文名改为「琥珀」，「橙色」让给新增 orange。后端 AppCreateRequest/AppUpdateRequest @Pattern 与 AppService.validatePrimaryColor 改为 ^[a-z][a-z0-9-]{0,31}$，MCP 描述与 docs/plans/app-tools-mcp.md 同步，apps-ui AGENTS.md 记录新增主色只改一处。验证：npm run build 通过；npm test 36 项通过；mvn -pl flexmodel-server -am -DskipTests compile 通过；AppResourceTest 12 项中仅既有 testCreateAppWithExplicitProjectId 401 失败（progress.md 已记录），新增自定义 slug 201 与非法 slug 400 通过；浏览器实测卡片/图标按各应用主色解析、夜间模式切换为 400 档变量、新建应用 18 个色板且选中高亮正常。"
+    },
+    {
       "id": "feat-125",
       "name": "Apps - 菜单授权配置",
       "description": "菜单行增加与编辑、删除平级的授权操作，复用 DirectoryMemberPicker 多选；通过 PATCH /menus/{menuId} 局部更新 members，不新增独立接口，不接入运行时鉴权；菜单响应携带 project.ownerId。",

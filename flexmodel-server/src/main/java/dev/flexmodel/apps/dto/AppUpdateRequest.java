@@ -18,9 +18,9 @@ public record AppUpdateRequest(
   String name,
   @Size(max = 500, message = "应用描述长度不能超过500个字符")
   String description,
-  @Pattern(regexp = "ShoppingCart|Banknote|Boxes|Folder|Tags|TrendingUp", message = "应用图标不合法")
+  @Pattern(regexp = "^[A-Z][A-Za-z0-9]{0,63}$", message = "应用图标不合法")
   String iconName,
-  @Pattern(regexp = "blue|indigo|green|amber|rose|black", message = "应用主色不合法")
+  @Pattern(regexp = "^[a-z][a-z0-9-]{0,31}$", message = "应用主色不合法")
   String primaryColor
 ) {
 }

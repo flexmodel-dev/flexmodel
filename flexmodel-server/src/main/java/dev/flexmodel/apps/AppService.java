@@ -20,7 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -36,10 +35,8 @@ public class AppService {
   AppApprovalLifecycle appApprovalLifecycle;
 
   private static final Pattern PROJECT_ID_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{1,62}$");
-  private static final Set<String> ICON_NAMES = Set.of(
-    "ShoppingCart", "Banknote", "Boxes", "Folder", "Tags", "TrendingUp");
-  private static final List<String> PRIMARY_COLORS = List.of(
-    "blue", "indigo", "green", "amber", "rose", "black");
+  private static final Pattern PRIMARY_COLOR_PATTERN = Pattern.compile("^[a-z][a-z0-9-]{0,31}$");
+  private static final Pattern ICON_NAME_PATTERN = Pattern.compile("^[A-Z][A-Za-z0-9]{0,63}$");
   private static final String DEFAULT_ICON_NAME = "Boxes";
   private static final String DEFAULT_PRIMARY_COLOR = "blue";
   private static final String METADATA_APP_KEY = "app";
@@ -175,13 +172,13 @@ public class AppService {
   }
 
   private void validateIconName(String iconName) {
-    if (iconName != null && !ICON_NAMES.contains(iconName)) {
+    if (iconName != null && !ICON_NAME_PATTERN.matcher(iconName).matches()) {
       throw new ValidationException("应用图标不合法: " + iconName);
     }
   }
 
   private void validatePrimaryColor(String primaryColor) {
-    if (primaryColor != null && !PRIMARY_COLORS.contains(primaryColor)) {
+    if (primaryColor != null && !PRIMARY_COLOR_PATTERN.matcher(primaryColor).matches()) {
       throw new ValidationException("应用主色不合法: " + primaryColor);
     }
   }

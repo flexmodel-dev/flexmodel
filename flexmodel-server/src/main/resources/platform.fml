@@ -1,3 +1,30 @@
+model f_data_authorization {
+  id : String @id @default(uuid()) @length("64"),
+  app_id : String @length("64"),
+  form_name : String @length("64"),
+  name : String @length("255"),
+  enabled : Boolean @default("true"),
+  subjects : JSON,
+  data_scope : JSON,
+  @index(name: "IDX_DATA_AUTH_FORM", fields: [app_id, form_name]),
+  @system,
+  @comment("数据授权")
+}
+
+model f_data_permission_control {
+  id : String @id @default(uuid()) @length("64"),
+  authorization_id : String @length("64"),
+  form_name : String @length("64"),
+  read_all : Boolean @default("false"),
+  write_all : Boolean @default("false"),
+  allow_delete : Boolean @default("false"),
+  field_controls? : JSON,
+  condition? : JSON,
+  @index(name: "UQ_DATA_PERMISSION_FORM", unique: true, fields: [authorization_id, form_name]),
+  @system,
+  @comment("表单数据权限控制")
+}
+
 model f_notification {
   id: String @id,
   app_id: String,

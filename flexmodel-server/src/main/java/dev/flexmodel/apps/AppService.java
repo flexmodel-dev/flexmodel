@@ -49,6 +49,9 @@ public class AppService {
   @Inject
   SessionContext sessionContext;
 
+  @Inject
+  AppDataAuthorizationService appDataAuthorizationService;
+
   public List<AppResponse> findApps() {
     return projectService.findTopLevelProjects().stream()
       .map(this::toResponse)
@@ -114,6 +117,7 @@ public class AppService {
     Project project = requireAppProject(appId);
     approvalLifecycle.beforeDelete(appId);
     workbenchRepository.deleteByProjectId(project.getId());
+    appDataAuthorizationService.deleteAppRules(appId);
     projectService.deleteProject(project.getId());
   }
 

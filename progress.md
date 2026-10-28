@@ -1,5 +1,92 @@
 # Session Progress Log
 
+## Apps - AppDataAuthorizationRepository 改用类型化 DSL（2026-10-28）
+
+- `AppDataAuthorizationRepository` 不再使用模型名常量与 Map 行，改用 `DSL#selectFrom(Class)` 类型化访问：
+  `selectFrom(DataAuthorization.class)` / `selectFrom(DataPermissionControl.class)`、`mergeInto(Class).values(实体)`、
+  `deleteFrom(Class)`，过滤条件使用 codegen 元模型 `System.dataAuthorization` / `System.dataPermissionControl` 的
+  `FilterExpression`，与 `WorkbenchFmRepository` 等现有仓库风格一致；删除 `RULE`/`CONTROL` 字符串常量（无其他引用）。
+- 验证：全模块 `mvn compile` 通过；
+  `mvn test -pl flexmodel-server -Dtest=AppDataPermissionsTest,AppDataAuthorizationResourceTest,AppRecordServiceTest`
+  全部通过；`AppRecordResourceTest` 的 5 个失败为 WIP 既有问题（本次重写前的旧 surefire 报告同样失败，涉及记录字段/layout
+  投影，与本仓库类无关——该类仅在数据授权启用时被调用）。
+- 未提交。
+
+## Apps - 撤回运行时授权，仅保留配置与所有者（2026-10-28，feat-124）
+
+-
+按最新要求恢复记录读写、工作台、审批、通用数据访问、事务会话、GraphQL、附件和实时广播的原有运行时行为；删除授权评估器、范围解析器、访问过滤器、授权/原始数据拦截器及其专用测试。前端记录列表、详情、编辑与子表的运行时权限限制一并撤回。
+- 保留两张系统配置表、`dev.flexmodel.apps` 下配置 CRUD/校验、主子表配置生命周期清理，以及公共用户/角色/组织选择器及审批复用。保留
+  Drawer + 主子表 Tabs、单个共用条件和查看全部/修改全部/允许删除开关。
+- 移除应用级启用接口、默认所有者授权初始化和启用按钮；规则 enabled 仅为配置，配置页明确提示尚未参与运行时数据访问控制。技术方案和
+  README 同步当前范围，运行时章节明确列为后续规划。
+- 所有者：新业务表单建模时创建 `owner_id`、用户引用元数据和索引；记录服务相对 HEAD 仅增加新增时将 owner_id
+  设置为当前创建人的一行逻辑，沿用现有内置字段保护；不增加历史补列、回填或移交逻辑。
+- 验证：全模块 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`、规定的 `mvn test -q -pl flexmodel-engine`
+  、Apps UI `npm run build`、`npm test`（36 项）均通过。后端 `AppPermissionConditionsTest` 3 +
+  `AppDataAuthorizationResourceTest` 4 + `AppRecordServiceTest` 6 + `WorkbenchDataServiceTest` 4 共 17 项通过，日志
+  `logs/data-configuration-focused-tests.log`；覆盖保存限制性配置不改变记录 CRUD、配置管理资格、主子关系清理，以及所有者默认值、不可伪造和更新不变。
+- 扩大后端回归共 39 项最初发现新测试初始化使用不可变 Map，已修复；余下 7 项 `AppFormResourceTest`/`AppRecordResourceTest`
+  的布局字段投影和系统鉴权失败，与 feat-108 既有记录一致，未扩展修复。`init.sh` 的 clean 仍被运行中的 dev.jar 锁定，保留用户服务并完成非
+  clean 验证；E2E 按前次用户要求跳过，保留已更新的配置场景用例。
+- Apps UI 提交 `566a89a`。提交仅包含本特性文件；用户的 AGENTS.md、flexmodel-ui 修改，以及 Apps UI 的
+  profile/AppSettings/构建缓存改动保留。
+
+## Apps - 数据权限单条件模型与 Drawer+Tabs 配置界面（2026-10-28）
+
+- 按最新要求：每张表单只保留一个记录条件，对查看、修改、删除同时生效；不再按 READ/WRITE/DELETE 分别配置；不考虑历史兼容。
+- 后端：`AppDataAuthorization.Control` 的 `conditions: Map<操作, 节点>` 改为单个可空 `condition` 节点；
+  `AppDataAuthorizationService.save` 只解析并校验一个条件；`AppDataPermissionEvaluator` 的
+  Grant.permits/hasParent/readFilter 全部使用单条件；`AppDataAuthorizationRepository` 与 `platform.fml` 的
+  `f_data_permission_control` 列 `conditions` 同步更名为 `condition`；`seedOwner` 传 `null` 条件。
+- 前端（flexmodel-apps-ui）：`dataAuthorization.ts` 的 `FormPermissionControl.condition` 单条件、`emptyControl` 条件为 null；
+  `FormDataPermissions.tsx` 规则编辑从 BizDialog 改为 BizDrawer，主表单与子表单通过 Tabs 切换配置，每个表单一个
+  ConditionEditor（提示对查看/修改/删除同时生效）；字段权限表格改为 4
+  列：查看/修改/删除开关上移至表头（查看全部字段、修改全部业务字段、允许删除），删除列逐字段复选框禁用仅表头可全选；
+  `dataAuthorization.test.ts` 与 e2e `data-permissions.spec.ts` 同步更新（e2e 改用 tab/tabpanel 定位，并补充保存条件断言）。
+- 验证：
+  `mvn test -pl flexmodel-server -Dtest=AppDataPermissionsTest,AppDataAuthorizationResourceTest,AppRecordServiceTest` 16
+  个测试全部通过；`npm run build`（tsc + vite）通过；`npm test`（vitest 36 个）通过。
+- 未决风险：e2e `test:permissions` 曾试跑一次，3 个用例均在页面初始数据加载处超时/失败（“新增规则”按钮始终 disabled、alert
+  未出现），发生在进入配置界面之前，与本次 Drawer+Tabs 改动无交集，疑似 Playwright webServer 端口或环境问题；按用户要求跳过
+  e2e，待下次会话排查。
+- 未提交；工作区还包含数据权限功能的大量未提交改动。
+
+## Apps - 移除 owner_id 历史兼容代码（2026-10-28）
+
+- 按最新决策，`owner_id` 作为系统内置字段在创建表单时由 `systemFields()` 自动创建，不再考虑存量表与历史兼容。
+- 删除 `AppFormService.ensureOwnerField`（存量表首次写入前补可空所有者列及冲突校验），并移除
+  `AppRecordService.writeTransaction` 中的调用。
+- 删除 `AppFormService.toFieldResponse` 中对 `owner_id` 强制回退系统字段记录的兼容分支（新表单保存时已包含 owner_id
+  系统字段记录）。
+- 修正 `AppDataAuthorizationService.activate` 过时的迁移/回填注释。
+- 修复数据权限 WIP 的 3 个失败测试：`AppDataAuthorizationResource` 移除类级 `@Consumes(APPLICATION_JSON)`（无 body 的
+  `activate` POST 被 REST Assured 默认 form-urlencoded 命中 415），仅在 `create`/`update` 上声明；`activate`
+  按原注释意图为既有业务表单初始化“应用所有者”规则（`seedOwner`），否则启用前创建的表单无所有者规则导致 404；测试附件上传按仓库惯例改用
+  `byte[]` body 以支持 `application/octet-stream` 编码。
+- 验证：`mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过（clean 因 dev.jar 被运行中的 dev 进程锁定跳过）；
+  `mvn test -pl flexmodel-server -Dtest=AppRecordServiceTest,AppDataAuthorizationResourceTest,AppDataPermissionsTest` 16
+  个测试全部通过（6+3+7，0 failures）。
+- 未提交；工作区还包含数据权限功能的大量未提交改动。
+
+## Apps - 数据权限技术方案文档（2026-10-28，feat-123）
+
+- 新增 `flexmodel-server/docs/data-permissions.md`，服务端 README 增加入口；本次只交付设计文档，未修改平台模型、业务数据、组件或运行时权限代码。
+- 固定最终简化方案：业务表增加 `owner_id`，中文统一为“所有者”，新增时 `created_by = owner_id = 当前用户 ID`；不保存业务部门
+  ID、不实现移交。
+  使用授权主表与控制明细两张表，每条规则每张表单一条明细；新增和更新共用 WRITE，使用 read_all/write_all/allow_delete
+  与逐字段配置。
+  权限表不存关联字段，运行时读取真实主子关系；新子表默认不授权，关系变化后按新关系校验。
+- 按最新用户要求，权限后端放在 `dev.flexmodel.apps`，DTO 使用现有 apps.dto；通用目录继续复用 dev.flexmodel.directory。
+  方案新增公共 DirectoryMemberPicker，用户、角色、组织选择供授权成员、人员范围和审批复用，公共目录服务不绑定权限存储格式。
+- 文档覆盖 JSON 契约、逐记录规则合并、写入前后校验、子表、其他可达入口、历史人员语义、存量回填、缓存和验收矩阵。
+- 验证：4 个 JSON 示例解析、6 个本地链接、两张 FML 模型结构对照、已移除字段检查、最新三项要求核对、代码围栏与空白检查、feature
+  JSON 和 feat-123 唯一性、`git diff --check` 通过。
+  未执行 FML 解析器集成测试或运行时构建；init.sh 在沙箱内启动失败且无输出，申请沙箱外执行后被拒绝，未绕过限制。
+- 既有 feature_list.json 中 feat-108 重复，已对照 HEAD 确认为原状，未扩展范围修复；完整 git status 受 SDK 子模块元数据读取权限影响，
+  使用忽略子模块的根仓库状态检查，保留原有未跟踪 `flexmodel-apps-ui/`。
+- 后续实现需另立功能条目，完成迁移、全入口授权和规定测试后才能宣称数据权限功能可用。
+
 ## Apps UI - 详情流程进度节点预测（2026-10-26，feat-117）
 
 - 详情面板新增“后续节点”预测：后端 `ApprovalForecast` 从 `flow_deploy_id` 的部署快照出发，以当前

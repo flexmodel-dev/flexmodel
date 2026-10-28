@@ -1,6 +1,20 @@
 {
   "features": [
     {
+      "id": "feat-124",
+      "name": "Apps - 数据权限配置与所有者字段",
+      "description": "仅保留两表权限配置、主子表单条件与字段开关、公共用户角色组织选择器及 owner_id 建模/默认赋值；撤回运行时权限过滤与访问拦截。",
+      "status": "done",
+      "evidence": "按最新范围撤回记录过滤/授权、事务与通用数据拦截、附件、GraphQL、实时和前端记录权限运行时改动；保留两表配置 CRUD、主子表 Drawer+Tabs、单条件和字段开关、公共 DirectoryMemberPicker 及 owner_id 字段/新增默认赋值。移除应用级启用接口与按钮，页面说明仅保存配置。全模块非 clean 编译、规定引擎测试、Apps UI build 与36项unit通过；后端条件3+配置/所有者REST4+记录6+工作台4共17项通过，含配置不影响CRUD。扩大回归中7项布局投影/系统鉴权失败与已有日志一致；init.sh 的 clean 被运行中 dev.jar 锁定，E2E按前次用户要求跳过。详见progress.md。"
+    },
+    {
+      "id": "feat-123",
+      "name": "Apps - 数据权限技术方案文档",
+      "description": "整理 owner_id 数据归属、两表授权模型、表单级控制明细、READ/WRITE/DELETE、动态主子关系与后端接入方案；本特性仅交付设计文档，不代表权限功能已实现。",
+      "status": "done",
+      "evidence": "新增 flexmodel-server/docs/data-permissions.md 并在服务端 README 链接：包含最终两表 FML、4 个 JSON 示例、owner 初始化、表单级控制、逐记录规则合并、子表关系、服务接入、迁移及验收矩阵。按最新要求补充公共 DirectoryMemberPicker、owner 中文统一为所有者、权限类放在 dev.flexmodel.apps。4 个 JSON 示例解析、6 个本地链接、两表结构和移除字段检查、最新要求核对、代码围栏和空白检查、feature JSON 与新 ID 唯一性、git diff --check 通过。仅文档，运行时功能未实现；init.sh 沙箱启动失败，沙箱外执行授权被拒绝，未运行构建/测试。既有重复 feat-108 未改动。"
+    },
+    {
       "id": "feat-122",
       "name": "默认头像对比度修复",
       "description": "无头像时采用主题配对背景和文字色及细边框，提高姓名首字可读性。",

@@ -92,7 +92,7 @@ public class AppFormService {
     "QUARTER", "THIRD", "HALF", "TWO_THIRDS", "THREE_QUARTERS", "FULL");
   private static final String NAME_FIELD = "name";
   private static final Set<String> BUILTIN_FIELDS = Set.of(
-    "id", "created_by", "updated_by", "created_at", "updated_at");
+    "id", "owner_id", "created_by", "updated_by", "created_at", "updated_at");
   private static final Set<String> RESERVED_SYSTEM_FORM_NAMES = Set.of(
     ReflectionUtils.getModelNameFromClass(User.class), ReflectionUtils.getModelNameFromClass(Department.class), ReflectionUtils.getModelNameFromClass(Role.class),
     ReflectionUtils.getModelNameFromClass(UserDepartment.class), ReflectionUtils.getModelNameFromClass(UserRole.class), ReflectionUtils.getModelNameFromClass(RoleResource.class));
@@ -124,6 +124,9 @@ public class AppFormService {
 
   @Inject
   SystemFormService systemFormService;
+
+  @Inject
+  AppDataAuthorizationService dataAuthorization;
 
   public List<AppFormResponse> findForms(String appId) {
     if ("system".equals(appId)) {
@@ -205,6 +208,7 @@ public class AppFormService {
     EntityDefinition entity = new EntityDefinition(formName);
     entity.setComment(label);
     systemFields().forEach(entity::addField);
+    entity.addIndex(new IndexDefinition(formName, "idx_" + formName + "_owner").addField("owner_id"));
     if (createDisplayField) {
       entity.addField(new StringField(NAME_FIELD)
         .setLength(255)
@@ -801,6 +805,7 @@ public class AppFormService {
       .setLength(64)
       .setComment("ID"));
     fields.add(new StringField("created_by").setLength(64).setComment("创建人"));
+    fields.add(new StringField("owner_id").setLength(64).setNullable(false).setComment("所有者"));
     fields.add(new StringField("updated_by").setLength(64).setComment("更新人"));
     fields.add(new DateTimeField("created_at").setDefaultValue(DefaultValue.NOW).setComment("创建时间"));
     fields.add(new DateTimeField("updated_at").setDefaultValue(DefaultValue.NOW).setComment("更新时间"));
@@ -809,6 +814,8 @@ public class AppFormService {
 
   private Map<String, AppFormFieldRecord> systemFieldRecords() {
     Map<String, AppFormFieldRecord> fields = new LinkedHashMap<>();
+    fields.put("owner_id", new AppFormFieldRecord(
+      "owner_id", "所有者", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
     fields.put("created_by", new AppFormFieldRecord(
       "created_by", "创建人", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
     fields.put("updated_by", new AppFormFieldRecord(
@@ -1052,6 +1059,11 @@ public class AppFormService {
       })
       .toList();
     app.put(METADATA_FORMS_KEY, converted);
+    Map<String, Set<String>> children = new LinkedHashMap<>();
+    for (AppFormRecord record : records)
+      children.put(record.name(), layoutItems(record.layout()).stream()
+        .filter(item -> "SUBFORM".equals(item.type())).map(AppFormItemRecord::formName).collect(Collectors.toSet()));
+    dataAuthorization.reconcile(project.getId(), records.stream().map(AppFormRecord::name).collect(Collectors.toSet()), children);
     app.remove(METADATA_LEGACY_FORM_LAYOUTS_KEY);
     metadata.put(METADATA_APP_KEY, app);
     project.setMetadata(metadata);

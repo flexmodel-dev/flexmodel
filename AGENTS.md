@@ -32,6 +32,8 @@ If baseline verification is failing, repair that first before adding new scope.
 - **Update artifacts**: Before ending session, update `progress.md` and `feature_list.json`
 - **Stay in scope**: Don't modify files unrelated to the current feature
 - **Leave clean state**: Next session must be able to run `./init.sh` immediately
+- **不考虑历史兼容性**: 无需为旧版本或既有调用方保留兼容层，可直接重构替换
+- **保持代码简洁，尽量复用已有组件**: 优先复用项目中已有的组件和工具，避免重复造轮子
 
 ## Required Artifacts
 

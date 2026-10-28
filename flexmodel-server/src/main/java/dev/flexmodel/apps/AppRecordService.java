@@ -109,6 +109,7 @@ public class AppRecordService {
     Map<String, Object> values = sanitizeInput(form.response(), input, true, context);
     LocalDateTime now = LocalDateTime.now();
     String userId = currentUserId();
+    if (!form.response().builtin()) values.put("owner_id", userId);
 //    values.put("id", UUID.randomUUID().toString());
     values.put("created_by", userId);
     values.put("updated_by", userId);

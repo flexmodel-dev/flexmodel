@@ -3,6 +3,7 @@ package dev.flexmodel.apps;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppMenuOrderRequest;
 import dev.flexmodel.apps.dto.AppMenuRecord;
+import dev.flexmodel.apps.dto.AppMenuMember;
 import dev.flexmodel.apps.dto.AppMenuResponse;
 import dev.flexmodel.apps.dto.AppMenuSaveRequest;
 import dev.flexmodel.apps.dto.AppMenuTargetRecord;
@@ -127,6 +128,18 @@ public class AppMenuService {
     saveMenus(appId, project, removeNode(menus, menuId), labels);
   }
 
+  public AppMenuResponse updateMembers(String appId, String menuId, List<AppMenuMember> members) {
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
+    AppMenuRecord menu = requireMenu(menus, menuId);
+    if (members == null) throw new ValidationException("菜单授权成员必须为数组");
+    AppMenuRecord updated = new AppMenuRecord(menu.id(), menu.type(), menu.name(), menu.iconName(),
+      menu.parentId(), menu.target(), menu.children(), validatedMembers(members));
+    TargetLabels labels = targetLabels(appId);
+    saveMenus(appId, project, replaceNode(menus, updated), labels);
+    return toResponse(appId, updated, labels);
+  }
+
   public List<AppMenuResponse> reorderMenus(String appId, AppMenuOrderRequest request) {
     Project project = appMenuRecordStore.requireAppProject(appId);
     TargetLabels labels = targetLabels(appId);
@@ -184,7 +197,22 @@ public class AppMenuService {
     List<AppMenuRecord> children = existing == null
       ? (GROUP_TYPE.equals(type) ? List.of() : List.of())
       : existing.children();
-    return new AppMenuRecord(id, type, name, request.iconName(), parentId, target, children);
+    List<AppMenuMember> members = existing == null || existing.members() == null ? List.of() : existing.members();
+    return new AppMenuRecord(id, type, name, request.iconName(), parentId, target, children, members);
+  }
+
+  private List<AppMenuMember> validatedMembers(List<AppMenuMember> members) {
+    if (members.size() > 800) throw new ValidationException("菜单授权成员不能超过800项");
+    for (AppMenuMember member : members) {
+      if (member == null || member.type() == null
+        || !Set.of("USER", "ROLE", "ORGANIZATION").contains(member.type()) || isBlank(member.id())) {
+        throw new ValidationException("菜单授权成员类型或ID不合法");
+      }
+      if (Boolean.TRUE.equals(member.includeChildren()) && !"ORGANIZATION".equals(member.type())) {
+        throw new ValidationException("只有组织支持包含子组织");
+      }
+    }
+    return members.stream().distinct().toList();
   }
 
   private List<AppMenuRecord> orderedMenus(List<AppMenuRecord> menus, AppMenuOrderRequest request) {
@@ -291,7 +319,8 @@ public class AppMenuService {
       ITEM_TYPE.equals(menu.type()) ? "/apps/" + appId + "/" + menu.id() : null,
       menu.children() == null
         ? List.of()
-        : menu.children().stream().map(child -> toResponse(appId, child, labels)).toList());
+        : menu.children().stream().map(child -> toResponse(appId, child, labels)).toList(),
+      menu.members() == null ? List.of() : menu.members());
   }
 
   private String targetLabel(AppMenuTargetRecord target, TargetLabels labels) {
@@ -380,7 +409,7 @@ public class AppMenuService {
 
   private AppMenuRecord withChildren(AppMenuRecord menu, List<AppMenuRecord> children) {
     return new AppMenuRecord(
-      menu.id(), menu.type(), menu.name(), menu.iconName(), menu.parentId(), menu.target(), children);
+      menu.id(), menu.type(), menu.name(), menu.iconName(), menu.parentId(), menu.target(), children, menu.members());
   }
 
   private List<AppMenuRecord> appended(List<AppMenuRecord> children, AppMenuRecord child) {

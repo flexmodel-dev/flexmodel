@@ -13,6 +13,7 @@ import java.util.List;
  * @param target    关联项
  * @param pageRoute 页面路由
  * @param children  子菜单
+ * @param members   授权目录成员配置
  */
 public record AppMenuResponse(
   String id,
@@ -22,6 +23,7 @@ public record AppMenuResponse(
   String parentId,
   AppMenuTargetResponse target,
   String pageRoute,
-  List<AppMenuResponse> children
+  List<AppMenuResponse> children,
+  List<AppMenuMember> members
 ) {
 }

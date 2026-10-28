@@ -496,6 +496,43 @@ public class AppMenuResourceTest {
       .statusCode(404);
   }
 
+  @Test
+  void testIndependentMemberConfigurationSurvivesEditingAndOrdering() {
+    String id = createMenu("""
+      {"type":"GROUP","name":"授权测试-%s"}
+      """.formatted(TEST_SUFFIX), 201);
+    var members = List.of(Map.of("type", "USER", "id", "admin"),
+      Map.of("type", "ROLE", "id", "admin"),
+      Map.of("type", "ORGANIZATION", "id", "org-test", "includeChildren", true));
+    try {
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+        .body(members).put(BASE_PATH + "/" + id + "/members").then().statusCode(200)
+        .body("members.size()", equalTo(3)).body("members[2].includeChildren", equalTo(true));
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+        .body(Map.of("type", "GROUP", "name", "授权测试更新-" + TEST_SUFFIX))
+        .put(BASE_PATH + "/" + id).then().statusCode(200).body("members.size()", equalTo(3));
+      List<String> roots = given().header("Authorization", testTokenHelper.getAuthorizationHeader())
+        .get(BASE_PATH).body().path("id");
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+        .body(Map.of("root", roots, "children", Map.of(id, List.of())))
+        .put(BASE_PATH + "/order").then().statusCode(200)
+        .body("find { it.id == '%s' }.members.size()".formatted(id), equalTo(3));
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).get(BASE_PATH).then()
+        .statusCode(200).body("find { it.id == '%s' }.members.id".formatted(id), hasItems("admin", "org-test"));
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+        .body(List.of(Map.of("type", "BAD", "id", "admin")))
+        .put(BASE_PATH + "/" + id + "/members").then().statusCode(400);
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+        .body(List.of(Map.of("type", "USER", "id", "admin", "includeChildren", true)))
+        .put(BASE_PATH + "/" + id + "/members").then().statusCode(400);
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+        .body(List.of()).put(BASE_PATH + "/" + id + "/members").then().statusCode(200)
+        .body("members.size()", equalTo(0)).body("name", equalTo("授权测试更新-" + TEST_SUFFIX));
+    } finally {
+      deleteMenuQuietly(id);
+    }
+  }
+
   private String createMenu(String body, int expectedStatus) {
     Response response = given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())

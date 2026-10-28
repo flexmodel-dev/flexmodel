@@ -12,6 +12,7 @@ import java.util.List;
  * @param parentId 父级菜单ID
  * @param target   关联项
  * @param children 子菜单
+ * @param members  授权目录成员配置
  */
 public record AppMenuRecord(
   String id,
@@ -20,6 +21,7 @@ public record AppMenuRecord(
   String iconName,
   String parentId,
   AppMenuTargetRecord target,
-  List<AppMenuRecord> children
+  List<AppMenuRecord> children,
+  List<AppMenuMember> members
 ) {
 }

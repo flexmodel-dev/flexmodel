@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-125",
+      "name": "Apps - 菜单授权配置",
+      "description": "菜单行增加与编辑、删除平级的授权按钮，复用 DirectoryMemberPicker 多选；独立接口保存与回填，不接入运行时鉴权。",
+      "status": "done",
+      "evidence": "一级、左侧菜单/分组、子菜单行新增独立授权操作，复用 DirectoryMemberPicker 多选用户/角色/组织。PUT /menus/{menuId}/members 单独保存，metadata 持久化，普通编辑、移动和排序保留配置；仅配置不接入运行时鉴权。全模块非clean编译、规定引擎测试、菜单REST10项、Apps build及36项unit、菜单授权E2E通过；覆盖取消、多选、失败重试、回填、清空并检查明暗截图。init.sh clean仍受运行中dev.jar文件锁阻塞。"
+    },
+    {
       "id": "feat-124",
       "name": "Apps - 数据权限配置与所有者字段",
       "description": "仅保留两表权限配置、主子表单条件与字段开关、公共用户角色组织选择器及 owner_id 建模/默认赋值；撤回运行时权限过滤与访问拦截。",

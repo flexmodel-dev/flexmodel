@@ -3339,3 +3339,13 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 原灰色池包含浅色背景，但文字固定白色；UserAvatar 改用 bg-muted、text-foreground、border-border 和中等字重，统一适配明暗主题，图片头像逻辑保持。
 - 验证：Apps UI build通过；Playwright实测28px默认头像浅色对比度15.45:1、暗色15.11:
   1，首字和细边框正常。仅修改共享组件样式，无后端变动。保留前序未提交工作，未混合提交。
+
+
+**Apps - 菜单独立授权配置（2026-10-28，feat-125）**
+
+- 按用户最新要求，授权按钮放在一级菜单、左侧菜单/分组、子菜单行，与编辑、删除平级；使用盾牌图标及中文可访问名称。
+- 独立授权弹窗复用 DirectoryMemberPicker，多选用户、角色、组织及包含子组织，支持取消、清空、回填与保存失败重试。授权不依赖菜单编辑草稿。
+- 新增 PUT /api/apps/{appId}/menus/{menuId}/members，仅更新授权配置；metadata 保存类型/ID/包含子组织，普通菜单编辑、移动和排序保留配置。校验数组、类型、空ID、组织选项及数量；本次仅保存配置，不接入运行时菜单可见性或页面访问鉴权。
+- 验证：全模块非clean mvn compile（排除maven-plugin）、mvn test -pl flexmodel-engine通过；AppMenuResourceTest 10项通过（含独立保存、编辑与排序保留、清空、非法参数）；Apps npm run build、36项unit和菜单授权Playwright通过，覆盖多选、取消、失败重试、回填、清空及无浏览器异常，检查明暗截图；git diff --check通过。
+- 标准bash ./init.sh已执行，clean被现有运行中dev.jar文件锁阻塞，未停止用户服务，采用非clean等价编译验证。设计规范实际位于flexmodel-ui/DESIGN.md，已读取并复用Apps现有语义主题及组件。
+- Apps UI为既有未跟踪的独立嵌套仓库，本次在其内部单独提交；主仓库仅提交本特性后端与跟踪文档，保留原有flexmodel-ui的AD图标改动与未跟踪目录状态。

@@ -2,6 +2,7 @@ package dev.flexmodel.apps;
 
 import dev.flexmodel.apps.dto.AppMenuOrderRequest;
 import dev.flexmodel.apps.dto.AppMenuResponse;
+import dev.flexmodel.apps.dto.AppMenuMember;
 import dev.flexmodel.apps.dto.AppMenuSaveRequest;
 import dev.flexmodel.apps.dto.AppMenuTargetsResponse;
 import jakarta.inject.Inject;
@@ -86,5 +87,13 @@ public class AppMenuResource {
     @Valid AppMenuOrderRequest request
   ) {
     return appMenuService.reorderMenus(appId, request);
+  }
+
+  @Operation(summary = "设置菜单授权成员")
+  @PUT
+  @Path("/{menuId}/members")
+  public AppMenuResponse updateMembers(@PathParam("appId") String appId, @PathParam("menuId") String menuId,
+                                       List<AppMenuMember> members) {
+    return appMenuService.updateMembers(appId, menuId, members);
   }
 }

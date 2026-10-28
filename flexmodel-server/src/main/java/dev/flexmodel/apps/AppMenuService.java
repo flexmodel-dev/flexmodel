@@ -1,5 +1,6 @@
 package dev.flexmodel.apps;
 
+import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppMenuOrderRequest;
 import dev.flexmodel.apps.dto.AppMenuRecord;
@@ -45,7 +46,7 @@ public class AppMenuService {
     "ClipboardCheck", "Shapes", "Tags", "Boxes", "Banknote");
   private static final Map<String, String> BUILTIN_TARGETS = builtInTargets();
 
-  private record TargetLabels(Map<String, String> forms) {
+  private record TargetLabels(Map<String, String> forms, String ownerId) {
   }
 
   @Inject
@@ -128,16 +129,28 @@ public class AppMenuService {
     saveMenus(appId, project, removeNode(menus, menuId), labels);
   }
 
-  public AppMenuResponse updateMembers(String appId, String menuId, List<AppMenuMember> members) {
+  public AppMenuResponse patchMenu(String appId, String menuId, Map<String, Object> patch) {
+    if (patch == null || !Set.of("type", "name", "iconName", "parentId", "target", "members").containsAll(patch.keySet()))
+      throw new ValidationException("菜单局部更新包含未知字段");
+    if (patch.containsKey("members") && !(patch.get("members") instanceof List<?>))
+      throw new ValidationException("菜单授权成员必须为数组");
     Project project = appMenuRecordStore.requireAppProject(appId);
-    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
-    AppMenuRecord menu = requireMenu(menus, menuId);
-    if (members == null) throw new ValidationException("菜单授权成员必须为数组");
-    AppMenuRecord updated = new AppMenuRecord(menu.id(), menu.type(), menu.name(), menu.iconName(),
-      menu.parentId(), menu.target(), menu.children(), validatedMembers(members));
-    TargetLabels labels = targetLabels(appId);
-    saveMenus(appId, project, replaceNode(menus, updated), labels);
-    return toResponse(appId, updated, labels);
+    AppMenuRecord menu = requireMenu(appMenuRecordStore.menuRecords(project), menuId);
+    Map<String, Object> values = new LinkedHashMap<>();
+    values.put("type", menu.type());
+    values.put("name", menu.name());
+    values.put("iconName", menu.iconName());
+    values.put("parentId", menu.parentId());
+    values.put("target", menu.target());
+    values.put("members", menu.members());
+    values.putAll(patch);
+    AppMenuSaveRequest request;
+    try {
+      request = JsonUtils.convertValue(values, AppMenuSaveRequest.class);
+    } catch (IllegalArgumentException exception) {
+      throw new ValidationException("菜单局部更新格式不正确");
+    }
+    return updateMenu(appId, menuId, request);
   }
 
   public List<AppMenuResponse> reorderMenus(String appId, AppMenuOrderRequest request) {
@@ -197,7 +210,9 @@ public class AppMenuService {
     List<AppMenuRecord> children = existing == null
       ? (GROUP_TYPE.equals(type) ? List.of() : List.of())
       : existing.children();
-    List<AppMenuMember> members = existing == null || existing.members() == null ? List.of() : existing.members();
+    List<AppMenuMember> members = request.members() == null
+      ? (existing == null || existing.members() == null ? List.of() : existing.members())
+      : validatedMembers(request.members());
     return new AppMenuRecord(id, type, name, request.iconName(), parentId, target, children, members);
   }
 
@@ -320,7 +335,8 @@ public class AppMenuService {
       menu.children() == null
         ? List.of()
         : menu.children().stream().map(child -> toResponse(appId, child, labels)).toList(),
-      menu.members() == null ? List.of() : menu.members());
+      menu.members() == null ? List.of() : menu.members(),
+      labels.ownerId());
   }
 
   private String targetLabel(AppMenuTargetRecord target, TargetLabels labels) {
@@ -446,7 +462,8 @@ public class AppMenuService {
   }
 
   private TargetLabels targetLabels(String appId) {
-    return new TargetLabels(formLabels(appId));
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    return new TargetLabels(formLabels(appId), project.getOwnerId());
   }
 
   private void requireFormName(String appId, String formName) {

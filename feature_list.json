@@ -3,9 +3,9 @@
     {
       "id": "feat-125",
       "name": "Apps - 菜单授权配置",
-      "description": "菜单行增加与编辑、删除平级的授权按钮，复用 DirectoryMemberPicker 多选；独立接口保存与回填，不接入运行时鉴权。",
+      "description": "菜单行增加与编辑、删除平级的授权操作，复用 DirectoryMemberPicker 多选；通过 PATCH /menus/{menuId} 局部更新 members，不新增独立接口，不接入运行时鉴权；菜单响应携带 project.ownerId。",
       "status": "done",
-      "evidence": "一级、左侧菜单/分组、子菜单行新增独立授权操作，复用 DirectoryMemberPicker 多选用户/角色/组织。PUT /menus/{menuId}/members 单独保存，metadata 持久化，普通编辑、移动和排序保留配置；仅配置不接入运行时鉴权。全模块非clean编译、规定引擎测试、菜单REST10项、Apps build及36项unit、菜单授权E2E通过；覆盖取消、多选、失败重试、回填、清空并检查明暗截图。init.sh clean仍受运行中dev.jar文件锁阻塞。"
+      "evidence": "一级、左侧菜单/分组、子菜单行授权操作改为气泡框，复用 DirectoryMemberPicker 多选用户/角色/组织；存在成员时盾牌图标使用主题主色标记。移除 PUT /menus/{menuId}/members，改为 PATCH /menus/{menuId} 局部更新 members，普通编辑、移动和排序保留配置；菜单响应每个节点携带 project.ownerId，配置界面不处理所有者。全模块非clean编译、AppMenuResourceTest 10项（含 PATCH 保存/清空/非法参数/未知字段、ownerId）、Apps build及36项unit、菜单授权E2E通过，覆盖多选、取消、失败重试、回填、清空及明暗截图。init.sh clean仍受运行中dev.jar文件锁阻塞，采用非clean验证。"
     },
     {
       "id": "feat-124",

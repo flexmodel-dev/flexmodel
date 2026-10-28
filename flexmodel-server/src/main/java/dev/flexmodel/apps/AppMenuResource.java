@@ -2,7 +2,6 @@ package dev.flexmodel.apps;
 
 import dev.flexmodel.apps.dto.AppMenuOrderRequest;
 import dev.flexmodel.apps.dto.AppMenuResponse;
-import dev.flexmodel.apps.dto.AppMenuMember;
 import dev.flexmodel.apps.dto.AppMenuSaveRequest;
 import dev.flexmodel.apps.dto.AppMenuTargetsResponse;
 import jakarta.inject.Inject;
@@ -12,6 +11,7 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -23,6 +23,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 应用菜单 REST API。
@@ -89,11 +90,11 @@ public class AppMenuResource {
     return appMenuService.reorderMenus(appId, request);
   }
 
-  @Operation(summary = "设置菜单授权成员")
-  @PUT
-  @Path("/{menuId}/members")
-  public AppMenuResponse updateMembers(@PathParam("appId") String appId, @PathParam("menuId") String menuId,
-                                       List<AppMenuMember> members) {
-    return appMenuService.updateMembers(appId, menuId, members);
+  @Operation(summary = "局部更新应用菜单")
+  @PATCH
+  @Path("/{menuId}")
+  public AppMenuResponse patch(@PathParam("appId") String appId, @PathParam("menuId") String menuId,
+                               Map<String, Object> patch) {
+    return appMenuService.patchMenu(appId, menuId, patch);
   }
 }

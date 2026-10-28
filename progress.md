@@ -3349,3 +3349,15 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：全模块非clean mvn compile（排除maven-plugin）、mvn test -pl flexmodel-engine通过；AppMenuResourceTest 10项通过（含独立保存、编辑与排序保留、清空、非法参数）；Apps npm run build、36项unit和菜单授权Playwright通过，覆盖多选、取消、失败重试、回填、清空及无浏览器异常，检查明暗截图；git diff --check通过。
 - 标准bash ./init.sh已执行，clean被现有运行中dev.jar文件锁阻塞，未停止用户服务，采用非clean等价编译验证。设计规范实际位于flexmodel-ui/DESIGN.md，已读取并复用Apps现有语义主题及组件。
 - Apps UI为既有未跟踪的独立嵌套仓库，本次在其内部单独提交；主仓库仅提交本特性后端与跟踪文档，保留原有flexmodel-ui的AD图标改动与未跟踪目录状态。
+
+**Apps - 菜单授权交互与接口调整（2026-10-28，feat-125 调整）**
+
+- 移除 PUT /api/apps/{appId}/menus/{menuId}/members，改为 PATCH /api/apps/{appId}/menus/{menuId} 局部更新
+  members；AppMenuSaveRequest 增加 members，普通 PUT 未携带时保留既有授权。PATCH 仍校验成员数组、类型、空ID、组织包含子组织与未知字段。
+- 菜单授权由弹窗改为盾牌按钮上的气泡框，内部复用 DirectoryMemberPicker；存在成员时盾牌图标使用 text-primary 主题色，title
+  显示已设置数量。
+- 按用户要求，配置界面不处理所有者；AppMenuResponse 每个菜单节点新增 ownerId，取 project.ownerId。
+- 验证：mvn compile -pl flexmodel-server -am 通过；AppMenuResourceTest 10项通过（PATCH 保存/清空/非法参数/未知字段、ownerId
+  返回）；Apps npm run build、36项unit、菜单授权 Playwright 1项通过；git diff --check 通过。
+- 行内授权、编辑、删除（分组行含新增子菜单）按钮收进 gap-0.5 操作组并调整为主题尺寸 h-7 w-7，缩短图标间距；Apps build 与菜单授权
+  Playwright 复测通过。

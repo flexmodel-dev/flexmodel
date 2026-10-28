@@ -37,7 +37,7 @@ public class AppResourceTest {
       .body("size()", greaterThanOrEqualTo(1))
       .body("id", hasItem("dev_test"))
       .body("projectId", hasItem("dev_test"))
-      .body("owner", hasItem(notNullValue()));
+      .body("owner", hasItem("Admin"));
   }
 
   @Test
@@ -54,7 +54,7 @@ public class AppResourceTest {
       .body("iconName", equalTo("Boxes"))
       .body("primaryColor", equalTo("blue"))
       .body("enabled", equalTo(true))
-      .body("owner", notNullValue());
+      .body("owner", equalTo("Admin"));
   }
 
   @Test
@@ -79,6 +79,7 @@ public class AppResourceTest {
       .body("name", equalTo("应用管理E2E"))
       .body("iconName", equalTo("Folder"))
       .body("primaryColor", equalTo("green"))
+      .body("owner", equalTo("Admin"))
       .extract()
       .path("id");
 
@@ -173,7 +174,8 @@ public class AppResourceTest {
       .body("name", equalTo("应用管理更新"))
       .body("description", equalTo("更新后的应用描述"))
       .body("iconName", equalTo("Folder"))
-      .body("primaryColor", equalTo("green"));
+      .body("primaryColor", equalTo("green"))
+      .body("owner", equalTo("Admin"));
 
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())

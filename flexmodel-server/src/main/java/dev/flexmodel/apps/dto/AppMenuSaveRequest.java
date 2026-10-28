@@ -3,6 +3,8 @@ package dev.flexmodel.apps.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 /**
  * 创建或更新应用菜单请求。
  *
@@ -20,6 +22,7 @@ public record AppMenuSaveRequest(
   String name,
   String iconName,
   String parentId,
-  AppMenuTargetRequest target
+  AppMenuTargetRequest target,
+  List<AppMenuMember> members
 ) {
 }

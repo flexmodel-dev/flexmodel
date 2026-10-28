@@ -5,7 +5,9 @@ import dev.flexmodel.apps.approval.AppApprovalLifecycle;
 import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.dto.AppResponse;
 import dev.flexmodel.apps.dto.AppUpdateRequest;
+import dev.flexmodel.auth.service.UserService;
 import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.codegen.entity.User;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
@@ -21,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 应用管理服务，应用与项目一一对齐。
@@ -51,11 +54,20 @@ public class AppService {
   SessionContext sessionContext;
 
   @Inject
+  UserService userService;
+
+  @Inject
   AppDataAuthorizationService appDataAuthorizationService;
 
   public List<AppResponse> findApps() {
+    Map<String, String> ownerNames = userService.findAll().stream()
+      .collect(Collectors.toMap(User::getId, user -> userDisplayName(user, user.getId())));
     return projectService.findTopLevelProjects().stream()
-      .map(this::toResponse)
+      .map(project -> toResponse(
+        project,
+        iconName(project, null),
+        primaryColor(project, null),
+        ownerDisplayName(project.getOwnerId(), ownerNames)))
       .toList();
   }
 
@@ -253,7 +265,26 @@ public class AppService {
   }
 
   private AppResponse toResponse(Project project, String iconName, String primaryColor) {
-    return AppResponse.from(project, iconName, primaryColor);
+    return toResponse(project, iconName, primaryColor, ownerDisplayName(project.getOwnerId()));
+  }
+
+  private AppResponse toResponse(Project project, String iconName, String primaryColor, String owner) {
+    return AppResponse.from(project, owner, iconName, primaryColor);
+  }
+
+  private String ownerDisplayName(String ownerId) {
+    String id = isBlank(ownerId) ? "admin" : ownerId;
+    User user = userService.findById(id);
+    return userDisplayName(user, id);
+  }
+
+  private String ownerDisplayName(String ownerId, Map<String, String> ownerNames) {
+    String id = isBlank(ownerId) ? "admin" : ownerId;
+    return ownerNames.getOrDefault(id, id);
+  }
+
+  private String userDisplayName(User user, String fallback) {
+    return user == null || isBlank(user.getName()) ? fallback : user.getName();
   }
 
   private String currentUserId() {

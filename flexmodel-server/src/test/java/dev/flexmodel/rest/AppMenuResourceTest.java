@@ -506,8 +506,9 @@ public class AppMenuResourceTest {
       Map.of("type", "ORGANIZATION", "id", "org-test", "includeChildren", true));
     try {
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(members).put(BASE_PATH + "/" + id + "/members").then().statusCode(200)
-        .body("members.size()", equalTo(3)).body("members[2].includeChildren", equalTo(true));
+        .body(Map.of("members", members)).patch(BASE_PATH + "/" + id).then().statusCode(200)
+        .body("members.size()", equalTo(3)).body("members[2].includeChildren", equalTo(true))
+        .body("ownerId", equalTo("admin"));
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
         .body(Map.of("type", "GROUP", "name", "授权测试更新-" + TEST_SUFFIX))
         .put(BASE_PATH + "/" + id).then().statusCode(200).body("members.size()", equalTo(3));
@@ -518,15 +519,20 @@ public class AppMenuResourceTest {
         .put(BASE_PATH + "/order").then().statusCode(200)
         .body("find { it.id == '%s' }.members.size()".formatted(id), equalTo(3));
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).get(BASE_PATH).then()
-        .statusCode(200).body("find { it.id == '%s' }.members.id".formatted(id), hasItems("admin", "org-test"));
+        .statusCode(200).body("find { it.id == '%s' }.members.id".formatted(id), hasItems("admin", "org-test"))
+        .body("find { it.id == '%s' }.ownerId".formatted(id), equalTo("admin"));
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(List.of(Map.of("type", "BAD", "id", "admin")))
-        .put(BASE_PATH + "/" + id + "/members").then().statusCode(400);
+        .body(Map.of("members", List.of(Map.of("type", "BAD", "id", "admin"))))
+        .patch(BASE_PATH + "/" + id).then().statusCode(400);
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(List.of(Map.of("type", "USER", "id", "admin", "includeChildren", true)))
-        .put(BASE_PATH + "/" + id + "/members").then().statusCode(400);
+        .body(Map.of("members", List.of(Map.of("type", "USER", "id", "admin", "includeChildren", true))))
+        .patch(BASE_PATH + "/" + id).then().statusCode(400);
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(List.of()).put(BASE_PATH + "/" + id + "/members").then().statusCode(200)
+        .body(Map.of("members", "admin")).patch(BASE_PATH + "/" + id).then().statusCode(400);
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+        .body(Map.of("unknown", "value")).patch(BASE_PATH + "/" + id).then().statusCode(400);
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+        .body(Map.of("members", List.of())).patch(BASE_PATH + "/" + id).then().statusCode(200)
         .body("members.size()", equalTo(0)).body("name", equalTo("授权测试更新-" + TEST_SUFFIX));
     } finally {
       deleteMenuQuietly(id);

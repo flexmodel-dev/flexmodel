@@ -386,7 +386,7 @@ public class AppTools {
         appId,
         new dev.flexmodel.apps.dto.AppMenuSaveRequest(
           "ITEM", name, iconName, parentId,
-          new dev.flexmodel.apps.dto.AppMenuTargetRequest("BUILTIN", "workbench"))));
+          new dev.flexmodel.apps.dto.AppMenuTargetRequest("BUILTIN", "workbench"), null)));
     } catch (Exception exception) {
       log.error("create_app_workbench_menu failed, appId={}, name={}", appId, name, exception);
       return "Error: create_app_workbench_menu failed - " + exception.getMessage();
@@ -416,7 +416,7 @@ public class AppTools {
         ? null
         : new AppMenuTargetRequest(targetType, targetId);
       return JsonUtils.toJsonString(appMenuService.createMenu(
-        appId, new AppMenuSaveRequest(menuType, name, iconName, parentId, target)));
+        appId, new AppMenuSaveRequest(menuType, name, iconName, parentId, target, null)));
     } catch (Exception exception) {
       log.error("create_app_menu failed, appId={}, menuType={}, name={}", appId, menuType, name, exception);
       return "Error: create_app_menu failed - " + exception.getMessage();

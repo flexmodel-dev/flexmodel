@@ -3397,3 +3397,9 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 授权交互按用户要求改回弹窗，抽为共享组件 MenuAuthorizationDialog（含 MenuAuthorizationButton 入口），同时接入 AppSettings
   菜单管理页（/admin/apps/{appId}/settings/menus）的一级菜单与子菜单行；设置页授权保存后刷新列表与父级菜单。Apps
   build、36项unit及菜单授权 Playwright 2项（菜单编辑弹窗、设置页）通过。
+
+**Apps - 待办中心引用记录可点击（2026-10-29）**
+
+- ApprovalFeed 的记录抽屉补充 onOpenRecord，并为关联记录叠加二级
+  AppRecordDrawer；引用字段由纯文本改为可点击按钮，支持继续打开其引用的表单。切换/关闭待办项时同步清理二级抽屉。
+- 验证：Apps npm run build 通过；在本地开发服务待办中心打开采购订单审批，供应商引用显示为按钮，点击后成功打开供应商档案抽屉。

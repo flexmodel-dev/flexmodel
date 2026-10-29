@@ -7,6 +7,7 @@ import dev.flexmodel.apps.dto.AppFormResponse;
 import dev.flexmodel.apps.dto.AppFormViewTabRecord;
 import dev.flexmodel.apps.dto.AppReferenceValueResponse;
 import dev.flexmodel.common.NotFoundException;
+import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
@@ -52,6 +53,12 @@ public class AppRecordService {
 
   @Inject
   AppRecordDiscussionRepository appRecordDiscussionRepository;
+
+  @Inject
+  AppRecordHistoryRecorder appRecordHistoryRecorder;
+
+  @Inject
+  ProjectUnitOfWork transactions;
 
   public PageDTO<Map<String, Object>> findRecords(
     String appId,
@@ -121,6 +128,9 @@ public class AppRecordService {
     Map<String, Object> values = sanitizeInput(form.response(), input, true, context);
     assignCreationFields(form.response(), values, currentUserId());
     createRecord(appId, form.response(), values);
+    if (historyCaptureEnabled(appId, form.response())) {
+      appRecordHistoryRecorder.created(appId, form.response(), values);
+    }
     return projectRecord(form.response(), renderReferenceRecord(
       appId, form.response(), requireRecord(
         appId, form, String.valueOf(values.get("id")), referenceFields(form.response()))));
@@ -146,7 +156,21 @@ public class AppRecordService {
     Map<String, Object> values = sanitizeInput(form.response(), input, false, context);
     values.put("updated_by", currentUserId());
     values.put("updated_at", LocalDateTime.now());
-    updateRecord(appId, form.response(), recordId, values);
+    if (historyCaptureEnabled(appId, form.response())) {
+      // 行锁 + 事务内前后值读取，保证并发修改的历史前值不被污染
+      transactions.execute(appId, () -> {
+        ProjectUnitOfWork.lock(appId, form.entityName(), "id", recordId);
+        Map<String, Object> before = context == null
+          ? requireRecord(appId, form, recordId)
+          : requireSubformRecord(appId, form, recordId, context, null);
+        updateRecord(appId, form.response(), recordId, values);
+        Map<String, Object> after = requireRecord(appId, form, recordId);
+        appRecordHistoryRecorder.updated(appId, form.response(), recordId, before, after);
+        return null;
+      });
+    } else {
+      updateRecord(appId, form.response(), recordId, values);
+    }
     return projectRecord(form.response(), renderReferenceRecord(
       appId, form.response(), requireRecord(
         appId, form, recordId, referenceFields(form.response()))));
@@ -168,12 +192,29 @@ public class AppRecordService {
     } else {
       requireSubformRecord(appId, form, recordId, context, null);
     }
-    deleteRecord(appId, form.response(), recordId);
+    if (historyCaptureEnabled(appId, form.response())) {
+      transactions.execute(appId, () -> {
+        ProjectUnitOfWork.lock(appId, form.entityName(), "id", recordId);
+        Map<String, Object> before = context == null
+          ? requireRecord(appId, form, recordId)
+          : requireSubformRecord(appId, form, recordId, context, null);
+        deleteRecord(appId, form.response(), recordId);
+        appRecordHistoryRecorder.deleted(appId, form.response(), recordId, before);
+        return null;
+      });
+    } else {
+      deleteRecord(appId, form.response(), recordId);
+    }
     try {
       appRecordDiscussionRepository.deleteByRecord(appId, form.response().name(), recordId);
     } catch (RuntimeException error) {
       log.warn("Failed to clean record discussions for {}/{}/{}: {}", appId, form.response().name(), recordId, error.getMessage());
     }
+  }
+
+  private boolean historyCaptureEnabled(String appId, AppFormResponse form) {
+    return appRecordHistoryRecorder != null && transactions != null && !form.builtin()
+      && appRecordHistoryRecorder.captureSupported(appId);
   }
 
   private ResolvedForm resolveForm(String appId, String formName) {

@@ -126,6 +126,9 @@ public class AppFormService {
   AppRecordDiscussionRepository appRecordDiscussionRepository;
 
   @Inject
+  AppRecordHistoryRepository appRecordHistoryRepository;
+
+  @Inject
   EventBus eventBus;
 
   @Inject
@@ -571,6 +574,11 @@ public class AppFormService {
       appRecordDiscussionRepository.deleteByForm(appId, formName);
     } catch (RuntimeException error) {
       log.warn("Failed to clean form discussions for {}/{}: {}", appId, formName, error.getMessage());
+    }
+    try {
+      appRecordHistoryRepository.deleteByForm(appId, formName);
+    } catch (RuntimeException error) {
+      log.warn("Failed to clean form histories for {}/{}: {}", appId, formName, error.getMessage());
     }
     List<AppFormRecord> records = formRecords(project).stream()
       .filter(record -> !record.name().equals(entityName))

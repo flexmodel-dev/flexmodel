@@ -13,6 +13,7 @@ import jakarta.ws.rs.ClientErrorException;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import static dev.flexmodel.apps.AppRecordHistoryContext.*;
 import static dev.flexmodel.apps.approval.AppApprovalJson.*;
 import static dev.flexmodel.common.Values.*;
 
@@ -50,6 +51,10 @@ public class AppApprovalRuntime implements DurableFlowListener {
   ReliableMessages messages;
   @Inject
   SessionContext current;
+  @Inject
+  dev.flexmodel.apps.AppRecordHistoryRecorder history;
+  @Inject
+  dev.flexmodel.apps.AppRecordHistoryContext historyContext;
 
   public Map<String, Object> submit(String appId, String form, String recordId, String flowId, String key) {
     if (key == null || key.isBlank() || key.length() > 120) throw new ValidationException("提交必须携带有效幂等键");
@@ -78,12 +83,16 @@ public class AppApprovalRuntime implements DurableFlowListener {
         variables.putAll(Map.of("record", snapshot, "initiator", actor, "nodeMembers", Map.of(), "__runId", id, "__rootRunId", id));
         checkSize(variables);
         Map<String, Object> run = run(id, requestKey, flowId, text(AppApprovalFlowModel.metadata(flow), "deploymentId"), form, recordId, actor, snapshot);
-        return transactions.executePlatform(appId, () -> {
+        Map<String, Object> result = transactions.executePlatform(appId, () -> {
           appApprovalInstanceRepository.insert(appId, run);
           appApprovalRecordLockRepository.insert(appId, Map.of("id", id, "run_id", id, "schema_name", schema, "model_name", form, "record_id", recordId));
           start(appId, run, variables);
           return state.run(appId, id);
         });
+        String flowName = text(appApprovalFlowDeploymentRepository.get(appId, text(run, "flow_deploy_id")), "flow_name");
+        ProjectUnitOfWork.afterCommit(() ->
+          history.approvalSubmitted(appId, form, recordId, flowName, actor, id));
+        return result;
       });
     } catch (RuntimeException error) {
       // Different records can race for one request key; read the winner after rollback, without replaying work.
@@ -198,9 +207,10 @@ public class AppApprovalRuntime implements DurableFlowListener {
     Map<String, Object> input = copy(variables);
     Object output;
     String actor = current.getUserId();
+    String rootRunId = rootRun(appId, run);
     current.setUserId(text(run, "initiator"));
     try {
-      output = AppApprovalRecordContext.as(rootRun(appId, run), () -> records.execute(appId, cfg, variables));
+      output = AppApprovalRecordContext.as(rootRunId, () -> historyContext.as(new Snapshot(rootRunId, taskId, text(run, "initiator")), () -> records.execute(appId, cfg, variables)));
     } finally {
       current.setUserId(actor);
     }
@@ -224,7 +234,10 @@ public class AppApprovalRuntime implements DurableFlowListener {
       if (Set.of("PENDING", "WAITING").contains(text(task, "status")))
         appApprovalTaskRepository.update(appId, text(task, "id"), Map.of("status", "CANCELLED"));
     if (text(run, "parent_task_id").isEmpty()) {
-      notificationService.result(appId, id, text(run, "initiator"), text(appApprovalFlowDeploymentRepository.get(appId, text(run, "flow_deploy_id")), "flow_name"), status);
+      String flowName = text(appApprovalFlowDeploymentRepository.get(appId, text(run, "flow_deploy_id")), "flow_name");
+      history.approvalFinished(appId, text(run, "form_name"), text(run, "record_id"), status, flowName,
+        text(run, "initiator"), id);
+      notificationService.result(appId, id, text(run, "initiator"), flowName, status);
       for (var lock : appApprovalRecordLockRepository.findByRunId(appId, id))
         appApprovalRecordLockRepository.delete(appId, text(lock, "id"));
       return;

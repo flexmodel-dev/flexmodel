@@ -5,6 +5,8 @@ import dev.flexmodel.codegen.entity.AppApprovalInstance;
 import dev.flexmodel.codegen.entity.AppApprovalRecordLock;
 import dev.flexmodel.codegen.entity.AppApprovalTask;
 import dev.flexmodel.codegen.entity.AppApprovalWait;
+import dev.flexmodel.codegen.entity.AppRecordHistory;
+import dev.flexmodel.codegen.entity.AppRecordHistoryTarget;
 import dev.flexmodel.codegen.entity.AppRecordDiscussion;
 import dev.flexmodel.codegen.entity.AuditLog;
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
@@ -47,6 +49,8 @@ public class ProjectPlatformDataCleaner {
    */
   private static final List<Class<?>> PLATFORM_MODELS = List.of(
     RuntimeMessage.class,
+    AppRecordHistoryTarget.class,
+    AppRecordHistory.class,
     AppRecordDiscussion.class,
     AppApprovalTask.class,
     AppApprovalWait.class,

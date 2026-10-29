@@ -1,5 +1,10 @@
 package dev.flexmodel.apps;
 
+import dev.flexmodel.apps.dto.AppFormResponse;
+import dev.flexmodel.apps.dto.AppTransfer.ImportPlan;
+import dev.flexmodel.apps.dto.AppTransfer.PlannedRow;
+import dev.flexmodel.apps.dto.AppTransfer.Receipt;
+import dev.flexmodel.apps.dto.AppTransfer.TransferResult;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.common.persistence.ServerSessions;
@@ -12,26 +17,31 @@ import jakarta.ws.rs.WebApplicationException;
 import java.nio.file.Files;
 import java.util.*;
 
-import dev.flexmodel.apps.dto.AppTransfer.ImportPlan;
-import dev.flexmodel.apps.dto.AppTransfer.PlannedRow;
-import dev.flexmodel.apps.dto.AppTransfer.Receipt;
-import dev.flexmodel.apps.dto.AppTransfer.TransferResult;
-import dev.flexmodel.apps.dto.AppFormResponse;
+import static java.util.List.*;
 
 /**
  * Business rows commit in one project transaction; the idempotency receipt is a staged file.
  */
 @ApplicationScoped
 public class AppTransferExecutor {
-  @Inject ServerSessions sessions;
-  @Inject ProjectUnitOfWork transactions;
-  @Inject ProjectService projects;
-  @Inject AppFormService forms;
-  @Inject AppTransferForms transferForms;
-  @Inject AppRecordService records;
-  @Inject AppTransferPlanner planner;
+  @Inject
+  ServerSessions sessions;
+  @Inject
+  ProjectUnitOfWork transactions;
+  @Inject
+  ProjectService projects;
+  @Inject
+  AppFormService forms;
+  @Inject
+  AppTransferForms transferForms;
+  @Inject
+  AppRecordService records;
+  @Inject
+  AppTransferPlanner planner;
   @Inject
   AppTransferStore store;
+  @Inject
+  AppRecordHistoryRecorder history;
   private final Object[] commitLocks = java.util.stream.IntStream.range(0, 64).mapToObj(ignored -> new Object()).toArray();
 
   TransferResult receipt(String appId, String userId, String importId, String hash) {
@@ -60,6 +70,9 @@ public class AppTransferExecutor {
 
   private void writeRows(ImportPlan plan) {
     String schema = projects.resolveDatabaseName(plan.appId());
+    boolean historyEnabled = history.captureSupported(plan.appId());
+    List<AppRecordHistoryEvent> historyEvents = historyEnabled
+      ? new ArrayList<>() : of();
     try (Session session = sessions.open(schema)) {
       var resolved = new HashMap<String, AppFormResponse>();
       var available = transferForms.all(plan.appId());
@@ -99,6 +112,15 @@ public class AppTransferExecutor {
         } catch (RuntimeException error) {
           throw new ValidationException(first.sheet() + " 第 " + first.row() + " 行起的批次写入失败，整包已回滚，请检查唯一键及字段约束", error);
         }
+        if (historyEnabled) {
+          for (Map<String, Object> values : batch) {
+            historyEvents.add(history.importCreated(plan.appId(), plan.id(), form, values, plan.userId()));
+          }
+        }
+      }
+      // 历史事件在导入事务成功提交后分批写入，整包回滚不产生任何历史
+      if (historyEnabled) {
+        history.recordBatch(historyEvents);
       }
     }
   }

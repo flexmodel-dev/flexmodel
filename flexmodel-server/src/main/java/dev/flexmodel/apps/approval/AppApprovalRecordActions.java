@@ -6,6 +6,7 @@ import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.query.*;
+import dev.flexmodel.query.Query.OrderBy;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -66,7 +67,9 @@ public class AppApprovalRecordActions {
     // 数据节点的业务写入独立成事务，与平台库事务分离
     return transactions.execute(appId, () -> {
       try (Session session = sessions.open(schema)) {
-        List<Map<String, Object>> selected = session.dsl().selectFrom(form).where(filter).limit(1001).execute();
+        // 稳定记录顺序取行锁，降低并发节点相互死锁的风险
+        List<Map<String, Object>> selected = session.dsl().selectFrom(form).where(filter)
+          .orderBy(new OrderBy().asc("id")).limit(1001).execute();
         if (selected.size() > 1000) throw new ValidationException("单个节点最多处理 1000 条记录，请收紧筛选条件");
         List<Map<String, Object>> changed = new ArrayList<>();
         for (var record : selected) {

@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-134",
+      "name": "Apps - 记录操作历史",
+      "description": "Apps 记录详情历史侧栏展示真实操作时间线：记录增删改、Excel 导入、审批提交/签核/终态事件，主子表汇总到主记录时间线，光标分页查询与可见字段投影。",
+      "status": "done",
+      "evidence": "按 docs/plans/app-record-history.md 落地轻量日志方案：platform.fml 新增 f_app_record_history / f_app_record_history_target（project_id+event_key 唯一去重、查询索引）；后端新增 AppRecordHistoryEvent/Diff/Context/Repository/Recorder/Service/Resource 与 DTO，事件类型 RECORD_CREATED/UPDATED/DELETED 与 APPROVAL_SUBMITTED/TASK_APPROVED/TASK_REJECTED/APPROVED/REJECTED/TERMINATED，来源 APPS/IMPORT/APPROVAL。业务接入：AppRecordService 增删改（SQL 数据源 ProjectUnitOfWork 行锁事务内读前后值，非 SQL 返回 supported=false）、AppTransferExecutor 导入按批 200/批共用 operation_id、AppApprovalRuntime 提交与根实例终态（数据节点经 historyContext 记录发起人等快照）、AppApprovalService 签核、AppApprovalRecordActions 锁序稳定化、AppFormService.deleteForm 与 ProjectPlatformDataCleaner 清理。历史写入在业务事务 afterCommit 后独立平台事务完成，唯一键冲突视为已记录，其他异常仅结构化日志不影响业务。接口 GET /api/apps/{appId}/forms/{formName}/records/{recordId}/histories（size 默认20最大50、Base64URL 不透明游标校验归属、occurred_at DESC 稳定排序、预览最多3个可见变化）与 /histories/{eventId}（校验事件属于当前记录），复用 canAccessForm 与 project_id 隔离，按当前布局投影可见字段，审批意见沿用审批详情访问判断，时间统一 UTC 带 Z ISO 字符串。前端：services/recordHistory.ts + useRecordHistory（stale 序号隔离、静默刷新首屏、加载更多失败保留内容）；RecordActivityAside 重写（supported=false 明确空态、按日期分组、详情懒加载、纯文本渲染、手动刷新）；AppRecordDrawer historySignal 在保存/子表操作/提交审批/签核后触发刷新；AppSubformRecords onChanged 回调；删除 recordHistoryMock 与 useRecordHistoryMock。验证：AppRecordHistoryDiffTest 8 + AppRecordHistoryRecorderTest 8 全部通过（修复 PARENT target 缺失、context 合并、JSON canonicalize 真实缺陷）；npm test -- recordHistory 4 项通过；npm run build 通过（修复 toggleExpand 中 next 变量作用域 TS 错误）；mvn test -pl flexmodel-engine core/codegen/graphql 通过（mysql-it 为既有 Agroal 连接池环境问题）；server 全量 520 项中 34 失败/1 错误均为已记录既有失败（旧入口 404、布局行为变更断言、Playwright 浏览器用例、SQLite busy），无历史相关失败。新增 docs/record-history.md 并在 Server README 加入口。限制：轻量日志允许漏记、不可恢复、事件键去重不替代业务幂等。"
+    },
+    {
       "id": "feat-133",
       "name": "Apps - 记录列表固定列与横向滚动",
       "description": "主显字段与勾选列固定左侧，操作列固定右侧，字段较多时表内横向滚动，兼容固定表头及明暗主题。",

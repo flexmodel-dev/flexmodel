@@ -1,10 +1,14 @@
 package dev.flexmodel.apps.approval;
 
-import dev.flexmodel.common.*;
+import dev.flexmodel.apps.AppRecordHistoryRecorder;
+import dev.flexmodel.common.ProjectUnitOfWork;
+import dev.flexmodel.common.SessionContext;
+import dev.flexmodel.common.ValidationException;
+import dev.flexmodel.common.authz.PermissionHelper;
 import dev.flexmodel.common.messaging.RuntimeMessageRepository;
 import dev.flexmodel.directory.DirectoryService;
-import dev.flexmodel.common.authz.PermissionHelper;
-import dev.flexmodel.flow.event.*;
+import dev.flexmodel.flow.event.DurableFlowListener;
+import dev.flexmodel.flow.event.FlowEventTypes;
 import dev.flexmodel.project.ProjectRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -14,7 +18,7 @@ import jakarta.ws.rs.ForbiddenException;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static dev.flexmodel.apps.approval.AppApprovalJson.*;
+import static dev.flexmodel.apps.approval.AppApprovalJson.config;
 import static dev.flexmodel.common.Values.*;
 
 /**
@@ -46,6 +50,8 @@ public class AppApprovalService implements DurableFlowListener {
   SessionContext current;
   @Inject
   ProjectRepository projectRepository;
+  @Inject
+  AppRecordHistoryRecorder history;
 
   @Override
   public void onEvent(String appId, String eventId, String routingKey, Map<String, Object> event) {
@@ -94,6 +100,9 @@ public class AppApprovalService implements DurableFlowListener {
       if (!text(wait, "status").equals("WAITING") || !text(run, "status").equals("RUNNING"))
         throw new ClientErrorException("审批已结束或暂停", 409);
       appApprovalTaskRepository.update(appId, id, Map.of("status", "DONE", "decision", decision, "comment", comment, "request_key", key, "decided_at", LocalDateTime.now()));
+      String historyFlowName = text(appApprovalFlowDeploymentRepository.get(appId, text(run, "flow_deploy_id")), "flow_name");
+      ProjectUnitOfWork.afterCommit(() -> history.taskDecided(appId, text(run, "form_name"), text(run, "record_id"),
+        decision, comment, actor, text(wait, "title"), historyFlowName, text(run, "id"), id));
       var waitTasks = appApprovalTaskRepository.findByWaitId(appId, text(wait, "id")).stream()
         .sorted(Comparator.comparingInt(item -> ((Number) item.get("position")).intValue())).toList();
       String outcome = SignPolicy.outcome(text(wait, "sign_mode"), waitTasks.stream().map(item -> text(item, "decision")).toList());

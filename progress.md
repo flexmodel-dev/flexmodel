@@ -1,5 +1,24 @@
 # Session Progress Log
 
+## Apps - 记录操作历史（2026-10-29，app-record-history）
+
+- 按 `docs/plans/app-record-history.md` 完成记录真实历史时间线：`platform.fml` 新增 `f_app_record_history` /
+  `f_app_record_history_target`（唯一索引去重 + 查询索引）；后端新增 `dev.flexmodel.apps` 下
+  AppRecordHistoryEvent/Diff/Context/Repository/Recorder/Service/Resource 与 DTO，业务接入 AppRecordService
+  （SQL 行锁事务读前后值）、AppTransferExecutor（导入批量 200/批）、AppApprovalRuntime/AppApprovalService（提交/签核/终态）、
+  AppFormService.deleteForm 与 ProjectPlatformDataCleaner（清理）。
+- 轻量日志边界：业务提交后 afterCommit 独立平台事务写事件+目标，唯一键重复视为已记录，其他异常仅结构化日志，不影响业务；
+  非 SQL 数据源 captureSupported=false，接口返回 supported=false，前端显示明确空态。
+- 前端：`services/recordHistory.ts` + `useRecordHistory`（光标分页、stale 序号隔离、静默刷新）；
+  RecordActivityAside 重写（日期分组、展开详情懒加载、纯文本渲染）；AppRecordDrawer 用 historySignal 在保存/子表操作/
+  提交审批/签核后触发首屏刷新；AppSubformRecords 新增 onChanged 回调；删除 recordHistoryMock 与 useRecordHistoryMock。
+- 验证：`AppRecordHistoryDiffTest` 8 + `AppRecordHistoryRecorderTest` 8 全部通过；前端 `npm test -- recordHistory`
+  4 项通过；`npm run build` 通过（修复 RecordActivityAside toggleExpand 中 `next` 变量作用域错误）；引擎模块测试通过
+  （core/codegen/graphql，mysql-it 为既有 Agroal 连接池环境问题）；server 全量 520 项中 34 失败/1 错误均为
+  progress.md/feature_list.json 已记录的既有失败（旧入口 404、布局行为变更断言、Playwright 浏览器用例等），无历史相关失败。
+- 文档：新增 `flexmodel-server/docs/record-history.md` 并在 Server README 加入口。
+- 限制：历史仅用于解释操作、不可恢复；允许漏记；事件键去重不能替代业务幂等。
+
 ## Apps - 移除 f_app_transfer_receipt 凭据表（2026-10-29，feat-131 重构）
 
 - 应用户要求放弃凭据与业务数据的同事务原子性，彻底移除业务库中的 `f_app_transfer_receipt` 幂等凭据表，改用暂存目录中的

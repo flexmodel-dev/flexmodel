@@ -3530,3 +3530,11 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - 收起入口的数量显示条件改为 total > 0，零条只保留可点击的展开图标。同步更新计划与既有记录切换回归，等待零计数接口返回后断言无数量文字且仍可展开。
 - 验证：Apps npm run build、记录切换/零条隐藏Playwright专项1项与diff检查通过。仅前端显示条件微调，保留既有混合暂存区，未混合提交；沿用本轮已记录的后端验证与init.sh文件锁限制。
+
+**Apps 记录列表固定列与横向滚动（2026-10-29，feat-133）**
+
+- RecordList 按字段数量计算最小表宽：勾选列48px、主显字段220px、普通字段至少180px、操作列120px；字段少时普通列填充剩余空间，避免固定勾选列被拉宽后与主显字段重叠。主显字段沿用表单displayField，不把普通首列误作主显字段。
+- 勾选列与主显字段固定左侧、操作列固定右侧；表头交叉位置提高层级，分隔线及不透明的浅色/夜间行背景避免滚动内容透出，选中/悬停背景一致。长字段内容在单元格内截断，不撑破列宽。表内overflow:auto，底部滚动条在溢出时显示，移除70vh限制以用满剩余空间，分页保持在滚动区外。
+- 验证：Apps npm run build、npm run test:records 10项通过；最终列宽与可见滚动条专项3项通过，断言实际横向滚动、中间列移动、左右列坐标保持、勾选、编辑及字段少时无横向溢出。检查浅色/夜间截图。专项初次占位断言暴露Chromium无头默认--hide-scrollbars，测试显式取消该参数后实际滚动条占位验证通过。
+- 标准bash ./init.sh已运行，clean被既有flexmodel-server-dev.jar文件锁阻塞，保留运行服务；非clean全模块mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'及mvn test -q -pl flexmodel-engine通过。构建仍有既有logo与大包提示。
+- 本次仅提交目标前端文件与状态文档；保留两个仓库原有AD暂存状态与flexmodel-ui子模块改动，恢复本次构建生成的tsconfig.tsbuildinfo。

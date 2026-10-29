@@ -21,7 +21,7 @@ public class AppTransferForms {
         var fields = links.computeIfAbsent(item.formName(), ignored -> new HashMap<>());
         String previous = fields.putIfAbsent(item.referenceField(), parent.name());
         if (previous != null && !previous.equals(parent.name()))
-          throw new ValidationException("子表关联列指向多个主表，请先修正布局: " + item.formName() + "." + item.referenceField());
+          throw new ValidationException("子表单关联列指向多个主表单，请先修正布局: " + item.formName() + "." + item.referenceField());
       }
     }
     Map<String, AppFormResponse> result = new LinkedHashMap<>();
@@ -30,7 +30,7 @@ public class AppTransferForms {
         String parent = links.getOrDefault(form.name(), Map.of()).get(field.name());
         if (parent == null || field.builtin()) return field;
         if (field.referenceForm() != null && !parent.equals(field.referenceForm()))
-          throw new ValidationException("子表关联列与字段引用目标不一致: " + form.label() + "." + field.label());
+          throw new ValidationException("子表单关联列与字段引用目标不一致: " + form.label() + "." + field.label());
         return new AppFormFieldResponse(field.name(), field.label(), field.type(), field.required(), false,
           field.options(), parent, field.locked(), field.extension(), field.config());
       }).toList();

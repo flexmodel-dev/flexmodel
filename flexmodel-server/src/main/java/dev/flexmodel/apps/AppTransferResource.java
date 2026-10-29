@@ -13,7 +13,7 @@ import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 import dev.flexmodel.common.ValidationException;
 
 @Path("/apps/{appId}/transfers")
-@Tag(name = "应用", description = "多表 Excel 导入导出")
+@Tag(name = "应用", description = "多表单 Excel 导入导出")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Blocking

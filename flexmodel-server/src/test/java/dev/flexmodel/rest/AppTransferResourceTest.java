@@ -52,12 +52,13 @@ class AppTransferResourceTest {
     created.clear();
   }
 
-  @Test void roundTripsThreeTablesAndDeduplicatesSharedReferences() throws Exception {
+  @Test
+  void roundTripsThreeFormsAndDeduplicatesSharedReferences() throws Exception {
     PreviewResponse preview = preview(upload(bundle(false, false), "admin"), "admin");
     assertEquals("READY", preview.status(), preview.errors().toString());
     assertEquals(4, commit(preview, "admin", 200).total());
     var before = rows(orders); String orderId = String.valueOf(before.getFirst().get("id"));
-    var request = new ExportRequest(List.of(new TableSelection(orders, "IDS", null, List.of(orderId), null, null, null, null)), true, true);
+    var request = new ExportRequest(List.of(new FormSelection(orders, "IDS", null, List.of(orderId), null, null, null, null)), true, true);
     byte[] exported = post("/exports", request, 200).asByteArray();
     UploadResponse uploaded = upload(exported, "admin");
     assertEquals(3, uploaded.sheets().size());
@@ -75,7 +76,7 @@ class AppTransferResourceTest {
   @Test void ordinaryUsersCanImportExistingReferencesButCannotAccessOtherUsersStages() throws Exception {
     String existing = given().header("Authorization", tokens.getAuthorizationHeader()).contentType("application/json")
       .body(Map.of("name", "已有供应商")).post(BASE + "/forms/" + supplier + "/records").then().statusCode(201).extract().path("id");
-    byte[] bytes = excel.write(List.of(new ExportTable(form(orders), List.of("name", "supplier_id"),
+    byte[] bytes = excel.write(List.of(new ExportForm(form(orders), List.of("name", "supplier_id"),
       List.of(Map.of("id", "O", "name", "普通用户导入", "supplier_id", existing)))));
     var upload = upload(bytes, "ordinary-transfer-user");
     given().header("Authorization", tokens.getAuthorizationHeader()).contentType("application/json")
@@ -100,7 +101,8 @@ class AppTransferResourceTest {
     commit(preview, "admin", 409); assertTrue(rows(supplier).isEmpty());
   }
 
-  @Test void rollsBackAllTablesAndReceiptWhenLaterRowViolatesUniqueConstraint() throws Exception {
+  @Test
+  void rollsBackAllFormsAndReceiptWhenLaterRowViolatesUniqueConstraint() throws Exception {
     try (var session = factory.createSession("dev_test")) {
       session.schema().createIndex(new IndexDefinition(items, "uq_" + items).addField("name").setUnique(true));
     }
@@ -134,7 +136,7 @@ class AppTransferResourceTest {
     var preview = json.readValue(post("/imports/" + uploaded.uploadId() + "/preview", new PreviewRequest(List.of(mapping)), 200).asByteArray(), PreviewResponse.class);
     commit(preview, "admin", 200);
     assertEquals("00123,中文\n换行", rows(supplier).getFirst().get("name"));
-    byte[] template = post("/templates", new ExportRequest(List.of(new TableSelection(orders, "ALL", null, null, null, null, null, null)), true, false), 200).asByteArray();
+    byte[] template = post("/templates", new ExportRequest(List.of(new FormSelection(orders, "ALL", null, null, null, null, null, null)), true, false), 200).asByteArray();
     assertEquals(2, upload(template, "admin").sheets().size());
     given().header("Authorization", tokens.getAuthorizationHeader()).get(BASE + "/forms").then().statusCode(200)
       .body("name", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("f_app_transfer_receipt")));
@@ -144,11 +146,11 @@ class AppTransferResourceTest {
     commit(preview(upload(bundle(false, false), "admin"), "admin"), "admin", 200);
     given().header("Authorization", tokens.getAuthorizationHeader()).contentType("application/json").body(Map.of("name", "不匹配"))
       .post(BASE + "/forms/" + orders + "/records").then().statusCode(201);
-    var request = new ExportRequest(List.of(new TableSelection(orders, "FILTERED", null, null, "订单", "all", "name", "ASC")), true, false);
+    var request = new ExportRequest(List.of(new FormSelection(orders, "FILTERED", null, null, "订单", "all", "name", "ASC")), true, false);
     var uploaded = upload(post("/exports", request, 200).asByteArray(), "admin");
     assertEquals(2, uploaded.sheets().size());
     var preview = preview(uploaded, "admin");
-    assertEquals(3, preview.tables().stream().mapToInt(TableSummary::count).sum());
+    assertEquals(3, preview.forms().stream().mapToInt(FormSummary::count).sum());
     assertTrue(preview.errors().isEmpty(), preview.errors().toString());
   }
 
@@ -160,7 +162,7 @@ class AppTransferResourceTest {
     String oldOrder = String.valueOf(rows(orders).getFirst().get("id"));
     for (var row : rows(items)) given().header("Authorization", tokens.getAuthorizationHeader()).contentType("application/json")
       .body(Map.of("text_link", oldOrder)).put(BASE + "/forms/" + items + "/records/" + row.get("id")).then().statusCode(200);
-    var request = new ExportRequest(List.of(new TableSelection(orders, "IDS", null, List.of(oldOrder), null, null, null, null)), true, false);
+    var request = new ExportRequest(List.of(new FormSelection(orders, "IDS", null, List.of(oldOrder), null, null, null, null)), true, false);
     var preview = preview(upload(post("/exports", request, 200).asByteArray(), "admin"), "admin");
     assertTrue(preview.errors().isEmpty(), preview.errors().toString());
     assertEquals(3, commit(preview, "admin", 200).total());
@@ -204,8 +206,8 @@ class AppTransferResourceTest {
       .body(Map.of("name", "孙表记录", "item_id", itemId)).post(BASE + "/forms/" + grand + "/records").then().statusCode(201);
     given().header("Authorization", tokens.getAuthorizationHeader()).contentType("application/json")
       .body(Map.of("linked", itemId)).put(BASE + "/forms/" + supplier + "/records/" + rows(supplier).getFirst().get("id")).then().statusCode(200);
-    var request = new ExportRequest(List.of(new TableSelection(supplier, "ALL", null, null, null, null, null, null),
-      new TableSelection(orders, "ALL", null, null, null, null, null, null)), true, true);
+    var request = new ExportRequest(List.of(new FormSelection(supplier, "ALL", null, null, null, null, null, null),
+      new FormSelection(orders, "ALL", null, null, null, null, null, null)), true, true);
     var uploaded = upload(post("/exports", request, 200).asByteArray(), "admin");
     assertEquals(4, uploaded.sheets().size());
     var grandSheet = uploaded.suggestions().stream().filter(mapping -> mapping.formName().equals(grand)).findFirst().orElseThrow().sheet();
@@ -214,9 +216,9 @@ class AppTransferResourceTest {
 
   byte[] bundle(boolean missing, boolean duplicate) throws Exception {
     return excel.write(List.of(
-      new ExportTable(form(supplier), List.of("name"), List.of(Map.of("id", "S1", "name", "供应商"))),
-      new ExportTable(form(orders), List.of("name", "supplier_id"), List.of(Map.of("id", "O1", "name", "订单", "supplier_id", missing ? "missing" : "S1"))),
-      new ExportTable(form(items), List.of("name", "order_id"), List.of(Map.of("id", "L1", "name", "明细一", "order_id", "O1"),
+      new ExportForm(form(supplier), List.of("name"), List.of(Map.of("id", "S1", "name", "供应商"))),
+      new ExportForm(form(orders), List.of("name", "supplier_id"), List.of(Map.of("id", "O1", "name", "订单", "supplier_id", missing ? "missing" : "S1"))),
+      new ExportForm(form(items), List.of("name", "order_id"), List.of(Map.of("id", "L1", "name", "明细一", "order_id", "O1"),
         Map.of("id", "L2", "name", duplicate ? "明细一" : "明细二", "order_id", "O1")))));
   }
   AppFormResponse form(String name) throws Exception {

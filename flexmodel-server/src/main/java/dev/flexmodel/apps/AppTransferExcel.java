@@ -46,7 +46,7 @@ public class AppTransferExcel {
       }
     } catch (IOException error) { throw new ValidationException("请上传有效的 .xlsx 文件", error); }
     try (var input = Files.newInputStream(file); var workbook = new XSSFWorkbook(input)) {
-      if (workbook.getNumberOfSheets() > MAX_TABLES + 2) fail("最多允许 20 张业务表");
+      if (workbook.getNumberOfSheets() > MAX_FORMS + 2) fail("最多允许 20 个业务表单");
       List<SheetMapping> suggestions = new ArrayList<>();
       Sheet meta = workbook.getSheet(META);
       if (meta != null) {
@@ -66,16 +66,16 @@ public class AppTransferExcel {
         for (int r = 0; r <= sheet.getLastRowNum(); r++) {
           Row row = sheet.getRow(r);
           int width = row == null ? 0 : Math.max(0, row.getLastCellNum());
-          if (width > MAX_COLUMNS) fail("每张表最多允许 200 列");
+          if (width > MAX_COLUMNS) fail("每个表单最多允许 200 列");
           List<CellValue> values = new ArrayList<>();
           for (int c = 0; c < width; c++) values.add(readCell(row.getCell(c), formatter));
           rows.add(values);
-          if (values.stream().anyMatch(value -> !value.value().isBlank()) && ++total > MAX_ROWS + MAX_TABLES * 100)
+          if (values.stream().anyMatch(value -> !value.value().isBlank()) && ++total > MAX_ROWS + MAX_FORMS * 100)
             fail("Excel 数据量超过上限");
         }
         sheets.add(new SheetData(sheet.getSheetName(), rows));
       }
-      if (sheets.isEmpty() || sheets.size() > MAX_TABLES) fail("请选择 1 至 20 张业务表");
+      if (sheets.isEmpty() || sheets.size() > MAX_FORMS) fail("请选择 1 至 20 个业务表单");
       return new WorkbookData(sheets, suggestions, meta != null);
     } catch (ValidationException error) { throw error; }
     catch (Exception error) { throw new ValidationException("Excel 解析失败，请检查文件格式", error); }
@@ -97,28 +97,28 @@ public class AppTransferExcel {
     };
   }
 
-  public byte[] write(List<ExportTable> tables) {
+  public byte[] write(List<ExportForm> forms) {
     try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
       List<SheetMapping> mappings = new ArrayList<>();
       Map<String, String> sheetNames = new LinkedHashMap<>();
       Map<String, Set<String>> included = new HashMap<>();
-      for (int i = 0; i < tables.size(); i++) {
-        ExportTable table = tables.get(i);
-        sheetNames.put(table.form().name(), WorkbookUtil.createSafeSheetName("T" + (i + 1) + "_" + table.form().label()));
+      for (int i = 0; i < forms.size(); i++) {
+        ExportForm exported = forms.get(i);
+        sheetNames.put(exported.form().name(), WorkbookUtil.createSafeSheetName("T" + (i + 1) + "_" + exported.form().label()));
         Set<String> keys = new HashSet<>();
-        table.rows().forEach(row -> keys.add(String.valueOf(row.get("id"))));
-        included.put(table.form().name(), keys);
+        exported.rows().forEach(row -> keys.add(String.valueOf(row.get("id"))));
+        included.put(exported.form().name(), keys);
       }
       CellStyle headerStyle = workbook.createCellStyle();
       Font font = workbook.createFont(); font.setBold(true); headerStyle.setFont(font);
-      for (ExportTable table : tables) {
-        Sheet sheet = workbook.createSheet(sheetNames.get(table.form().name()));
+      for (ExportForm exported : forms) {
+        Sheet sheet = workbook.createSheet(sheetNames.get(exported.form().name()));
         sheet.createFreezePane(0, 1);
         Row header = sheet.createRow(0); header.createCell(0).setCellValue("__key");
         List<ColumnMapping> columns = new ArrayList<>();
         int index = 1;
-        for (AppFormFieldResponse field : table.form().fields()) {
-          if (!table.fields().contains(field.name())) continue;
+        for (AppFormFieldResponse field : exported.form().fields()) {
+          if (!exported.fields().contains(field.name())) continue;
           if (field.referenceForm() != null) {
             String targetSheet = sheetNames.get(field.referenceForm());
             header.createCell(index).setCellValue(field.label() + " [" + field.name() + "]（包内键）");
@@ -132,31 +132,32 @@ public class AppTransferExcel {
         }
         if (index > MAX_COLUMNS) fail("导出字段超过 200 列");
         for (Cell cell : header) cell.setCellStyle(headerStyle);
-        for (int r = 0; r < table.rows().size(); r++) {
-          Map<String, Object> record = table.rows().get(r);
+        for (int r = 0; r < exported.rows().size(); r++) {
+          Map<String, Object> record = exported.rows().get(r);
           Row row = sheet.createRow(r + 1);
           row.createCell(0).setCellValue(String.valueOf(record.get("id")));
           for (ColumnMapping column : columns) {
             Object value = record.get(column.field());
             if (value == null) continue;
             if (!"VALUE".equals(column.kind())) {
-              AppFormFieldResponse field = table.form().fields().stream().filter(f -> f.name().equals(column.field())).findFirst().orElseThrow();
+              AppFormFieldResponse field = exported.form().fields().stream().filter(f -> f.name().equals(column.field())).findFirst().orElseThrow();
               boolean local = included.getOrDefault(field.referenceForm(), Set.of()).contains(String.valueOf(value));
               if (local != "KEY".equals(column.kind())) continue;
             }
             // String cells preserve long numbers, leading zeroes, and never execute input as a formula.
-            row.createCell(column.column()).setCellValue(value instanceof Collection<?> || value instanceof Map<?, ?>
-              ? json.writeValueAsString(value) : value.toString());
+            row.createCell(column.column()).setCellValue(value instanceof Collection<?> items
+              ? String.join(", ", items.stream().map(String::valueOf).toList())
+              : value instanceof Map<?, ?> ? json.writeValueAsString(value) : value.toString());
           }
         }
         for (int c = 0; c < index; c++) sheet.setColumnWidth(c, Math.min(c == 0 ? 40 : 24, 80) * 256);
-        mappings.add(new SheetMapping(sheet.getSheetName(), table.form().name(), 1, 0, columns));
+        mappings.add(new SheetMapping(sheet.getSheetName(), exported.form().name(), 1, 0, columns));
       }
       Sheet help = workbook.createSheet(HELP);
-      String[] instructions = {"每张表一张 Sheet；第一行为字段名称。", "__key 是包内唯一键，导入后会生成新的记录 ID。",
+      String[] instructions = {"每个表单一张 Sheet；第一行为字段名称。", "__key 是包内唯一键，导入后会生成新的记录 ID。",
         "引用字段的包内键与已有 ID 每行只能填写一个；包内键必须对应目标 Sheet 的 __key。",
         "空白表示空值；日期使用 yyyy-MM-dd，时间使用 HH:mm:ss，日期时间使用 yyyy-MM-ddTHH:mm:ss。",
-        "多选使用 JSON 数组，例如 [\"选项ID\"]；布尔值使用 true/false 或 是/否。", "不支持公式；所有者、创建人和时间由服务端生成。"};
+        "多选使用逗号分隔，例如 选项A,选项B（中英文逗号均可）；布尔值使用 true/false 或 是/否。", "不支持公式；所有者、创建人和时间由服务端生成。"};
       for (int i = 0; i < instructions.length; i++) help.createRow(i).createCell(0).setCellValue(instructions[i]);
       help.setColumnWidth(0, 100 * 256);
       Sheet meta = workbook.createSheet(META);

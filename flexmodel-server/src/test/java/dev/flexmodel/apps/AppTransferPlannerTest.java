@@ -34,7 +34,8 @@ class AppTransferPlannerTest {
   SheetMapping mapping(String sheet, String target, ColumnMapping... columns) { return new SheetMapping(sheet, target, 1, 0, List.of(columns)); }
   ColumnMapping column(int index, String field) { return new ColumnMapping(index, field, "VALUE", null); }
 
-  @Test void remapsThreeTablesAndSortsActualDependencies() {
+  @Test
+  void remapsThreeFormsAndSortsActualDependencies() {
     var supplier = form("supplier", field("name", "TEXT", null));
     var order = form("orders", field("name", "TEXT", null), field("supplier", "REFERENCE", "supplier"));
     var item = form("items", field("order", "REFERENCE", "orders"));
@@ -107,11 +108,16 @@ class AppTransferPlannerTest {
     var choices = new AppFormFieldResponse("choice", "choice", "SELECT", false, false,
       List.of(new AppFormFieldOptionResponse("x", "中文", null, false)), null);
     assertEquals("x", planner.convert(choices, new CellValue("中文", "中文", "STRING"), false));
+    var multi = new AppFormFieldResponse("tags", "tags", "MULTISELECT", false, false,
+      List.of(new AppFormFieldOptionResponse("a", "甲", null, false), new AppFormFieldOptionResponse("b", "乙", null, false)), null);
+    assertEquals(List.of("a", "b"), planner.convert(multi, new CellValue("甲, 乙", "甲, 乙", "STRING"), false));
+    assertEquals(List.of("a", "b"), planner.convert(multi, new CellValue("甲，乙", "甲，乙", "STRING"), false));
+    assertEquals(List.of("a"), planner.convert(multi, new CellValue(" a ,,", "a ,,", "STRING"), true));
   }
 
   @Test void roundTripsWorkbookMetadataAndLiteralCells() throws Exception {
     var form = form("orders", field("name", "TEXT", null));
-    byte[] bytes = excel().write(List.of(new ExportTable(form, List.of("name"), List.of(Map.of("id", "old", "name", "=SUM(1,2)\n中文,数据")))));
+    byte[] bytes = excel().write(List.of(new ExportForm(form, List.of("name"), List.of(Map.of("id", "old", "name", "=SUM(1,2)\n中文,数据")))));
     Path file = directory.resolve("data.xlsx"); Files.write(file, bytes);
     var workbook = excel().read(file);
     assertTrue(workbook.platform()); assertEquals(1, workbook.suggestions().size());
@@ -119,6 +125,16 @@ class AppTransferPlannerTest {
     assertEquals("STRING", workbook.sheets().getFirst().rows().get(1).get(1).type());
     var result = planner().plan("app", "u", workbook, new PreviewRequest(workbook.suggestions()), n -> form, (n, id) -> false);
     assertTrue(result.errors().isEmpty());
+  }
+
+  @Test
+  void writesMultiselectValuesAsCommaSeparatedText() throws Exception {
+    var form = form("orders", new AppFormFieldResponse("tags", "tags", "MULTISELECT", false, false,
+      List.of(new AppFormFieldOptionResponse("a", "甲", null, false)), null));
+    byte[] bytes = excel().write(List.of(new ExportForm(form, List.of("tags"), List.of(Map.of("id", "1", "tags", List.of("a", "b"))))));
+    Path file = directory.resolve("multi.xlsx");
+    Files.write(file, bytes);
+    assertEquals("a, b", excel().read(file).sheets().getFirst().rows().get(1).get(1).value());
   }
 
   @Test void reportsFormulaErrorAndDuplicateHeaders() throws Exception {

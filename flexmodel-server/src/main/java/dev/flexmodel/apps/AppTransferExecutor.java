@@ -90,7 +90,7 @@ public class AppTransferExecutor {
             if (!hash.equals(planner.hash(form))) throw new WebApplicationException("表单定义已变化，请重新预览", 409);
             resolved.put(name, form);
           });
-          TransferResult result = new TransferResult(plan.id(), "COMMITTED", plan.rows().size(), plan.tables());
+          TransferResult result = new TransferResult(plan.id(), "COMMITTED", plan.rows().size(), plan.forms());
           String encoded;
           try { encoded = json.writeValueAsString(result); }
           catch (Exception error) { throw new IllegalStateException(error); }

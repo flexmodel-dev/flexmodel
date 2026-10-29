@@ -42,7 +42,7 @@ public class AppTransferService {
       throw new WebApplicationException("请先登录", 401);
     forms.findForms(appId); // Verify the app using the same boundary as ordinary records.
     if (!(factory.getSchemaProvider(projects.resolveDatabaseName(appId)) instanceof JdbcSchemaProvider))
-      fail("首版多表导入导出仅支持 SQL 数据源");
+      fail("首版多表单导入导出仅支持 SQL 数据源");
     return context.getUserId();
   }
 
@@ -103,7 +103,7 @@ public class AppTransferService {
 
   PreviewResponse response(ImportPlan plan) {
     return new PreviewResponse(plan.id(), plan.planHash(), plan.expiresAt(), plan.errors().isEmpty() ? "READY" : "INVALID",
-      plan.tables(), plan.errors(), plan.rows().subList(0, Math.min(20, plan.rows().size())));
+      plan.forms(), plan.errors(), plan.rows().subList(0, Math.min(20, plan.rows().size())));
   }
 
   public List<AppFormResponse> availableForms(String appId) {
@@ -133,15 +133,15 @@ public class AppTransferService {
 
   public byte[] export(String appId, ExportRequest request, boolean template) {
     authorize(appId);
-    if (request == null || request.tables() == null || request.tables().isEmpty() || request.tables().size() > MAX_TABLES)
-      fail("请选择 1 至 20 张业务表");
+    if (request == null || request.forms() == null || request.forms().isEmpty() || request.forms().size() > MAX_FORMS)
+      fail("请选择 1 至 20 个业务表单");
     try (var session = sessions.openSnapshot(projects.resolveDatabaseName(appId))) {
-      List<ExportTable> tables = transactions.adopt(appId, session, () -> collect(appId, request, template));
-      return excel.write(tables);
+      List<ExportForm> exports = transactions.adopt(appId, session, () -> collect(appId, request, template));
+      return excel.write(exports);
     }
   }
 
-  private List<ExportTable> collect(String appId, ExportRequest request, boolean template) {
+  private List<ExportForm> collect(String appId, ExportRequest request, boolean template) {
     Map<String, AppFormResponse> available = new LinkedHashMap<>();
     transferForms.all(appId).values().stream().filter(form -> !form.builtin() && !RECEIPT.equals(form.name())).forEach(form -> available.put(form.name(), form));
     Map<String, LinkedHashMap<String, Map<String, Object>>> collected = new LinkedHashMap<>();
@@ -149,8 +149,8 @@ public class AppTransferService {
     Deque<ExportNode> queue = new ArrayDeque<>();
     int[] total = {0};
     Set<String> roots = new HashSet<>();
-    for (var selection : request.tables()) {
-      if (selection == null || !roots.add(selection.formName())) fail("目标表重复");
+    for (var selection : request.forms()) {
+      if (selection == null || !roots.add(selection.formName())) fail("目标表单重复");
       var form = requireForm(available, selection.formName());
       collected.put(form.name(), new LinkedHashMap<>());
       selectedFields.put(form.name(), fields(form, selection.fields(), template));
@@ -183,7 +183,7 @@ public class AppTransferService {
             for (var item : form.layout().items()) if ("SUBFORM".equals(item.type()) && !collected.containsKey(item.formName())) {
               var child = requireForm(available, item.formName()); collected.put(child.name(), new LinkedHashMap<>());
               selectedFields.put(child.name(), fields(child, null, true)); changed = true;
-              if (collected.size() > MAX_TABLES) fail("关联表数量超过 20 张");
+              if (collected.size() > MAX_FORMS) fail("关联表单数量超过 20 个");
             }
         }
       } while (changed);
@@ -219,8 +219,8 @@ public class AppTransferService {
         add(collected, queue, target.name(), row, total, false);
       }
     }
-    if (collected.size() > MAX_TABLES) fail("关联表数量超过 20 张");
-    List<ExportTable> result = new ArrayList<>();
+    if (collected.size() > MAX_FORMS) fail("关联表单数量超过 20 个");
+    List<ExportForm> result = new ArrayList<>();
     for (var entry : collected.entrySet()) {
       var form = requireForm(available, entry.getKey());
       Set<String> names = new LinkedHashSet<>(selectedFields.getOrDefault(form.name(), fields(form, null, template)));
@@ -231,7 +231,7 @@ public class AppTransferService {
           .filter(item -> "SUBFORM".equals(item.type()) && form.name().equals(item.formName()))
           .forEach(item -> names.add(item.referenceField()));
       }
-      result.add(new ExportTable(form, List.copyOf(names), List.copyOf(entry.getValue().values())));
+      result.add(new ExportForm(form, List.copyOf(names), List.copyOf(entry.getValue().values())));
     }
     return result;
   }
@@ -257,9 +257,9 @@ public class AppTransferService {
                    String form, Map<String, Object> row, int[] total) { add(collected, queue, form, row, total, true); }
   private void add(Map<String, LinkedHashMap<String, Map<String, Object>>> collected, Deque<ExportNode> queue,
                    String form, Map<String, Object> row, int[] total, boolean subforms) {
-    var table = collected.computeIfAbsent(form, ignored -> new LinkedHashMap<>());
-    if (collected.size() > MAX_TABLES) fail("关联表数量超过 20 张");
-    if (table.putIfAbsent(String.valueOf(row.get("id")), row) == null) {
+    var rows = collected.computeIfAbsent(form, ignored -> new LinkedHashMap<>());
+    if (collected.size() > MAX_FORMS) fail("关联表单数量超过 20 个");
+    if (rows.putIfAbsent(String.valueOf(row.get("id")), row) == null) {
       if (++total[0] > MAX_ROWS) fail("整包最多导出 5,000 条记录，请缩小范围");
       queue.add(new ExportNode(form, row, subforms));
     } else if (subforms) {

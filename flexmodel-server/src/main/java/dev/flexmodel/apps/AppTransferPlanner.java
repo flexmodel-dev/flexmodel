@@ -9,7 +9,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.math.BigDecimal;
-import java.io.IOException;
 import java.security.MessageDigest;
 import java.time.*;
 import java.util.*;
@@ -26,8 +25,8 @@ public class AppTransferPlanner {
 
   ImportPlan plan(String appId, String userId, WorkbookData workbook, PreviewRequest request,
                   Function<String, AppFormResponse> forms, BiPredicate<String, String> exists) {
-    if (request == null || request.sheets() == null || request.sheets().isEmpty() || request.sheets().size() > MAX_TABLES)
-      fail("请选择 1 至 20 张表进行映射");
+    if (request == null || request.sheets() == null || request.sheets().isEmpty() || request.sheets().size() > MAX_FORMS)
+      fail("请选择 1 至 20 个表单进行映射");
     Map<String, SheetMapping> mappings = new LinkedHashMap<>();
     Map<String, AppFormResponse> resolved = new LinkedHashMap<>();
     Set<String> targets = new HashSet<>();
@@ -75,7 +74,7 @@ public class AppTransferPlanner {
     List<PlannedRow> rows = new ArrayList<>();
     Map<String, PlannedRow> byKey = new LinkedHashMap<>();
     Map<String, Map<String, String>> localReferences = new HashMap<>();
-    List<TableSummary> summaries = new ArrayList<>();
+    List<FormSummary> summaries = new ArrayList<>();
     for (SheetMapping mapping : mappings.values()) {
       SheetData sheet = sheet(workbook, mapping.sheet());
       AppFormResponse form = resolved.get(mapping.sheet());
@@ -113,7 +112,7 @@ public class AppTransferPlanner {
       localReferences.put(row.id(), refs);
         rows.add(row); count++;
       }
-      summaries.add(new TableSummary(sheet.name(), form.name(), count));
+      summaries.add(new FormSummary(sheet.name(), form.name(), count));
     }
     if (rows.isEmpty()) errors.add(new Issue("", 0, "", "", "文件中没有可导入的记录"));
     Map<String, Boolean> checked = new HashMap<>();
@@ -143,7 +142,7 @@ public class AppTransferPlanner {
         if (field.referenceForm() == null || value == null || refs.containsKey(field.name())) continue;
         String id = String.valueOf(value);
         if (!checked.computeIfAbsent(node(field.referenceForm(), id), ignored -> exists.test(field.referenceForm(), id)))
-          errors.add(new Issue(row.sheet(), row.row(), field.name(), id, "目标表中不存在此记录 ID"));
+          errors.add(new Issue(row.sheet(), row.row(), field.name(), id, "目标表单中不存在此记录 ID"));
       }
     }
     List<PlannedRow> sorted = sort(rows, errors);
@@ -166,12 +165,9 @@ public class AppTransferPlanner {
       case "DATE" -> "DATE".equals(value.type()) ? LocalDateTime.parse(text).toLocalDate().toString() : LocalDate.parse(text).toString();
       case "TIME" -> "DATE".equals(value.type()) ? LocalDateTime.parse(text).toLocalTime().toString() : LocalTime.parse(text).toString();
       case "DATETIME" -> LocalDateTime.parse(text.replace(' ', 'T')).toString();
-      case "MULTISELECT" -> {
-        try {
-          List<?> values = json.readValue(text, List.class);
-          yield values.stream().map(item -> choice(field, String.valueOf(item), platform)).toList();
-        } catch (IOException error) { throw new ValidationException("多选须使用 JSON 数组"); }
-      }
+      case "MULTISELECT" -> Arrays.stream(text.split("[,，]"))
+        .map(String::trim).filter(item -> !item.isEmpty())
+        .map(item -> choice(field, item, platform)).toList();
       case "SELECT", "PICKLIST", "CLASSIFICATION" -> choice(field, text, platform);
       default -> "NUMERIC".equals(value.type()) ? value.display() : text;
     };

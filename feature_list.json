@@ -3,9 +3,9 @@
     {
       "id": "feat-128",
       "name": "Apps UI - 引用字段输入搜索与记录选择弹窗",
-      "description": "新增/编辑引用字段使用可搜索输入框与右侧选取按钮，输入下拉表格选取、分页弹窗确认回填，并支持编辑回显与清空。",
+      "description": "新增/编辑引用字段使用可搜索输入框与右侧选取按钮，输入下拉表格选取、分页弹窗输入实时搜索及确认回填，并支持编辑回显与清空。",
       "status": "done",
-      "evidence": "共享 ReferenceField 接入 AppRecordFormModal 与 AppRecordDrawer 的 REFERENCE 字段：输入框右侧选取按钮打开带搜索/重置、表格单选、分页和确定/取消的弹窗；输入250ms防抖展示最多10条候选表格，可打开弹窗查看更多；点击下拉记录直接回填ID，弹窗草稿选中后确认回填，取消保留原值；支持清空、方向键/Enter/Esc、加载/空态/失败重试、迟到响应隔离、按ID加载编辑显示名称与系统表单候选覆盖。取消单选引用首100条预加载，多选引用保留原有实现。读取 flexmodel-ui/DESIGN.md，复用 Apps 语义主题、Popover/BizDialog/Pagination。Apps npm run build（tsc -b + vite）及diff --check通过；全模块非clean编译通过。用户要求不要跑测试后未再执行测试用例；既有records断言/夹具同步但未运行。init.sh clean仍受运行中dev.jar文件锁阻塞；界面工具因无法确认Windows浏览器URL自动停止，未完成浏览器实测。Apps UI提交69ef7dc。"
+      "evidence": "2026-10-29补充：弹窗移除搜索按钮及待提交关键词状态，输入自动250ms防抖搜索并回到第一页；有内容时显示输入框右侧清空搜索按钮，清空恢复全部记录并返回输入焦点；保留引用值清空。Apps构建/类型检查及diff --check通过，未运行测试用例。共享 ReferenceField 接入 AppRecordFormModal 与 AppRecordDrawer 的 REFERENCE 字段：输入框右侧选取按钮打开带搜索/重置、表格单选、分页和确定/取消的弹窗；输入250ms防抖展示最多10条候选表格，可打开弹窗查看更多；点击下拉记录直接回填ID，弹窗草稿选中后确认回填，取消保留原值；支持清空、方向键/Enter/Esc、加载/空态/失败重试、迟到响应隔离、按ID加载编辑显示名称与系统表单候选覆盖。取消单选引用首100条预加载，多选引用保留原有实现。读取 flexmodel-ui/DESIGN.md，复用 Apps 语义主题、Popover/BizDialog/Pagination。Apps npm run build（tsc -b + vite）及diff --check通过；全模块非clean编译通过。用户要求不要跑测试后未再执行测试用例；既有records断言/夹具同步但未运行。init.sh clean仍受运行中dev.jar文件锁阻塞；界面工具因无法确认Windows浏览器URL自动停止，未完成浏览器实测。Apps UI提交69ef7dc。"
     },
     {
       "id": "feat-127",

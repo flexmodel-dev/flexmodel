@@ -3383,8 +3383,8 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 
 - 移除 PUT /api/apps/{appId}/menus/{menuId}/members，改为 PATCH /api/apps/{appId}/menus/{menuId} 局部更新
   members；AppMenuSaveRequest 增加 members，普通 PUT 未携带时保留既有授权。PATCH 仍校验成员数组、类型、空ID、组织包含子组织与未知字段。
-- 菜单授权由弹窗改为盾牌按钮上的气泡框，内部复用 DirectoryMemberPicker；存在成员时盾牌图标使用 text-primary 主题色，title
-  显示已设置数量。
+- 菜单授权使用盾牌按钮 + 独立弹窗，内部复用 DirectoryMemberPicker；存在成员时盾牌图标使用 text-primary 主题色，title
+  显示已设置数量（期间曾改为气泡框，已按用户要求改回弹窗）。
 - 按用户要求，配置界面不处理所有者；AppMenuResponse 每个菜单节点新增 ownerId，取 project.ownerId。
 - 验证：mvn compile -pl flexmodel-server -am 通过；AppMenuResourceTest 10项通过（PATCH 保存/清空/非法参数/未知字段、ownerId
   返回）；Apps npm run build、36项unit、菜单授权 Playwright 1项通过；git diff --check 通过。
@@ -3394,3 +3394,6 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   ID；AppResourceTest
   的列表、详情、创建、更新 4 项通过。完整测试类中 testCreateAppWithExplicitProjectId 删除应用后的 GET 仍由鉴权过滤器返回
   401（既有行为，与本次改动无关）。
+- 授权交互按用户要求改回弹窗，抽为共享组件 MenuAuthorizationDialog（含 MenuAuthorizationButton 入口），同时接入 AppSettings
+  菜单管理页（/admin/apps/{appId}/settings/menus）的一级菜单与子菜单行；设置页授权保存后刷新列表与父级菜单。Apps
+  build、36项unit及菜单授权 Playwright 2项（菜单编辑弹窗、设置页）通过。

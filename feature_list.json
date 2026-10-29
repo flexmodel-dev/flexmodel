@@ -8,6 +8,13 @@
       "evidence": "新增 AppTheme 统一按 /apps/:appId 路由管理根元素主色：useLayoutEffect 在绘制前应用按应用缓存的配色，无缓存时复用 AppLoading 中性全屏等待接口，失败退出等待；移除 AppLayout 异步设置/清理重置与 TopHeaderShell 挂载强制蓝色。应用列表、详情、创建、更新统一持久化主色，删除清理，存储写入失败仍有内存缓存；明暗模式在 React 首屏前恢复并用布局效果切换。读取 flexmodel-ui/DESIGN.md，复用既有语义 token 与主色色板，未新增配色。Apps npm run build、npx tsc --noEmit、36项unit、5项主题Playwright及diff --check通过，逐绘制帧验证浅色/夜间首次进入、接口延迟刷新、跨应用与返回管理页、存储失败与接口失败。全模块非clean compile与规定引擎测试通过；init.sh clean仍受现有dev.jar锁阻塞，保留运行服务。Apps UI提交02a7e02。"
     },
     {
+      "id": "feat-129",
+      "name": "Apps - 菜单授权运行时过滤",
+      "description": "GET /api/apps/{appId}/menus 按当前用户过滤菜单：所有者返回全部；空成员对所有应用用户可见；成员按用户、角色、组织（可含子组织）匹配，分组授权约束整棵子树。",
+      "status": "done",
+      "evidence": "AppMenuService.findMenus 注入 SessionContext 与 DirectoryService：非所有者且存在受限菜单时读取一次目录快照，按 USER/ROLE/ORGANIZATION 过滤并把组织 includeChildren 解析为父级链匹配；无成员菜单默认全员可见，组无可见子项时隐藏，所有者按 project.ownerId 无条件返回全部。AppMenuResourceTest 新增用户、角色、子组织、直属组织、分组子树与所有者用例，11项通过；mvn -pl flexmodel-server -am compile 通过。"
+    },
+    {
       "id": "feat-128",
       "name": "Apps UI - 引用字段输入搜索与记录选择弹窗",
       "description": "新增/编辑引用字段使用可搜索输入框与右侧选取按钮，输入下拉表格选取、分页弹窗输入实时搜索及确认回填，并支持编辑回显与清空。",

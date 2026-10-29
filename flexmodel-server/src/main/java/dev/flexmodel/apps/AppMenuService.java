@@ -13,12 +13,16 @@ import dev.flexmodel.apps.dto.AppMenuTargetResponse;
 import dev.flexmodel.apps.dto.AppMenuTargetsResponse;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.NotFoundException;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
+import dev.flexmodel.directory.DirectoryService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +31,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import static dev.flexmodel.common.Values.objects;
+import static dev.flexmodel.common.Values.strings;
+import static dev.flexmodel.common.Values.text;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -54,9 +61,16 @@ public class AppMenuService {
   @Inject
   AppFormService appFormService;
 
+  @Inject
+  SessionContext sessionContext;
+
+  @Inject
+  DirectoryService directoryService;
+
   public List<AppMenuResponse> findMenus(String appId) {
     Project project = appMenuRecordStore.requireAppProject(appId);
-    return toResponses(appId, appMenuRecordStore.menuRecords(project), targetLabels(appId));
+    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
+    return toResponses(appId, visibleMenus(project, menus), targetLabels(appId));
   }
 
   public AppMenuTargetsResponse findTargets(String appId) {
@@ -158,6 +172,82 @@ public class AppMenuService {
     List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
     List<AppMenuRecord> nextMenus = orderedMenus(menus, request);
     return saveMenus(appId, project, nextMenus, labels);
+  }
+
+  private List<AppMenuRecord> visibleMenus(Project project, List<AppMenuRecord> menus) {
+    String userId = sessionContext.getUserId();
+    if (isBlank(userId)) return List.of();
+    String ownerId = Objects.requireNonNullElse(project.getOwnerId(), "admin");
+    if (userId.equals(ownerId)) return menus;
+    boolean restricted = flatten(menus).stream()
+      .anyMatch(menu -> menu.members() != null && !menu.members().isEmpty());
+    if (!restricted) return menus;
+    UserAccess access = userAccess(userId);
+    return menus.stream()
+      .map(menu -> authorizedMenu(menu, access))
+      .filter(Objects::nonNull)
+      .toList();
+  }
+
+  private AppMenuRecord authorizedMenu(AppMenuRecord menu, UserAccess access) {
+    if (!authorized(menu.members(), access)) return null;
+    if (!GROUP_TYPE.equals(menu.type())) return menu;
+    List<AppMenuRecord> children = menu.children() == null ? List.of()
+      : menu.children().stream()
+      .map(child -> authorizedMenu(child, access))
+      .filter(Objects::nonNull)
+      .toList();
+    return children.isEmpty() ? null : withChildren(menu, children);
+  }
+
+  private boolean authorized(List<AppMenuMember> members, UserAccess access) {
+    if (members == null || members.isEmpty()) return true;
+    return members.stream().anyMatch(member -> member != null && access.matches(member));
+  }
+
+  private UserAccess userAccess(String userId) {
+    Map<String, Object> directory = directoryService.directory();
+    Map<String, Object> current = objects(directory.get("members")).stream()
+      .filter(member -> userId.equals(text(member, "id")))
+      .findFirst()
+      .orElse(null);
+    Set<String> roleIds = current == null ? Set.of() : Set.copyOf(strings(current.get("roleIds")));
+    Set<String> organizationIds = current == null ? Set.of() : Set.copyOf(strings(current.get("organizationIds")));
+    Map<String, String> organizationParents = new HashMap<>();
+    objects(directory.get("organizations")).forEach(organization -> {
+      String id = text(organization, "id");
+      String parentId = text(organization, "parentId");
+      if (!id.isBlank()) organizationParents.put(id, parentId.isBlank() ? null : parentId);
+    });
+    return new UserAccess(userId, roleIds, organizationIds, organizationParents);
+  }
+
+  private record UserAccess(
+    String userId,
+    Set<String> roleIds,
+    Set<String> organizationIds,
+    Map<String, String> organizationParents
+  ) {
+    boolean matches(AppMenuMember member) {
+      return switch (member.type()) {
+        case "USER" -> userId.equals(member.id());
+        case "ROLE" -> roleIds.contains(member.id());
+        case "ORGANIZATION" -> organizationIds.contains(member.id())
+          || (Boolean.TRUE.equals(member.includeChildren())
+          && organizationIds.stream().anyMatch(id -> belongsTo(id, member.id())));
+        default -> false;
+      };
+    }
+
+    private boolean belongsTo(String organizationId, String ancestorId) {
+      String current = organizationId;
+      Set<String> visited = new HashSet<>();
+      while (current != null && visited.add(current)) {
+        if (current.equals(ancestorId)) return true;
+        current = organizationParents.get(current);
+      }
+      return false;
+    }
   }
 
   private AppMenuRecord validatedMenu(AppMenuSaveRequest request, String appId, AppMenuRecord existing) {

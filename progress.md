@@ -3423,6 +3423,13 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   AppRecordDrawer；引用字段由纯文本改为可点击按钮，支持继续打开其引用的表单。切换/关闭待办项时同步清理二级抽屉。
 - 验证：Apps npm run build 通过；在本地开发服务待办中心打开采购订单审批，供应商引用显示为按钮，点击后成功打开供应商档案抽屉。
 
+**Apps - 菜单授权运行时过滤（2026-10-29，feat-129）**
+
+- GET /api/apps/{appId}/menus 接入菜单授权：所有者（project.ownerId）无条件返回全部；成员为空的菜单对所有应用用户可见；有成员时按
+  USER、ROLE、ORGANIZATION 匹配，组织 includeChildren 通过父级链匹配子组织。
+- 分组自身有授权时约束整棵子树；子项按各自授权过滤，分组无可见子项时隐藏。非所有者且没有受限菜单时跳过目录读取。
+- 验证：mvn -pl flexmodel-server -am compile 通过；AppMenuResourceTest 新增空成员、用户、角色、子组织、直属组织、分组子树及所有者场景，11项全部通过。
+
 **Apps UI - 进入与刷新应用主色闪烁修复（2026-10-29，feat-130）**
 
 - 根因：AppLayout 首次使用空应用设置默认色，接口返回后才更新主色，效果清理再次重置；TopHeaderShell 挂载也强制蓝色。

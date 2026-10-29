@@ -1,6 +1,7 @@
 package dev.flexmodel.rest;
 
 import dev.flexmodel.SQLiteTestResource;
+import dev.flexmodel.session.SessionFactory;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
@@ -8,6 +9,7 @@ import io.restassured.response.Response;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +27,9 @@ public class AppMenuResourceTest {
 
   @Inject
   TestTokenHelper testTokenHelper;
+
+  @Inject
+  SessionFactory sessions;
 
   private static final String BASE_PATH = Resources.ROOT_PATH + "/apps/dev_test/menus";
   private static final String TEST_SUFFIX = Long.toHexString(System.nanoTime());
@@ -536,6 +541,84 @@ public class AppMenuResourceTest {
         .body("members.size()", equalTo(0)).body("name", equalTo("授权测试更新-" + TEST_SUFFIX));
     } finally {
       deleteMenuQuietly(id);
+    }
+  }
+
+  @Test
+  void testMenuAuthorizationFiltersByMembersAndOwner() {
+    String allowed = "menu_user_" + TEST_SUFFIX;
+    String denied = "menu_user_denied_" + TEST_SUFFIX;
+    String role = "menu_role_" + TEST_SUFFIX;
+    String parentOrg = "menu_org_" + TEST_SUFFIX;
+    String childOrg = "menu_org_child_" + TEST_SUFFIX;
+    insertDirectoryUser(allowed, role, parentOrg, childOrg);
+
+    String publicMenu = createMenu("""
+      {"type":"ITEM","name":"公开菜单-%s","target":{"type":"BUILTIN","id":"workbench"}}
+      """.formatted(TEST_SUFFIX), 201);
+    String group = createMenu("""
+      {"type":"GROUP","name":"授权组-%s","members":[{"type":"USER","id":"%s"}]}
+      """.formatted(TEST_SUFFIX, allowed), 201);
+    String allowedChild = createMenu("""
+      {"type":"ITEM","name":"允许子菜单-%s","parentId":"%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"USER","id":"%s"}]}
+      """.formatted(TEST_SUFFIX, group, allowed), 201);
+    String deniedChild = createMenu("""
+      {"type":"ITEM","name":"拒绝子菜单-%s","parentId":"%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"USER","id":"%s"}]}
+      """.formatted(TEST_SUFFIX, group, denied), 201);
+    String roleMenu = createMenu("""
+      {"type":"ITEM","name":"角色菜单-%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"ROLE","id":"%s"}]}
+      """.formatted(TEST_SUFFIX, role), 201);
+    String organizationMenu = createMenu("""
+      {"type":"ITEM","name":"组织菜单-%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"ORGANIZATION","id":"%s","includeChildren":true}]}
+      """.formatted(TEST_SUFFIX, parentOrg), 201);
+    String exactOrganizationMenu = createMenu("""
+      {"type":"ITEM","name":"直属组织菜单-%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"ORGANIZATION","id":"%s"}]}
+      """.formatted(TEST_SUFFIX, parentOrg), 201);
+
+    try {
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader(allowed)).get(BASE_PATH).then()
+        .statusCode(200)
+        .body("id", hasItem(publicMenu))
+        .body("id", hasItem(group))
+        .body("find { it.id == '%s' }.children.id".formatted(group), contains(allowedChild))
+        .body("id", hasItem(roleMenu))
+        .body("id", hasItem(organizationMenu))
+        .body("id", not(hasItem(exactOrganizationMenu)));
+
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader(denied)).get(BASE_PATH).then()
+        .statusCode(200)
+        .body("id", hasItem(publicMenu))
+        .body("id", not(hasItem(group)))
+        .body("id", not(hasItem(roleMenu)))
+        .body("id", not(hasItem(organizationMenu)));
+
+      given().header("Authorization", testTokenHelper.getAuthorizationHeader()).get(BASE_PATH).then()
+        .statusCode(200)
+        .body("find { it.id == '%s' }.children.id".formatted(group), hasItems(allowedChild, deniedChild))
+        .body("id", hasItems(roleMenu, organizationMenu, exactOrganizationMenu));
+    } finally {
+      deleteMenuQuietly(group);
+      deleteMenuQuietly(publicMenu);
+      deleteMenuQuietly(roleMenu);
+      deleteMenuQuietly(organizationMenu);
+      deleteMenuQuietly(exactOrganizationMenu);
+    }
+  }
+
+  private void insertDirectoryUser(String userId, String roleId, String parentOrgId, String childOrgId) {
+    try (var session = sessions.createSession()) {
+      session.dsl().insertInto("f_user").values(new LinkedHashMap<>(Map.of(
+        "id", userId, "name", userId, "password_hash", "unused", "status", "ACTIVE"))).execute();
+      session.dsl().insertInto("f_role").values(new LinkedHashMap<>(Map.of(
+        "id", roleId, "name", roleId))).execute();
+      session.dsl().insertInto("f_user_role").values(new LinkedHashMap<>(Map.of(
+        "id", userId + "_role", "user_id", userId, "role_id", roleId))).execute();
+      session.dsl().insertInto("f_department").values(new LinkedHashMap<>(Map.of(
+        "id", parentOrgId, "name", parentOrgId))).execute();
+      session.dsl().insertInto("f_department").values(new LinkedHashMap<>(Map.of(
+        "id", childOrgId, "name", childOrgId, "parent_id", parentOrgId))).execute();
+      session.dsl().insertInto("f_user_department").values(new LinkedHashMap<>(Map.of(
+        "id", userId + "_dept", "user_id", userId, "department_id", childOrgId, "is_main", true))).execute();
     }
   }
 

@@ -3422,3 +3422,13 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - ApprovalFeed 的记录抽屉补充 onOpenRecord，并为关联记录叠加二级
   AppRecordDrawer；引用字段由纯文本改为可点击按钮，支持继续打开其引用的表单。切换/关闭待办项时同步清理二级抽屉。
 - 验证：Apps npm run build 通过；在本地开发服务待办中心打开采购订单审批，供应商引用显示为按钮，点击后成功打开供应商档案抽屉。
+
+**Apps UI - 进入与刷新应用主色闪烁修复（2026-10-29，feat-130）**
+
+- 根因：AppLayout 首次使用空应用设置默认色，接口返回后才更新主色，效果清理再次重置；TopHeaderShell 挂载也强制蓝色。
+- 新增 AppTheme 统一按应用路由管理根主色，布局效果在浏览器绘制前应用配色，移除两处重复主题管理；列表、详情、创建、更新响应按应用缓存主色，删除清理。缓存只含主色 slug，存储失败仍有内存缓存，主色定义继续只来自 appPrimaryColors.ts。
+- 无缓存的首次访问复用 AppLoading 中性全屏等待主色确定；有缓存刷新可立即展示，接口结果仍校正缓存；切换应用及返回管理页分别恢复对应主色与默认色。明暗模式在 React 首屏前恢复，避免加载态与顶部栏初始化时明暗跳变。
+- 已读取实际设计规范 flexmodel-ui/DESIGN.md 与 designTokens.ts，复用 Apps 语义 token 和现有色板，未新增视觉参数。
+- 验证：Apps npm run build、npx tsc --noEmit、36项unit及5项主题Playwright通过；使用 requestAnimationFrame 采样验证浅色/夜间首次进入与延迟接口刷新均无默认色顶部栏帧，另覆盖跨应用/返回管理页、配色存储写入失败、应用接口失败退出等待；git diff --check通过。初次E2E夹具返回错误的通知分页结构造成渲染异常，修正为真实结构后5项全部通过。
+- 标准 init.sh 已运行，clean 被正在使用的 flexmodel-server-dev.jar 文件锁阻塞；保留用户运行服务，全模块非 clean compile（排除maven-plugin）与规定引擎测试通过。既有大包及 /logo.png 构建提示仍在。
+- Apps UI独立仓库提交02a7e02，仅包含本次主题修复与回归；主仓库保留原有菜单授权后端、feat-129记录、flexmodel-ui子模块与未跟踪Apps目录状态，本次记录单独提交。

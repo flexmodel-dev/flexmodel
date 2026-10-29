@@ -30,17 +30,30 @@ public class ServerSessions {
   }
 
   public ManagedSession openOwned(String schema) {
+    return openOwned(schema, false);
+  }
+
+  public ManagedSession openSnapshot(String schema) {
+    return openOwned(schema, true);
+  }
+
+  private ManagedSession openOwned(String schema, boolean snapshot) {
     if (!(factory.getSchemaProvider(schema) instanceof JdbcSchemaProvider provider))
       throw new UnsupportedOperationException("服务端事务数据访问需要 SQL 数据源");
     Connection connection = null;
     try {
       connection = provider.dataSource().getConnection();
+      if (snapshot) {
+        if (!connection.getMetaData().supportsTransactionIsolationLevel(Connection.TRANSACTION_SERIALIZABLE))
+          throw new UnsupportedOperationException("数据源不支持一致性导出所需的串行化事务");
+        connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+      }
       if ("SQLite".equalsIgnoreCase(connection.getMetaData().getDatabaseProductName())) {
         // Development-only contention tolerance; never retry business operations implicitly.
         try (var statement = connection.createStatement()) {
           statement.execute("PRAGMA busy_timeout=5000");
         }
-      } else connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+      } else if (!snapshot) connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
       SqlContext context = new SqlContext(schema, new NamedParameterSqlExecutor(connection), factory.getModelRegistry(), factory);
       return new ServerSqlSession(context, guard);
     } catch (RuntimeException | SQLException error) {

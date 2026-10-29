@@ -3439,3 +3439,16 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：Apps npm run build、npx tsc --noEmit、36项unit及5项主题Playwright通过；使用 requestAnimationFrame 采样验证浅色/夜间首次进入与延迟接口刷新均无默认色顶部栏帧，另覆盖跨应用/返回管理页、配色存储写入失败、应用接口失败退出等待；git diff --check通过。初次E2E夹具返回错误的通知分页结构造成渲染异常，修正为真实结构后5项全部通过。
 - 标准 init.sh 已运行，clean 被正在使用的 flexmodel-server-dev.jar 文件锁阻塞；保留用户运行服务，全模块非 clean compile（排除maven-plugin）与规定引擎测试通过。既有大包及 /logo.png 构建提示仍在。
 - Apps UI独立仓库提交02a7e02，仅包含本次主题修复与回归；主仓库保留原有菜单授权后端、feat-129记录、flexmodel-ui子模块与未跟踪Apps目录状态，本次记录单独提交。
+
+**Apps - 多表 Excel 导入导出（2026-10-29，feat-131）**
+
+- 按确认范围交付 Excel 多 Sheet、平台模板/导出文件与普通文件映射；仅新增、新UUID，同应用同SQL业务库，支持包外已有ID，向所有已登录应用用户开放，沿用当前数据访问范围。未新增运行时行/字段权限。
+- 新增 `/api/apps/{appId}/transfers` 下的业务表逻辑关系元数据、模板、导出、上传、预览、提交与状态接口。POI 6.0.0读写，隐藏版本/列映射元数据和填写说明；包内键与已有ID分列，服务端严格校验映射、目标表与引用。整包5000行/20表/10MB，每表200列，另限制解压体积50MB和1000条目，禁止公式和错误单元格，错误最多展示500项加摘要。
+- 提取复用 AppRecordService 创建字段赋值、输入校验、布局投影、筛选与排序。AppTransferForms 解析普通引用及 SUBFORM.referenceField，普通文本子表链接保持原有校验并在UUID重映射后校验。按实际记录依赖排序，支持无环自引用，循环/悬空/重复键阻止提交；系统目录仅允许已有ID。
+- 复用 ProjectUnitOfWork/ServerSessions，按依赖顺序每批最多100条整包提交；业务库隐藏 `f_app_transfer_receipt` 主键抢占与数据在同一事务持久化，重复/并发提交返回相同结果。内部凭据不进入实时广播和业务触发器。上传和计划绑定应用/用户、30分钟有效，定期清理；重启后有效暂存和已提交凭据均可读取。
+- 导出在独立串行化事务内采集，再生成文件；支持当前筛选、所选ID、多根表、子表及可选业务引用补齐，按表/ID去重，不沿共享引用反向扩散。处理同一记录先作为共享引用、后作为选中子树时继续收集其后代。
+- Apps 记录列表三个入口接入共享五步导入向导、模板下载和多表导出弹窗；复用现有组件与语义主题，服务层处理鉴权multipart与Blob下载、重复提交禁用、网络重试及成功刷新。已读设计规范 `flexmodel-ui/DESIGN.md`，检查浅色、夜间和390px截图。
+- 验证：全模块非clean `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`、规定 `mvn test -q -pl flexmodel-engine`通过；AppTransferPlannerTest 10项、AppTransferResourceTest 10项、AppRecordServiceTest 6项、AppRecordResourceTest 6项通过。覆盖三表回导、普通Excel、包外ID、权限/任务归属、UUID重映射、自引用/循环、文本子表、整包回滚、并发幂等、定义变更和并发写入快照。补跑发现旧记录REST夹具未配置布局却断言投影外字段，已在夹具中显式配置布局，保留原有断言并通过6项回归。
+- Apps `npm run build`、39项Vitest、4项导入导出Playwright、4项既有记录Playwright及两仓库diff检查通过。首轮夜间E2E初始化脚本在documentElement生成前访问classList，修正测试夹具后4项全部通过；产品无页面异常。
+- 标准 `bash ./init.sh` 已运行，clean仍受既有 `flexmodel-server-dev.jar` 文件锁阻塞，保留用户服务，使用非clean验证。原生镜像的POI/XMLBeans依赖未验证，本期验收Java25 JVM；多实例暂存需共享目录或会话路由。既有前端大包和logo构建提示仍在。使用说明与API契约见 `flexmodel-server/docs/excel-transfers.md`。
+- Apps独立仓库提交 `a6f39d9`。主仓库仅提交本功能后端、专项/相关回归测试与文档，保留原有 `flexmodel-ui` 子模块改动及未跟踪的Apps目录；测试暂存已移至系统临时目录，清理了本次仓库内临时产物。正在运行的后端未重启，新接口需加载本次构建后使用。

@@ -23,7 +23,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * 应用表单记录服务。对外仅暴露表单名称，内部映射为实体记录操作。
@@ -107,14 +106,7 @@ public class AppRecordService {
     RecordContext context = resolveRecordContext(
       appId, form, mainFormName, mainRecordId, referenceField);
     Map<String, Object> values = sanitizeInput(form.response(), input, true, context);
-    LocalDateTime now = LocalDateTime.now();
-    String userId = currentUserId();
-    if (!form.response().builtin()) values.put("owner_id", userId);
-//    values.put("id", UUID.randomUUID().toString());
-    values.put("created_by", userId);
-    values.put("updated_by", userId);
-    values.put("created_at", now);
-    values.put("updated_at", now);
+    assignCreationFields(form.response(), values, currentUserId());
     createRecord(appId, form.response(), values);
     return projectRecord(form.response(), renderReferenceRecord(
       appId, form.response(), requireRecord(
@@ -320,7 +312,7 @@ public class AppRecordService {
     return projected;
   }
 
-  private Set<String> exposedFields(AppFormResponse form) {
+  Set<String> exposedFields(AppFormResponse form) {
     if (form.layout() == null || form.layout().items() == null) {
       return Set.of();
     }
@@ -478,6 +470,19 @@ public class AppRecordService {
     return values;
   }
 
+  Map<String, Object> prepareImport(AppFormResponse form, Map<String, Object> input) {
+    return sanitizeInput(form, input, true, null);
+  }
+
+  void assignCreationFields(AppFormResponse form, Map<String, Object> values, String userId) {
+    LocalDateTime now = LocalDateTime.now();
+    if (!form.builtin()) values.put("owner_id", userId);
+    values.put("created_by", userId);
+    values.put("updated_by", userId);
+    values.put("created_at", now);
+    values.put("updated_at", now);
+  }
+
   private Map<String, Object> buildSearchFilter(AppFormResponse form, String search) {
     if (search == null || search.isBlank()) {
       return null;
@@ -502,7 +507,7 @@ public class AppRecordService {
     return filter;
   }
 
-  private String buildFilter(
+  String buildFilter(
     AppFormResponse form,
     String search,
     String viewTabId,
@@ -548,7 +553,7 @@ public class AppRecordService {
       .orElseThrow(() -> new ValidationException("视图页签不存在: " + normalizedViewTabId));
   }
 
-  private String buildSort(AppFormResponse form, String sortField, String sortOrder) {
+  String buildSort(AppFormResponse form, String sortField, String sortOrder) {
     String normalizedSortOrder = normalizeSortOrder(sortOrder);
     String normalizedSortField = sortField == null || sortField.isBlank() ? "created_at" : sortField.trim();
     if (!BUILTIN_FIELDS.contains(normalizedSortField)) {

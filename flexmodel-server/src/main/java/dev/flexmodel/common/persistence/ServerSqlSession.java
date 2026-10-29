@@ -171,6 +171,8 @@ final class ServerSqlSession extends SqlSession implements ManagedSession {
 
     @Override
     public void addPendingChangedEvent(ChangedEvent event) {
+      // Transfer receipts are private control state, never broadcast or fed into business triggers.
+      if (dev.flexmodel.apps.dto.AppTransfer.RECEIPT.equals(event.getModelName())) return;
       pending.add(event);
     }
 

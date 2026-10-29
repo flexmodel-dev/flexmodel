@@ -546,6 +546,7 @@ public class AppRecordResourceTest {
       .when()
       .post(BASE_PATH);
     response.then().statusCode(expectedStatus);
+    if (expectedStatus == 201) exposeFixtureFields(response.body().path("name"));
     return response;
   }
 
@@ -568,7 +569,18 @@ public class AppRecordResourceTest {
       .when()
       .post(BASE_PATH + "/" + formName + "/fields");
     response.then().statusCode(expectedStatus);
+    if (expectedStatus == 201) exposeFixtureFields(formName);
     return response;
+  }
+
+  /** Record APIs project the form layout; fixtures must place the fields they assert. */
+  private void exposeFixtureFields(String formName) {
+    java.util.List<String> names = given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .get(BASE_PATH + "/" + formName).then().statusCode(200).extract().path("fields.name");
+    var items = names.stream().map(name -> java.util.Map.of("type", "FIELD", "name", name)).toList();
+    given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
+      .body(java.util.Map.of("items", items)).put(BASE_PATH + "/" + formName + "/layout").then().statusCode(200);
   }
 
   private void deleteFormQuietly(String formName) {

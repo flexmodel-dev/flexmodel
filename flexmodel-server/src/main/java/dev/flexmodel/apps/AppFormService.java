@@ -95,6 +95,7 @@ public class AppFormService {
   private static final Set<String> BUILTIN_FIELDS = Set.of(
     "id", "owner_id", "created_by", "updated_by", "created_at", "updated_at");
   private static final Set<String> RESERVED_SYSTEM_FORM_NAMES = Set.of(
+    dev.flexmodel.apps.dto.AppTransfer.RECEIPT,
     ReflectionUtils.getModelNameFromClass(User.class), ReflectionUtils.getModelNameFromClass(Department.class), ReflectionUtils.getModelNameFromClass(Role.class),
     ReflectionUtils.getModelNameFromClass(UserDepartment.class), ReflectionUtils.getModelNameFromClass(UserRole.class), ReflectionUtils.getModelNameFromClass(RoleResource.class));
   private static final Set<String> BUILTIN_SYSTEM_FORM_NAMES = Set.of(
@@ -771,6 +772,7 @@ public class AppFormService {
     return modelingService.findModels(appId).stream()
       .filter(EntityDefinition.class::isInstance)
       .map(EntityDefinition.class::cast)
+      .filter(entity -> !dev.flexmodel.apps.dto.AppTransfer.RECEIPT.equals(entity.getName()))
       .toList();
   }
 

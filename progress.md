@@ -3452,3 +3452,64 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - Apps `npm run build`、39项Vitest、4项导入导出Playwright、4项既有记录Playwright及两仓库diff检查通过。首轮夜间E2E初始化脚本在documentElement生成前访问classList，修正测试夹具后4项全部通过；产品无页面异常。
 - 标准 `bash ./init.sh` 已运行，clean仍受既有 `flexmodel-server-dev.jar` 文件锁阻塞，保留用户服务，使用非clean验证。原生镜像的POI/XMLBeans依赖未验证，本期验收Java25 JVM；多实例暂存需共享目录或会话路由。既有前端大包和logo构建提示仍在。使用说明与API契约见 `flexmodel-server/docs/excel-transfers.md`。
 - Apps独立仓库提交 `a6f39d9`。主仓库仅提交本功能后端、专项/相关回归测试与文档，保留原有 `flexmodel-ui` 子模块改动及未跟踪的Apps目录；测试暂存已移至系统临时目录，清理了本次仓库内临时产物。正在运行的后端未重启，新接口需加载本次构建后使用。
+
+**Apps - 讨论行内回复与本人删除权限（2026-10-29，feat-132）**
+
+- 参考 docs/plans/still-storm-deer.md 与用户截图，按最新要求覆盖原计划中所有者/管理员可删除他人评论的规则。点击回复在目标评论下方展开独立
+  DiscussionComposer 并聚焦，包含目标姓名与取消入口；提交保留根 parentId 和具体
+  replyToId，回复的回复仍归并根线程。顶部新讨论草稿独立，回复发送失败保留草稿，成功关闭行内框，删除对应评论后清理回复目标。
+- 本人评论的删除入口移入“更多 → 删除评论”，他人评论不展示更多菜单；后端列表 canDelete 和 DELETE
+  均仅允许作者本人，管理员/所有者不例外。保留顶层级联删除及确认提示。复用既有 DropdownMenu/ConfirmDialog，修复 Portal
+  菜单低于抽屉导致不可点击的层级，夜间删除项用可读红色。补齐现有 AppRecordDrawer 漏掉的 RecordAsideTab 类型导入。
+- 验证：mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'、mvn test -q -pl flexmodel-engine 通过；mvn test -q
+  -pl flexmodel-server -am -Dtest=AppRecordDiscussionServiceTest -Dsurefire.failIfNoSpecifiedTests=false
+  通过2项，覆盖所有者/管理员无法删除他人、普通成员删除自己回复及列表标记。Apps npm run build 与 npm run test:records
+  6项通过；浅色/夜间专项截图检查，修正夜间对比度后复测通过。两仓库 git diff --check 通过。
+- 标准 bash ./init.sh 已执行，clean 仍被正在使用的 flexmodel-server-dev.jar 文件锁阻塞，未停止用户服务；采用非 clean
+  编译验证。后端测试有既有日志文件占用轮转告警，不影响2项测试通过；前端沿用既有大包和 logo 构建提示。
+-
+仓库开始时已有大量暂存与未暂存改动（含讨论功能新类、旧类AD状态及独立Apps仓库的混合改动）。本次仅修改上述目标交互/权限、相关测试、计划与状态文档，保留原有暂存区；为避免把未完成的既有实现混入提交，本次未创建混合提交。后续需连同原讨论功能统一整理提交。
+
+**讨论回复提示简化（2026-10-29，feat-132 追加调整）**
+
+- 按用户要求移除独立“回复某人”横条与取消按钮，输入框占位提示改为“回复 xxx 的讨论”；再次点击同一评论的回复按钮收起，点击其他评论切换目标并聚焦。删除无用的
+  onCancelReply 属性与 X 图标依赖，计划文档同步。
+- 验证：Apps npm run
+  build、浅色/夜间2项讨论Playwright通过，覆盖占位提示、无横条、重复点击收起、重新展开、切换目标、发送失败草稿及删除权限入口。两仓库diff检查通过。仅前端小范围调整，沿用本轮已记录的后端验证和init.sh文件锁限制；保留既有混合暂存区，未混合提交。
+
+**讨论作者头像图片修复（2026-10-29，feat-132 追加调整）**
+
+- 根因：DiscussionItem 只传 authorName，未传 UserAvatar.src，因此始终显示姓名首字。DiscussionPanel 复用 getDirectory (appId)
+  的请求缓存，按 authorId 将成员 avatar 传给顶层评论和回复；保留作者姓名快照。图片由既有 UserAvatar/loadAttachment 携带
+  Bearer 加载，无头像、目录失败、图片404均回退姓名首字；切换应用或卸载时隔离迟到目录响应。
+- 验证：Apps npm run build 与浅色/夜间2项讨论Playwright通过；实际断言本人/其他作者/二级回复图片
+  naturalWidth=100、头像请求含Bearer，以及无头像和404回退。检查浅色回复截图，图片正常显示。两仓库 diff --check
+  通过。仅前端调整，未重复后端测试或本轮已知被dev.jar文件锁阻塞的init.sh；保留既有暂存改动，未混合提交。
+
+**记录动态收起时展示讨论数量（2026-10-29，feat-132 追加调整）**
+
+- BizDrawer 增加可选 asideCollapsedLabel，收起时在展开图标旁显示“X条讨论”，展开后保留图标。AppRecordDrawer
+  首次查看读取一次讨论总数，按应用/表单/记录隔离计数；RecordActivityAside
+  将加载、轮询、发送和删除后的总数回传，收起后保留最新值。计数含回复、零条显示0；读取失败或空响应保留图标，侧栏继续卸载并停止轮询。
+- 回归发现空接口响应在React延迟执行的状态更新回调中抛错，已提前读取并校验total，防止空响应导致抽屉渲染失败。侧栏按记录key重新挂载，防止切换记录遗留讨论内容或计数。
+- 验证：Apps npm run build、npm run test:records
+  7项全部通过，覆盖初始收起5条、删除线程后收起3条、再次展开、切换记录4→0及既有编辑保存。检查浅色/夜间收起数量截图，按钮与更多/关闭图标正常对齐；两仓库diff检查通过。本次仅前端调整，沿用前序后端验证与init.sh文件锁限制；保留既有暂存区，未混合提交。
+
+**讨论提及与回复通知修复（2026-10-29，feat-132 追加调整）**
+
+-
+根因：原create仅在mentionedUserIds非空时enqueue提及通知，单纯回复只保存目标姓名、不通知目标作者。现在解析并保留具体回复目标，按目标author_id发送回复通知；replyToId缺省时以请求parentId为目标，二级回复也正确通知其作者。存储仍归并根线程，显示姓名快照不变。
+-
+@通知保持使用显式选择的成员ID；回复目标与提及接收人去重，同一人只收到一条回复通知，其他提及者收到提及通知。作者本人和目录中不存在/停用的回复目标不通知。NotificationService复用同一正文摘要和标题截断方法，reply/mention各有幂等事件键，沿用与评论同平台事务的Outbox及既有SSE分发。未补发历史回复。
+-
+新增AppRecordDiscussionNotificationTest，使用隔离SQLite和真实REST/Outbox/收件箱：覆盖提及去重和自我排除、根评论回复、二级目标回复、同时回复+提及去重、其他提及者、parentId直接指向二级回复、回复自己、重复drain幂等、未读数、notification.created持久事件、通知详情跳转记录。另保留2项权限测试。前端两种主题的记录E2E增加@候选Enter选择并断言mentionedUserIds与失败草稿保留。
+- 验证：mvn test -q -pl flexmodel-server -am -Dtest=AppRecordDiscussionServiceTest,AppRecordDiscussionNotificationTest
+  -Dsurefire.failIfNoSpecifiedTests=false通过（3项）；NotificationResourceTest#authenticatedStreamPushesImmediatelyAndReplaysWithoutAlerts通过（1项）；全模块非clean
+  compile及规定引擎测试通过；Apps讨论专项浅色/夜间2项通过；两仓库diff检查通过。后端测试仍有既有日志轮转文件锁和无关RabbitMQ连接告警，测试退出码0且断言全部通过。
+- 只读检查当前本地系统库：f_notification已包含discussion_id，现有discussion Outbox
+  3条均为DONE，无待处理/失败记录；未修改运行中的业务数据或向真实用户发送测试通知。新回复行为需后端加载本次代码后生效。沿用本轮init.sh的运行中dev.jar锁限制；既有混合暂存与未暂存改动保留，未创建混合提交。
+
+**零条讨论时隐藏数量文字（2026-10-29，feat-132 追加调整）**
+
+- 收起入口的数量显示条件改为 total > 0，零条只保留可点击的展开图标。同步更新计划与既有记录切换回归，等待零计数接口返回后断言无数量文字且仍可展开。
+- 验证：Apps npm run build、记录切换/零条隐藏Playwright专项1项与diff检查通过。仅前端显示条件微调，保留既有混合暂存区，未混合提交；沿用本轮已记录的后端验证与init.sh文件锁限制。

@@ -25,6 +25,24 @@ model f_app_data_permission_control {
   @comment("表单数据权限控制")
 }
 
+model f_app_record_discussion {
+  id : String @id @length("64"),
+  project_id : String @length("64"),
+  form_name : String @length("64"),
+  record_id : String @length("64"),
+  parent_id : String @length("64") @comment("顶层讨论为空串，回复存顶层讨论ID"),
+  reply_to_name? : String @length("128") @comment("回复目标作者姓名快照"),
+  content : String @length("2000"),
+  author_id : String @length("64"),
+  author_name : String @length("128"),
+  mentioned_user_ids? : JSON,
+  created_at : DateTime,
+  @index(name: "IDX_APP_DISCUSSION_RECORD", fields: [project_id, form_name, record_id, created_at]),
+  @index(name: "IDX_APP_DISCUSSION_PARENT", fields: [project_id, parent_id]),
+  @system,
+  @comment("记录讨论")
+}
+
 model f_notification {
   id: String @id,
   project_id: String,
@@ -36,6 +54,7 @@ model f_notification {
   app_name: String,
   instance_id?: String,
   task_id?: String,
+  discussion_id?: String @length("64"),
   occurred_at: DateTime,
   received_at: DateTime,
   read_at?: DateTime,

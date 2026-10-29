@@ -133,7 +133,7 @@ public class NotificationRepository {
     return mutate(user, session -> {
       var state = session.data().findById(ReflectionUtils.getModelNameFromClass(dev.flexmodel.codegen.entity.NotificationStream.class), user).orElseThrow();
       Map<String, Map<String, Object>> apps = new LinkedHashMap<>();
-      Map<String, Long> categories = new LinkedHashMap<>(Map.of("approval", 0L, "workflow", 0L));
+      Map<String, Long> categories = new LinkedHashMap<>(Map.of("approval", 0L, "workflow", 0L, "discussion", 0L));
       for (var row : session.dsl().select(s -> s.field("project_id").max("name", "app_name")).from(ReflectionUtils.getModelNameFromClass(Notification.class))
         .where(field("recipient_id").eq(user)).groupBy("project_id").execute())
         apps.put(text(row, "project_id"), new HashMap<>(Map.of("appId", text(row, "project_id"), "name", text(row, "name"), "unread", 0L)));
@@ -177,7 +177,7 @@ public class NotificationRepository {
     Map<String, Object> dto = new LinkedHashMap<>();
     for (String key : List.of("id", "category", "title", "content"))
       dto.put(key, full || !key.equals("content") ? row.get(key) : text(row, key).substring(0, Math.min(140, text(row, key).length())));
-    for (var key : Map.of("appId", "project_id", "appName", "app_name", "instanceId", "instance_id", "taskId", "task_id", "receivedAt", "received_at", "occurredAt", "occurred_at", "readAt", "read_at").entrySet())
+    for (var key : Map.of("appId", "project_id", "appName", "app_name", "instanceId", "instance_id", "taskId", "task_id", "discussionId", "discussion_id", "receivedAt", "received_at", "occurredAt", "occurred_at", "readAt", "read_at").entrySet())
       dto.put(key.getKey(), row.get(key.getValue()));
     return dto;
   }

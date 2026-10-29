@@ -53,6 +53,7 @@ import dev.flexmodel.system.dto.SystemFormItemRecord;
 import dev.flexmodel.system.dto.SystemFormLayoutRecord;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.extern.slf4j.Slf4j;
 import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
@@ -77,6 +78,7 @@ import java.util.stream.Collectors;
  * @author cjbi
  */
 @ApplicationScoped
+@Slf4j
 public class AppFormService {
   @Inject
   AppApprovalLifecycle appApprovalLifecycle;
@@ -120,6 +122,9 @@ public class AppFormService {
 
   @Inject
   SessionContext sessionContext;
+
+  @Inject
+  AppRecordDiscussionRepository appRecordDiscussionRepository;
 
   @Inject
   EventBus eventBus;
@@ -563,6 +568,11 @@ public class AppFormService {
       throw new ValidationException("表单已被子表单引用，请先移除相关子表单布局");
     }
     modelingService.dropModel(appId, entityName);
+    try {
+      appRecordDiscussionRepository.deleteByForm(appId, formName);
+    } catch (RuntimeException error) {
+      log.warn("Failed to clean form discussions for {}/{}: {}", appId, formName, error.getMessage());
+    }
     List<AppFormRecord> records = formRecords(project).stream()
       .filter(record -> !record.name().equals(entityName))
       .toList();

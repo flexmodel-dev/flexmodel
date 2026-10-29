@@ -1,6 +1,7 @@
 package dev.flexmodel.notification;
 
 import dev.flexmodel.common.messaging.*;
+import dev.flexmodel.apps.AppRecordDiscussionRepository;
 import dev.flexmodel.directory.DirectoryService;
 import dev.flexmodel.project.ProjectRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -22,6 +23,8 @@ public class NotificationService implements ReliableMessageHandler {
   DirectoryService directoryService;
   @Inject
   ProjectRepository projects;
+  @Inject
+  AppRecordDiscussionRepository appRecordDiscussions;
 
   public String type() {
     return "notification.deliver";
@@ -42,10 +45,17 @@ public class NotificationService implements ReliableMessageHandler {
   public Map<String, Object> detail(String user, String id) {
     var result = new LinkedHashMap<>(inbox.detail(user, id));
     result.put("canNavigate", false);
-    Object appId = result.get("appId"), instanceId = result.get("instanceId");
+    Object appId = result.get("appId"), instanceId = result.get("instanceId"), discussionId = result.get("discussionId");
     if (instanceId != null && !instanceId.toString().isBlank() && appId != null
       && projects.findProject(appId.toString()) != null) {
       result.put("canNavigate", true);
+    } else if (appId != null && discussionId != null && !discussionId.toString().isBlank()) {
+      Map<String, Object> discussion = appRecordDiscussions.findById(appId.toString(), discussionId.toString());
+      if (discussion != null) {
+        result.put("formName", discussion.get("form_name"));
+        result.put("recordId", discussion.get("record_id"));
+        result.put("canNavigate", true);
+      }
     }
     return result;
   }
@@ -60,12 +70,51 @@ public class NotificationService implements ReliableMessageHandler {
   }
 
   public void enqueue(String app, String key, String run, String task, String category, String title, String content, List<String> recipients) {
+    enqueue(app, key, run, task, category, title, content, recipients, Map.of());
+  }
+
+  public void enqueue(String app, String key, String run, String task, String category, String title, String content,
+                      List<String> recipients, Map<String, Object> extra) {
     if (recipients.isEmpty()) return;
     var project = projects.findProject(app);
-    messages.enqueue(app, "notification:" + key, type(), Map.ofEntries(Map.entry("recipients", recipients.stream().distinct().toList()),
-      Map.entry("orderingKey", "notification:" + key), Map.entry("instance_id", run), Map.entry("task_id", task),
-      Map.entry("app_name", project == null ? app : project.getName()), Map.entry("category", category),
-      Map.entry("title", title), Map.entry("content", content), Map.entry("occurred_at", LocalDateTime.now().toString())));
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("recipients", recipients.stream().distinct().toList());
+    payload.put("orderingKey", "notification:" + key);
+    payload.put("instance_id", run);
+    payload.put("task_id", task);
+    payload.put("app_name", project == null ? app : project.getName());
+    payload.put("category", category);
+    payload.put("title", title);
+    payload.put("content", content);
+    payload.put("occurred_at", LocalDateTime.now().toString());
+    payload.putAll(extra);
+    messages.enqueue(app, "notification:" + key, type(), payload);
+  }
+
+  /**
+   * 讨论中被提及时通知对应成员。
+   */
+  public void discussionMention(String app, String discussionId, String author, String formLabel,
+                                String content, List<String> recipients) {
+    discussionNotification(app, discussionId, author, formLabel, content, recipients, "mention", "提到了你");
+  }
+
+  /**
+   * 回复通知发给具体回复目标的作者。
+   */
+  public void discussionReply(String app, String discussionId, String author, String formLabel,
+                              String content, String recipient) {
+    discussionNotification(app, discussionId, author, formLabel, content, List.of(recipient), "reply", "回复了你的讨论");
+  }
+
+  private void discussionNotification(String app, String discussionId, String author, String formLabel,
+                                      String content, List<String> recipients, String kind, String action) {
+    if (recipients.isEmpty()) return;
+    String title = author + " 在「" + formLabel + "」中" + action;
+    String excerpt = content.length() > 500 ? content.substring(0, 500) : content;
+    enqueue(app, "discussion:" + discussionId + ":" + kind, "", "", "discussion",
+      title.substring(0, Math.min(200, title.length())), excerpt, recipients,
+      Map.of("discussion_id", discussionId));
   }
 
   public void pending(String app, String run, String task, String user, String title) {

@@ -30,7 +30,7 @@ public class NotificationResource {
   @GET
   public Object list(@QueryParam("status") @DefaultValue("unread") String status, @QueryParam("category") String category,
                      @QueryParam("appId") String app, @QueryParam("page") @DefaultValue("1") int page, @QueryParam("size") @DefaultValue("30") int size) {
-    if (!Set.of("unread", "all").contains(status) || category != null && !category.isBlank() && !Set.of("approval", "workflow").contains(category))
+    if (!Set.of("unread", "all").contains(status) || category != null && !category.isBlank() && !Set.of("approval", "workflow", "discussion").contains(category))
       throw new BadRequestException("通知筛选参数无效");
     return notificationService.list(user(), status, category, app, page, size);
   }
@@ -45,9 +45,10 @@ public class NotificationResource {
   @Path("{id}")
   public Object detail(@PathParam("id") String id) {
     var result = notificationService.detail(user(), id);
-    if (Boolean.TRUE.equals(result.get("canNavigate"))) {
+    Object instanceId = result.get("instanceId");
+    if (Boolean.TRUE.equals(result.get("canNavigate")) && instanceId != null && !instanceId.toString().isBlank()) {
       try {
-        result.put("approval", approvalsService.detail(result.get("appId").toString(), result.get("instanceId").toString()));
+        result.put("approval", approvalsService.detail(result.get("appId").toString(), instanceId.toString()));
       } catch (dev.flexmodel.common.NotFoundException | ForbiddenException | IllegalArgumentException ignored) {
         result.put("canNavigate", false);
       }
@@ -67,7 +68,7 @@ public class NotificationResource {
   public Object readAll(Map<String, String> body) {
     var filters = body == null ? Map.<String, String>of() : body;
     String category = filters.get("category");
-    if (category != null && !category.isBlank() && !Set.of("approval", "workflow").contains(category))
+    if (category != null && !category.isBlank() && !Set.of("approval", "workflow", "discussion").contains(category))
       throw new BadRequestException("通知分类无效");
     return Map.of("updated", notificationService.read(user(), null, category, filters.get("appId")));
   }

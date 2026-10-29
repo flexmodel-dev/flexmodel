@@ -73,6 +73,44 @@ public class AppMenuService {
     return toResponses(appId, visibleMenus(project, menus), targetLabels(appId));
   }
 
+  /**
+   * 当前用户是否有权访问指定表单：所有者/管理员放行，未绑定菜单的表单放行，否则按菜单可见性判断。
+   */
+  public boolean canAccessForm(String appId, String formName) {
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    if (!sessionContext.isAuthenticatedUser()) return false;
+    String userId = sessionContext.getUserId();
+    if (userId == null || userId.isBlank()) return false;
+    String ownerId = Objects.requireNonNullElse(project.getOwnerId(), "admin");
+    if (userId.equals(ownerId)) return true;
+    Set<String> permissions = sessionContext.getPermissions();
+    if (permissions != null && permissions.contains("*")) return true;
+    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
+    if (flatten(menus).stream().noneMatch(menu -> formTarget(menu, formName))) return true;
+    return flatten(visibleMenus(project, menus)).stream().anyMatch(menu -> formTarget(menu, formName));
+  }
+
+  /**
+   * 当前用户是否应用所有者或管理员。
+   */
+  public boolean isOwnerOrAdmin(String appId) {
+    Project project = appMenuRecordStore.requireAppProject(appId);
+    if (!sessionContext.isAuthenticatedUser()) return false;
+    String userId = sessionContext.getUserId();
+    if (userId == null || userId.isBlank()) return false;
+    String ownerId = Objects.requireNonNullElse(project.getOwnerId(), "admin");
+    if (userId.equals(ownerId)) return true;
+    Set<String> permissions = sessionContext.getPermissions();
+    if (permissions != null && permissions.contains("*")) return true;
+    return objects(directoryService.directory().get("members")).stream()
+      .anyMatch(member -> userId.equals(text(member, "id")) && strings(member.get("roleIds")).contains("admin"));
+  }
+
+  private boolean formTarget(AppMenuRecord menu, String formName) {
+    return ITEM_TYPE.equals(menu.type()) && menu.target() != null
+      && FORM_TARGET_TYPE.equals(menu.target().type()) && formName.equals(menu.target().id());
+  }
+
   public AppMenuTargetsResponse findTargets(String appId) {
     appMenuRecordStore.requireAppProject(appId);
     return new AppMenuTargetsResponse(

@@ -3,6 +3,11 @@
 Apps 的铃铛与通知中心使用真实个人收件箱。审批任务进入 PENDING
 时通知当前执行人，依次审批仅在轮到用户时通知；根实例通过、拒绝、终止时通知发起人。子流程不重复发送结果通知。读取消息不会完成待办或授予业务记录访问权限。
 
+记录讨论使用 `discussion` 分类：@选择成员后通知被提及者，回复时通知具体被回复评论的作者（包括二级回复）。
+未指定 `replyToId` 时使用请求的 `parentId` 作为回复目标，存储仍归并到顶层线程。同一人同时被回复和提及时只收到一条回复通知；
+其他被提及者各收到一条提及通知，作者本人和已停用的回复对象不接收通知。评论与通知 Outbox 在同一平台事务提交，
+沿用可靠投递、收件箱去重和 SSE 实时事件；通知详情可打开对应记录的讨论侧栏，不补发历史回复。
+
 ## 流程设计
 
 现有流程设计器及 `get_app_approval_capabilities` 支持 `notification` 节点：
@@ -38,15 +43,15 @@ read_at。内部 is_read 索引用列与 read_at 同事务维护，以避免当�
 
 所有个人接口需要启用的真实个人账号，不接受 API Key，不接受客户端指定 recipientId；其他用户的通知 ID 返回 404。
 
-| 接口                                                               | 说明                                                                          |
-|--------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| GET /api/notifications                                             | status=unread/all、category=approval/workflow、appId、page、size，默认每页 30 |
-| GET /api/notifications/summary                                     | 字符串 version、unread、byCategory、apps                                      |
-| GET /api/notifications/{id}                                        | 正文、关联审批及当前可用操作                                                  |
-| PUT /api/notifications/{id}/read                                   | 幂等已读                                                                      |
-| POST /api/notifications/read-all                                   | JSON appId/category，作用于该范围所有消息                                     |
-| GET /api/notifications/stream                                      | Bearer 鉴权的 SSE，Last-Event-ID 为用户事件版本                               |
-| POST /api/apps/{appId}/approval-instances/{id}/retry-notifications | 流程管理员重试失败通知                                                        |
+| 接口                                                               | 说明                                                                                     |
+|--------------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| GET /api/notifications                                             | status=unread/all、category=approval/workflow/discussion、appId、page、size，默认每页 30 |
+| GET /api/notifications/summary                                     | 字符串 version、unread、byCategory、apps                                                 |
+| GET /api/notifications/{id}                                        | 正文、关联审批及当前可用操作                                                             |
+| PUT /api/notifications/{id}/read                                   | 幂等已读                                                                                 |
+| POST /api/notifications/read-all                                   | JSON appId/category，作用于该范围所有消息                                                |
+| GET /api/notifications/stream                                      | Bearer 鉴权的 SSE，Last-Event-ID 为用户事件版本                                          |
+| POST /api/apps/{appId}/approval-instances/{id}/retry-notifications | 流程管理员重试失败通知                                                                   |
 
 SSE 包含 snapshot、ready、notification.created、notification.read、notification.read_all，事件版本始终为十进制字符串。首次连接只返回快照，重连补发最多
 1000 条并标记 replay；超过上限或游标无效时以快照重新同步。15 秒心跳，发送超时关闭慢连接，令牌到期关闭连接；前端 1～30

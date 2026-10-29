@@ -14,6 +14,7 @@ import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.data.DataService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.Set;
  * 应用表单记录服务。对外仅暴露表单名称，内部映射为实体记录操作。
  */
 @ApplicationScoped
+@Slf4j
 public class AppRecordService {
 
   private static final Set<String> BUILTIN_FIELDS = Set.of(
@@ -47,6 +49,9 @@ public class AppRecordService {
 
   @Inject
   SessionContext sessionContext;
+
+  @Inject
+  AppRecordDiscussionRepository appRecordDiscussionRepository;
 
   public PageDTO<Map<String, Object>> findRecords(
     String appId,
@@ -92,6 +97,14 @@ public class AppRecordService {
       : requireSubformRecord(appId, form, recordId, context, expand);
     return projectRecord(form.response(), renderReferenceRecord(
       appId, form.response(), record));
+  }
+
+  /**
+   * 供记录讨论等旁路能力校验记录存在，避免加载引用展开。
+   */
+  public void requireRecordExists(String appId, String formName, String recordId) {
+    ResolvedForm form = resolveForm(appId, formName);
+    requireRecord(appId, form, recordId);
   }
 
   public Map<String, Object> createRecord(
@@ -156,6 +169,11 @@ public class AppRecordService {
       requireSubformRecord(appId, form, recordId, context, null);
     }
     deleteRecord(appId, form.response(), recordId);
+    try {
+      appRecordDiscussionRepository.deleteByRecord(appId, form.response().name(), recordId);
+    } catch (RuntimeException error) {
+      log.warn("Failed to clean record discussions for {}/{}/{}: {}", appId, form.response().name(), recordId, error.getMessage());
+    }
   }
 
   private ResolvedForm resolveForm(String appId, String formName) {

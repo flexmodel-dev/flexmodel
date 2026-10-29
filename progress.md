@@ -3538,3 +3538,9 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：Apps npm run build、npm run test:records 10项通过；最终列宽与可见滚动条专项3项通过，断言实际横向滚动、中间列移动、左右列坐标保持、勾选、编辑及字段少时无横向溢出。检查浅色/夜间截图。专项初次占位断言暴露Chromium无头默认--hide-scrollbars，测试显式取消该参数后实际滚动条占位验证通过。
 - 标准bash ./init.sh已运行，clean被既有flexmodel-server-dev.jar文件锁阻塞，保留运行服务；非clean全模块mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'及mvn test -q -pl flexmodel-engine通过。构建仍有既有logo与大包提示。
 - 本次仅提交目标前端文件与状态文档；保留两个仓库原有AD暂存状态与flexmodel-ui子模块改动，恢复本次构建生成的tsconfig.tsbuildinfo。
+
+**固定列悬停透底与分割线调整（2026-10-29，feat-133）**
+
+- 修正通用.app-table tbody tr:hover td优先级高于固定列行背景规则的问题：增加同级悬停选择器，统一使用不透明的主题混合背景，防止横向滚动时后方内容透过固定列。
+- 按用户要求去掉主显字段右侧、操作列左侧的box-shadow分割线。
+- 验证：Apps npm run build、固定列专项3项通过，浅色/夜间在横向滚动且悬停状态下实际读取背景像素alpha=255并断言box-shadow=none；检查夜间截图。两仓库diff检查通过。仅前端样式修正，沿用本轮后端验证与init.sh的运行中JAR文件锁限制；保留原有暂存改动。

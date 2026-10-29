@@ -334,7 +334,7 @@ ID，拒绝重复表单明细。主从记录一次事务保存；第一版采用
 
 ### 9.1 公共用户、角色、组织选择组件
 
-新增通用 `DirectoryMemberPicker`，建议位于 Apps UI 的 `src/components/rb/DirectoryMemberPicker.tsx`
+新增通用 `DirectoryMemberPicker`，建议位于 Apps UI 的 `src/components/biz/DirectoryMemberPicker.tsx`
 ，按现有业务复用组件目录约定组织。组件统一提供用户、角色、组织选择，不放在数据权限页面内部；审批执行人、通知接收人和其他人员选择场景通过配置复用，禁止复制一套权限专用选择器。
 
 公共组件职责：

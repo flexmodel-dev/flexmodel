@@ -39,7 +39,7 @@ public class AppTransferPlanner {
       if (mappings.putIfAbsent(mapping.sheet(), mapping) != null) fail("Sheet 映射重复");
       if (!targets.add(mapping.formName())) fail("同一目标表单只能映射一次");
       AppFormResponse form = forms.apply(mapping.formName());
-      if (form.builtin() || RECEIPT.equals(form.name())) fail("内置表单不允许导入");
+      if (form.builtin()) fail("内置表单不允许导入");
       resolved.put(mapping.sheet(), form);
       SheetData sheet = sheet(workbook, mapping.sheet());
       List<CellValue> header = mapping.headerRow() <= sheet.rows().size() ? sheet.rows().get(mapping.headerRow() - 1) : List.of();

@@ -143,7 +143,7 @@ public class AppTransferService {
 
   private List<ExportForm> collect(String appId, ExportRequest request, boolean template) {
     Map<String, AppFormResponse> available = new LinkedHashMap<>();
-    transferForms.all(appId).values().stream().filter(form -> !form.builtin() && !RECEIPT.equals(form.name())).forEach(form -> available.put(form.name(), form));
+    transferForms.all(appId).values().stream().filter(form -> !form.builtin()).forEach(form -> available.put(form.name(), form));
     Map<String, LinkedHashMap<String, Map<String, Object>>> collected = new LinkedHashMap<>();
     Map<String, List<String>> selectedFields = new HashMap<>();
     Deque<ExportNode> queue = new ArrayDeque<>();

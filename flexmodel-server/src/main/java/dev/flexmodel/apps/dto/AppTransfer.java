@@ -7,7 +7,6 @@ import java.util.Map;
 /** Shared Excel transfer protocol. Column indexes are zero based; Excel row numbers are one based. */
 public final class AppTransfer {
   private AppTransfer() {}
-  public static final String RECEIPT = "f_app_transfer_receipt";
   public static final int MAX_ROWS = 5000;
   public static final int MAX_FORMS = 20;
   public static final int MAX_COLUMNS = 200;
@@ -54,6 +53,10 @@ public final class AppTransfer {
   }
   @RegisterForReflection
   public record TransferResult(String importId, String status, int total, List<FormSummary> forms) {
+  }
+
+  @RegisterForReflection
+  public record Receipt(String appId, String userId, String planHash, TransferResult result) {
   }
   @RegisterForReflection
   public record ImportPlan(String id, String appId, String userId, long expiresAt, String planHash,

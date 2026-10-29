@@ -1,5 +1,22 @@
 # Session Progress Log
 
+## Apps - 移除 f_app_transfer_receipt 凭据表（2026-10-29，feat-131 重构）
+
+- 应用户要求放弃凭据与业务数据的同事务原子性，彻底移除业务库中的 `f_app_transfer_receipt` 幂等凭据表，改用暂存目录中的
+  `.receipt.json` 文件凭据（复用 `AppTransferStore` 的原子写入、TTL 清理与重启可读）。
+- `AppTransferExecutor` 重构：删除建表/注册逻辑（`ensure`），业务写入保持单一 `ProjectUnitOfWork`
+  事务不变；提交成功后在锁内先查文件凭据实现幂等（重复/并发提交返回同一结果），再写凭据文件。新增 `AppTransfer.Receipt`
+  （appId/userId/planHash/result）DTO。
+- 同步清理：`AppTransfer.RECEIPT` 常量删除；`AppFormService`（保留名与实体列表排除）、`AppTransferService` 导出表单排除、
+  `AppTransferPlanner` 内置校验、`ServerSqlSession.CommitEvents` 的凭据事件抑制全部移除；`AppTransferStore.cleanup` 正则纳入
+  `.receipt.json`。
+- 测试：删除 `AppTransferResourceTest` 中对凭据表不出现在表单列表的断言，回滚用例更名为
+  `rollsBackAllFormsWhenLaterRowViolatesUniqueConstraint`；文档 `excel-transfers.md` 一致性与运维章节改写为文件凭据描述。
+- 验证：全模块 `mvn compile`（非 clean，dev.jar 被运行中的 dev 服务器锁定）通过；`AppTransferResourceTest` 10 个 +
+  `AppTransferPlannerTest` 11 个全部通过；引擎模块测试通过，`flexmodel-core-mysql-it` 因外部数据库连接池配置失败（
+  `max size attribute is mandatory`），属环境问题与本次改动无关。
+- 已知取舍：幂等窗口从永久缩至 30 分钟 TTL；业务事务成功但凭据文件写入失败时重试将撞业务主键报错（用户确认接受）。存量业务库中的旧凭据表需人工删除，代码不再创建或引用。
+
 ## Apps UI - 引用选择弹窗实时搜索与清空（2026-10-29，feat-128 补充）
 
 - 后续按要求移除引用表格名称字段下方的附加 ID，下拉候选和选择弹窗共用的表格同步生效；构建/类型检查及 diff --check 再次通过，未运行测试用例，Apps UI 提交 `c451c16`。

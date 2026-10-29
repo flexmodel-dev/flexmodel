@@ -102,7 +102,7 @@ class AppTransferResourceTest {
   }
 
   @Test
-  void rollsBackAllFormsAndReceiptWhenLaterRowViolatesUniqueConstraint() throws Exception {
+  void rollsBackAllFormsWhenLaterRowViolatesUniqueConstraint() throws Exception {
     try (var session = factory.createSession("dev_test")) {
       session.schema().createIndex(new IndexDefinition(items, "uq_" + items).addField("name").setUnique(true));
     }
@@ -138,8 +138,6 @@ class AppTransferResourceTest {
     assertEquals("00123,中文\n换行", rows(supplier).getFirst().get("name"));
     byte[] template = post("/templates", new ExportRequest(List.of(new FormSelection(orders, "ALL", null, null, null, null, null, null)), true, false), 200).asByteArray();
     assertEquals(2, upload(template, "admin").sheets().size());
-    given().header("Authorization", tokens.getAuthorizationHeader()).get(BASE + "/forms").then().statusCode(200)
-      .body("name", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("f_app_transfer_receipt")));
   }
 
   @Test void filteredExportIncludesOnlyMatchingRootAndItsChildren() throws Exception {

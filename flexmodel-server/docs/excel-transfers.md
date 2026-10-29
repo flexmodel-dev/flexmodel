@@ -85,10 +85,12 @@ ID」去重；沿引用补齐的共享记录不会反向带出其余业务记录
 ## 一致性与运行维护
 
 - 导出通过独立串行化事务采集所有表单，完成后提交，再生成 Excel。数据源不支持所需隔离级别时明确失败。
-- 导入通过 `ProjectUnitOfWork` 共用一个业务事务，按依赖顺序每批最多100条写入。业务数据和 `f_app_transfer_receipt` 提交凭据一同提交。凭据表首次使用时初始化，标记为系统模型并排除在业务表单之外，其变更不广播给业务实时订阅或触发器。
+- 导入通过 `ProjectUnitOfWork` 共用一个业务事务，按依赖顺序每批最多100条写入。业务事务成功提交后，将提交凭据以
+  `.receipt.json` 文件写入暂存目录，不占用业务库，也不作为业务模型存在。
 - 相同 `importId` 和 `planHash` 的并发／重复提交返回同一持久化结果。网络错误后重试原请求，不创建新预览；重新预览意味着新的导入操作。
 - 提交前重新校验表单定义、字段与包外引用。定义变化或引用失效返回409，要求重新预览；无效预览返回400，过期返回410，文件超限返回413，其他用户的任务返回404。
-- 暂存文件默认位于 `${java.io.tmpdir}/flexmodel-transfers`，可通过 `flexmodel.transfers.directory` 指定受控持久目录。上传与预览有效期30分钟，每5分钟清理；服务重启后仍可读取有效暂存，已提交结果从业务库凭据读取。多实例部署需使用共享暂存目录或将同一导入会话路由到同一实例。
+- 暂存文件（上传、预览计划、提交凭据）默认位于 `${java.io.tmpdir}/flexmodel-transfers`，可通过
+  `flexmodel.transfers.directory` 指定受控持久目录。上传与预览有效期30分钟，每5分钟清理；服务重启后仍可读取有效暂存与已提交结果。多实例部署需使用共享暂存目录或将同一导入会话路由到同一实例。
 - 原生镜像构建尚需单独验证 Apache POI/XMLBeans 依赖；本次验收路径为 Java 25 JVM。
 
 专项验证：后端 `AppTransferPlannerTest`、`AppTransferResourceTest`；Apps `npm test`、`npm run build` 和 `npx playwright test --config playwright.transfers.config.ts`。

@@ -65,7 +65,7 @@ public class AppTransferStore {
     if (!Files.isDirectory(root)) return;
     try (var files = Files.list(root)) {
       long cutoff = System.currentTimeMillis() - TTL;
-      files.filter(path -> path.getFileName().toString().matches("([0-9a-f-]{36}\\.(upload|plan)\\.json|stage-.*\\.tmp)"))
+      files.filter(path -> path.getFileName().toString().matches("([0-9a-f-]{36}\\.(upload|plan|receipt)\\.json|stage-.*\\.tmp)"))
         .forEach(path -> {
           try { if (Files.getLastModifiedTime(path).toMillis() < cutoff) Files.deleteIfExists(path); }
           catch (IOException ignored) { /* A concurrent request may still own this file; retry next sweep. */ }

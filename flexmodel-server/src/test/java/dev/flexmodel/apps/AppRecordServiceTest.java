@@ -39,7 +39,7 @@ class AppRecordServiceTest {
     service.sessionContext = new SessionContext();
 
     service.findRecords(
-      "app", "orders", 1, 20, null, null, null, null, null, null, null);
+      "app", "orders", 1, 20, null, null, null, null, null, null, null, null);
 
     assertEquals(List.of("customer_id"), dataService.expand);
   }
@@ -70,7 +70,7 @@ class AppRecordServiceTest {
     AppReferenceValueResponse expected = new AppReferenceValueResponse(
       "customer-1", "Customer One", "customer");
     PageDTO<Map<String, Object>> page = service.findRecords(
-      "app", "orders", 1, 20, null, null, null, null, null, null, null);
+      "app", "orders", 1, 20, null, null, null, null, null, null, null, null);
     assertEquals(expected, page.list().getFirst().get("customer_id"));
 
     Map<String, Object> record = service.findRecord(
@@ -95,7 +95,7 @@ class AppRecordServiceTest {
     service.sessionContext = new SessionContext();
 
     Map<String, Object> record = service.findRecords(
-        "app", "orders", 1, 20, null, null, null, null, null, null, null)
+        "app", "orders", 1, 20, null, null, null, null, null, null, null, null)
       .list().getFirst();
 
     assertEquals(Set.of("id", "name"), record.keySet());
@@ -117,7 +117,7 @@ class AppRecordServiceTest {
     service.sessionContext = new SessionContext();
 
     service.findRecords(
-      "app", "orders", 1, 20, null, null, null, "zhang", null, null, null);
+      "app", "orders", 1, 20, null, null, null, "zhang", null, null, null, null);
 
     List<?> conditions = (List<?>) JsonUtils.parseToMap(dataService.filter).get("_and");
     assertEquals(Map.of("name", Map.of("_contains", "张")), conditions.getFirst());
@@ -139,7 +139,7 @@ class AppRecordServiceTest {
     service.sessionContext = new SessionContext();
 
     service.findRecords(
-      "app", "orders", 1, 20, "三", null, null, "zhang", null, null, null);
+      "app", "orders", 1, 20, "三", null, null, "zhang", null, null, null, null);
 
     Map<String, Object> filter = JsonUtils.parseToMap(dataService.filter);
     assertEquals(2, ((List<?>) filter.get("_and")).size());
@@ -158,7 +158,7 @@ class AppRecordServiceTest {
     service.sessionContext = new SessionContext();
 
     assertThrows(dev.flexmodel.common.ValidationException.class, () -> service.findRecords(
-      "app", "orders", 1, 20, null, null, null, "unknown", null, null, null));
+      "app", "orders", 1, 20, null, null, null, "unknown", null, null, null, null));
   }
 
   private static final class StubAppFormService extends AppFormService {

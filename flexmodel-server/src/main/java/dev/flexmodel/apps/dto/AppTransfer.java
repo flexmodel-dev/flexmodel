@@ -17,7 +17,7 @@ public final class AppTransfer {
   }
   @RegisterForReflection
   public record FormSelection(String formName, String scope, List<String> fields, List<String> recordIds,
-                              String search, String viewTabId, String sortField, String sortOrder) {
+                              String search, String viewTabId, String sortField, String sortOrder, String filter) {
   }
   @RegisterForReflection
   public record ColumnMapping(int column, String field, String kind, String targetSheet) {}

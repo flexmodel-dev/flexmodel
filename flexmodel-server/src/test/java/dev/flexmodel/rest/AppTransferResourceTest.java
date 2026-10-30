@@ -58,7 +58,7 @@ class AppTransferResourceTest {
     assertEquals("READY", preview.status(), preview.errors().toString());
     assertEquals(4, commit(preview, "admin", 200).total());
     var before = rows(orders); String orderId = String.valueOf(before.getFirst().get("id"));
-    var request = new ExportRequest(List.of(new FormSelection(orders, "IDS", null, List.of(orderId), null, null, null, null)), true, true);
+    var request = new ExportRequest(List.of(new FormSelection(orders, "IDS", null, List.of(orderId), null, null, null, null, null)), true, true);
     byte[] exported = post("/exports", request, 200).asByteArray();
     UploadResponse uploaded = upload(exported, "admin");
     assertEquals(3, uploaded.sheets().size());
@@ -136,7 +136,7 @@ class AppTransferResourceTest {
     var preview = json.readValue(post("/imports/" + uploaded.uploadId() + "/preview", new PreviewRequest(List.of(mapping)), 200).asByteArray(), PreviewResponse.class);
     commit(preview, "admin", 200);
     assertEquals("00123,中文\n换行", rows(supplier).getFirst().get("name"));
-    byte[] template = post("/templates", new ExportRequest(List.of(new FormSelection(orders, "ALL", null, null, null, null, null, null)), true, false), 200).asByteArray();
+    byte[] template = post("/templates", new ExportRequest(List.of(new FormSelection(orders, "ALL", null, null, null, null, null, null, null)), true, false), 200).asByteArray();
     assertEquals(2, upload(template, "admin").sheets().size());
   }
 
@@ -144,7 +144,7 @@ class AppTransferResourceTest {
     commit(preview(upload(bundle(false, false), "admin"), "admin"), "admin", 200);
     given().header("Authorization", tokens.getAuthorizationHeader()).contentType("application/json").body(Map.of("name", "不匹配"))
       .post(BASE + "/forms/" + orders + "/records").then().statusCode(201);
-    var request = new ExportRequest(List.of(new FormSelection(orders, "FILTERED", null, null, "订单", "all", "name", "ASC")), true, false);
+    var request = new ExportRequest(List.of(new FormSelection(orders, "FILTERED", null, null, "订单", "all", "name", "ASC", null)), true, false);
     var uploaded = upload(post("/exports", request, 200).asByteArray(), "admin");
     assertEquals(2, uploaded.sheets().size());
     var preview = preview(uploaded, "admin");
@@ -160,7 +160,7 @@ class AppTransferResourceTest {
     String oldOrder = String.valueOf(rows(orders).getFirst().get("id"));
     for (var row : rows(items)) given().header("Authorization", tokens.getAuthorizationHeader()).contentType("application/json")
       .body(Map.of("text_link", oldOrder)).put(BASE + "/forms/" + items + "/records/" + row.get("id")).then().statusCode(200);
-    var request = new ExportRequest(List.of(new FormSelection(orders, "IDS", null, List.of(oldOrder), null, null, null, null)), true, false);
+    var request = new ExportRequest(List.of(new FormSelection(orders, "IDS", null, List.of(oldOrder), null, null, null, null, null)), true, false);
     var preview = preview(upload(post("/exports", request, 200).asByteArray(), "admin"), "admin");
     assertTrue(preview.errors().isEmpty(), preview.errors().toString());
     assertEquals(3, commit(preview, "admin", 200).total());
@@ -204,8 +204,8 @@ class AppTransferResourceTest {
       .body(Map.of("name", "孙表记录", "item_id", itemId)).post(BASE + "/forms/" + grand + "/records").then().statusCode(201);
     given().header("Authorization", tokens.getAuthorizationHeader()).contentType("application/json")
       .body(Map.of("linked", itemId)).put(BASE + "/forms/" + supplier + "/records/" + rows(supplier).getFirst().get("id")).then().statusCode(200);
-    var request = new ExportRequest(List.of(new FormSelection(supplier, "ALL", null, null, null, null, null, null),
-      new FormSelection(orders, "ALL", null, null, null, null, null, null)), true, true);
+    var request = new ExportRequest(List.of(new FormSelection(supplier, "ALL", null, null, null, null, null, null, null),
+      new FormSelection(orders, "ALL", null, null, null, null, null, null, null)), true, true);
     var uploaded = upload(post("/exports", request, 200).asByteArray(), "admin");
     assertEquals(4, uploaded.sheets().size());
     var grandSheet = uploaded.suggestions().stream().filter(mapping -> mapping.formName().equals(grand)).findFirst().orElseThrow().sheet();

@@ -394,7 +394,7 @@ class AppToolsTest {
       assertTrue(result.startsWith(
         "Error: create_app_mock_records failed at record index 2 - "));
       var page = appRecordService.findRecords(
-        appId, formName, 1, 20, null, null, null, null, null, null, null);
+        appId, formName, 1, 20, null, null, null, null, null, null, null, null);
       assertEquals(1, page.list().size());
       assertNotNull(page.list().getFirst().get("id"));
     } finally {

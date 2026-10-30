@@ -424,6 +424,29 @@ public class AppFormService {
     return List.copyOf(result);
   }
 
+  Map<String, Object> normalizeQueryFilter(AppFormResponse form, String json) {
+    if (json == null || json.isBlank()) return null;
+    if (json.length() > 16000) throw new ValidationException("高级查询条件过长");
+    Map<String, Object> filter;
+    try {
+      filter = JsonUtils.parseToMap(json);
+    } catch (RuntimeException caught) {
+      throw new ValidationException("高级查询条件必须为 JSON 对象");
+    }
+    if (filter == null || filter.size() != 1) throw new ValidationException("高级查询必须包含全部或任一条件组");
+    String logic = filter.keySet().iterator().next();
+    if (!Set.of("_and", "_or").contains(logic) || !(filter.get(logic) instanceof List<?>)) {
+      throw new ValidationException("高级查询条件组不合法");
+    }
+    Map<String, AppFormFieldRecord> fields = new LinkedHashMap<>();
+    for (AppFormFieldResponse field : form.fields()) {
+      if (!field.builtin()) fields.put(field.name(), new AppFormFieldRecord(
+        field.name(), field.label(), field.type(), field.required(), false, field.options(), field.referenceForm()));
+    }
+    Map<String, Object> normalized = normalizeViewTabFilter(fields, Map.of("_and", filter.get(logic)));
+    return Map.of(logic, normalized.get("_and"));
+  }
+
   private Map<String, Object> normalizeViewTabFilter(
     Map<String, AppFormFieldRecord> fields,
     Map<String, Object> filter

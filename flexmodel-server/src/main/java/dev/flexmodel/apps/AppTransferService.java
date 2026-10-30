@@ -158,7 +158,8 @@ public class AppTransferService {
         String scope = selection.scope() == null ? "ALL" : selection.scope();
         String filter = switch (scope) {
           case "ALL" -> null;
-          case "FILTERED" -> records.buildFilter(form, selection.search(), selection.viewTabId(), null);
+          case "FILTERED" ->
+            records.buildFilter(form, selection.search(), selection.viewTabId(), null, selection.filter());
           case "IDS" -> {
             if (selection.recordIds() == null || selection.recordIds().isEmpty() || selection.recordIds().size() > MAX_ROWS) fail("请选择导出记录");
             yield JsonUtils.toJsonString(Map.of("id", Map.of("_in", selection.recordIds())));

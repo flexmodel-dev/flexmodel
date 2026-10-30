@@ -71,14 +71,15 @@ public class AppRecordService {
     String viewTabId,
     String mainFormName,
     String mainRecordId,
-    String referenceField
+    String referenceField,
+    String queryFilter
   ) {
     ResolvedForm form = resolveForm(appId, formName);
     RecordContext context = resolveRecordContext(
       appId, form, mainFormName, mainRecordId, referenceField);
     int normalizedPage = Math.max(page, 1);
     int normalizedSize = Math.clamp(size, 1, MAX_SIZE);
-    String filter = buildFilter(form.response(), search, viewTabId, context);
+    String filter = buildFilter(form.response(), search, viewTabId, context, queryFilter);
     String sort = buildSort(form.response(), sortField, sortOrder);
     PageDTO<Map<String, Object>> result = findPagingRecords(
       appId, form.response(), normalizedPage, normalizedSize, filter, sort,
@@ -570,13 +571,16 @@ public class AppRecordService {
     AppFormResponse form,
     String search,
     String viewTabId,
-    RecordContext context
+    RecordContext context,
+    String queryFilter
   ) {
     Map<String, Object> searchFilter = buildSearchFilter(form, search);
     Map<String, Object> viewTabFilter = resolveViewTabFilter(form, viewTabId);
     Map<String, Object> relationFilter = context == null ? null : Map.of(
       context.referenceField(), Map.of("_eq", context.mainRecordId()));
     List<Map<String, Object>> filters = new ArrayList<>();
+    Map<String, Object> advanced = appFormService.normalizeQueryFilter(form, queryFilter);
+    if (advanced != null) filters.add(advanced);
     if (viewTabFilter != null) {
       filters.add(viewTabFilter);
     }

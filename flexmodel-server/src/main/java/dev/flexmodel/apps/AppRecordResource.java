@@ -44,13 +44,14 @@ public class AppRecordResource {
     @QueryParam("sortField") String sortField,
     @QueryParam("sortOrder") String sortOrder,
     @QueryParam("viewTabId") String viewTabId,
+    @QueryParam("filter") String filter,
     @QueryParam("mainFormName") String mainFormName,
     @QueryParam("mainRecordId") String mainRecordId,
     @QueryParam("referenceField") String referenceField
   ) {
     return appRecordService.findRecords(
       appId, formName, page, size, search, sortField, sortOrder, viewTabId,
-      mainFormName, mainRecordId, referenceField);
+      mainFormName, mainRecordId, referenceField, filter);
   }
 
   @Parameter(name = "recordId", description = "记录ID", in = ParameterIn.PATH, required = true)

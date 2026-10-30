@@ -89,7 +89,7 @@ public class WorkbenchDataService {
     String search
   ) {
     var records = appRecordService.findRecords(
-      appId, config.formName(), page, size, search, null, null, null, null, null, null);
+      appId, config.formName(), page, size, search, null, null, null, null, null, null, null);
     return new WorkbenchDataLoaderData(records.list(), records.total());
   }
 

@@ -3,12 +3,12 @@ package dev.flexmodel.apps.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * 应用菜单关联项请求。
+ * 应用导航目的地请求。
  *
- * @param type 关联类型
- * @param id   关联ID
+ * @param type 目的地类型
+ * @param id   目的地ID
  */
-public record AppMenuTargetRequest(
+public record NavDestinationRequest(
   @NotBlank(message = "关联类型不能为空")
   String type,
   @NotBlank(message = "关联项不能为空")

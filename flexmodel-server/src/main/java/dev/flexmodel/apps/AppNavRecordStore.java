@@ -1,7 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.dto.AppMenuRecord;
+import dev.flexmodel.apps.dto.AppNavRecord;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
@@ -11,14 +11,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @ApplicationScoped
-public class AppMenuRecordStore {
+public class AppNavRecordStore {
 
   private static final String METADATA_APP_KEY = "app";
 
@@ -36,29 +32,29 @@ public class AppMenuRecordStore {
     return project;
   }
 
-  public List<AppMenuRecord> menuRecords(Project project) {
-    Object value = appNode(project).get("menus");
+  public List<AppNavRecord> navRecords(Project project) {
+    Object value = appNode(project).get("navigation");
     if (value == null) {
       return new ArrayList<>();
     }
     if (!(value instanceof Collection<?> collection)) {
-      throw new ValidationException("应用菜单数据格式不正确");
+      throw new ValidationException("应用导航数据格式不正确");
     }
-    List<AppMenuRecord> result = new ArrayList<>();
+    List<AppNavRecord> result = new ArrayList<>();
     for (Object item : collection) {
-      AppMenuRecord menu = JsonUtils.convertValue(item, AppMenuRecord.class);
-      if (menu == null || isBlank(menu.id()) || isBlank(menu.type()) || isBlank(menu.name())) {
-        throw new ValidationException("应用菜单数据格式不正确");
+      AppNavRecord nav = JsonUtils.convertValue(item, AppNavRecord.class);
+      if (nav == null || isBlank(nav.id()) || isBlank(nav.type()) || isBlank(nav.name())) {
+        throw new ValidationException("应用导航数据格式不正确");
       }
-      result.add(menu);
+      result.add(nav);
     }
     return result;
   }
 
-  public Project saveMenus(Project project, List<AppMenuRecord> menus) {
+  public Project saveNavigation(Project project, List<AppNavRecord> navs) {
     Map<String, Object> metadata = metadataMap(project);
     Map<String, Object> app = appNode(project);
-    app.put("menus", menus);
+    app.put("navigation", navs);
     metadata.put(METADATA_APP_KEY, app);
     project.setMetadata(metadata);
     project.setUpdatedBy(currentUserId());

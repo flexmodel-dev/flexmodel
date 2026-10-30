@@ -1,27 +1,11 @@
 package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.apps.*;
 import dev.flexmodel.apps.approval.AppApprovalCapabilities;
 import dev.flexmodel.apps.approval.AppApprovalFlowModel;
 import dev.flexmodel.apps.approval.AppApprovalFlowService;
-import dev.flexmodel.apps.AppFormService;
-import dev.flexmodel.apps.AppMenuService;
-import dev.flexmodel.apps.AppRecordService;
-import dev.flexmodel.apps.AppService;
-import dev.flexmodel.apps.WorkbenchDataService;
-import dev.flexmodel.apps.WorkbenchService;
-import dev.flexmodel.apps.dto.AppCreateRequest;
-import dev.flexmodel.apps.dto.AppFormCreateRequest;
-import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
-import dev.flexmodel.apps.dto.AppFormItemRecord;
-import dev.flexmodel.apps.dto.AppFormLayoutRequest;
-import dev.flexmodel.apps.dto.AppFormResponse;
-import dev.flexmodel.apps.dto.AppMenuSaveRequest;
-import dev.flexmodel.apps.dto.AppMenuTargetRequest;
-import dev.flexmodel.apps.dto.AppResponse;
-import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
-import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
-import dev.flexmodel.apps.dto.WorkbenchPatchRequest;
+import dev.flexmodel.apps.dto.*;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.inject.Inject;
@@ -34,7 +18,7 @@ import java.util.function.Supplier;
 
 /**
  * MCP 工具：Flexmodel Apps
- * 将应用、表单、布局、菜单、工作台、审批流程和记录能力开放给 AI。
+ * 将应用、表单、布局、导航、工作台、审批流程和记录能力开放给 AI。
  */
 @Slf4j
 public class AppTools {
@@ -46,7 +30,7 @@ public class AppTools {
   AppFormService appFormService;
 
   @Inject
-  AppMenuService appMenuService;
+  AppNavigationService appNavigationService;
 
   @Inject
   AppRecordService appRecordService;
@@ -68,7 +52,7 @@ public class AppTools {
 
   @Tool(description = """
     List all Flexmodel Apps. Each app is an isolated top-level project \
-    with forms, menus, and records. Use this tool before creating an app \
+    with forms, navigation, and records. Use this tool before creating an app \
     to check whether the desired appId already exists.\
     """)
   public String list_apps() {
@@ -261,7 +245,7 @@ public class AppTools {
   @Tool(description = """
     Get the AI-friendly workbench capability catalog for one app. It returns \
     schemaVersion, component specs, required fields, default configs, enum values, \
-    forms, fields, and FORM menus that shortcuts may reference. Call this tool \
+    forms, fields, and FORM navigation entries that shortcuts may reference. Call this tool \
     before generating a workbench layout.\
     """)
   public String get_app_workbench_capabilities(
@@ -372,55 +356,55 @@ public class AppTools {
   }
 
   @Tool(description = """
-    Create a menu entry linked to the app workbench. This is the one-call way to \
-    expose an app's workbench in navigation; it creates an ITEM with BUILTIN \
-    targetId=workbench.\
+    Create a navigation entry linked to the app workbench. This is the one-call way to \
+    expose an app's workbench in navigation; it creates an ENTRY with BUILTIN \
+    destinationId=workbench.\
     """)
-  public String create_app_workbench_menu(
+  public String create_app_workbench_navigation(
     @ToolArg(description = "The app ID") String appId,
-    @ToolArg(description = "Menu display name, required") String name,
-    @ToolArg(description = "Menu icon name, optional") String iconName,
-    @ToolArg(description = "Parent menu ID, only for a nested menu item") String parentId
+    @ToolArg(description = "Navigation entry display name, required") String name,
+    @ToolArg(description = "Navigation entry icon name, optional") String iconName,
+    @ToolArg(description = "Parent navigation ID, only for a nested entry") String parentId
   ) {
-    log.info("create_app_workbench_menu called, appId={}, name={}", appId, name);
+    log.info("create_app_workbench_navigation called, appId={}, name={}", appId, name);
     try {
-      return JsonUtils.toJsonString(appMenuService.createMenu(
+      return JsonUtils.toJsonString(appNavigationService.createNav(
         appId,
-        new dev.flexmodel.apps.dto.AppMenuSaveRequest(
-          "ITEM", name, iconName, parentId,
-          new dev.flexmodel.apps.dto.AppMenuTargetRequest("BUILTIN", "workbench"), null)));
+        new AppNavSaveRequest(
+          "ENTRY", name, iconName, parentId,
+          new NavDestinationRequest("BUILTIN", "workbench"), null)));
     } catch (Exception exception) {
-      log.error("create_app_workbench_menu failed, appId={}, name={}", appId, name, exception);
-      return "Error: create_app_workbench_menu failed - " + exception.getMessage();
+      log.error("create_app_workbench_navigation failed, appId={}, name={}", appId, name, exception);
+      return "Error: create_app_workbench_navigation failed - " + exception.getMessage();
     }
   }
 
   @Tool(description = """
-    Create an app menu entry. This is step 4 of the app creation flow. \
-    menuType allows GROUP or ITEM. GROUP must not bind a target. ITEM must bind \
-    targetType BUILTIN, FORM, or LINK. Use targetId=formName when binding a form, \
-    or targetId=http/https URL when binding a link. \
+    Create an app navigation entry. This is step 4 of the app creation flow. \
+    navType allows GROUP or ENTRY. GROUP must not bind a destination. ENTRY must bind \
+    destinationType BUILTIN, FORM, or LINK. Use destinationId=formName when binding a form, \
+    or destinationId=http/https URL when binding a link. \
     iconName is a Lucide icon name in PascalCase, for example Home, Package, or Rocket.\
     """)
-  public String create_app_menu(
+  public String create_app_navigation(
     @ToolArg(description = "The app ID") String appId,
-    @ToolArg(description = "Menu type: GROUP or ITEM") String menuType,
-    @ToolArg(description = "Menu display name") String name,
-    @ToolArg(description = "Menu icon name") String iconName,
-    @ToolArg(description = "Parent menu ID, only for a nested ITEM") String parentId,
-    @ToolArg(description = "Target type: BUILTIN, FORM, or LINK, required for ITEM") String targetType,
-    @ToolArg(description = "BUILTIN page ID, form name, or http/https URL, required for ITEM") String targetId
+    @ToolArg(description = "Navigation type: GROUP or ENTRY") String navType,
+    @ToolArg(description = "Navigation entry display name") String name,
+    @ToolArg(description = "Navigation entry icon name") String iconName,
+    @ToolArg(description = "Parent navigation ID, only for a nested ENTRY") String parentId,
+    @ToolArg(description = "Destination type: BUILTIN, FORM, or LINK, required for ENTRY") String destinationType,
+    @ToolArg(description = "BUILTIN page ID, form name, or http/https URL, required for ENTRY") String destinationId
   ) {
-    log.info("create_app_menu called, appId={}, menuType={}, name={}", appId, menuType, name);
+    log.info("create_app_navigation called, appId={}, navType={}, name={}", appId, navType, name);
     try {
-      AppMenuTargetRequest target = isBlank(targetType) && isBlank(targetId)
+      NavDestinationRequest destination = isBlank(destinationType) && isBlank(destinationId)
         ? null
-        : new AppMenuTargetRequest(targetType, targetId);
-      return JsonUtils.toJsonString(appMenuService.createMenu(
-        appId, new AppMenuSaveRequest(menuType, name, iconName, parentId, target, null)));
+        : new NavDestinationRequest(destinationType, destinationId);
+      return JsonUtils.toJsonString(appNavigationService.createNav(
+        appId, new AppNavSaveRequest(navType, name, iconName, parentId, destination, null)));
     } catch (Exception exception) {
-      log.error("create_app_menu failed, appId={}, menuType={}, name={}", appId, menuType, name, exception);
-      return "Error: create_app_menu failed - " + exception.getMessage();
+      log.error("create_app_navigation failed, appId={}, navType={}, name={}", appId, navType, name, exception);
+      return "Error: create_app_navigation failed - " + exception.getMessage();
     }
   }
 

@@ -14,14 +14,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.ForbiddenException;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static dev.flexmodel.common.Values.objects;
@@ -49,7 +42,7 @@ public class AppRecordDiscussionService {
   AppFormService appFormService;
 
   @Inject
-  AppMenuService appMenuService;
+  AppNavigationService appNavigationService;
 
   @Inject
   DirectoryService directoryService;
@@ -135,7 +128,7 @@ public class AppRecordDiscussionService {
     if (!sessionContext.isAuthenticatedUser()) throw new ForbiddenException("请使用个人账号参与讨论");
     String userId = sessionContext.getUserId();
     if (userId == null || userId.isBlank()) throw new ForbiddenException("请使用个人账号参与讨论");
-    if (!appMenuService.canAccessForm(appId, formName)) throw new ForbiddenException("无权访问该表单");
+    if (!appNavigationService.canAccessForm(appId, formName)) throw new ForbiddenException("无权访问该表单");
     appRecordService.requireRecordExists(appId, formName, recordId);
     return userId;
   }

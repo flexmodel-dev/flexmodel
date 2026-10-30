@@ -10,7 +10,7 @@ public record WorkbenchCapabilityResponse(
   Integer schemaVersion,
   List<WorkbenchComponentSpecRecord> components,
   List<WorkbenchFormOptionRecord> forms,
-  List<WorkbenchMenuOptionRecord> shortcutMenus,
+  List<WorkbenchNavOptionRecord> shortcutNavs,
   Map<String, List<String>> availableValues,
   WorkbenchLayoutRecord exampleLayout
 ) {

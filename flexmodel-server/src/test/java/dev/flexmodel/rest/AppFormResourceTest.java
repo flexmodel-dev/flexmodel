@@ -4,13 +4,12 @@ import dev.flexmodel.SQLiteTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
-import io.vertx.core.json.JsonObject;
 import io.restassured.response.Response;
+import io.vertx.core.json.JsonObject;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -28,7 +27,7 @@ public class AppFormResourceTest {
   TestTokenHelper testTokenHelper;
 
   private static final String BASE_PATH = Resources.ROOT_PATH + "/apps/dev_test/forms";
-  private static final String MENU_PATH = Resources.ROOT_PATH + "/apps/dev_test/menus";
+  private static final String NAV_PATH = Resources.ROOT_PATH + "/apps/dev_test/navigation";
   private static final String TEST_SUFFIX = Long.toHexString(System.nanoTime());
 
   @Test
@@ -120,7 +119,7 @@ public class AppFormResourceTest {
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .when()
-        .get(MENU_PATH + "/targets")
+        .get(NAV_PATH + "/destinations")
         .then()
         .statusCode(200)
         .body("forms.id", hasItem(formName))
@@ -483,7 +482,7 @@ public class AppFormResourceTest {
       }
       """.formatted(TEST_SUFFIX, TEST_SUFFIX), 201);
     String formName = form.body().path("name");
-    String menuId = null;
+    String navId = null;
 
     try {
       Response updatedForm = given()
@@ -547,16 +546,16 @@ public class AppFormResourceTest {
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .when()
-        .get(MENU_PATH + "/targets")
+        .get(NAV_PATH + "/destinations")
         .then()
         .statusCode(200)
         .body("forms.label", hasItem("更新后表单-" + TEST_SUFFIX));
 
-      menuId = createMenu("""
+      navId = createNav("""
         {
-          "type": "ITEM",
+          "type": "ENTRY",
           "name": "表单菜单-%s",
-          "target": {"type": "FORM", "id": "%s"}
+          "destination": {"type": "FORM", "id": "%s"}
         }
         """.formatted(TEST_SUFFIX, formName), 201);
 
@@ -570,10 +569,10 @@ public class AppFormResourceTest {
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
         .when()
-        .delete(MENU_PATH + "/" + menuId)
+        .delete(NAV_PATH + "/" + navId)
         .then()
         .statusCode(204);
-      menuId = null;
+      navId = null;
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -589,7 +588,7 @@ public class AppFormResourceTest {
         .then()
         .statusCode(404);
     } finally {
-      deleteMenuQuietly(menuId);
+      deleteNavQuietly(navId);
       deleteFormQuietly(formName);
     }
   }
@@ -895,13 +894,13 @@ public class AppFormResourceTest {
     return response;
   }
 
-  private String createMenu(String body, int expectedStatus) {
+  private String createNav(String body, int expectedStatus) {
     Response response = given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
       .body(body)
       .when()
-      .post(MENU_PATH);
+      .post(NAV_PATH);
     response.then().statusCode(expectedStatus);
     return expectedStatus == 201 ? response.body().path("id") : null;
   }
@@ -914,11 +913,11 @@ public class AppFormResourceTest {
       .delete(BASE_PATH + "/" + formName);
   }
 
-  private void deleteMenuQuietly(String menuId) {
-    if (menuId == null) return;
+  private void deleteNavQuietly(String navId) {
+    if (navId == null) return;
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
-      .delete(MENU_PATH + "/" + menuId);
+      .delete(NAV_PATH + "/" + navId);
   }
 }

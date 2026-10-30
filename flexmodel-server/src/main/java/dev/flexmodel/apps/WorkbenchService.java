@@ -1,29 +1,9 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.dto.AppFormFieldResponse;
-import dev.flexmodel.apps.dto.AppFormResponse;
-import dev.flexmodel.apps.dto.AppMenuRecord;
-import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
-import dev.flexmodel.apps.dto.WorkbenchChartConfig;
-import dev.flexmodel.apps.dto.WorkbenchComponentConfig;
-import dev.flexmodel.apps.dto.WorkbenchComponentRecord;
-import dev.flexmodel.apps.dto.WorkbenchComponentSpecRecord;
-import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
-import dev.flexmodel.apps.dto.WorkbenchDataLoaderConfig;
-import dev.flexmodel.apps.dto.WorkbenchFieldOptionRecord;
-import dev.flexmodel.apps.dto.WorkbenchFormOptionRecord;
-import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
-import dev.flexmodel.apps.dto.WorkbenchMenuOptionRecord;
-import dev.flexmodel.apps.dto.WorkbenchMetricConfig;
-import dev.flexmodel.apps.dto.WorkbenchPatchRequest;
-import dev.flexmodel.apps.dto.WorkbenchPlacementRecord;
-import dev.flexmodel.apps.dto.WorkbenchResponse;
-import dev.flexmodel.apps.dto.WorkbenchShortcutsConfig;
-import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
-import dev.flexmodel.apps.dto.WorkbenchTasksConfig;
-import dev.flexmodel.codegen.entity.Project;
+import dev.flexmodel.apps.dto.*;
 import dev.flexmodel.codegen.entity.AppWorkbench;
+import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
@@ -31,14 +11,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @ApplicationScoped
 public class WorkbenchService {
@@ -60,7 +33,7 @@ public class WorkbenchService {
   WorkbenchRepository workbenchRepository;
 
   @Inject
-  AppMenuRecordStore appMenuRecordStore;
+  AppNavRecordStore appNavRecordStore;
 
   @Inject
   AppFormService appFormService;
@@ -69,7 +42,7 @@ public class WorkbenchService {
   SessionContext sessionContext;
 
   public List<WorkbenchSummaryResponse> findWorkbenches(String appId) {
-    Project project = appMenuRecordStore.requireAppProject(appId);
+    Project project = appNavRecordStore.requireAppProject(appId);
     List<AppWorkbench> workbenches = workbenchRepository.findByProjectId(project.getId());
     if (workbenches.isEmpty()) {
       AppWorkbench created = createEntity(project.getId(), DEFAULT_NAME, null, WorkbenchLayoutRecord.empty());
@@ -92,21 +65,21 @@ public class WorkbenchService {
   }
 
   public WorkbenchCapabilityResponse findCapabilities(String appId) {
-    Project project = appMenuRecordStore.requireAppProject(appId);
+    Project project = appNavRecordStore.requireAppProject(appId);
     List<AppFormResponse> forms = appFormService.findForms(appId);
-    List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
+    List<AppNavRecord> navs = appNavRecordStore.navRecords(project);
 
     return new WorkbenchCapabilityResponse(
       WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION,
       componentSpecs(),
       forms.stream().map(this::toFormOption).toList(),
-      shortcutMenuOptions(menus),
+      shortcutNavOptions(navs),
       availableValues(),
       exampleLayout());
   }
 
   public WorkbenchResponse createWorkbench(String appId, WorkbenchCreateRequest request) {
-    Project project = appMenuRecordStore.requireAppProject(appId);
+    Project project = appNavRecordStore.requireAppProject(appId);
     String name = validatedName(request.name());
     validateDescription(request.description());
     requireUniqueName(project.getId(), name, null);
@@ -118,7 +91,7 @@ public class WorkbenchService {
   }
 
   public WorkbenchResponse patchWorkbench(String appId, String workbenchId, WorkbenchPatchRequest request) {
-    Project project = appMenuRecordStore.requireAppProject(appId);
+    Project project = appNavRecordStore.requireAppProject(appId);
     AppWorkbench workbench = requireWorkbench(project.getId(), workbenchId);
 
     if (request.hasName()) {
@@ -143,7 +116,7 @@ public class WorkbenchService {
   }
 
   public void deleteWorkbench(String appId, String workbenchId) {
-    Project project = appMenuRecordStore.requireAppProject(appId);
+    Project project = appNavRecordStore.requireAppProject(appId);
     AppWorkbench workbench = requireWorkbench(project.getId(), workbenchId);
     if (workbenchRepository.countByProjectId(project.getId()) <= 1) {
       throw new ValidationException("至少保留一个工作台");
@@ -173,7 +146,7 @@ public class WorkbenchService {
   }
 
   private AppWorkbench requireWorkbench(String appId, String workbenchId) {
-    Project project = appMenuRecordStore.requireAppProject(appId);
+    Project project = appNavRecordStore.requireAppProject(appId);
     AppWorkbench workbench = workbenchRepository.findByProjectIdAndId(project.getId(), workbenchId);
     if (workbench == null) {
       throw new NotFoundException("工作台不存在: " + workbenchId);
@@ -361,17 +334,17 @@ public class WorkbenchService {
         || shortcutsConfig.columnsPerRow() > 12) {
         throw new ValidationException("工作台快捷入口每行数量必须在 1 到 12 之间: " + component.title());
       }
-      Project project = appMenuRecordStore.requireAppProject(appId);
-      List<AppMenuRecord> menus = appMenuRecordStore.menuRecords(project);
+      Project project = appNavRecordStore.requireAppProject(appId);
+      List<AppNavRecord> navs = appNavRecordStore.navRecords(project);
       List<String> shortcuts = shortcutsConfig.shortcuts() == null ? List.of() : shortcutsConfig.shortcuts();
       Set<String> shortcutIds = new HashSet<>();
-      for (String menuId : shortcuts) {
-        if (isBlank(menuId) || !shortcutIds.add(menuId)) {
+      for (String navId : shortcuts) {
+        if (isBlank(navId) || !shortcutIds.add(navId)) {
           throw new ValidationException("工作台快捷入口菜单不合法");
         }
-        AppMenuRecord menu = findMenu(menus, menuId);
-        if (menu == null || menu.target() == null || !"FORM".equals(menu.target().type())) {
-          throw new ValidationException("工作台快捷入口必须关联表单菜单: " + menuId);
+        AppNavRecord nav = findNav(navs, navId);
+        if (nav == null || nav.destination() == null || !"FORM".equals(nav.destination().type())) {
+          throw new ValidationException("工作台快捷入口必须关联表单菜单: " + navId);
         }
       }
       return;
@@ -415,12 +388,12 @@ public class WorkbenchService {
       .orElse(null);
   }
 
-  private AppMenuRecord findMenu(List<AppMenuRecord> menus, String menuId) {
-    for (AppMenuRecord menu : menus) {
-      if (Objects.equals(menu.id(), menuId)) {
-        return menu;
+  private AppNavRecord findNav(List<AppNavRecord> navs, String navId) {
+    for (AppNavRecord nav : navs) {
+      if (Objects.equals(nav.id(), navId)) {
+        return nav;
       }
-      AppMenuRecord child = menu.children() == null ? null : findMenu(menu.children(), menuId);
+      AppNavRecord child = nav.children() == null ? null : findNav(nav.children(), navId);
       if (child != null) {
         return child;
       }
@@ -464,7 +437,7 @@ public class WorkbenchService {
         DATA_ENDPOINT_TEMPLATE),
       new WorkbenchComponentSpecRecord("shortcuts", null, "快捷入口", "直达表单菜单", 6, 3,
         List.of("type", "shortcuts", "columnsPerRow"), Map.of(
-        "type", "shortcuts", "shortcuts", List.of("<menu.id>"), "columnsPerRow", 2),
+        "type", "shortcuts", "shortcuts", List.of("<nav.id>"), "columnsPerRow", 2),
         null),
       new WorkbenchComponentSpecRecord("tasks", null, "我的任务", "查看流程待办", 4, 4,
         List.of("type"), Map.of("type", "tasks"), null));
@@ -481,16 +454,16 @@ public class WorkbenchService {
         .toList());
   }
 
-  private List<WorkbenchMenuOptionRecord> shortcutMenuOptions(List<AppMenuRecord> menus) {
-    List<WorkbenchMenuOptionRecord> result = new ArrayList<>();
-    for (AppMenuRecord menu : menus) {
-      if (Objects.equals(menu.type(), "ITEM")
-        && menu.target() != null
-        && Objects.equals(menu.target().type(), "FORM")) {
-        result.add(new WorkbenchMenuOptionRecord(menu.id(), menu.name()));
+  private List<WorkbenchNavOptionRecord> shortcutNavOptions(List<AppNavRecord> navs) {
+    List<WorkbenchNavOptionRecord> result = new ArrayList<>();
+    for (AppNavRecord nav : navs) {
+      if (Objects.equals(nav.type(), "ENTRY")
+        && nav.destination() != null
+        && Objects.equals(nav.destination().type(), "FORM")) {
+        result.add(new WorkbenchNavOptionRecord(nav.id(), nav.name()));
       }
-      if (menu.children() != null) {
-        result.addAll(shortcutMenuOptions(menu.children()));
+      if (nav.children() != null) {
+        result.addAll(shortcutNavOptions(nav.children()));
       }
     }
     return result;

@@ -1,32 +1,9 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.apps.approval.AppApprovalLifecycle;
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.dto.AppFormCreateRequest;
-import dev.flexmodel.apps.dto.AppFieldConfig;
-import dev.flexmodel.apps.dto.AppFormItemRecord;
-import dev.flexmodel.apps.dto.AppFormLayoutRecord;
-import dev.flexmodel.apps.dto.AppFormLayoutRequest;
-import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
-import dev.flexmodel.apps.dto.AppFormFieldOptionResponse;
-import dev.flexmodel.apps.dto.AppFormFieldRecord;
-import dev.flexmodel.apps.dto.AppFormFieldResponse;
-import dev.flexmodel.apps.dto.AppFormFieldUpdateRequest;
-import dev.flexmodel.apps.dto.AppFormPatchRequest;
-import dev.flexmodel.apps.dto.AppFormRecord;
-import dev.flexmodel.apps.dto.AppFormResponse;
-import dev.flexmodel.apps.dto.AppFormUpdateRequest;
-import dev.flexmodel.apps.dto.AppFormViewTabRecord;
-import dev.flexmodel.apps.dto.AppMenuRecord;
-import dev.flexmodel.apps.dto.AppMenuTargetRecord;
-import dev.flexmodel.codegen.entity.Department;
-import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.codegen.entity.Role;
-import dev.flexmodel.codegen.entity.RoleResource;
-import dev.flexmodel.codegen.entity.User;
-import dev.flexmodel.codegen.entity.UserDepartment;
-import dev.flexmodel.codegen.entity.UserRole;
+import dev.flexmodel.apps.approval.AppApprovalLifecycle;
+import dev.flexmodel.apps.dto.*;
+import dev.flexmodel.codegen.entity.*;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
@@ -34,42 +11,25 @@ import dev.flexmodel.graphql.dto.GraphQLRefreshEvent;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.IndexDefinition;
 import dev.flexmodel.model.SchemaObject;
-import dev.flexmodel.model.field.BooleanField;
-import dev.flexmodel.model.field.DateField;
-import dev.flexmodel.model.field.DateTimeField;
-import dev.flexmodel.model.field.DefaultValue;
-import dev.flexmodel.model.field.FloatField;
-import dev.flexmodel.model.field.IntField;
-import dev.flexmodel.model.field.JSONField;
-import dev.flexmodel.model.field.ModelRefField;
-import dev.flexmodel.model.field.StringField;
-import dev.flexmodel.model.field.TimeField;
-import dev.flexmodel.model.field.TypedField;
-import dev.flexmodel.modeling.ModelingService;
+import dev.flexmodel.model.field.*;
 import dev.flexmodel.modeling.ModelService;
+import dev.flexmodel.modeling.ModelingService;
 import dev.flexmodel.project.ProjectService;
+import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.system.SystemFormService;
 import dev.flexmodel.system.dto.SystemFormItemRecord;
 import dev.flexmodel.system.dto.SystemFormLayoutRecord;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
-import lombok.extern.slf4j.Slf4j;
 import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 
-import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Pattern;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -586,7 +546,7 @@ public class AppFormService {
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
     String entityName = entity.getName();
-    if (isBoundToMenu(project, formName)) {
+    if (isBoundToNavigation(project, formName)) {
       throw new ValidationException("表单已被菜单绑定，请先解除菜单关联");
     }
     if (isFormUsedAsSubform(project, formName)) {
@@ -1311,29 +1271,29 @@ public class AppFormService {
       .toList();
   }
 
-  private boolean isBoundToMenu(Project project, String formName) {
-    Object value = appNode(project).get("menus");
+  private boolean isBoundToNavigation(Project project, String formName) {
+    Object value = appNode(project).get("navigation");
     if (!(value instanceof List<?> list)) {
       return false;
     }
-    AppMenuRecord[] menus = JsonUtils.convertValue(list, AppMenuRecord[].class);
-    for (AppMenuRecord menu : menus) {
-      if (containsFormTarget(menu, formName)) {
+    AppNavRecord[] navs = JsonUtils.convertValue(list, AppNavRecord[].class);
+    for (AppNavRecord nav : navs) {
+      if (containsFormDestination(nav, formName)) {
         return true;
       }
     }
     return false;
   }
 
-  private boolean containsFormTarget(AppMenuRecord menu, String formName) {
-    if (menu == null) {
+  private boolean containsFormDestination(AppNavRecord nav, String formName) {
+    if (nav == null) {
       return false;
     }
-    AppMenuTargetRecord target = menu.target();
-    if (target != null && "FORM".equals(target.type()) && formName.equals(target.id())) {
+    NavDestinationRecord destination = nav.destination();
+    if (destination != null && "FORM".equals(destination.type()) && formName.equals(destination.id())) {
       return true;
     }
-    return menu.children() != null && menu.children().stream().anyMatch(child -> containsFormTarget(child, formName));
+    return nav.children() != null && nav.children().stream().anyMatch(child -> containsFormDestination(child, formName));
   }
 
   private void ensureUniqueFormName(Project project, String appId, String formName) {

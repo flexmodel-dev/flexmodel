@@ -1,5 +1,31 @@
 # Session Progress Log
 
+## Apps - 菜单重命名为导航（2026-10-30，feat-140）
+
+- 服务端：AppMenuService/AppMenuResource/AppMenuRecordStore 更名为
+  AppNavigationService/AppNavigationResource/AppNavRecordStore；
+  metadata `app.menus` 节点改为 `app.navigation`；REST `/apps/{appId}/menus` → `/navigation`，`/menus/targets` →
+  `/navigation/destinations`；
+  DTO：AppNavRecord/AppNavResponse/AppNavSaveRequest/AppNavOrderRequest/NavDestinationRecord (原 AppMenuTargetRecord)/
+  NavVisibilityRule (原 AppMenuMember，授权字段 members → visibility)/NavDestinationRequest/NavDestinationResponse/
+  NavDestinationsResponse/WorkbenchNavOptionRecord (WorkbenchCapability.shortcutMenus → shortcutNavs)；
+  导航类型值 `ITEM` → `ENTRY`；MCP `create_app_menu` → `create_app_navigation`、`create_app_workbench_menu` →
+  `create_app_workbench_navigation`。
+- 前端：`appMenus.ts` 与 `appMenuNavigation.ts` 合并为 `appNavigation.ts`（AppNav/NavDestination/visibility、新端点），
+  全部消费方切换（AppMenuManager、MenuEditorDialog、MenuAuthorizationDialog、NavDestinationPicker、AppLayout、AppTopHeader、
+  AppMenuPage、AppHome、AppRecordView、WorkbenchHome、ComponentDesigner、workbenches.ts、appForms.ts、main.tsx 路由参数
+  `:navId`），
+  删除旧文件 appMenus.ts/appMenuNavigation.ts/MenuLinkPicker.tsx；UI 组件名与搭建者文案保留“菜单”，mock.ts 演示数据未动。
+- 事故与修复：曾用 PowerShell `Set-Content` 替换 AppFormResourceTest.java 中 menuId→navId，把无 BOM 的 UTF-8 写成 ANSI，
+  中文字符损坏；已 `git checkout` 恢复 HEAD 版本后用 edit 工具重做 nav
+  化修改（NAV_PATH/createNav/deleteNavQuietly/ENTRY/destination）。
+  教训：Windows PowerShell 5.1 下写文件一律用 UTF-8 安全的 edit/write 工具，不用 Set-Content/Out-File。
+- 验证：Apps `npm run build`（tsc+vite）通过；全模块非 clean `mvn compile` 通过（clean 被运行中的 flexmodel-server-dev.jar
+  文件锁阻塞，保留用户 dev 进程）；`mvn test -pl flexmodel-engine` 通过；AppNavigationResourceTest 11/11 通过，
+  AppFormResourceTest 的 testUpdateFormAndDeleteBoundForm 通过；AppToolsTest 4 个失败与 AppFormResourceTest 其余 2 个失败
+  均为字段/布局/认证等既有失败（与导航无关，AGENTS.md 已注明服务模块测试存在已知失败）。
+- 兼容性：不做历史兼容——存量项目 metadata 中旧 `app.menus` 数据需自行迁移（或重新配置导航）；前端旧接口调用方无兼容层。
+
 ## 移除审计日志功能（2026-10-30，auditlog-removal）
 
 - 按用户要求彻底移除 AuditLog：后端删除 `dev.flexmodel.auditlog`

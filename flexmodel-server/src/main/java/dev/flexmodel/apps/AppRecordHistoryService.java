@@ -1,11 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.dto.AppFormResponse;
-import dev.flexmodel.apps.dto.AppRecordHistoryChange;
-import dev.flexmodel.apps.dto.AppRecordHistoryDetail;
-import dev.flexmodel.apps.dto.AppRecordHistoryItem;
-import dev.flexmodel.apps.dto.AppRecordHistoryPage;
+import dev.flexmodel.apps.dto.*;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
@@ -17,15 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-import static dev.flexmodel.common.Values.object;
+import java.util.*;
 
 /**
  * 记录历史查询：访问检查、分页与结果投影。变更详情按当前表单布局可见字段投影，
@@ -43,7 +31,7 @@ public class AppRecordHistoryService {
   @Inject
   AppFormService appFormService;
   @Inject
-  AppMenuService appMenuService;
+  AppNavigationService appNavigationService;
   @Inject
   AppRecordService appRecordService;
   @Inject
@@ -91,7 +79,7 @@ public class AppRecordHistoryService {
     String targetType = String.valueOf(target.get("target_type"));
     AppFormResponse eventForm = resolveEventForm(appId, form, event);
     boolean allowed = eventForm == null || eventForm.name().equals(form.name())
-      || appMenuService.canAccessForm(appId, eventForm.name());
+      || appNavigationService.canAccessForm(appId, eventForm.name());
     List<AppRecordHistoryChange> changes = allowed
       ? visibleChanges(eventForm, changesOf(event), Integer.MAX_VALUE).changes()
       : List.of();
@@ -117,7 +105,7 @@ public class AppRecordHistoryService {
     if (!sessionContext.isAuthenticatedUser()) throw new ForbiddenException("请登录后查看记录历史");
     String userId = sessionContext.getUserId();
     if (userId == null || userId.isBlank()) throw new ForbiddenException("请登录后查看记录历史");
-    if (!appMenuService.canAccessForm(appId, formName)) throw new ForbiddenException("无权访问该表单");
+    if (!appNavigationService.canAccessForm(appId, formName)) throw new ForbiddenException("无权访问该表单");
     appRecordService.requireRecordExists(appId, formName, recordId);
   }
 
@@ -130,7 +118,7 @@ public class AppRecordHistoryService {
     String targetType = String.valueOf(target.get("target_type"));
     AppFormResponse eventForm = resolveEventForm(appId, timelineForm, event);
     boolean allowed = eventForm != null && (eventForm.name().equals(timelineForm.name())
-      || appMenuService.canAccessForm(appId, eventForm.name()));
+      || appNavigationService.canAccessForm(appId, eventForm.name()));
     Projection projection = visibleChanges(eventForm, changesOf(event), PREVIEW_LIMIT);
     List<AppRecordHistoryChange> visible = allowed ? projection.changes() : List.of();
     String recordLabel = allowed ? text(event, "record_label") : null;
@@ -317,7 +305,7 @@ public class AppRecordHistoryService {
     String actorId = text(event, "actor_id");
     String initiator = text(source, "initiator");
     boolean commentVisible = allowed && userId != null && (userId.equals(actorId) || userId.equals(initiator)
-      || appMenuService.isOwnerOrAdmin(appId));
+      || appNavigationService.isOwnerOrAdmin(appId));
     if (commentVisible && source.containsKey("comment")) result.put("comment", source.get("comment"));
     return result;
   }

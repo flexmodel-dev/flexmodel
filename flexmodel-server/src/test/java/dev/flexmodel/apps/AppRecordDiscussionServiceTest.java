@@ -23,7 +23,7 @@ class AppRecordDiscussionServiceTest {
     service.sessionContext.setAuthenticatedUser(true);
     service.sessionContext.setUserId("admin");
     service.sessionContext.setPermissions(Set.of("*"));
-    service.appMenuService = new AppMenuService() {
+    service.appNavigationService = new AppNavigationService() {
       @Override
       public boolean canAccessForm(String appId, String formName) {
         return true;

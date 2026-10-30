@@ -6,15 +6,15 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * 创建或更新应用菜单请求。
+ * 创建或更新应用导航请求。
  *
- * @param type     菜单类型
- * @param name     菜单名称
- * @param iconName 图标名称
- * @param parentId 父级菜单ID
- * @param target   关联项
+ * @param type        导航类型
+ * @param name        导航名称
+ * @param iconName    图标名称
+ * @param parentId    父级导航ID
+ * @param destination 目的地
  */
-public record AppMenuSaveRequest(
+public record AppNavSaveRequest(
   @NotBlank(message = "菜单类型不能为空")
   String type,
   @NotBlank(message = "菜单名称不能为空")
@@ -22,7 +22,7 @@ public record AppMenuSaveRequest(
   String name,
   String iconName,
   String parentId,
-  AppMenuTargetRequest target,
-  List<AppMenuMember> members
+  NavDestinationRequest destination,
+  List<NavVisibilityRule> visibility
 ) {
 }

@@ -17,13 +17,13 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 /**
- * AppMenuResource 集成测试。
+ * AppNavigationResource 集成测试。
  *
  * @author cjbi
  */
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
-public class AppMenuResourceTest {
+public class AppNavigationResourceTest {
 
   @Inject
   TestTokenHelper testTokenHelper;
@@ -31,11 +31,11 @@ public class AppMenuResourceTest {
   @Inject
   SessionFactory sessions;
 
-  private static final String BASE_PATH = Resources.ROOT_PATH + "/apps/dev_test/menus";
+  private static final String BASE_PATH = Resources.ROOT_PATH + "/apps/dev_test/navigation";
   private static final String TEST_SUFFIX = Long.toHexString(System.nanoTime());
 
   @Test
-  void testFindMenusUnauthorized() {
+  void testFindNavigationUnauthorized() {
     given()
       .when()
       .get(BASE_PATH)
@@ -44,11 +44,11 @@ public class AppMenuResourceTest {
   }
 
   @Test
-  void testFindTargets() {
+  void testFindDestinations() {
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
-      .get(BASE_PATH + "/targets")
+      .get(BASE_PATH + "/destinations")
       .then()
       .statusCode(200)
       .body("builtIn.size()", equalTo(3))
@@ -62,19 +62,19 @@ public class AppMenuResourceTest {
   }
 
   @Test
-  void testCreateBuiltInMenuGeneratesPageRoute() {
-    String groupId = createMenu("""
+  void testCreateBuiltInNavGeneratesPageRoute() {
+    String groupId = createNav("""
       {
         "type": "GROUP",
         "name": "内置页面分组-%s"
       }
       """.formatted(TEST_SUFFIX), 201);
-    String menuId = createMenu("""
+    String navId = createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "工作台-%s",
         "parentId": "%s",
-        "target": {"type": "BUILTIN", "id": "workbench"}
+        "destination": {"type": "BUILTIN", "id": "workbench"}
       }
       """.formatted(TEST_SUFFIX, groupId), 201);
 
@@ -85,24 +85,24 @@ public class AppMenuResourceTest {
         .get(BASE_PATH)
         .then()
         .statusCode(200)
-        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.target.type".formatted(groupId, menuId),
+        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.destination.type".formatted(groupId, navId),
           equalTo("BUILTIN"))
-        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.target.id".formatted(groupId, menuId),
+        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.destination.id".formatted(groupId, navId),
           equalTo("workbench"))
-        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.pageRoute".formatted(groupId, menuId),
-          equalTo("/apps/dev_test/" + menuId));
+        .body("find { it.id == '%s' }.children.find { it.id == '%s' }.pageRoute".formatted(groupId, navId),
+          equalTo("/apps/dev_test/" + navId));
     } finally {
-      deleteMenuQuietly(groupId);
+      deleteNavQuietly(groupId);
     }
   }
 
   @Test
-  void testCreateAndUpdateLinkMenu() {
-    String menuId = createMenu("""
+  void testCreateAndUpdateLinkNav() {
+    String navId = createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "自定义链接-%s",
-        "target": {"type": "LINK", "id": "https://example.com/path?from=flexmodel"}
+        "destination": {"type": "LINK", "id": "https://example.com/path?from=flexmodel"}
       }
       """.formatted(TEST_SUFFIX), 201);
 
@@ -112,19 +112,19 @@ public class AppMenuResourceTest {
         .contentType(ContentType.JSON)
         .body("""
           {
-            "type": "ITEM",
+            "type": "ENTRY",
             "name": "自定义链接-%s",
-            "target": {"type": "LINK", "id": "https://docs.example.com/flexmodel"}
+            "destination": {"type": "LINK", "id": "https://docs.example.com/flexmodel"}
           }
           """.formatted(TEST_SUFFIX))
         .when()
-        .put(BASE_PATH + "/" + menuId)
+        .put(BASE_PATH + "/" + navId)
         .then()
         .statusCode(200)
-        .body("target.type", equalTo("LINK"))
-        .body("target.id", equalTo("https://docs.example.com/flexmodel"))
-        .body("target.label", equalTo("https://docs.example.com/flexmodel"))
-        .body("pageRoute", equalTo("/apps/dev_test/" + menuId));
+        .body("destination.type", equalTo("LINK"))
+        .body("destination.id", equalTo("https://docs.example.com/flexmodel"))
+        .body("destination.label", equalTo("https://docs.example.com/flexmodel"))
+        .body("pageRoute", equalTo("/apps/dev_test/" + navId));
 
       given()
         .header("Authorization", testTokenHelper.getAuthorizationHeader())
@@ -132,34 +132,34 @@ public class AppMenuResourceTest {
         .get(BASE_PATH)
         .then()
         .statusCode(200)
-        .body("find { it.id == '%s' }.target.type".formatted(menuId), equalTo("LINK"))
-        .body("find { it.id == '%s' }.target.id".formatted(menuId),
+        .body("find { it.id == '%s' }.destination.type".formatted(navId), equalTo("LINK"))
+        .body("find { it.id == '%s' }.destination.id".formatted(navId),
           equalTo("https://docs.example.com/flexmodel"));
     } finally {
-      deleteMenuQuietly(menuId);
+      deleteNavQuietly(navId);
     }
   }
 
   @Test
-  void testMoveItemBetweenGroups() {
-    String sourceGroupId = createMenu("""
+  void testMoveEntryBetweenGroups() {
+    String sourceGroupId = createNav("""
       {
         "type": "GROUP",
         "name": "移动源分组-%s"
       }
       """.formatted(TEST_SUFFIX), 201);
-    String targetGroupId = createMenu("""
+    String targetGroupId = createNav("""
       {
         "type": "GROUP",
         "name": "移动目标分组-%s"
       }
       """.formatted(TEST_SUFFIX), 201);
-    String itemId = createMenu("""
+    String entryId = createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "移动菜单-%s",
         "parentId": "%s",
-        "target": {"type": "BUILTIN", "id": "files"}
+        "destination": {"type": "BUILTIN", "id": "files"}
       }
       """.formatted(TEST_SUFFIX, sourceGroupId), 201);
 
@@ -169,14 +169,14 @@ public class AppMenuResourceTest {
         .contentType(ContentType.JSON)
         .body("""
           {
-            "type": "ITEM",
+            "type": "ENTRY",
             "name": "移动菜单-%s",
             "parentId": "%s",
-            "target": {"type": "BUILTIN", "id": "files"}
+            "destination": {"type": "BUILTIN", "id": "files"}
           }
           """.formatted(TEST_SUFFIX, targetGroupId))
         .when()
-        .put(BASE_PATH + "/" + itemId)
+        .put(BASE_PATH + "/" + entryId)
         .then()
         .statusCode(200)
         .body("parentId", equalTo(targetGroupId));
@@ -188,36 +188,36 @@ public class AppMenuResourceTest {
         .then()
         .statusCode(200)
         .body("find { it.id == '%s' }.children.collect { it.id }".formatted(sourceGroupId),
-          not(hasItem(itemId)))
+          not(hasItem(entryId)))
         .body("find { it.id == '%s' }.children.collect { it.id }".formatted(targetGroupId),
-          hasItem(itemId));
+          hasItem(entryId));
     } finally {
-      deleteMenuQuietly(sourceGroupId);
-      deleteMenuQuietly(targetGroupId);
+      deleteNavQuietly(sourceGroupId);
+      deleteNavQuietly(targetGroupId);
     }
   }
 
   @Test
-  void testMoveItemOutOfGroup() {
-    String rootGroupId = createMenu("""
+  void testMoveEntryOutOfGroup() {
+    String rootGroupId = createNav("""
       {
         "type": "GROUP",
         "name": "移出根分组-%s"
       }
       """.formatted(TEST_SUFFIX), 201);
-    String nestedGroupId = createMenu("""
+    String nestedGroupId = createNav("""
       {
         "type": "GROUP",
         "name": "移出嵌套分组-%s",
         "parentId": "%s"
       }
       """.formatted(TEST_SUFFIX, rootGroupId), 201);
-    String itemId = createMenu("""
+    String entryId = createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "移出菜单-%s",
         "parentId": "%s",
-        "target": {"type": "BUILTIN", "id": "files"}
+        "destination": {"type": "BUILTIN", "id": "files"}
       }
       """.formatted(TEST_SUFFIX, nestedGroupId), 201);
 
@@ -227,14 +227,14 @@ public class AppMenuResourceTest {
         .contentType(ContentType.JSON)
         .body("""
           {
-            "type": "ITEM",
+            "type": "ENTRY",
             "name": "移出菜单-%s",
             "parentId": "%s",
-            "target": {"type": "BUILTIN", "id": "files"}
+            "destination": {"type": "BUILTIN", "id": "files"}
           }
           """.formatted(TEST_SUFFIX, rootGroupId))
         .when()
-        .put(BASE_PATH + "/" + itemId)
+        .put(BASE_PATH + "/" + entryId)
         .then()
         .statusCode(200)
         .body("parentId", equalTo(rootGroupId));
@@ -246,33 +246,34 @@ public class AppMenuResourceTest {
         .then()
         .statusCode(200)
         .body("find { it.id == '%s' }.children.collect { it.id }".formatted(nestedGroupId),
-          not(hasItem(itemId)))
+          not(hasItem(entryId)))
         .body("find { it.id == '%s' }.children.collect { it.id }".formatted(rootGroupId),
-          hasItem(itemId));
+          hasItem(entryId));
     } finally {
-      deleteMenuQuietly(rootGroupId);
-      deleteMenuQuietly(nestedGroupId);
+      deleteNavQuietly(rootGroupId);
+      deleteNavQuietly(nestedGroupId);
     }
   }
+
   @Test
-  void testMenuCrudOrderAndAppUpdatePreservesMenus() {
-    String groupId = createMenu("""
+  void testNavCrudOrderAndAppUpdatePreservesNavigation() {
+    String groupId = createNav("""
       {
         "type": "GROUP",
         "name": "菜单测试分组-%s",
         "iconName": "Folder"
       }
       """.formatted(TEST_SUFFIX), 201);
-    String childId = createMenu("""
+    String childId = createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "菜单测试学生-%s",
         "iconName": "User",
         "parentId": "%s",
-        "target": {"type": "FORM", "id": "Student"}
+        "destination": {"type": "FORM", "id": "Student"}
       }
       """.formatted(TEST_SUFFIX, groupId), 201);
-    String nestedGroupId = createMenu("""
+    String nestedGroupId = createNav("""
       {
         "type": "GROUP",
         "name": "菜单测试嵌套分组-%s",
@@ -280,21 +281,21 @@ public class AppMenuResourceTest {
         "parentId": "%s"
       }
       """.formatted(TEST_SUFFIX, groupId), 201);
-    String nestedChildId = createMenu("""
+    String nestedChildId = createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "菜单测试嵌套学生-%s",
         "iconName": "User",
         "parentId": "%s",
-        "target": {"type": "FORM", "id": "Student"}
+        "destination": {"type": "FORM", "id": "Student"}
       }
       """.formatted(TEST_SUFFIX, nestedGroupId), 201);
-    String builtInId = createMenu("""
+    String builtInId = createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "菜单测试工作台-%s",
         "iconName": "Home",
-        "target": {"type": "BUILTIN", "id": "files"}
+        "destination": {"type": "BUILTIN", "id": "files"}
       }
       """.formatted(TEST_SUFFIX), 201);
 
@@ -322,11 +323,11 @@ public class AppMenuResourceTest {
         .contentType(ContentType.JSON)
         .body("""
             {
-              "type": "ITEM",
+              "type": "ENTRY",
           "name": "菜单测试学生更新-%s",
               "iconName": "BookUser",
               "parentId": "%s",
-              "target": {"type": "FORM", "id": "Student"}
+              "destination": {"type": "FORM", "id": "Student"}
             }
           """.formatted(TEST_SUFFIX, groupId))
         .when()
@@ -335,9 +336,9 @@ public class AppMenuResourceTest {
         .statusCode(200)
         .body("id", equalTo(childId))
         .body("name", equalTo("菜单测试学生更新-" + TEST_SUFFIX))
-        .body("target.id", equalTo("Student"))
-        .body("target.label", equalTo("学生"))
-        .body("target.type", equalTo("FORM"))
+        .body("destination.id", equalTo("Student"))
+        .body("destination.label", equalTo("学生"))
+        .body("destination.type", equalTo("FORM"))
         .body("pageRoute", equalTo("/apps/dev_test/" + childId));
 
       given()
@@ -409,83 +410,83 @@ public class AppMenuResourceTest {
         .body("id", not(hasItem(groupId)))
         .body("id", not(hasItem(childId)));
     } finally {
-      deleteMenuQuietly(builtInId);
-      deleteMenuQuietly(groupId);
-      deleteMenuQuietly(childId);
+      deleteNavQuietly(builtInId);
+      deleteNavQuietly(groupId);
+      deleteNavQuietly(childId);
     }
   }
 
   @Test
-  void testCreateMenuValidations() {
-    createMenu("""
+  void testCreateNavValidations() {
+    createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "缺少关联项",
         "iconName": "Home"
       }
       """, 400);
-    createMenu("""
+    createNav("""
       {
         "type": "GROUP",
         "name": "分组不能关联",
-        "target": {"type": "BUILTIN", "id": "files"}
+        "destination": {"type": "BUILTIN", "id": "files"}
       }
       """, 400);
-    createMenu("""
+    createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "父级不存在",
         "parentId": "not_exists",
-        "target": {"type": "BUILTIN", "id": "files"}
+        "destination": {"type": "BUILTIN", "id": "files"}
       }
       """, 400);
-    createMenu("""
+    createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "非法图标",
         "iconName": "not_valid",
-        "target": {"type": "BUILTIN", "id": "files"}
+        "destination": {"type": "BUILTIN", "id": "files"}
       }
       """, 400);
-    createMenu("""
+    createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "非法内置项",
-        "target": {"type": "BUILTIN", "id": "not_exists"}
+        "destination": {"type": "BUILTIN", "id": "not_exists"}
       }
       """, 400);
-    createMenu("""
+    createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "非法表单",
-        "target": {"type": "FORM", "id": "not_exists"}
+        "destination": {"type": "FORM", "id": "not_exists"}
       }
       """, 400);
-    createMenu("""
+    createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "非法链接协议",
-        "target": {"type": "LINK", "id": "javascript:alert(1)"}
+        "destination": {"type": "LINK", "id": "javascript:alert(1)"}
       }
       """, 400);
-    createMenu("""
+    createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "非法链接传输协议",
-        "target": {"type": "LINK", "id": "ftp://example.com"}
+        "destination": {"type": "LINK", "id": "ftp://example.com"}
       }
       """, 400);
-    createMenu("""
+    createNav("""
       {
-        "type": "ITEM",
+        "type": "ENTRY",
         "name": "链接缺少主机",
-        "target": {"type": "LINK", "id": "https:///path"}
+        "destination": {"type": "LINK", "id": "https:///path"}
       }
       """, 400);
   }
 
   @Test
-  void testMissingMenuReturns404() {
+  void testMissingNavReturns404() {
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
@@ -502,106 +503,106 @@ public class AppMenuResourceTest {
   }
 
   @Test
-  void testIndependentMemberConfigurationSurvivesEditingAndOrdering() {
-    String id = createMenu("""
+  void testIndependentVisibilityConfigurationSurvivesEditingAndOrdering() {
+    String id = createNav("""
       {"type":"GROUP","name":"授权测试-%s"}
       """.formatted(TEST_SUFFIX), 201);
-    var members = List.of(Map.of("type", "USER", "id", "admin"),
+    var visibility = List.of(Map.of("type", "USER", "id", "admin"),
       Map.of("type", "ROLE", "id", "admin"),
       Map.of("type", "ORGANIZATION", "id", "org-test", "includeChildren", true));
     try {
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(Map.of("members", members)).patch(BASE_PATH + "/" + id).then().statusCode(200)
-        .body("members.size()", equalTo(3)).body("members[2].includeChildren", equalTo(true))
+        .body(Map.of("visibility", visibility)).patch(BASE_PATH + "/" + id).then().statusCode(200)
+        .body("visibility.size()", equalTo(3)).body("visibility[2].includeChildren", equalTo(true))
         .body("ownerId", equalTo("admin"));
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
         .body(Map.of("type", "GROUP", "name", "授权测试更新-" + TEST_SUFFIX))
-        .put(BASE_PATH + "/" + id).then().statusCode(200).body("members.size()", equalTo(3));
+        .put(BASE_PATH + "/" + id).then().statusCode(200).body("visibility.size()", equalTo(3));
       List<String> roots = given().header("Authorization", testTokenHelper.getAuthorizationHeader())
         .get(BASE_PATH).body().path("id");
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
         .body(Map.of("root", roots, "children", Map.of(id, List.of())))
         .put(BASE_PATH + "/order").then().statusCode(200)
-        .body("find { it.id == '%s' }.members.size()".formatted(id), equalTo(3));
+        .body("find { it.id == '%s' }.visibility.size()".formatted(id), equalTo(3));
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).get(BASE_PATH).then()
-        .statusCode(200).body("find { it.id == '%s' }.members.id".formatted(id), hasItems("admin", "org-test"))
+        .statusCode(200).body("find { it.id == '%s' }.visibility.id".formatted(id), hasItems("admin", "org-test"))
         .body("find { it.id == '%s' }.ownerId".formatted(id), equalTo("admin"));
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(Map.of("members", List.of(Map.of("type", "BAD", "id", "admin"))))
+        .body(Map.of("visibility", List.of(Map.of("type", "BAD", "id", "admin"))))
         .patch(BASE_PATH + "/" + id).then().statusCode(400);
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(Map.of("members", List.of(Map.of("type", "USER", "id", "admin", "includeChildren", true))))
+        .body(Map.of("visibility", List.of(Map.of("type", "USER", "id", "admin", "includeChildren", true))))
         .patch(BASE_PATH + "/" + id).then().statusCode(400);
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(Map.of("members", "admin")).patch(BASE_PATH + "/" + id).then().statusCode(400);
+        .body(Map.of("visibility", "admin")).patch(BASE_PATH + "/" + id).then().statusCode(400);
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
         .body(Map.of("unknown", "value")).patch(BASE_PATH + "/" + id).then().statusCode(400);
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).contentType(ContentType.JSON)
-        .body(Map.of("members", List.of())).patch(BASE_PATH + "/" + id).then().statusCode(200)
-        .body("members.size()", equalTo(0)).body("name", equalTo("授权测试更新-" + TEST_SUFFIX));
+        .body(Map.of("visibility", List.of())).patch(BASE_PATH + "/" + id).then().statusCode(200)
+        .body("visibility.size()", equalTo(0)).body("name", equalTo("授权测试更新-" + TEST_SUFFIX));
     } finally {
-      deleteMenuQuietly(id);
+      deleteNavQuietly(id);
     }
   }
 
   @Test
-  void testMenuAuthorizationFiltersByMembersAndOwner() {
-    String allowed = "menu_user_" + TEST_SUFFIX;
-    String denied = "menu_user_denied_" + TEST_SUFFIX;
-    String role = "menu_role_" + TEST_SUFFIX;
-    String parentOrg = "menu_org_" + TEST_SUFFIX;
-    String childOrg = "menu_org_child_" + TEST_SUFFIX;
+  void testNavVisibilityFiltersByRulesAndOwner() {
+    String allowed = "nav_user_" + TEST_SUFFIX;
+    String denied = "nav_user_denied_" + TEST_SUFFIX;
+    String role = "nav_role_" + TEST_SUFFIX;
+    String parentOrg = "nav_org_" + TEST_SUFFIX;
+    String childOrg = "nav_org_child_" + TEST_SUFFIX;
     insertDirectoryUser(allowed, role, parentOrg, childOrg);
 
-    String publicMenu = createMenu("""
-      {"type":"ITEM","name":"公开菜单-%s","target":{"type":"BUILTIN","id":"workbench"}}
+    String publicNav = createNav("""
+      {"type":"ENTRY","name":"公开菜单-%s","destination":{"type":"BUILTIN","id":"workbench"}}
       """.formatted(TEST_SUFFIX), 201);
-    String group = createMenu("""
-      {"type":"GROUP","name":"授权组-%s","members":[{"type":"USER","id":"%s"}]}
+    String group = createNav("""
+      {"type":"GROUP","name":"授权组-%s","visibility":[{"type":"USER","id":"%s"}]}
       """.formatted(TEST_SUFFIX, allowed), 201);
-    String allowedChild = createMenu("""
-      {"type":"ITEM","name":"允许子菜单-%s","parentId":"%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"USER","id":"%s"}]}
+    String allowedChild = createNav("""
+      {"type":"ENTRY","name":"允许子菜单-%s","parentId":"%s","destination":{"type":"BUILTIN","id":"workbench"},"visibility":[{"type":"USER","id":"%s"}]}
       """.formatted(TEST_SUFFIX, group, allowed), 201);
-    String deniedChild = createMenu("""
-      {"type":"ITEM","name":"拒绝子菜单-%s","parentId":"%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"USER","id":"%s"}]}
+    String deniedChild = createNav("""
+      {"type":"ENTRY","name":"拒绝子菜单-%s","parentId":"%s","destination":{"type":"BUILTIN","id":"workbench"},"visibility":[{"type":"USER","id":"%s"}]}
       """.formatted(TEST_SUFFIX, group, denied), 201);
-    String roleMenu = createMenu("""
-      {"type":"ITEM","name":"角色菜单-%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"ROLE","id":"%s"}]}
+    String roleNav = createNav("""
+      {"type":"ENTRY","name":"角色菜单-%s","destination":{"type":"BUILTIN","id":"workbench"},"visibility":[{"type":"ROLE","id":"%s"}]}
       """.formatted(TEST_SUFFIX, role), 201);
-    String organizationMenu = createMenu("""
-      {"type":"ITEM","name":"组织菜单-%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"ORGANIZATION","id":"%s","includeChildren":true}]}
+    String organizationNav = createNav("""
+      {"type":"ENTRY","name":"组织菜单-%s","destination":{"type":"BUILTIN","id":"workbench"},"visibility":[{"type":"ORGANIZATION","id":"%s","includeChildren":true}]}
       """.formatted(TEST_SUFFIX, parentOrg), 201);
-    String exactOrganizationMenu = createMenu("""
-      {"type":"ITEM","name":"直属组织菜单-%s","target":{"type":"BUILTIN","id":"workbench"},"members":[{"type":"ORGANIZATION","id":"%s"}]}
+    String exactOrganizationNav = createNav("""
+      {"type":"ENTRY","name":"直属组织菜单-%s","destination":{"type":"BUILTIN","id":"workbench"},"visibility":[{"type":"ORGANIZATION","id":"%s"}]}
       """.formatted(TEST_SUFFIX, parentOrg), 201);
 
     try {
       given().header("Authorization", testTokenHelper.getAuthorizationHeader(allowed)).get(BASE_PATH).then()
         .statusCode(200)
-        .body("id", hasItem(publicMenu))
+        .body("id", hasItem(publicNav))
         .body("id", hasItem(group))
         .body("find { it.id == '%s' }.children.id".formatted(group), contains(allowedChild))
-        .body("id", hasItem(roleMenu))
-        .body("id", hasItem(organizationMenu))
-        .body("id", not(hasItem(exactOrganizationMenu)));
+        .body("id", hasItem(roleNav))
+        .body("id", hasItem(organizationNav))
+        .body("id", not(hasItem(exactOrganizationNav)));
 
       given().header("Authorization", testTokenHelper.getAuthorizationHeader(denied)).get(BASE_PATH).then()
         .statusCode(200)
-        .body("id", hasItem(publicMenu))
+        .body("id", hasItem(publicNav))
         .body("id", not(hasItem(group)))
-        .body("id", not(hasItem(roleMenu)))
-        .body("id", not(hasItem(organizationMenu)));
+        .body("id", not(hasItem(roleNav)))
+        .body("id", not(hasItem(organizationNav)));
 
       given().header("Authorization", testTokenHelper.getAuthorizationHeader()).get(BASE_PATH).then()
         .statusCode(200)
         .body("find { it.id == '%s' }.children.id".formatted(group), hasItems(allowedChild, deniedChild))
-        .body("id", hasItems(roleMenu, organizationMenu, exactOrganizationMenu));
+        .body("id", hasItems(roleNav, organizationNav, exactOrganizationNav));
     } finally {
-      deleteMenuQuietly(group);
-      deleteMenuQuietly(publicMenu);
-      deleteMenuQuietly(roleMenu);
-      deleteMenuQuietly(organizationMenu);
-      deleteMenuQuietly(exactOrganizationMenu);
+      deleteNavQuietly(group);
+      deleteNavQuietly(publicNav);
+      deleteNavQuietly(roleNav);
+      deleteNavQuietly(organizationNav);
+      deleteNavQuietly(exactOrganizationNav);
     }
   }
 
@@ -622,7 +623,7 @@ public class AppMenuResourceTest {
     }
   }
 
-  private String createMenu(String body, int expectedStatus) {
+  private String createNav(String body, int expectedStatus) {
     Response response = given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .contentType(ContentType.JSON)
@@ -633,12 +634,12 @@ public class AppMenuResourceTest {
     return expectedStatus == 201 ? response.body().path("id") : null;
   }
 
-  private void deleteMenuQuietly(String menuId) {
-    if (menuId == null) return;
+  private void deleteNavQuietly(String navId) {
+    if (navId == null) return;
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())
       .when()
-      .delete(BASE_PATH + "/" + menuId);
+      .delete(BASE_PATH + "/" + navId);
   }
 
 }

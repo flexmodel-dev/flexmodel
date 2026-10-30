@@ -5,17 +5,7 @@ import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.apps.AppFormService;
 import dev.flexmodel.apps.AppRecordService;
 import dev.flexmodel.apps.AppService;
-import dev.flexmodel.apps.dto.AppFormResponse;
-import dev.flexmodel.apps.dto.AppResponse;
-import dev.flexmodel.apps.dto.AppMenuResponse;
-import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
-import dev.flexmodel.apps.dto.WorkbenchChartConfig;
-import dev.flexmodel.apps.dto.WorkbenchChartData;
-import dev.flexmodel.apps.dto.WorkbenchComponentDataResponse;
-import dev.flexmodel.apps.dto.WorkbenchDataLoaderData;
-import dev.flexmodel.apps.dto.WorkbenchMetricData;
-import dev.flexmodel.apps.dto.WorkbenchResponse;
-import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
+import dev.flexmodel.apps.dto.*;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -24,10 +14,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * AppTools 集成测试。
@@ -83,12 +70,12 @@ class AppToolsTest {
       assertEquals(3, savedForm.layout().items().size());
       assertEquals("FULL", savedForm.layout().items().getFirst().width());
 
-      var menu = JsonUtils.parseToObject(appTools.create_app_menu(
-          appId, "ITEM", "订单", "ShoppingCart", null, "FORM", formName),
-        dev.flexmodel.apps.dto.AppMenuResponse.class);
-      assertEquals("FORM", menu.target().type());
-      assertEquals(formName, menu.target().id());
-      assertNotNull(menu.pageRoute());
+      var nav = JsonUtils.parseToObject(appTools.create_app_navigation(
+          appId, "ENTRY", "订单", "ShoppingCart", null, "FORM", formName),
+        dev.flexmodel.apps.dto.AppNavResponse.class);
+      assertEquals("FORM", nav.destination().type());
+      assertEquals(formName, nav.destination().id());
+      assertNotNull(nav.pageRoute());
 
       List<Map<String, Object>> records = JsonUtils.parseToMapList(appTools.create_app_mock_records(
         appId, formName, """
@@ -109,7 +96,7 @@ class AppToolsTest {
   }
 
   @Test
-  void createsAiFriendlyWorkbenchAndMenuLink() {
+  void createsAiFriendlyWorkbenchAndNavLink() {
     String appId = "app_tools_workbench_" + SUFFIX;
     String formName = "workbench_form_" + SUFFIX;
     try {
@@ -212,11 +199,11 @@ class AppToolsTest {
       assertTrue(appTools.get_app_workbench_component_data(
         appId, workbenchId, "tasks", null, null, null).startsWith("Error:"));
 
-      AppMenuResponse menu = JsonUtils.parseToObject(
-        appTools.create_app_workbench_menu(appId, "工作台", "Home", null),
-        AppMenuResponse.class);
-      assertEquals("BUILTIN", menu.target().type());
-      assertEquals("workbench", menu.target().id());
+      AppNavResponse nav = JsonUtils.parseToObject(
+        appTools.create_app_workbench_navigation(appId, "工作台", "Home", null),
+        AppNavResponse.class);
+      assertEquals("BUILTIN", nav.destination().type());
+      assertEquals("workbench", nav.destination().id());
     } finally {
       deleteAppQuietly(appId);
     }

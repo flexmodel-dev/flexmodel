@@ -6,12 +6,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 应用菜单排序请求。
+ * 应用导航排序请求。
  *
- * @param root     根级菜单ID顺序
- * @param children 分组ID到子菜单ID顺序的映射
+ * @param root     根级导航ID顺序
+ * @param children 分组ID到子导航ID顺序的映射
  */
-public record AppMenuOrderRequest(
+public record AppNavOrderRequest(
   @NotEmpty(message = "菜单顺序不能为空")
   List<String> root,
   Map<String, List<String>> children

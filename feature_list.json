@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-140",
+      "name": "Apps - 菜单重命名为导航（内部语义）",
+      "description": "服务端与前端内部抽象由“菜单”统一为“导航”：metadata 节点 app.navigation、REST /navigation、AppNav/NavDestination/NavVisibilityRule、ENTRY 类型、MCP create_app_navigation；UI 组件与搭建者文案保留“菜单”。",
+      "status": "done",
+      "evidence": "服务端（前次会话完成，本次验证）：AppMenuService/Resource/RecordStore 更名 AppNavigationService/AppNavigationResource(@Path /apps/{appId}/navigation)/AppNavRecordStore，metadata 由 app.menus 改为 app.navigation；DTO 更名 AppNavRecord/AppNavResponse/AppNavSaveRequest/AppNavOrderRequest/NavDestinationRecord(原AppMenuTargetRecord)/NavVisibilityRule(原AppMenuMember，字段members改visibility)/NavDestination*/NavDestinationsResponse/WorkbenchNavOptionRecord(原WorkbenchMenuOptionRecord，字段shortcutMenus改shortcutNavs)；类型值 ITEM 改 ENTRY；MCP create_app_menu→create_app_navigation、create_app_workbench_menu→create_app_workbench_navigation；WorkbenchService/AppFormService/AppService/AppRecordHistoryService/AppRecordDiscussionService 引用点全部切换。前端（本次完成）：services/appMenus.ts 与 appMenuNavigation.ts 合并为 appNavigation.ts（AppNav/NavDestination/AppNavDestinations/visibility 字段、/navigation 与 /navigation/destinations 端点），消费方 AppMenuManager/MenuEditorDialog/MenuAuthorizationDialog(PATCH members→visibility)/NavDestinationPicker(替代MenuLinkPicker)/AppLayout/AppTopHeader/AppMenuPage/AppHome/AppRecordView/WorkbenchHome/ComponentDesigner/workbenches.ts(shortcutMenus→shortcutNavs)/appForms.ts/main.tsx(路由参数:menuId→:navId) 全部切换，旧文件已删除；UI 组件名与中文文案保留“菜单”，mock.ts 演示数据不动。测试变量清理：AppNavigationResourceTest 前缀 menu_→nav_；AppFormResourceTest NAV_PATH/createNav/deleteNavQuietly（曾因 Set-Content ANSI 编码损坏，从 git 恢复重做）。验证：Apps npm run build 通过（tsc+vite）；全模块非 clean compile 通过（clean 仍被运行中 dev.jar 文件锁阻塞）；mvn test -pl flexmodel-engine 通过；AppNavigationResourceTest 11/11、AppFormResourceTest 相关用例（testUpdateFormAndDeleteBoundForm）通过，其余失败为字段/布局/认证等已记录既有失败，与导航无关。"
+    },
+    {
       "id": "feat-139",
       "name": "Apps - 文件排序与移除分享列表",
       "description": "文件页移除分享列表，按参考图提供最近上传、最早上传、较大文件和名称升降序；目录保持在前。",

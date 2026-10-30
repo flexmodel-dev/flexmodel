@@ -1,29 +1,18 @@
 package dev.flexmodel.settings;
 
-import dev.flexmodel.reflect.ReflectionUtils;
-import dev.flexmodel.codegen.entity.AuthProviderConfig;
-import dev.flexmodel.codegen.entity.Bucket;
-import dev.flexmodel.codegen.entity.FlowDefinition;
-import dev.flexmodel.codegen.entity.FlowDeployment;
-import dev.flexmodel.codegen.entity.Function;
 import dev.flexmodel.codegen.entity.Project;
-import dev.flexmodel.codegen.entity.Trigger;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 项目级日志设置解析器：从 {@link Project#getMetadata()} 的 {@code logSettings} 节点读取
- * 日志保留天数与审计资源白名单，未配置时回退到默认值。
+ * 日志保留天数，未配置时回退到默认值。
  * <p>
  * metadata 结构示例：
  * <pre>
  * {
  *   "logSettings": {
- *     "logRetentionDays": 7,
- *     "auditResources": ["f_trigger", "f_function", ...]
+ *     "logRetentionDays": 7
  *   }
  * }
  * </pre>
@@ -36,18 +25,6 @@ public final class ProjectLogSettings {
    * 默认日志保留天数（天）。
    */
   public static final int DEFAULT_LOG_RETENTION_DAYS = 7;
-
-  /**
-   * 默认审计资源白名单：仅这些配置定义表的增删改记审计日志。
-   */
-  public static final List<String> DEFAULT_AUDIT_RESOURCES = List.of(
-    ReflectionUtils.getModelNameFromClass(Trigger.class),
-    ReflectionUtils.getModelNameFromClass(FlowDefinition.class),
-    ReflectionUtils.getModelNameFromClass(FlowDeployment.class),
-    ReflectionUtils.getModelNameFromClass(Function.class),
-    ReflectionUtils.getModelNameFromClass(Bucket.class),
-    ReflectionUtils.getModelNameFromClass(AuthProviderConfig.class)
-  );
 
   private ProjectLogSettings() {
   }
@@ -62,26 +39,6 @@ public final class ProjectLogSettings {
       return number.intValue();
     }
     return DEFAULT_LOG_RETENTION_DAYS;
-  }
-
-  /**
-   * 解析项目级审计资源白名单，未配置或为空时回退到 {@link #DEFAULT_AUDIT_RESOURCES}。
-   */
-  public static Set<String> auditResources(Project project) {
-    Map<String, Object> logSettings = logSettingsNode(project);
-    Object value = logSettings.get("auditResources");
-    if (value instanceof List<?> list && !list.isEmpty()) {
-      List<String> resources = new ArrayList<>();
-      for (Object item : list) {
-        if (item != null) {
-          resources.add(String.valueOf(item));
-        }
-      }
-      if (!resources.isEmpty()) {
-        return Set.copyOf(resources);
-      }
-    }
-    return Set.copyOf(DEFAULT_AUDIT_RESOURCES);
   }
 
   /**

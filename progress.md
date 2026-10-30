@@ -1,5 +1,21 @@
 # Session Progress Log
 
+## 移除审计日志功能（2026-10-30，auditlog-removal）
+
+- 按用户要求彻底移除 AuditLog：后端删除 `dev.flexmodel.auditlog`
+  包（Resource/Service/Repository/FmRepository/EventListener），
+  `EngineConfig` 取消监听器注册；`platform.fml` 删除 `f_audit_log` 模型；`ProjectPlatformDataCleaner` 移除清理项；
+  `ProjectLogSettings` 删除审计资源白名单（仅保留日志保留天数）。
+- 前端删除 `pages/AuditLog`、`services/audit-log.ts`，移除审计日志路由与菜单入口、`AuditLog` 类型、
+  `metadata.logSettings.auditResources` 类型；项目设置「日志设置」仅保留日志保留天数，移除模型列表加载与审计资源多选；
+  zh/en 删除审计日志、变更对比与审计资源相关文案。
+- 不再记录配置变更审计日志，也不再提供 `/projects/{projectId}/audit-logs` 查询接口。`AuditDataEventListener`
+  （created_by/updated_by 自动填充）与 SystemForm/SystemRecord 的 AUDIT_FIELDS 属于系统审计字段，不是本次移除对象，保留。
+- 验证：flexmodel-ui `npx tsc -b`、定向 eslint、`npm run build` 通过；
+  `mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'`
+  通过（clean 因运行中的 flexmodel-server-dev.jar 锁定，沿用非 clean 编译）；`mvn test -pl flexmodel-engine` 通过。
+- 遗留：已部署库中的 f_audit_log 表不会被自动删除，需要时人工清理；历史 progress/feature_list 记录未改动。
+
 ## Apps - 记录操作历史（2026-10-29，app-record-history）
 
 - 按 `docs/plans/app-record-history.md` 完成记录真实历史时间线：`platform.fml` 新增 `f_app_record_history` /
@@ -3563,3 +3579,62 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 修正通用.app-table tbody tr:hover td优先级高于固定列行背景规则的问题：增加同级悬停选择器，统一使用不透明的主题混合背景，防止横向滚动时后方内容透过固定列。
 - 按用户要求去掉主显字段右侧、操作列左侧的box-shadow分割线。
 - 验证：Apps npm run build、固定列专项3项通过，浅色/夜间在横向滚动且悬停状态下实际读取背景像素alpha=255并断言box-shadow=none；检查夜间截图。两仓库diff检查通过。仅前端样式修正，沿用本轮后端验证与init.sh的运行中JAR文件锁限制；保留原有暂存改动。
+
+## 移除 MQ（AMQP/RabbitMQ）功能（2026-10-30，feat-137）
+
+**目标:** 按用户要求去掉全部 AMQP/MQ 功能，保留本地事件与本地通知实时分发。
+
+- 删除 `FlowEventRabbitmqBridge`、`RealtimeRabbitmqListener`、`DataChangeEvent`、`FlexmodelEvent`；`FlowEvent` 移除
+  `rabbitmqRoutingKey()`；`EngineConfig` 取消监听器注册；`FlexmodelConfig` 删除 `events.rabbitmq` 配置根；
+  `FlexmodelApplication` 删除启动日志。
+- `NotificationRelay` 改为纯进程内唤醒：每秒扫描未发布事件，唤醒本机 SSE 收件人并标记已发布，不再建立 RabbitMQ 连接。
+- `flexmodel-server/pom.xml` 删除 `quarkus-messaging-rabbitmq` 与 `testcontainers:rabbitmq`，补回 `testcontainers` 核心（
+  `ServerSessionsTest` 可选 MySQL 验证使用）；`application.properties`/`application-dev.properties` 删除
+  smallrye-rabbitmq、events-out 配置。
+- 删除 `FlowEventRabbitmqBridgeTest`、`FlowEventRabbitmqBridgeE2ETest`、`RabbitMqTestResource`；`NotificationRelayTest`
+  改为验证本地唤醒与事件只发布一次；测试 profile 移除 `quarkus.rabbitmq.devservices.enabled`。
+- `deploy/docker-compose/002-mysql-fullstack` 删除 rabbitmq 服务、环境变量、依赖与文档；更新 `notifications.md`、
+  `approvals.md`、`field-properties.md`、website `realtime.md`/`flow.md` 与架构文案。
+- 验证：`mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过（`clean` 被运行中的 `flexmodel-server-dev.jar`
+  锁定，改为清理 target 编译产物后全量重编译）；`FlowEventPublisherTest`、`NotificationRelayTest`、
+  `AppRecordDiscussionNotificationTest` 通过；`flexmodel-core` 90 tests 通过。日志中的 9999 函数运行时连接拒绝为既有环境现象，不影响断言。
+- 备注：`deploy/docker-compose/002-mysql-fullstack/rabbitmq/data`（约 87MB）为存量 broker 数据，未删除，仅保留忽略规则避免误提交；
+  `NotificationRelay` 多实例场景下各实例只唤醒本机连接，其他实例客户端依赖 15 秒心跳从数据库游标补齐。
+
+## 文件目录悬浮编辑、删除与可见权限（2026-10-30，feat-138）
+
+-
+文件页侧栏普通目录（含子目录）悬浮/聚焦展示编辑和删除，触屏直接展示；全部文件和附件页无修改入口。复用目录删除确认与成员选择器，支持修改名称、用户/角色/组织可见成员及子组织范围。空成员对所有应用用户可见，子目录叠加父目录限制；权限配置仅所有者/管理员可修改。
+- 后端新增 folder GET/PUT，FolderPermissions 在项目 metadata.storageFolders 中按桶与路径保存；共享 DirectoryService
+  解析成员，同一请求复用目录快照。目录列表过滤，直接列目录/元数据/HEAD/下载/上传/移动/删除均校验路径权限；移动/删除父目录同时校验受限子树，避免绕过。重命名重映射子目录权限，删除清理权限；权限落库失败时回退目录名与内存元数据。
+- 前端处理加载权限失败禁止保存、同名错误重试、过期加载响应；重命名后同步侧栏、当前路径、面包屑与缓存，删除当前目录或祖先后返回父目录；修复错误提示在成功重试后残留的问题。
+- 验证：全模块非clean Maven compile、mvn test -q -pl flexmodel-engine、FolderPermissionsTest 6项全部通过；Apps npm run
+  build与Playwright files
+  2项通过（浅色/夜间，悬浮显隐、名称/权限保存、冲突重试、当前目录刷新、删除返回、根目录及附件保护），截图检查通过。init.sh已运行，仍被已有运行中flexmodel-server-dev.jar锁阻塞，未停止开发服务。
+- 当前实现验证本地存储与成员解析；S3沿用现有移动实现，本次未做真实S3集成。既有Apps/根仓库暂存AD条目与flexmodel-ui改动保留，只提交本功能文件。
+
+**文件侧栏数字、图标按钮与权限标记调整（2026-10-30，feat-138追加）**
+
+-
+数字统一在行末右对齐，悬浮/聚焦/打开编辑删除弹窗时隐藏，由同一区域的图标按钮替代。操作图标12px、按钮20px且无额外间距，使用中性文字色；悬浮、键盘聚焦和弹窗选中时展示边框，弹窗打开期间保持选中按钮可见。权限盾牌12px，紧贴名称。
+- Bucket列表返回restricted标志，仅当前目录配置非空可见成员时标记，不公开成员明细；前端直接复用列表渲染权限图标，无额外请求。更新既有后端测试断言文件与未配置目录不标记。
+- 验证：Apps npm run build与files浅色/夜间2项Playwright通过（数字距右边12px、显隐、按钮同色/紧邻、悬浮及选中边框、权限标记、既有编辑删除流程）；FolderPermissionsTest
+  6项、全模块非clean compile及规定引擎测试通过。检查最终截图。init.sh已运行，clean仍受运行中dev.jar文件锁阻塞，保留现有服务；日志轮转文件锁告警不影响测试通过。
+
+**文件与目录共用编辑、删除及更多菜单（2026-10-30，feat-138最终交互）**
+
+- 左侧复用右侧原有更多按钮样式（16px图标、6px内边距，无新增边框），两侧统一详情/编辑/删除，菜单状态按tree/card与路径隔离；保留侧栏数字显隐和权限盾牌。
+- 撤回尚未提交的独立授权按钮、授权弹窗与PATCH
+  members改动，后端及附件服务恢复为2ba61d2/189bf51版本。文件和目录共用编辑弹窗：目录修改名称及可见成员，文件仅名称并复用既有move接口，不请求或提交成员。名称编辑使用真实路径尾段，保留原文件名；共用删除确认框，菜单和弹窗文案统一“编辑”“删除”。新建目录仍保留创建弹窗。
+- 验证：最终Apps npm run build、files浅色/夜间2项Playwright、全模块非clean Maven
+  compile及本轮规定引擎测试通过；覆盖左右目录编辑、权限回显、目录/文件同名冲突重试、文件改名与不读取成员、原更多按钮尺寸/留白/无边框、菜单互斥、删除与附件只读。检查目录/文件编辑与菜单截图。
+- 本次最终无后端代码改动，未重复后端专项；init.sh已运行，clean仍受运行中dev.jar文件锁阻塞，保留原服务与既有暂存改动。仅提交最终前端功能及状态文档。
+
+## 文件排序与移除分享列表（2026-10-30，feat-139）
+
+- 移除分享列表按钮及Share导入；复用DropdownMenu按参考图提供最近上传、最早上传、较大文件、名称A-Z/Z-A，显示当前选择。默认未选择时沿用接口顺序。
+-
+使用接口已有lastModified（最近一次上传/对象修改时间）与size在前端排序，无后端改动和额外请求。复制列表避免改写缓存，目录始终在前，名称忽略大小写并按数字自然排序；时间/大小无效或缺失置末尾，同值按名称/路径稳定排列，兼容搜索和附件页。
+- 验证：Apps npm run build、files浅色/夜间4项Playwright（新增排序2项及原有编辑删除2项）、全模块非clean Maven
+  compile、规定引擎测试通过；检查两种主题菜单截图。init.sh已运行，clean仍受现有运行中dev.jar文件锁阻塞，未停止开发服务。
+- 根仓库本轮开始已有大量未提交改动（含feature_list/progress），保留原内容，不创建混合提交；仅提交Apps本次两个目标文件。

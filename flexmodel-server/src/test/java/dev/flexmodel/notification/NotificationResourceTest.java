@@ -25,7 +25,7 @@ import static org.hamcrest.Matchers.*;
 class NotificationResourceTest {
   public static class Profile implements QuarkusTestProfile {
     public Map<String, String> getConfigOverrides() {
-      return Map.of("quarkus.scheduler.enabled", "false", "quarkus.rabbitmq.devservices.enabled", "false");
+      return Map.of("quarkus.scheduler.enabled", "false");
     }
   }
 

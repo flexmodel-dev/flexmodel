@@ -8,7 +8,6 @@ import dev.flexmodel.codegen.entity.AppApprovalWait;
 import dev.flexmodel.codegen.entity.AppRecordHistory;
 import dev.flexmodel.codegen.entity.AppRecordHistoryTarget;
 import dev.flexmodel.codegen.entity.AppRecordDiscussion;
-import dev.flexmodel.codegen.entity.AuditLog;
 import dev.flexmodel.codegen.entity.AuthProviderConfig;
 import dev.flexmodel.codegen.entity.Bucket;
 import dev.flexmodel.codegen.entity.FlowDefinition;
@@ -69,8 +68,7 @@ public class ProjectPlatformDataCleaner {
     Function.class,
     Bucket.class,
     AuthProviderConfig.class,
-    ApiRequestLog.class,
-    AuditLog.class
+    ApiRequestLog.class
   );
 
   @Inject

@@ -78,7 +78,7 @@ Apps 的 `FILE`、`IMAGE`、`AVATAR` 布局字段使用上传控件，支持单�
 ```powershell
 mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'
 mvn test -q -pl flexmodel-engine
-mvn test -q -pl flexmodel-server '-Dtest=AppFieldRulesTest,AppRecordServiceTest,AppFormResourceTest#testFieldConfigRoundTripDefaultsAndServerValidation,SystemFormResourceTest' '-Dquarkus.scheduler.enabled=false' '-Dquarkus.rabbitmq.devservices.enabled=false' '-Dquarkus.log.file.enable=false'
+mvn test -q -pl flexmodel-server '-Dtest=AppFieldRulesTest,AppRecordServiceTest,AppFormResourceTest#testFieldConfigRoundTripDefaultsAndServerValidation,SystemFormResourceTest' '-Dquarkus.scheduler.enabled=false' '-Dquarkus.log.file.enable=false'
 cd flexmodel-apps-ui
 npm run build
 npm test

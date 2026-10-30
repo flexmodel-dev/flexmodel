@@ -34,6 +34,7 @@ If baseline verification is failing, repair that first before adding new scope.
 - **Leave clean state**: Next session must be able to run `./init.sh` immediately
 - **不考虑历史兼容性**: 无需为旧版本或既有调用方保留兼容层，可直接重构替换
 - **保持代码简洁，尽量复用已有组件**: 优先复用项目中已有的组件和工具，避免重复造轮子
+- **不要主动提交代码（No commits unless asked）**: 除非用户特别说明，不要执行 `git commit`、`git push` 等操作
 
 ## Required Artifacts
 
@@ -58,7 +59,7 @@ Before ending a session:
 1. Update `progress.md` with current state
 2. Update `feature_list.json` with new feature status
 3. Record any unresolved risks or blockers
-4. Commit with descriptive message once work is in safe state
+4. Commit only if user explicitly requested it
 5. Leave repo clean enough for next session to run `./init.sh` immediately
 
 ## Verification Commands

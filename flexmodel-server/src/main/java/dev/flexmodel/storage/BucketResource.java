@@ -38,6 +38,31 @@ public class BucketResource {
   @Inject
   BucketService bucketService;
 
+  @Inject
+  FolderPermissions folderPermissions;
+
+  public record FolderSettings(String name, List<FolderPermissions.Member> members) {
+  }
+
+  @GET
+  @Path("/{bucketName}/folder")
+  public Object folderSettings(@PathParam("projectId") String projectId,
+                               @PathParam("bucketName") String bucketName, @QueryParam("path") String path) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    return folderPermissions.members(bucket, path);
+  }
+
+  @PUT
+  @Path("/{bucketName}/folder")
+  public Response updateFolder(@PathParam("projectId") String projectId,
+                               @PathParam("bucketName") String bucketName, @QueryParam("path") String path,
+                               FolderSettings settings) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    if (settings == null) throw new dev.flexmodel.common.ValidationException("目录设置不能为空");
+    bucketService.updateFolder(bucket, path, settings.name(), settings.members());
+    return Response.noContent().build();
+  }
+
   @Context
   UriInfo uriInfo;
 

@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class AppRecordDiscussionNotificationTest {
   public static class Profile implements QuarkusTestProfile {
     public Map<String, String> getConfigOverrides() {
-      return Map.of("quarkus.scheduler.enabled", "false", "quarkus.rabbitmq.devservices.enabled", "false");
+      return Map.of("quarkus.scheduler.enabled", "false");
     }
   }
 

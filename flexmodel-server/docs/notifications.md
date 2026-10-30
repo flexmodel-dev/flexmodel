@@ -62,9 +62,8 @@ SSE 包含 snapshot、ready、notification.created、notification.read、notific
 
 ## 部署
 
-单实例默认使用本地分发，无需 RabbitMQ。多实例必须开启 `flexmodel.events.rabbitmq.enabled=true`，并配置现有
-`mp.messaging.connector.smallrye-rabbitmq.host/port/username/password/virtual-host`。通知使用独立的持久 fanout 交换机
-`flexmodel.notifications`，每实例独立排他、自动删除队列；连接恢复时重建队列并断开本机 SSE，促使客户端从数据库游标补齐。发布确认后才标记事件已发布。
+通知实时分发使用进程内唤醒：后台每秒扫描未发布事件，唤醒本机对应收件人的 SSE 连接并标记已发布。SSE 每 15
+秒心跳也会从数据库游标补齐，无需额外中间件。多实例部署时各实例只唤醒本机连接，其他实例上的客户端依赖心跳轮询补齐。
 
 前端使用 fetch 流读取 SSE，请勿将令牌放入 URL。HTTPS 部署后，用户主动点击“开启浏览器提醒”申请权限；被拒绝时只显示指引。当前系统提醒以桌面
 Chrome/Edge 为验收环境；不支持时仍保留站内收件箱。不提供页面全部关闭后的 Web Push。
@@ -88,7 +87,7 @@ location /api/notifications/stream {
 ```bash
 mvn test -pl flexmodel-server -am \
   -Dtest=NotificationResourceTest,NotificationRelayTest,ApprovalFlowResourceTest,AppApprovalToolsTest,ApprovalPolicyTest,ApprovalFlowModelTest \
-  -Dquarkus.scheduler.enabled=false -Dquarkus.rabbitmq.devservices.enabled=false \
+  -Dquarkus.scheduler.enabled=false \
   -Dsurefire.failIfNoSpecifiedTests=false
 cd flexmodel-apps-ui
 npm test
@@ -96,7 +95,7 @@ npm run build
 ```
 
 NotificationResourceTest 自动运行隔离后端上的真实 Playwright 浏览器闭环，需安装 Apps 依赖与 Chromium，测试前端占用 5184
-端口。NotificationRelayTest 使用本地 Testcontainers RabbitMQ 验证两个独立分发实例及 broker 故障恢复。浏览器截图在忽略目录
+端口。NotificationRelayTest 验证本地分发的唤醒与事件只发布一次。浏览器截图在忽略目录
 artifacts/notifications-light.png、notifications-dark.png。
 
 无界面 Chromium 的系统通知使用 Notification API 测试桩，验证授权分支、调用去重和点击导航；不声称自动观察到了操作系统桌面弹窗。实际桌面提醒显示需在

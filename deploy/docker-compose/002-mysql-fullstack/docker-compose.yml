@@ -24,25 +24,6 @@ services:
       test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
       timeout: 20s
       retries: 10
-  rabbitmq:
-    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-rabbitmq
-    image: rabbitmq:3.13-management
-    volumes:
-      - ./rabbitmq/data:/var/lib/rabbitmq
-    restart: always
-    environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
-      - TZ=GMT+08
-    ports:
-      - ${RABBITMQ_AMQP_PORT:-5672}:5672
-      - ${RABBITMQ_MANAGEMENT_PORT:-15672}:15672
-    networks:
-      - flexmodel
-    healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
-      timeout: 20s
-      retries: 10
   rustfs:
     container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-rustfs
     image: rustfs/rustfs:latest
@@ -123,13 +104,6 @@ services:
       - QUARKUS_REST_CLIENT_FUNCTION_RUNTIME_URL=http://flexmodel-functions-runtime:9999
       - QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=100M
       - FLEXMODEL_EDGE_URL_TEMPLATE=${FLEXMODEL_EDGE_URL_TEMPLATE:-https://{{projectId}}.example.com/functions/{{name}}}
-      # RabbitMQ
-      - QUARKUS_RABBITMQ_HOST=rabbitmq
-      - QUARKUS_RABBITMQ_PORT=5672
-      - QUARKUS_RABBITMQ_USERNAME=${RABBITMQ_DEFAULT_USER}
-      - QUARKUS_RABBITMQ_PASSWORD=${RABBITMQ_DEFAULT_PASS}
-      - QUARKUS_RABBITMQ_VIRTUAL_HOST=${RABBITMQ_VIRTUAL_HOST:-/}
-      - FLEXMODEL_EVENTS_RABBITMQ_ENABLED=${FLEXMODEL_RABBITMQ_ENABLED:-true}
 
       # RustFS (S3-compatible object storage)
       - FLEXMODEL_STORAGE_TYPE=s3
@@ -148,8 +122,6 @@ services:
       - flexmodel
     depends_on:
       mysql:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       rustfs:
         condition: service_healthy

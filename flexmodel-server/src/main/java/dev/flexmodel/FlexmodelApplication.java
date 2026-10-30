@@ -57,7 +57,6 @@ public class FlexmodelApplication implements QuarkusApplication {
     log.info("  jwt.secret: {}", flexmodelConfig.jwt().secret().isBlank() ? "<empty>" : "***");
     log.info("  jwt.access-token-lifetime: {}", flexmodelConfig.jwt().accessTokenLifetime());
     log.info("  jwt.refresh-token-lifetime: {}", flexmodelConfig.jwt().refreshTokenLifetime());
-    log.info("  events.rabbitmq.enabled: {}", flexmodelConfig.events().rabbitmq().enabled());
   }
 
 }

@@ -1,10 +1,24 @@
 {
   "features": [
     {
+      "id": "feat-139",
+      "name": "Apps - 文件排序与移除分享列表",
+      "description": "文件页移除分享列表，按参考图提供最近上传、最早上传、较大文件和名称升降序；目录保持在前。",
+      "status": "in_progress",
+      "evidence": "FilesDocs移除分享列表及Share图标，默认排序接入既有DropdownMenu：最近上传、最早上传、较大文件、文件名称(A-Z)/(Z-A)，按钮显示当前项并标记选中。基于既有lastModified/size在前端复制列表排序，不修改树缓存、不增加请求；保留目录在前、文件在后，名称忽略大小写并自然排序数字，时间/大小缺失或无效排末尾，同值按名称/路径稳定排序。沿用搜索与附件只读，切换目录/附件保留当前排序。验证：Apps npm run build、files浅色/夜间共4项Playwright通过（含五种实际顺序、零字节/未知值、自然名称顺序、搜索叠加、附件、无额外请求及既有编辑删除回归），截图检查通过；全模块非clean编译与规定引擎测试通过。init.sh clean仍受运行中dev.jar文件锁阻塞，保留原服务。"
+    },
+    {
+      "id": "feat-138",
+      "name": "Apps - 文件与目录编辑、可见权限",
+      "description": "文件页左右统一更多菜单及编辑/删除弹窗；目录修改名称和可见成员，文件仅修改名称，根目录及附件只读。",
+      "status": "done",
+      "evidence": "2026-10-30最终交互：左侧复用右侧原有更多按钮样式（16px图标、6px内边距、无新增边框），两侧共用renderObjectMenu，菜单统一详情/编辑/删除；按tree/card加路径隔离菜单状态。撤回独立授权按钮、授权弹窗和PATCH members改动；文件/目录共用编辑弹窗，目录名称及可见成员合并提交原PUT接口，文件仅名称、调用既有move接口且不请求成员；共用删除确认框，菜单及弹窗标题统一编辑/删除。侧栏保留数字显隐和已配置权限盾牌；目录重命名刷新路径/侧栏缓存，文件编辑保留真实原文件名并支持同名错误重试。后端保持2ba61d2版本，权限继承、访问校验及存储逻辑不变。验证：最终Apps npm run build与files浅色/夜间2项Playwright通过（两侧目录编辑、权限回显、文件改名及冲突重试、文件不加载成员、原更多样式、菜单互斥、删除及附件保护），检查目录/文件编辑与菜单截图；全模块非clean compile及本轮规定引擎测试通过。init.sh clean仍受运行中dev.jar锁阻塞，保留开发服务。"
+    },
+    {
       "id": "feat-135",
       "name": "Apps - 表单高级查询",
       "description": "记录列表气泡框按字段类型组合筛选，支持全部/任一满足、应用、清空，与页签及关键词叠加，筛选导出同步。",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "id": "feat-134",
@@ -332,13 +346,23 @@
     },
     {
       "id": "feat-011",
-      "name": "Flow - 生命周期事件（本地 EventBus + 可选 RabbitMQ 桥接）",
-      "description": "在 flow 核心关键生命周期点发布 11 种强类型本地事件（FlowCreated/Updated/Deployed/Deleted、FlowInstanceStarted/Completed/Failed/Terminated、UserTaskSuspended/Committed/RollbackSuspended），经 Vert.x EventBus 广播；新增可选 RabbitMQ 桥接 Bean，默认关闭、未配置不连 broker，本地事件照常发布。核心与 RabbitMQ 解耦，本地事件可被多个内部订阅者复用。",
+      "name": "Flow - 生命周期事件（本地 EventBus）",
+      "description": "在 flow 核心关键生命周期点发布 11 种强类型本地事件（FlowCreated/Updated/Deployed/Deleted、FlowInstanceStarted/Completed/Failed/Terminated、UserTaskSuspended/Committed/RollbackSuspended），经 Vert.x EventBus 广播，本地事件可被多个内部订阅者复用。",
       "dependencies": [
         "feat-003"
       ],
       "status": "done",
-      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。【重构】合并 data-events-out 至 events-out：新增 dev.flexmodel.common.FlexmodelEvent 标记接口，FlowEvent 与 DataChangeEvent 实现之，两个桥接统一注入 @Channel(\"events-out\") MutinyEmitter<FlexmodelEvent>，删除 data-events-out 通道配置。消费端按 routing key 区分（data.* / flow.*），零改动。验证：服务模块编译通过。"
+      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。【重构】合并 data-events-out 至 events-out：新增 dev.flexmodel.common.FlexmodelEvent 标记接口，FlowEvent 与 DataChangeEvent 实现之，两个桥接统一注入 @Channel(\"events-out\") MutinyEmitter<FlexmodelEvent>，删除 data-events-out 通道配置。消费端按 routing key 区分（data.* / flow.*），零改动。验证：服务模块编译通过。【2026-10-30】RabbitMQ 桥接已移除，见 feat-137。"
+    },
+    {
+      "id": "feat-137",
+      "name": "移除 MQ（AMQP/RabbitMQ）功能",
+      "description": "按用户要求彻底移除 AMQP 相关功能：删除 Flow 生命周期事件 RabbitMQ 桥接、数据变更事件 RabbitMQ 监听器、通知多实例 RabbitMQ fanout 唤醒及事件载荷类型；移除 quarkus-messaging-rabbitmq 依赖、相关配置、测试与部署编排；通知实时分发改为纯进程内唤醒。",
+      "dependencies": [
+        "feat-011"
+      ],
+      "status": "done",
+      "evidence": "删除 FlowEventRabbitmqBridge/RealtimeRabbitmqListener/DataChangeEvent/FlexmodelEvent；EngineConfig 取消监听器注册；FlowEvent 移除 rabbitmqRoutingKey 与 FlexmodelEvent 实现；FlexmodelConfig 删除 events.rabbitmq 配置；FlexmodelApplication 删除启动日志；NotificationRelay 仅保留本地 wake 并发布事件；application.properties/application-dev.properties 删除 smallrye-rabbitmq/events-out 配置；pom 删除 quarkus-messaging-rabbitmq 与 testcontainers:rabbitmq（保留 testcontainers 核心供 ServerSessionsTest 可选 MySQL 验证）。删除 FlowEventRabbitmqBridgeTest/E2ETest/RabbitMqTestResource，NotificationRelayTest 改为本地唤醒与只发布一次，测试 profile 移除 quarkus.rabbitmq.devservices；docker-compose 删除 rabbitmq 服务/环境变量/依赖/文档，更新 notifications/approvals/field-properties 与 website realtime/flow 文档及架构文案。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过（clean 被运行中 dev.jar 锁定）；FlowEventPublisherTest、NotificationRelayTest、AppRecordDiscussionNotificationTest 通过；flexmodel-core 90 tests 通过。存量 deploy/rabbitmq/data 未删除。"
     },
     {
       "id": "feat-015",
@@ -1289,6 +1313,14 @@
       ],
       "status": "done",
       "evidence": "DrawerContent 已有 stacked 层叠宽度限制，BizDrawer/AppRecordDrawer 新增 stacked 透传；Notifications 打开审批详情时传 stacked={false}，桌面 1440 下审批抽屉由 552px 恢复为 1184px（x=256），完全覆盖通知抽屉且无横向溢出。UserSettings 重写为读取 getAuthSession() 的真实账号（用户名/邮箱/用户 ID），删除 currentUser、loginLogs、部门、工作电话、登录日志、第三方授权、临时授权/秘钥及全部假保存弹窗，保留 AppLayout hideNavigation。FormDesigner 表单布局画布 p-4→p-3、行列 gap-3→gap-2、字段卡片 py-2→py-1.5、分区 h-9→h-8、子表单 min-h-14→min-h-11。表单设计返回按钮复测跳转 /admin/apps/plm_system/settings/forms；列表行编辑回填与详情保存刷新复用 feat-107 已验证。验证：npm run build 通过；npm test 34 项通过；Playwright 实测通知详情→查看审批全宽无溢出、个人设置无 aside 且展示 Admin/cjbi@outlook.com、表单设计画布卡片高度 32-34px、表单设计返回列表；截图 artifacts/notification-approval-current.png、user-settings-new.png、form-designer-compact.png。"
+    },
+    {
+      "id": "feat-136",
+      "name": "移除审计日志功能",
+      "description": "按用户要求彻底移除配置变更审计日志（AuditLog）：删除后端 auditlog 特性包与平台表模型，移除前端页面、路由、服务、类型、项目日志设置中的审计资源白名单及相关文案。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "后端删除 dev.flexmodel.auditlog 包（Resource/Service/Repository/FmRepository/EventListener）并在 EngineConfig 取消监听器注册；platform.fml 删除 f_audit_log 模型；ProjectPlatformDataCleaner 移除 AuditLog 清理项；ProjectLogSettings 删除审计资源白名单（保留日志保留天数）。前端删除 pages/AuditLog 与 services/audit-log.ts，移除 /project/:projectId/audit-logs 路由与菜单入口、AuditLog 类型、metadata.logSettings.auditResources 类型；LogSettingsTab 仅保留日志保留天数并移除模型列表加载与审计资源多选；zh/en 删除相关文案。保留 AuditDataEventListener（created_by/updated_by 自动填充）与 SystemForm/SystemRecord 的 AUDIT_FIELDS。验证：npx tsc -b、定向 eslint、npm run build 通过；mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过（clean 被运行中的 flexmodel-server-dev.jar 锁定，沿用非 clean 编译）；mvn test -pl flexmodel-engine 通过。存量库中的 f_audit_log 表不自动删除。"
     }
   ]
 }

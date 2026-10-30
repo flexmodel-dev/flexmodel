@@ -61,7 +61,7 @@ ID，通过原生节点实例反查父流程；不保存重复变量、父流程
 - 数据节点日志以引擎任务 ID 唯一标识，执行与完成命令原子提交。
 - 子流程使用确定性实例 ID，并固定父流程发布时选中的子流程版本。
 
-这是一种至少一次投递加幂等消费的实现，不承诺任意外部 HTTP 调用只发生一次。原有 Vert.x/RabbitMQ 通知保持提交后的兼容通知，可靠业务消费应实现
+这是一种至少一次投递加幂等消费的实现，不承诺任意外部 HTTP 调用只发生一次。原有 Vert.x 事件通知保持提交后的兼容通知，可靠业务消费应实现
 `DurableFlowListener`，不要依赖通知总线确认。
 
 ## 执行语义
@@ -138,7 +138,7 @@ MCP 入口将每次校验通过的 API Key 放入请求上下文，新工具显�
 ```bash
 mvn test -pl flexmodel-server -am \
   -Dtest=AppApprovalToolsTest,ApprovalPolicyTest,ApprovalFlowModelTest \
-  -Dquarkus.scheduler.enabled=false -Dquarkus.rabbitmq.devservices.enabled=false \
+  -Dquarkus.scheduler.enabled=false \
   -Dsurefire.failIfNoSpecifiedTests=false
 ```
 

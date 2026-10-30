@@ -4,12 +4,10 @@ import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.AuditDataEventListener;
 import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.auditlog.AuditEventListener;
 import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.project.BranchRepository;
 import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.realtime.RealtimeEventListener;
-import dev.flexmodel.realtime.RealtimeRabbitmqListener;
 import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
 import dev.flexmodel.session.SessionFactory;
 import dev.flexmodel.sql.JdbcSchemaProvider;
@@ -61,9 +59,7 @@ public class EngineConfig {
   public SessionFactory sessionFactory(FlexmodelConfig flexmodelConfig,
                                        TriggerDataChangedEventListener triggerDataChangedEventListener,
                                        AuditDataEventListener auditDataEventListener,
-                                       RealtimeEventListener realtimeEventListener,
-                                       RealtimeRabbitmqListener realtimeRabbitmqListener,
-                                       AuditEventListener auditEventListener) {
+                                       RealtimeEventListener realtimeEventListener) {
     FlexmodelConfig.DatasourceConfig datasourceConfig = flexmodelConfig.datasources().get(SYSTEM_DS_KEY);
     AgroalDataSource defaultDs = AgroalDataSourceFactory.createDataSource(
       datasourceConfig.url(),
@@ -92,8 +88,6 @@ public class EngineConfig {
     sf.getEventPublisher().addListener(triggerDataChangedEventListener);
     sf.getEventPublisher().addListener(auditDataEventListener);
     sf.getEventPublisher().addListener(realtimeEventListener);
-    sf.getEventPublisher().addListener(realtimeRabbitmqListener);
-    sf.getEventPublisher().addListener(auditEventListener);
     return sf;
   }
 

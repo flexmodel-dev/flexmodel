@@ -3837,3 +3837,37 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   AppResourceTest 12 项 11 通过，唯一失败 `testCreateAppWithExplicitProjectId`（期望 404 实得 401）为
   feat-126/127 已记录既有失败，与本次无关。
 - 遗留：未提交代码；历史 `metadata.app` 数据迁移由用户自行处理，无兼容层。
+
+## 应用创建弹窗交互调整（2026-10-31）
+
+- 需求：新建应用对齐「新建审批流程」弹窗——先输入应用名称，再选择创建方式；模板选择保留之前的卡片画廊样式。
+- 前端：新增 `components/biz/AppCreateDialog.tsx`：应用名称输入 + 创建方式卡片（空白应用 / 从模板创建，模板目录为空时隐藏该方式）；
+  模板方式内联原画廊卡片（图标、分类、描述、表单数、含示例数据），支持加载失败重试与选中态；空白应用保留原有应用图标、
+  应用描述、应用主色表单并直接创建，模板方式「预览并创建」调用 `instantiateAppTemplate` 后进入导入预览。
+- `AppManagement`：新建应用按钮直接打开创建弹窗，移除「空白应用/从模板创建」下拉与独立模板画廊；删除无用的创建表单与
+  `AppTemplateGalleryDialog`（编辑入口仍在应用设置）。`AppPackageImportDialog` 新增 `initialName`，模板模式步骤条改为
+  「导入预览 → 完成」。
+- 方案文档 `docs/plans/app-templates.md` 同步 7.2 交互说明。
+- 验证：apps-ui `npm run build` 通过（TEMP/TMP 指向项目内）；vitest 43/43；Playwright packages 8/8（模板选择→预览→提交、
+  空白应用创建含图标/描述/主色、空目录隐藏模板方式），弹窗截图 `artifacts/app-templates-create-light.png`、
+  选中态 `artifacts/app-templates-selected-light.png` 与空白表单 `artifacts/app-create-blank-light.png`。
+
+## SQLite 模板导入 MODIFY 列报错修复（2026-10-31）
+
+- 现象：SQLite 实例从模板导入时 `AppPackageImport.createSkeletonForms` 恢复 name 字段触发
+  `alter table "suppliers" modify "name" varchar(255)`，SQLite 不支持 `MODIFY`，日志 ERROR。
+- 根因：骨架 name 字段（「名称」、必填）与包内定义一致，但 `requiresNameRestore` 在 `required=true` 时反向触发恢复；
+  `SqlSchemaService.modifyField` 无条件执行 ALTER，纯标签/元数据变化也走 DDL。
+- 修复：
+  - `SqlSchemaService.modifyField` 先读取旧字段定义，仅当列定义（类型/长度/精度/可空/默认值/唯一/注释）实际变化时才执行
+    DDL；
+  - 新增方言能力 `SqlDialect.supportsModifyColumn()`（默认 true），`SQLiteSqlDialect` 返回 false，真实改列时跳过 DDL 并
+    WARN，
+    仍更新模型元数据与唯一索引；
+  - `AppPackageImport.requiresNameRestore` 改为仅恢复与骨架不同的元数据（`!required` 才需要恢复）。
+- 验证：全模块 `mvn compile`（非 clean，dev.jar 被运行中服务锁定）通过；`mvn package -pl flexmodel-server -am -DskipTests`
+  成功；`mvn test -pl flexmodel-engine/flexmodel-core -am` 通过。隔离临时 SQLite（18081 端口，quarkus-run.jar）真实冒烟：
+  admin 登录 → 模板实例化 READY（templateId=erp-system、4 表单、issues=0）→ commit COMMITTED（appId 生成、636 条记录）→
+  suppliers 56 条且 name 正常 → DELETE 204；提交前后日志无 `MODIFY`/`SQLITE_ERROR`/`alter table` 报错（仅有与本问题无关的
+  health-check 函数 127.0.0.1:9999 连接拒绝）。遗留：SQLite 引擎集成测试模块在 `beforeAll` 因 Agroal 缺少 max size 配置失败
+  （既有测试基建问题，未修改）。

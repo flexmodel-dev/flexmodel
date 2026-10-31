@@ -12,7 +12,7 @@
 - 模板目录资源布局与启动加载（只读，无数据库表）
 - `GET /app-packages/templates` 与 `POST /app-packages/templates/{id}/imports` 两个入口
 - 服务端暂存模板包并返回现有 `PreviewResponse`，后续预览/commit/补偿/恢复完全复用
-- 前端「从模板创建」入口、模板画廊，复用导入预览弹窗
+- 前端「新建应用」弹窗（名称 + 空白/模板二选一），复用导入预览弹窗
 - 模板规范（身份无关）与内置模板全量校验测试
 - Native Image 资源声明
 
@@ -252,11 +252,14 @@ instantiateAppTemplate(templateId: string): Promise<AppPackagePreview>  // 复�
 
 ### 7.2 入口与交互
 
-- `AppManagement` 工具栏「新建应用」改为二选一入口（下拉菜单或分栏弹窗）： **空白应用** / **从模板创建**；模板目录为空时不显示模板入口。
-- 模板画廊弹窗：卡片网格（图标、名称、分类、描述、表单数、「含示例数据」标记），数据来自 `listAppTemplates`；加载失败展示错误与重试，不静默隐藏。
-- 选中卡片 → 调用 `instantiateAppTemplate` → 进入 `AppPackageImportDialog` 的 **导入预览**
-  步骤（跳过"选择应用包"）：弹窗增加可选入参（如 `templateId` 或 `initialPreview`），内部步骤条从预览开始，其余预览/进度/失败展示逻辑不变。
-- 预览中显示来源模板标注（`templateId` 非空）；默认名称为模板名，用户可改；`INVALID` 时禁用确认并展示 issues，与上传导入一致。
+- `AppManagement` 工具栏「新建应用」直接打开创建弹窗（对齐「新建审批流程」交互）：首项输入应用名称，随后以卡片选择
+  **空白应用** / **从模板创建**；模板目录为空时不显示模板方式。选择模板方式后就地选择模板并展示描述、表单数、「含示例数据」
+  标记；加载失败展示错误与重试，不静默隐藏。
+- 模板方式下的「预览并创建」调用 `instantiateAppTemplate` → 进入 `AppPackageImportDialog` 的 **导入预览**
+  步骤（跳过"选择应用包"）：弹窗增加可选入参 `initialPreview` 与 `initialName`（沿用创建弹窗中输入的名称），步骤条从预览开始，其余预览/进度/失败展示逻辑不变。
+- 预览中显示来源模板标注（`templateId` 非空）；名称预填创建弹窗输入值，用户仍可修改；`INVALID` 时禁用确认并展示
+  issues，与上传导入一致。
+- 空白应用方式保留原有的应用图标、应用描述与应用主色表单，提交后直接创建；模板方式聚焦模板选择，图标/主色由包内定义。
 - 成功后沿用 `onImported` → 刷新应用列表；网关式错误（401/404/过期）使用现有 `toErrorMessage` 提示。
 - 复用 `BizDialog`、现有卡片/空态/警告样式与语义 token；不新增设计语言。
 

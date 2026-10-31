@@ -236,7 +236,8 @@ public class AppPackageImport {
   }
 
   private boolean requiresNameRestore(AppFormFieldRecord nameField) {
-    return !"名称".equals(nameField.label()) || nameField.required() || nameField.config() != null;
+    // 骨架字段为「名称」且必填，只能恢复与骨架不同的元数据；required=true 本身不需要变更。
+    return !"名称".equals(nameField.label()) || !nameField.required() || nameField.config() != null;
   }
 
   private void createReferenceFields(String appId, List<AppFormRecord> records) {

@@ -1,13 +1,14 @@
 package dev.flexmodel.sql;
 
-import dev.flexmodel.model.*;
-import dev.flexmodel.model.field.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.ModelRegistry;
+import dev.flexmodel.model.*;
+import dev.flexmodel.model.field.*;
 import dev.flexmodel.service.BaseService;
 import dev.flexmodel.service.SchemaService;
+import dev.flexmodel.sql.dialect.SqlDialect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
@@ -134,6 +135,7 @@ public class SqlSchemaService extends BaseService implements SchemaService {
   public TypedField<?, ?> modifyField(TypedField<?, ?> field) {
     // 更新实体定义，修改字段
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(field.getModelName());
+    TypedField<?, ?> previous = entity == null ? null : entity.getField(field.getName());
     if (entity != null) {
       entity.removeField(field.getName());
       entity.addField(field);
@@ -141,7 +143,10 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     }
     try {
       if (!(field instanceof ModelRefField)) {
-        modifyColumn(toSqlColumn(field));
+        SqlColumn sqlColumn = toSqlColumn(field);
+        if (previous == null || previous instanceof ModelRefField || columnDefinitionChanged(previous, sqlColumn)) {
+          modifyColumn(sqlColumn);
+        }
       }
     } catch (Exception e) {
       log.error("Modify field occurred exception： {}", e.getMessage(), e);
@@ -149,9 +154,28 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     return field;
   }
 
+  /**
+   * 仅标签/描述等元数据变化时不执行 DDL，避免无意义的 ALTER 与不支持改列的数据库报错。
+   */
+  private boolean columnDefinitionChanged(TypedField<?, ?> previous, SqlColumn next) {
+    SqlColumn before = toSqlColumn(previous);
+    if (before.isUnique() != next.isUnique()) {
+      return true;
+    }
+    SqlDialect dialect = sessionContext.getSqlDialect();
+    return !dialect.getSqlAlterTableModifyColumnString(before)
+      .equals(dialect.getSqlAlterTableModifyColumnString(next));
+  }
+
   private void modifyColumn(SqlColumn sqlColumn) {
-    String sqlAlterModifyColumnString = sessionContext.getSqlDialect().getSqlAlterTableModifyColumnString(sqlColumn);
-    sessionContext.getJdbcOperations().update(sqlAlterModifyColumnString);
+    SqlDialect dialect = sessionContext.getSqlDialect();
+    if (dialect.supportsModifyColumn()) {
+      String sqlAlterModifyColumnString = dialect.getSqlAlterTableModifyColumnString(sqlColumn);
+      sessionContext.getJdbcOperations().update(sqlAlterModifyColumnString);
+    } else {
+      log.warn("SQL dialect {} does not support modifying columns, DDL skipped: {}.{}",
+        dialect.getClass().getSimpleName(), sqlColumn.getTableName(), sqlColumn.getName());
+    }
     SqlTable sqlTable = new SqlTable();
     sqlTable.setName(sqlColumn.getTableName());
     if (sqlColumn.isUnique() && !sqlColumn.isPrimaryKey()) {

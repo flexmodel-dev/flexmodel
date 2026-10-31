@@ -25,6 +25,8 @@ import jakarta.ws.rs.WebApplicationException;
 import org.eclipse.microprofile.config.ConfigProvider;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,6 +69,8 @@ public class AppPackageService {
   AppPackageTaskRepository tasks;
   @Inject
   AppPackageImport importer;
+  @Inject
+  AppTemplateCatalog templates;
   @Inject
   ProjectService projects;
   @Inject
@@ -269,22 +273,74 @@ public class AppPackageService {
   // ---------------------------------------------------------------- 上传与预览
 
   public PreviewResponse upload(String user, Path staged, String fileName) {
+    return stage(user, staged, fileName, null, null);
+  }
+
+  /**
+   * 从内置模板创建暂存导入：复制 classpath 包到服务端暂存，其余校验与预览流程与上传完全一致。
+   */
+  public PreviewResponse instantiateTemplate(String user, AppTemplateCatalog.Template template) {
+    Path staged = store.stageZip();
+    try (InputStream input = templates.open(template)) {
+      copy(input, staged);
+    } catch (IOException | RuntimeException error) {
+      deleteQuietly(staged);
+      if (error instanceof RuntimeException runtime) throw runtime;
+      throw new IllegalStateException("无法读取内置模板包", error);
+    }
+    return stage(user, staged, template.summary().id() + EXTENSION, template.summary().id(),
+      template.summary().name());
+  }
+
+  private PreviewResponse stage(String user, Path staged, String fileName, String templateId,
+                                String defaultAppName) {
     Content content;
     try {
       content = packages.read(staged);
     } catch (IOException error) {
-      throw new IllegalStateException("无法读取上传包", error);
+      deleteQuietly(staged);
+      throw new IllegalStateException("无法读取应用包", error);
     }
     Result validation = validator.validate(content);
     String uploadId = UUID.randomUUID().toString();
     long expiresAt = System.currentTimeMillis() + STORE_TTL_MILLIS;
     long size = fileSize(staged);
     String safeName = safeFileName(fileName);
-    PreviewResponse preview = preview(uploadId, content, validation, safeName, size, expiresAt);
+    PreviewResponse preview = preview(uploadId, content, validation, safeName, size, expiresAt, templateId,
+      defaultAppName == null ? copyName(content) : trimTo(defaultAppName, 100));
     store.publishZip(uploadId, staged);
     store.savePlan(uploadId, new StagedPlan(uploadId, user, expiresAt, packages.planHash(content.rawFiles()),
       safeName, size, preview));
     return preview;
+  }
+
+  private String copyName(Content content) {
+    return trimTo(content.app() == null || content.app().name() == null
+      ? "导入应用" : content.app().name() + "-副本", 100);
+  }
+
+  private void copy(InputStream input, Path staged) {
+    try (InputStream source = input; OutputStream output = Files.newOutputStream(staged)) {
+      byte[] buffer = new byte[8192];
+      long total = 0;
+      int read;
+      while ((read = source.read(buffer)) >= 0) {
+        total += read;
+        if (total > MAX_PACKAGE_BYTES)
+          throw new ValidationException("应用包不能超过 " + (MAX_PACKAGE_BYTES / 1024 / 1024) + " MiB");
+        output.write(buffer, 0, read);
+      }
+    } catch (IOException error) {
+      throw new IllegalStateException("无法读取内置模板包", error);
+    }
+  }
+
+  private void deleteQuietly(Path path) {
+    try {
+      Files.deleteIfExists(path);
+    } catch (IOException ignored) {
+      // 定时清理兜底
+    }
   }
 
   private long fileSize(Path staged) {
@@ -303,7 +359,7 @@ public class AppPackageService {
   }
 
   private PreviewResponse preview(String uploadId, Content content, Result validation, String fileName,
-                                  long size, long expiresAt) {
+                                  long size, long expiresAt, String templateId, String defaultAppName) {
     long totalRecords = content.data().values().stream().mapToLong(List::size).sum();
     int totalFields = content.forms().stream()
       .mapToInt(record -> record.fields().stream().filter(field -> !field.builtin()).toList().size()).sum();
@@ -334,12 +390,10 @@ public class AppPackageService {
       content.app() == null ? null : content.app().description(),
       manifest.exportedAt(), manifest.version() == null ? 0 : manifest.version(),
       manifest.source() == null ? null : manifest.source().flexmodelVersion());
-    String defaultAppName = trimTo(content.app() == null || content.app().name() == null
-      ? "导入应用" : content.app().name() + "-副本", 100);
     return new PreviewResponse(uploadId, packages.planHash(content.rawFiles()), expiresAt,
       validation.valid() ? "READY" : "INVALID", source,
       new PreviewPackage(fileName, size, hasData, totalRecords, totalFields),
-      forms, resources, warnings, validation.issues(), defaultAppName);
+      forms, resources, warnings, validation.issues(), defaultAppName, templateId);
   }
 
   private String trimTo(String value, int maxLength) {

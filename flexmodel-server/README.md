@@ -87,6 +87,9 @@ Apps 记录操作历史的采集规则、事件类型、存储模型与查询接
 
 Apps 表单高级查询的气泡框、条件结构与筛选导出见 [表单高级查询](docs/record-query.md)。
 
+应用整包导入导出见 [应用包导入导出](../docs/plans/app-import-export.md)
+；从内置模板创建应用见 [应用模板](../docs/plans/app-templates.md)。
+
 ## 📄 许可证
 
 本项目源码仅供学习研究使用，**禁止用于商业用途**。如需合作定制开发，请联系作者。详见 [LICENSE](../LICENSE)。

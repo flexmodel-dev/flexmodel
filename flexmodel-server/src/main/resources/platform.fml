@@ -1,12 +1,12 @@
 model f_app_data_authorization {
   id : String @id @default(uuid()) @length("64"),
-  project_id : String @length("64"),
+  app_id : String @length("64"),
   form_name : String @length("64"),
   name : String @length("255"),
   enabled : Boolean @default("true"),
   subjects : JSON,
   data_scope : JSON,
-  @index(name: "IDX_DATA_AUTH_FORM", fields: [project_id, form_name]),
+  @index(name: "IDX_DATA_AUTH_FORM", fields: [app_id, form_name]),
   @system,
   @comment("数据授权")
 }
@@ -27,7 +27,7 @@ model f_app_data_permission_control {
 
 model f_app_record_discussion {
   id : String @id @length("64"),
-  project_id : String @length("64"),
+  app_id : String @length("64"),
   form_name : String @length("64"),
   record_id : String @length("64"),
   parent_id : String @length("64") @comment("顶层讨论为空串，回复存顶层讨论ID"),
@@ -37,15 +37,15 @@ model f_app_record_discussion {
   author_name : String @length("128"),
   mentioned_user_ids? : JSON,
   created_at : DateTime,
-  @index(name: "IDX_APP_DISCUSSION_RECORD", fields: [project_id, form_name, record_id, created_at]),
-  @index(name: "IDX_APP_DISCUSSION_PARENT", fields: [project_id, parent_id]),
+  @index(name: "IDX_APP_DISCUSSION_RECORD", fields: [app_id, form_name, record_id, created_at]),
+  @index(name: "IDX_APP_DISCUSSION_PARENT", fields: [app_id, parent_id]),
   @system,
   @comment("记录讨论")
 }
 
 model f_app_record_history {
   id : String @id @length("64"),
-  project_id : String @length("64"),
+  app_id : String @length("64"),
   event_key : String @length("180") @comment("服务端生成的事件去重键"),
   operation_id? : String @length("128") @comment("同一次导入、节点执行等关联标识"),
   form_name : String @length("64") @comment("实际被操作的业务表单"),
@@ -62,22 +62,22 @@ model f_app_record_history {
   changes? : JSON @comment("字段变化及展示快照"),
   context? : JSON @comment("主子表、导入、审批等扩展信息"),
   trace_id? : String @length("64"),
-  @index(name: "UQ_APP_HISTORY_EVENT", unique: true, fields: [project_id, event_key]),
-  @index(name: "IDX_APP_HISTORY_RECORD", fields: [project_id, form_name, record_id, occurred_at]),
+  @index(name: "UQ_APP_HISTORY_EVENT", unique: true, fields: [app_id, event_key]),
+  @index(name: "IDX_APP_HISTORY_RECORD", fields: [app_id, form_name, record_id, occurred_at]),
   @system,
   @comment("应用记录操作历史")
 }
 
 model f_app_record_history_target {
   id : String @id @length("64"),
-  project_id : String @length("64"),
+  app_id : String @length("64"),
   event_id : String @length("64"),
   form_name : String @length("64") @comment("时间线所属表单"),
   record_id : String @length("64") @comment("时间线所属记录"),
   target_type : String @length("10") @comment("SELF 或 PARENT"),
   occurred_at : DateTime,
-  @index(name: "UQ_APP_HISTORY_TARGET", unique: true, fields: [project_id, event_id, form_name, record_id]),
-  @index(name: "IDX_APP_HISTORY_TARGET_RECORD", fields: [project_id, form_name, record_id, occurred_at, event_id]),
+  @index(name: "UQ_APP_HISTORY_TARGET", unique: true, fields: [app_id, event_id, form_name, record_id]),
+  @index(name: "IDX_APP_HISTORY_TARGET_RECORD", fields: [app_id, form_name, record_id, occurred_at, event_id]),
   @system,
   @comment("应用记录历史展示目标")
 }
@@ -139,6 +139,20 @@ model f_project {
   @system,
   @comment("项目")
 }
+model f_app {
+  id : String @id @length("64") @comment("应用ID，与 f_project.id 一对一共享"),
+  icon_name : String @length("64") @comment("图标名"),
+  primary_color : String @length("32") @comment("主色"),
+  provisioning? : String @length("32") @comment("导入重建状态，空表示正常"),
+  navigation? : JSON @comment("导航配置"),
+  forms? : JSON @comment("表单配置"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @system,
+  @comment("应用")
+}
 model f_branch {
   id : String @id @default(uuid()),
   project_id : String @comment("所属项目ID"),
@@ -155,7 +169,7 @@ model f_branch {
 
 model f_app_workbench {
   id : String @id @default(uuid()),
-  project_id : String @comment("所属项目ID"),
+  app_id : String @comment("所属应用ID"),
   name : String @comment("工作台名称"),
   description? : String @comment("工作台描述"),
   layout : JSON @comment("工作台布局"),
@@ -163,8 +177,8 @@ model f_app_workbench {
   updated_by? : String @comment("更新人"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
-  @index(name: "IDX_WORKBENCH_PROJECT", fields: [project_id]),
-  @index(name: "UQ_WORKBENCH_PROJECT_NAME", unique: true, fields: [project_id, name]),
+  @index(name: "IDX_WORKBENCH_APP", fields: [app_id]),
+  @index(name: "UQ_WORKBENCH_APP_NAME", unique: true, fields: [app_id, name]),
   @system,
   @comment("应用工作台")
 }
@@ -604,6 +618,10 @@ seed f_branch {
   {id: "dev_test", project_id: "dev_test", name: "main", database_name: "dev_test", description: "开发测试项目主干分支", created_by: "admin"},
 }
 
+seed f_app {
+  {id: "dev_test", icon_name: "Boxes", primary_color: "blue", created_by: "admin", updated_by: "admin"},
+}
+
 seed f_user {
   {id: "admin", name: "Admin", password_hash: "172eee54aa664e9dd0536b063796e54e", created_at: "2025-08-30 19:58:23.000", status: "ACTIVE"},
 }
@@ -673,7 +691,7 @@ model f_runtime_message {
 
 model f_app_approval_instance {
   id: String @id,
-  project_id: String @comment("所属项目ID"),
+  app_id: String @comment("所属应用ID"),
   request_key: String,
   flow_id: String,
   flow_deploy_id: String @comment("绑定的 Flow 部署版本"),
@@ -687,28 +705,28 @@ model f_app_approval_instance {
   error?: String @length(10000),
   created_at: DateTime,
   updated_at: DateTime,
-  @index(name: "UQ_APPROVAL_INSTANCE_REQUEST", unique: true, fields: [project_id, request_key]),
-  @index(name: "IDX_FORM_RUN_RECORD", fields: [project_id, form_name, record_id]),
-  @index(name: "IDX_FORM_RUN_ENGINE", fields: [project_id, flow_instance_id]),
+  @index(name: "UQ_APPROVAL_INSTANCE_REQUEST", unique: true, fields: [app_id, request_key]),
+  @index(name: "IDX_FORM_RUN_RECORD", fields: [app_id, form_name, record_id]),
+  @index(name: "IDX_FORM_RUN_ENGINE", fields: [app_id, flow_instance_id]),
   @system,
   @comment("表单流程实例及提交快照")
 }
 
 model f_app_approval_wait {
   id: String @id,
-  project_id: String @comment("所属项目ID"),
+  app_id: String @comment("所属应用ID"),
   run_id: String,
   members: JSON,
   status: String,
   created_at: DateTime,
-  @index(name: "IDX_APPROVAL_WAIT_RUN", fields: [project_id, run_id]),
+  @index(name: "IDX_APPROVAL_WAIT_RUN", fields: [app_id, run_id]),
   @system,
   @comment("审批挂起任务")
 }
 
 model f_app_approval_task {
   id: String @id,
-  project_id: String @comment("所属项目ID"),
+  app_id: String @comment("所属应用ID"),
   wait_id: String,
   run_id: String,
   user_id: String,
@@ -719,20 +737,20 @@ model f_app_approval_task {
   comment?: String @length(2000),
   decided_at?: DateTime,
   created_at: DateTime,
-  @index(name: "IDX_APPROVAL_PERSONAL", fields: [project_id, user_id, status]),
-  @index(name: "UQ_APPROVAL_WAIT_USER", unique: true, fields: [project_id, wait_id, user_id]),
+  @index(name: "IDX_APPROVAL_PERSONAL", fields: [app_id, user_id, status]),
+  @index(name: "UQ_APPROVAL_WAIT_USER", unique: true, fields: [app_id, wait_id, user_id]),
   @system,
   @comment("个人签核任务与决策记录")
 }
 
 model f_app_approval_record_lock {
   id: String @id,
-  project_id: String @comment("所属项目ID"),
+  app_id: String @comment("所属应用ID"),
   run_id: String,
   schema_name: String,
   model_name: String,
   record_id: String,
-  @index(name: "UQ_APPROVAL_RECORD_LOCK", unique: true, fields: [project_id, schema_name, model_name, record_id]),
+  @index(name: "UQ_APPROVAL_RECORD_LOCK", unique: true, fields: [app_id, schema_name, model_name, record_id]),
   @system,
   @comment("审批中的业务记录锁")
 }

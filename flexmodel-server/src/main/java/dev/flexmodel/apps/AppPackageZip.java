@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -108,9 +109,18 @@ public class AppPackageZip {
    * 防御性读取：限制条目数、路径、解压字节与 JSON 深度后解析为受限 DTO。
    */
   public Content read(Path zip) throws IOException {
+    try (InputStream input = Files.newInputStream(zip)) {
+      return read(input);
+    }
+  }
+
+  /**
+   * 流式读取入口：内置模板直接来自 classpath，不落临时文件。
+   */
+  public Content read(InputStream source) throws IOException {
     Map<String, byte[]> files = new LinkedHashMap<>();
     long totalBytes = 0;
-    try (ZipInputStream stream = new ZipInputStream(Files.newInputStream(zip), StandardCharsets.UTF_8)) {
+    try (ZipInputStream stream = new ZipInputStream(source, StandardCharsets.UTF_8)) {
       ZipEntry entry;
       while ((entry = stream.getNextEntry()) != null) {
         if (files.size() >= MAX_ENTRIES) {

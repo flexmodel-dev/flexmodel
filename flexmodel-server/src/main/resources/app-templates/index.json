@@ -1,0 +1,12 @@
+{
+  "templates": [
+    {
+      "id": "erp-system",
+      "name": "ERP 管理系统",
+      "description": "企业资源计划管理应用：供应商与物料基础数据、采购订单主子表管理、订单审批流程与经营看板",
+      "category": "企业管理",
+      "iconName": "Container",
+      "order": 10
+    }
+  ]
+}

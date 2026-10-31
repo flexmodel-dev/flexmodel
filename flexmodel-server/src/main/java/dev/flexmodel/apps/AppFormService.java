@@ -43,9 +43,6 @@ public class AppFormService {
   @Inject
   AppApprovalLifecycle appApprovalLifecycle;
 
-  private static final String METADATA_APP_KEY = "app";
-  private static final String METADATA_FORMS_KEY = "forms";
-  private static final String METADATA_LEGACY_FORM_LAYOUTS_KEY = "formLayouts";
   private static final Pattern FORM_NAME_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{0,63}$");
   // 字段标识不限命名风格，仅排除会破坏 SQL 标识符转义的字符。
   private static final Pattern FIELD_NAME_PATTERN = Pattern.compile("^[^\\x00-\\x1f`\"\\[\\]]{1,64}$");
@@ -80,6 +77,12 @@ public class AppFormService {
 
   @Inject
   ProjectService projectService;
+
+  @Inject
+  AppRepository appRepository;
+
+  @Inject
+  AppNavRecordStore appNavRecordStore;
 
   @Inject
   SessionContext sessionContext;
@@ -816,14 +819,7 @@ public class AppFormService {
   }
 
   private Project requireAppProject(String appId) {
-    Project project = projectService.findProject(appId);
-    if (project == null || project.getParentProjectId() != null || "default".equals(appId)) {
-      throw new NotFoundException("应用不存在: " + appId);
-    }
-    if (AppService.isImporting(project) && !AppService.importBypassed()) {
-      throw new NotFoundException("应用不存在: " + appId);
-    }
-    return project;
+    return appNavRecordStore.requireAppProject(appId);
   }
 
   private List<TypedField<?, ?>> systemFields() {
@@ -1079,8 +1075,6 @@ public class AppFormService {
   }
 
   private void persistFormRecords(Project project, List<AppFormRecord> records) {
-    Map<String, Object> metadata = metadataMap(project);
-    Map<String, Object> app = appNode(project);
     List<Map<String, Object>> converted = records.stream()
       .map(record -> {
         @SuppressWarnings("unchecked")
@@ -1088,18 +1082,19 @@ public class AppFormService {
         return value;
       })
       .toList();
-    app.put(METADATA_FORMS_KEY, converted);
     Map<String, Set<String>> children = new LinkedHashMap<>();
     for (AppFormRecord record : records)
       children.put(record.name(), layoutItems(record.layout()).stream()
         .filter(item -> "SUBFORM".equals(item.type())).map(AppFormItemRecord::formName).collect(Collectors.toSet()));
     dataAuthorization.reconcile(project.getId(), records.stream().map(AppFormRecord::name).collect(Collectors.toSet()), children);
-    app.remove(METADATA_LEGACY_FORM_LAYOUTS_KEY);
-    metadata.put(METADATA_APP_KEY, app);
-    project.setMetadata(metadata);
-    project.setUpdatedBy(currentUserId());
-    project.setUpdatedAt(LocalDateTime.now());
-    projectService.updateProject(project);
+    App app = appRepository.findApp(project.getId());
+    if (app == null) {
+      throw new NotFoundException("应用不存在: " + project.getId());
+    }
+    app.setForms(converted);
+    app.setUpdatedBy(currentUserId());
+    app.setUpdatedAt(LocalDateTime.now());
+    appRepository.save(app);
   }
 
   private AppFormLayoutRecord normalizeLayoutItems(
@@ -1289,7 +1284,8 @@ public class AppFormService {
   }
 
   private List<AppFormRecord> formRecords(Project project) {
-    Object value = appNode(project).get(METADATA_FORMS_KEY);
+    App app = appRepository.findApp(project.getId());
+    Object value = app == null ? null : app.getForms();
     if (!(value instanceof List<?> list)) {
       return List.of();
     }
@@ -1300,7 +1296,8 @@ public class AppFormService {
   }
 
   private boolean isBoundToNavigation(Project project, String formName) {
-    Object value = appNode(project).get("navigation");
+    App app = appRepository.findApp(project.getId());
+    Object value = app == null ? null : app.getNavigation();
     if (!(value instanceof List<?> list)) {
       return false;
     }
@@ -1394,33 +1391,6 @@ public class AppFormService {
     return !BUILTIN_FIELDS.contains(fieldName)
       && !NAME_FIELD.equals(fieldName)
       && entity.getFields().stream().noneMatch(field -> field.getName().equals(fieldName));
-  }
-
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> metadataMap(Project project) {
-    Object metadata = project.getMetadata();
-    if (metadata == null) {
-      return new LinkedHashMap<>();
-    }
-    if (metadata instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, value) -> result.put(String.valueOf(key), value));
-      return result;
-    }
-    return JsonUtils.convertValue(metadata, Map.class);
-  }
-
-  private Map<String, Object> appNode(Project project) {
-    Object app = metadataMap(project).get(METADATA_APP_KEY);
-    if (app == null) {
-      return new LinkedHashMap<>();
-    }
-    if (app instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, value) -> result.put(String.valueOf(key), value));
-      return result;
-    }
-    return JsonUtils.convertValue(app, Map.class);
   }
 
   private String currentUserId() {

@@ -3772,3 +3772,43 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：apps-ui `npm run build` 通过（Windows 下 esbuild 默认 Temp 删除临时文件 Access denied，将 TEMP/TMP 指向项目内目录后
   tsc -b + vite build 成功）；浏览器实测：失效令牌访问应用显示“请求失败（HTTP 500）”+重试；模拟导航接口返回 `[]` 显示空状态与
   新增菜单；模拟首次 500 后点击重试恢复空状态。未提交代码。
+
+## 应用模板方案审查（2026-10-31）
+
+- 范围：review `docs/plans/app-templates.md`，核对现有应用包上传、预览、校验、提交、资源反射注册与前端导入弹窗；未修改方案或业务实现，未提交代码。
+- 发现：6.3 的“零 issue”门禁没有断言 warnings；现有验证器对重复主键、悬空业务/系统记录引用等只产生
+  warning，无法保证示例数据可移植或可成功写入。
+- 发现：6.2 禁止示例数据依赖源环境 FILE/IMAGE URL，但通用验证器未检查此约束；即使 issues/warnings
+  均为空也可能通过，应为模板规范增加显式断言及反例测试。
+- 发现：启动加载只规定 ZIP 解析校验，未执行语义验证；引用不存在表单或协议版本不支持但 JSON 可解析的包仍可能上架，与“过滤坏模板”的承诺不符。
+- 状态：新增 feat-143 记录方案审查，仍为 in_progress；上述修订与功能实现待后续任务。
+- 验证：WSL `bash ./init.sh` EXIT=0，全模块 clean compile 与引擎测试通过；WSL 未找到 Node.js，脚本跳过 UI
+  E2E。本次未运行服务端模板测试（尚无模板实现）。
+
+## 从模板创建应用实现（2026-10-31）
+
+- 方案 `docs/plans/app-templates.md` 落地：模板 = 服务端内置应用包，复用现有导入预览/commit/补偿管道，不新增写库路径。
+- 后端：`AppTemplateCatalog` 启动读取 `app-templates/index.json`，包名固定 `<id>.flexmodel.zip`（扁平目录，索引不含路径）；id
+  白名单；启动时先解析再以平台基线目录（admin 用户、admin/developer 角色）做完整语义校验，坏模板告警跳过；
+  `AppTemplateResource` 提供模板列表与实例化预览；`AppPackageService.instantiateTemplate` 复制 classpath 包到暂存并复用
+  `stage/preview`，`PreviewResponse` 增加 `templateId`，模板默认名不追加「-副本」；`AppPackageZip.read(InputStream)` 支持流式解析。
+- 构建：`application.properties` 增加 `quarkus.native.resources.includes=app-templates/**`；`flexmodel-server/pom.xml` 的
+  maven-resources-plugin 增加 `nonFilteredFileExtensions=zip`，修复二进制模板被文本过滤破坏（MalformedInputException）。
+- 内置模板：采用用户提供的 `ERP管理系统.flexmodel.zip`，可移植化后以 `erp-system` 入库（4 表单、2 启用审批、采购工作台、636
+  条示例记录）。审批执行人改为平台角色 admin/developer；移除 `data-authorizations.json` 中引用源实例用户/组织的规则；清理示例数据中
+  56 行不存在的字段。
+- 前端：新增 `services/appTemplates.ts` 与模板画廊；`AppManagement` 新建应用改为「空白应用 / 从模板创建」；
+  `AppPackageImportDialog` 支持 `initialPreview` 直达预览并适配步骤条与文案。
+- 方案 review 三项修订已落实：目录测试同时断言零 issue/零 warning、示例数据附件与未知字段显式断言、启动目录执行语义校验而非仅
+  ZIP 可解析。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` EXIT=0；`mvn test -pl flexmodel-engine` EXIT=0；
+  `AppTemplateCatalogTest` 7/7、`AppPackageValidatorTest` 18/18、`AppPackageZipTest` 10/10；apps-ui `npm run build`
+  通过（TEMP/TMP 指向项目内）；Playwright packages 7/7（新增模板入口/画廊/预览直达/提交与空目录隐藏入口）。
+- 真实后端冒烟（quarkus:dev + 本地 SQLite）：admin 登录 → 模板列表返回 erp-system → 实例化 READY（4 表单、636 记录、0
+  issues、templateId 正确）→ commit COMMITTED，4 张表记录数 96/288/196/56 与包一致 → 应用可见，表单含 3 系统表单 + 4
+  业务表单，suppliers 记录 56，导航三组及子节点重建 → DELETE 应用 204 清理。
+- 打包形态验证：`mvn -pl flexmodel-server -am package` 成功，`target/quarkus-app/app/flexmodel-server-0.0.1-SNAPSHOT.jar`
+  内含 `app-templates/index.json` 与 `erp-system.flexmodel.zip`；用 `quarkus-run.jar` 在隔离临时 SQLite（18080）启动，日志
+  `Loaded 1 built-in app template(s)`，模板列表 / 实例化 READY / commit COMMITTED（materials 96）/ DELETE 204，确认 jar 内
+  ZIP 读取链路可用（统一走 `ClassLoader.getResourceAsStream`，不依赖文件路径）。
+- 遗留：native image 未构建验证；未提交代码。

@@ -106,7 +106,8 @@ public final class AppPackage {
   public record PreviewResponse(String uploadId, String planHash, long expiresAt, String status,
                                 PreviewSource source, @JsonProperty("package") PreviewPackage pkg,
                                 List<FormSummary> forms, List<ResourceSummary> resources,
-                                List<String> warnings, List<ValidationIssue> issues, String defaultAppName) {
+                                List<String> warnings, List<ValidationIssue> issues, String defaultAppName,
+                                String templateId) {
   }
 
   public record ImportedForm(String name, String label, long count) {

@@ -156,6 +156,10 @@
           <delimiters>
             <delimiter>@</delimiter>
           </delimiters>
+          <!-- 内置模板包是二进制 ZIP，不能被文本过滤 -->
+          <nonFilteredFileExtensions>
+            <nonFilteredFileExtension>zip</nonFilteredFileExtension>
+          </nonFilteredFileExtensions>
           <resources>
             <resource>
               <directory>src/main/resources</directory>

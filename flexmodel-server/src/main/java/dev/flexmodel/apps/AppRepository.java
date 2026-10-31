@@ -1,4 +1,4 @@
-package dev.flexmodel.apps.app;
+package dev.flexmodel.apps;
 
 import dev.flexmodel.codegen.entity.App;
 

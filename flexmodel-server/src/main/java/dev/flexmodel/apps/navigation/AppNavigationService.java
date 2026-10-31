@@ -39,7 +39,7 @@ public class AppNavigationService {
   }
 
   @Inject
-  AppNavRecordStore appNavRecordStore;
+  AppNavigationRepository appNavRecordStore;
 
   @Inject
   AppFormService appFormService;

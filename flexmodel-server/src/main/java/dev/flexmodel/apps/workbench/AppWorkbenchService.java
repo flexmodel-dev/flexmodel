@@ -4,7 +4,7 @@ import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.apps.form.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.form.dto.AppFormResponse;
-import dev.flexmodel.apps.navigation.AppNavRecordStore;
+import dev.flexmodel.apps.navigation.AppNavigationRepository;
 import dev.flexmodel.apps.navigation.dto.AppNavRecord;
 import dev.flexmodel.apps.workbench.dto.*;
 import dev.flexmodel.codegen.entity.AppWorkbench;
@@ -38,7 +38,7 @@ public class AppWorkbenchService {
   AppWorkbenchRepository appWorkbenchRepository;
 
   @Inject
-  AppNavRecordStore appNavRecordStore;
+  AppNavigationRepository appNavRecordStore;
 
   @Inject
   AppFormService appFormService;

@@ -1,14 +1,15 @@
 package dev.flexmodel.apps.approval;
 
-import dev.flexmodel.directory.DirectoryService;
+import dev.flexmodel.apps.approval.dto.*;
 import dev.flexmodel.common.authz.RequiresPermissions;
+import dev.flexmodel.directory.DirectoryService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
-import java.util.*;
-
-import static dev.flexmodel.common.Values.*;
+import java.util.List;
+import java.util.Map;
 
 @Path("/apps/{appId}")
 @Produces(MediaType.APPLICATION_JSON)
@@ -26,44 +27,50 @@ public class AppApprovalFlowResource {
   @GET
   @Path("/approval-flows")
   @RequiresPermissions("flow:view")
-  public List<Map<String, Object>> list(@PathParam("appId") String appId) {
-    return appApprovalFlowService.list(appId).stream().map(AppApprovalFlowModel::encode).toList();
+  public List<AppApprovalFlowResponse> list(@PathParam("appId") String appId) {
+    return appApprovalFlowService.list(appId).stream().map(AppApprovalFlowModel::encode)
+      .map(AppApprovalFlowResponse::from).toList();
   }
 
   @GET
   @Path("/approval-flows/{id}")
   @RequiresPermissions("flow:view")
-  public Map<String, Object> get(@PathParam("appId") String appId, @PathParam("id") String id) {
-    return AppApprovalFlowModel.encode(appApprovalFlowService.get(appId, id));
+  public AppApprovalFlowResponse get(@PathParam("appId") String appId, @PathParam("id") String id) {
+    return AppApprovalFlowResponse.from(AppApprovalFlowModel.encode(appApprovalFlowService.get(appId, id)));
   }
 
   @POST
   @Path("/approval-flows")
   @RequiresPermissions("flow:create")
-  public Response create(@PathParam("appId") String appId, Map<String, Object> body) {
-    return Response.status(201).entity(AppApprovalFlowModel.encode(appApprovalFlowService.save(appId, null, AppApprovalFlowModel.decode(body)))).build();
+  public Response create(@PathParam("appId") String appId, AppApprovalFlowRequest body) {
+    return Response.status(201).entity(AppApprovalFlowResponse.from(
+      AppApprovalFlowModel.encode(appApprovalFlowService.save(appId, null, AppApprovalFlowModel.decode(body.toMap()))))).build();
   }
 
   @PUT
   @Path("/approval-flows/{id}")
   @RequiresPermissions("flow:update")
-  public Map<String, Object> save(@PathParam("appId") String appId, @PathParam("id") String id, Map<String, Object> body) {
-    return AppApprovalFlowModel.encode(appApprovalFlowService.save(appId, id, AppApprovalFlowModel.decode(body)));
+  public AppApprovalFlowResponse save(@PathParam("appId") String appId, @PathParam("id") String id, AppApprovalFlowRequest body) {
+    return AppApprovalFlowResponse.from(AppApprovalFlowModel.encode(
+      appApprovalFlowService.save(appId, id, AppApprovalFlowModel.decode(body.toMap()))));
   }
 
   @POST
   @Path("/approval-flows/validate")
   @RequiresPermissions("flow:view")
-  public Object validate(@PathParam("appId") String appId, Map<String, Object> body) {
-    return appApprovalFlowService.validate(appId, AppApprovalFlowModel.decode(body));
+  public List<AppApprovalIssue> validate(@PathParam("appId") String appId, AppApprovalFlowRequest body) {
+    return appApprovalFlowService.validate(appId, AppApprovalFlowModel.decode(body.toMap())).stream()
+      .map(AppApprovalIssue::from).toList();
   }
 
   @POST
   @Path("/approval-flows/{id}/status")
   @RequiresPermissions("flow:deploy")
-  public Object status(@PathParam("appId") String appId, @PathParam("id") String id, Map<String, Object> body) {
-    int status = ((Number) body.getOrDefault("status", -1)).intValue();
-    return AppApprovalFlowModel.encode(appApprovalFlowService.status(appId, id, status == 2 ? "enabled" : status == 3 ? "disabled" : "invalid", ((Number) body.getOrDefault("revision", -1)).intValue()));
+  public AppApprovalFlowResponse status(@PathParam("appId") String appId, @PathParam("id") String id, AppApprovalFlowStatusRequest body) {
+    int status = body.status() == null ? -1 : body.status();
+    int revision = body.revision() == null ? -1 : body.revision();
+    return AppApprovalFlowResponse.from(AppApprovalFlowModel.encode(
+      appApprovalFlowService.status(appId, id, status == 2 ? "enabled" : status == 3 ? "disabled" : "invalid", revision)));
   }
 
   @DELETE
@@ -77,35 +84,41 @@ public class AppApprovalFlowResource {
   @GET
   @Path("/approval-directory")
   @RequiresPermissions("flow:view")
-  public Object directory(@PathParam("appId") String appId) {
+  public AppApprovalDirectory directory(@PathParam("appId") String appId) {
     appApprovalFlowService.list(appId);
-    return directoryService.directory();
+    return AppApprovalDirectory.from(directoryService.directory());
   }
 
   @POST
   @Path("/approval-directory/resolve")
   @RequiresPermissions("flow:view")
-  public Object resolve(Map<String, Object> body) {
-    return directoryService.resolve(objects(body.get("rules")), text(body, "initiatorId"), object(body.get("variables")));
+  public List<String> resolve(AppApprovalResolveRequest body) {
+    return directoryService.resolve(
+      body.rules() == null ? List.of() : body.rules(),
+      body.initiatorId() == null ? "" : body.initiatorId(),
+      body.variables() == null ? Map.of() : body.variables());
   }
 
   @POST
   @Path("/forms/{form}/records/{recordId}/approvals")
   @RequiresPermissions("flow:execute")
-  public Response submit(@PathParam("appId") String appId, @PathParam("form") String form, @PathParam("recordId") String recordId, Map<String, Object> body) {
-    return Response.accepted(runtime.submit(appId, form, recordId, text(body, "flowId"), text(body, "requestKey"))).build();
+  public Response submit(@PathParam("appId") String appId, @PathParam("form") String form, @PathParam("recordId") String recordId, AppApprovalSubmitRequest body) {
+    Map<String, Object> result = runtime.submit(appId, form, recordId,
+      body.flowId() == null ? "" : body.flowId(),
+      body.requestKey() == null ? "" : body.requestKey());
+    return Response.accepted(result).build();
   }
 
   @GET
   @Path("/forms/{form}/records/{recordId}/approvals")
-  public Object recordHistory(@PathParam("appId") String appId, @PathParam("form") String form, @PathParam("recordId") String recordId) {
-    return approvalsService.recordHistory(appId, form, recordId);
+  public List<AppApprovalItem> recordHistory(@PathParam("appId") String appId, @PathParam("form") String form, @PathParam("recordId") String recordId) {
+    return approvalsService.recordHistory(appId, form, recordId).stream().map(AppApprovalItem::from).toList();
   }
 
   @GET
   @Path("/approval-instances/{id}")
-  public Object detail(@PathParam("appId") String appId, @PathParam("id") String id) {
-    return approvalsService.detail(appId, id);
+  public AppApprovalDetail detail(@PathParam("appId") String appId, @PathParam("id") String id) {
+    return AppApprovalDetail.from(approvalsService.detail(appId, id));
   }
 
   @POST
@@ -118,8 +131,11 @@ public class AppApprovalFlowResource {
 
   @POST
   @Path("/approval-tasks/{id}/decision")
-  public Object decide(@PathParam("appId") String appId, @PathParam("id") String id, Map<String, Object> body) {
-    return approvalsService.decide(appId, id, text(body, "decision"), text(body, "comment"), text(body, "requestKey"));
+  public AppApprovalTaskResponse decide(@PathParam("appId") String appId, @PathParam("id") String id, AppApprovalDecisionRequest body) {
+    return AppApprovalTaskResponse.from(approvalsService.decide(appId, id,
+      body.decision() == null ? "" : body.decision(),
+      body.comment() == null ? "" : body.comment(),
+      body.requestKey() == null ? "" : body.requestKey()));
   }
 
   @POST

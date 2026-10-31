@@ -1,7 +1,7 @@
 package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.app.AppService;
+import dev.flexmodel.apps.AppService;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.SessionContext;

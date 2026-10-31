@@ -11,6 +11,8 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -41,6 +43,11 @@ public class AppTemplateResource {
   @Path("{templateId}/imports")
   public PreviewResponse instantiate(@PathParam("templateId") String templateId) {
     String user = service.requireAuthenticatedUser();
-    return service.instantiateTemplate(user, catalog.require(templateId));
+    AppTemplateCatalog.Template template = catalog.require(templateId);
+    try (InputStream input = catalog.open(template)) {
+      return service.instantiateTemplate(user, template.summary().id(), template.summary().name(), input);
+    } catch (IOException error) {
+      throw new WebApplicationException("无法读取内置模板包", error, 500);
+    }
   }
 }

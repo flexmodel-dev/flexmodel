@@ -2,7 +2,7 @@ package dev.flexmodel.apps.apppackage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.app.AppRepository;
+import dev.flexmodel.apps.AppRepository;
 import dev.flexmodel.apps.apppackage.AppPackageValidator.Result;
 import dev.flexmodel.apps.apppackage.AppPackageZip.Content;
 import dev.flexmodel.apps.approval.AppApprovalFlowService;
@@ -10,10 +10,9 @@ import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationRepository;
 import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.apps.form.dto.AppFormFieldRecord;
 import dev.flexmodel.apps.form.dto.AppFormRecord;
-import dev.flexmodel.apps.navigation.AppNavRecordStore;
+import dev.flexmodel.apps.navigation.AppNavigationRepository;
 import dev.flexmodel.apps.navigation.AppNavigationService;
 import dev.flexmodel.apps.navigation.dto.AppNavRecord;
-import dev.flexmodel.apps.template.AppTemplateCatalog;
 import dev.flexmodel.apps.workbench.AppWorkbenchRepository;
 import dev.flexmodel.apps.workbench.dto.WorkbenchLayoutRecord;
 import dev.flexmodel.codegen.entity.App;
@@ -58,7 +57,7 @@ public class AppPackageService {
   @Inject
   AppNavigationService navigation;
   @Inject
-  AppNavRecordStore navStore;
+  AppNavigationRepository navStore;
   @Inject
   AppFormService forms;
   @Inject
@@ -76,11 +75,9 @@ public class AppPackageService {
   @Inject
   AppPackageStore store;
   @Inject
-  AppPackageTaskRepository tasks;
+  AppPackageTaskStore tasks;
   @Inject
   AppPackageImport importer;
-  @Inject
-  AppTemplateCatalog templates;
   @Inject
   ProjectService projects;
   @Inject
@@ -288,17 +285,16 @@ public class AppPackageService {
   /**
    * 从内置模板创建暂存导入：复制 classpath 包到服务端暂存，其余校验与预览流程与上传完全一致。
    */
-  public PreviewResponse instantiateTemplate(String user, AppTemplateCatalog.Template template) {
+  public PreviewResponse instantiateTemplate(String user, String templateId, String templateName, InputStream input) {
     Path staged = store.stageZip();
-    try (InputStream input = templates.open(template)) {
+    try (input) {
       copy(input, staged);
     } catch (IOException | RuntimeException error) {
       deleteQuietly(staged);
       if (error instanceof RuntimeException runtime) throw runtime;
       throw new IllegalStateException("无法读取内置模板包", error);
     }
-    return stage(user, staged, template.summary().id() + EXTENSION, template.summary().id(),
-      template.summary().name());
+    return stage(user, staged, templateId + EXTENSION, templateId, templateName);
   }
 
   private PreviewResponse stage(String user, Path staged, String fileName, String templateId,

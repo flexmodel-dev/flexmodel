@@ -1,4 +1,4 @@
-package dev.flexmodel.apps.app.dto;
+package dev.flexmodel.apps.dto;
 
 import dev.flexmodel.codegen.entity.Project;
 

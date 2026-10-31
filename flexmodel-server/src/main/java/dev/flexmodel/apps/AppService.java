@@ -1,10 +1,10 @@
-package dev.flexmodel.apps.app;
+package dev.flexmodel.apps;
 
-import dev.flexmodel.apps.app.dto.AppCreateRequest;
-import dev.flexmodel.apps.app.dto.AppResponse;
-import dev.flexmodel.apps.app.dto.AppUpdateRequest;
 import dev.flexmodel.apps.approval.AppApprovalLifecycle;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationService;
+import dev.flexmodel.apps.dto.AppCreateRequest;
+import dev.flexmodel.apps.dto.AppResponse;
+import dev.flexmodel.apps.dto.AppUpdateRequest;
 import dev.flexmodel.apps.workbench.AppWorkbenchRepository;
 import dev.flexmodel.auth.service.UserService;
 import dev.flexmodel.codegen.entity.App;

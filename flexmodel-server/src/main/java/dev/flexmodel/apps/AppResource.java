@@ -1,8 +1,8 @@
-package dev.flexmodel.apps.app;
+package dev.flexmodel.apps;
 
-import dev.flexmodel.apps.app.dto.AppCreateRequest;
-import dev.flexmodel.apps.app.dto.AppResponse;
-import dev.flexmodel.apps.app.dto.AppUpdateRequest;
+import dev.flexmodel.apps.dto.AppCreateRequest;
+import dev.flexmodel.apps.dto.AppResponse;
+import dev.flexmodel.apps.dto.AppUpdateRequest;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;

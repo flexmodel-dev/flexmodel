@@ -1,11 +1,11 @@
 package dev.flexmodel.apps.form;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.app.AppRepository;
+import dev.flexmodel.apps.AppRepository;
 import dev.flexmodel.apps.approval.AppApprovalLifecycle;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationService;
 import dev.flexmodel.apps.form.dto.*;
-import dev.flexmodel.apps.navigation.AppNavRecordStore;
+import dev.flexmodel.apps.navigation.AppNavigationRepository;
 import dev.flexmodel.apps.navigation.dto.AppNavRecord;
 import dev.flexmodel.apps.navigation.dto.NavDestinationRecord;
 import dev.flexmodel.apps.record.AppRecordDiscussionRepository;
@@ -89,7 +89,7 @@ public class AppFormService {
   AppRepository appRepository;
 
   @Inject
-  AppNavRecordStore appNavRecordStore;
+  AppNavigationRepository appNavRecordStore;
 
   @Inject
   SessionContext sessionContext;

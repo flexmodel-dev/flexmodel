@@ -10,7 +10,7 @@ import jakarta.ws.rs.WebApplicationException;
  * 任务回执（.task.json）读写与归属校验。
  */
 @ApplicationScoped
-public class AppPackageTaskRepository {
+public class AppPackageTaskStore {
   @Inject
   AppPackageStore store;
   @Inject

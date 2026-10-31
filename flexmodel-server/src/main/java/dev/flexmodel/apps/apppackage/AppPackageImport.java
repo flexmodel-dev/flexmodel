@@ -1,15 +1,15 @@
 package dev.flexmodel.apps.apppackage;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.app.AppRepository;
-import dev.flexmodel.apps.app.AppService;
-import dev.flexmodel.apps.app.dto.AppCreateRequest;
+import dev.flexmodel.apps.AppRepository;
+import dev.flexmodel.apps.AppService;
 import dev.flexmodel.apps.apppackage.AppPackageValidator.Result;
 import dev.flexmodel.apps.apppackage.AppPackageZip.Content;
 import dev.flexmodel.apps.approval.AppApprovalFlowService;
 import dev.flexmodel.apps.approval.AppApprovalJson;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationRepository;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationService;
+import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.apps.form.dto.*;
 import dev.flexmodel.apps.navigation.AppNavigationService;
@@ -65,7 +65,7 @@ public class AppPackageImport {
   @Inject
   AppPackageStore store;
   @Inject
-  AppPackageTaskRepository tasks;
+  AppPackageTaskStore tasks;
   @Inject
   AppPackageZip packages;
   @Inject

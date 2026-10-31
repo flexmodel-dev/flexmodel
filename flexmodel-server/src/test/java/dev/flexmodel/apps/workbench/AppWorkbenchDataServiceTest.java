@@ -1,8 +1,8 @@
 package dev.flexmodel.apps.workbench;
 
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.apps.app.AppService;
-import dev.flexmodel.apps.app.dto.AppCreateRequest;
+import dev.flexmodel.apps.AppService;
+import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.apps.form.dto.AppFormCreateRequest;
 import dev.flexmodel.apps.form.dto.AppFormFieldCreateRequest;

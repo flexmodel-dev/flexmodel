@@ -1,12 +1,12 @@
 package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.app.AppService;
-import dev.flexmodel.apps.app.dto.AppCreateRequest;
-import dev.flexmodel.apps.app.dto.AppResponse;
+import dev.flexmodel.apps.AppService;
 import dev.flexmodel.apps.approval.AppApprovalCapabilities;
 import dev.flexmodel.apps.approval.AppApprovalFlowModel;
 import dev.flexmodel.apps.approval.AppApprovalFlowService;
+import dev.flexmodel.apps.dto.AppCreateRequest;
+import dev.flexmodel.apps.dto.AppResponse;
 import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.apps.form.dto.*;
 import dev.flexmodel.apps.navigation.AppNavigationService;

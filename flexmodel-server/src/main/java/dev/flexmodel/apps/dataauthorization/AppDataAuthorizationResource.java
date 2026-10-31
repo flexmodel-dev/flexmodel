@@ -1,6 +1,6 @@
 package dev.flexmodel.apps.dataauthorization;
 
-import dev.flexmodel.apps.app.AppService;
+import dev.flexmodel.apps.AppService;
 
 import dev.flexmodel.directory.DirectoryService;
 import jakarta.inject.Inject;

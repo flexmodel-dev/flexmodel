@@ -1,8 +1,8 @@
 package dev.flexmodel.apps.navigation;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.app.AppRepository;
-import dev.flexmodel.apps.app.AppService;
+import dev.flexmodel.apps.AppRepository;
+import dev.flexmodel.apps.AppService;
 import dev.flexmodel.apps.navigation.dto.AppNavRecord;
 import dev.flexmodel.codegen.entity.App;
 import dev.flexmodel.codegen.entity.Project;
@@ -22,7 +22,7 @@ import java.util.List;
  * 应用导航的读取与持久化，导航存储在 f_app.navigation。
  */
 @ApplicationScoped
-public class AppNavRecordStore {
+public class AppNavigationRepository {
 
   @Inject
   ProjectService projectService;

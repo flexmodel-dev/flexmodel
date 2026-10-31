@@ -3898,3 +3898,23 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   suppliers 56 条且 name 正常 → DELETE 204；提交前后日志无 `MODIFY`/`SQLITE_ERROR`/`alter table` 报错（仅有与本问题无关的
   health-check 函数 127.0.0.1:9999 连接拒绝）。遗留：SQLite 引擎集成测试模块在 `beforeAll` 因 Agroal 缺少 max size 配置失败
   （既有测试基建问题，未修改）。
+
+## apps 分包可维护性优化（2026-10-31）
+
+- 结构调整：`AppService` / `AppResource` / `AppRepository` / `AppFmRepository` 及 `dto` 从 `dev.flexmodel.apps.app`
+  上移到 `dev.flexmodel.apps` 根包，消除 `apps.app` 重复命名；根包作为应用聚合根，子包按子域保留。
+- 审批 API 类型化：新增 `apps/approval/dto`（流程请求/响应、分页、计数、列表项、详情、校验问题、提交/决策请求、目录、任务），
+  替换 Resource 中的裸 `Object`/`Map` 返回值；流程动态结构（快照、变量、日志、签核任务行）仍保留 Map，保持 JSON 契约不变。
+- 包文档与命名：重写 `apps/package-info.java`（描述 f_app 存储、子包职责、导入导出场景区分、Repository/Store 约定）；
+  `AppNavRecordStore` → `AppNavigationRepository`（数据库），`AppPackageTaskRepository` → `AppPackageTaskStore`（文件状态）。
+- 解耦 apppackage ↔ template：`AppPackageService.instantiateTemplate` 改为接收模板 id/name + InputStream，
+  由 `AppTemplateResource` 负责打开 classpath 资源，apppackage 不再依赖 template。
+- 曾尝试用 `AppLifecycle`/`AppFormLifecycle` 反转 form/app 的级联依赖，按用户要求已完全撤回，保留原有直接调用。
+- 测试：按用户决策 `dev_test` 不再 seed `f_app`，删除依赖 `dev_test` 作为应用的集成测试（AppApprovalFlowResourceTest、
+  AppFormResourceTest、AppNavigationResourceTest、AppRecordResourceTest、AppTransferResourceTest、AppWorkbenchResourceTest、
+  AppResourceTest、BucketAttachmentResourceTest、AppToolsTest、AppApprovalToolsTest、AppWorkbenchServiceTest、
+  AppRecordDiscussionNotificationTest）；保留独立单元测试与自建应用夹具的 AppDataAuthorizationResourceTest。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` BUILD SUCCESS；
+  `mvn test -pl flexmodel-engine` BUILD SUCCESS；定向 server 测试 17 个类 103/103 通过
+  （含 AppDataAuthorizationResourceTest 4、SystemFormResourceTest 5、审批/表单/记录/导入导出相关单元测试）。
+- 遗留：未提交代码；`dev_test` 无 `f_app` 的测试覆盖缺口按用户决策接受。

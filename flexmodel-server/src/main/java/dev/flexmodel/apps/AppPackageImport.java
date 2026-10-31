@@ -6,6 +6,7 @@ import dev.flexmodel.apps.AppPackageZip.Content;
 import dev.flexmodel.apps.approval.AppApprovalFlowService;
 import dev.flexmodel.apps.approval.AppApprovalJson;
 import dev.flexmodel.apps.dto.*;
+import dev.flexmodel.codegen.entity.App;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.ProjectUnitOfWork;
@@ -40,7 +41,6 @@ import static dev.flexmodel.common.Values.*;
 @ApplicationScoped
 @Slf4j
 public class AppPackageImport {
-  private static final String METADATA_APP_KEY = "app";
 
   @Inject
   AppPackageStore store;
@@ -57,7 +57,7 @@ public class AppPackageImport {
   @Inject
   AppNavigationService navigation;
   @Inject
-  WorkbenchService workbenchService;
+  AppWorkbenchService appWorkbenchService;
   @Inject
   AppApprovalFlowService approvalService;
   @Inject
@@ -65,7 +65,9 @@ public class AppPackageImport {
   @Inject
   AppDataAuthorizationRepository authorizationRepository;
   @Inject
-  WorkbenchRepository workbenchRepository;
+  AppRepository appRepository;
+  @Inject
+  AppWorkbenchRepository appWorkbenchRepository;
   @Inject
   AppRecordService records;
   @Inject
@@ -289,7 +291,7 @@ public class AppPackageImport {
     for (WorkbenchExport export : exports == null ? List.<WorkbenchExport>of() : exports) {
       WorkbenchLayoutRecord layout = export.layout() == null
         ? WorkbenchLayoutRecord.empty() : rewriteShortcuts(export.layout(), navIds);
-      workbenchService.createWorkbench(appId, new WorkbenchCreateRequest(export.name(), export.description(), layout));
+      appWorkbenchService.createWorkbench(appId, new WorkbenchCreateRequest(export.name(), export.description(), layout));
     }
   }
 
@@ -493,26 +495,22 @@ public class AppPackageImport {
 
   // ---------------------------------------------------------------- provisioning
 
-  @SuppressWarnings("unchecked")
-  private void patchAppNode(String appId, java.util.function.Consumer<Map<String, Object>> patch) {
-    Project project = projects.findProject(appId);
-    if (project == null) throw new NotFoundException("应用不存在: " + appId);
-    Map<String, Object> metadata = project.getMetadata() instanceof Map<?, ?> map
-      ? new LinkedHashMap<>(JsonUtils.convertValue(map, Map.class)) : new LinkedHashMap<>();
-    Map<String, Object> appNode = metadata.get(METADATA_APP_KEY) instanceof Map<?, ?> node
-      ? new LinkedHashMap<>(JsonUtils.convertValue(node, Map.class)) : new LinkedHashMap<>();
-    patch.accept(appNode);
-    metadata.put(METADATA_APP_KEY, appNode);
-    project.setMetadata(metadata);
-    projects.updateProject(project);
-  }
-
   private void markProvisioning(String appId) {
-    patchAppNode(appId, node -> node.put(AppService.PROVISIONING_KEY, AppService.PROVISIONING_IMPORTING));
+    App app = requireAppRow(appId);
+    app.setProvisioning(AppService.PROVISIONING_IMPORTING);
+    appRepository.save(app);
   }
 
   private void activate(String appId) {
-    patchAppNode(appId, node -> node.remove(AppService.PROVISIONING_KEY));
+    App app = requireAppRow(appId);
+    app.setProvisioning(null);
+    appRepository.save(app);
+  }
+
+  private App requireAppRow(String appId) {
+    App app = appRepository.findApp(appId);
+    if (app == null) throw new NotFoundException("应用不存在: " + appId);
+    return app;
   }
 
   // ---------------------------------------------------------------- 补偿与恢复
@@ -566,7 +564,7 @@ public class AppPackageImport {
       if (project == null) {
         cleanupSchemaRemnant(state.targetProjectId());
         tasks.save(state.with("FAILED", state.phase(), message(state, "导入中断，未创建应用")));
-      } else if (AppService.isImporting(project)) {
+      } else if (AppService.isImporting(appRepository.findApp(state.targetProjectId()))) {
         compensate(state, message(state, "导入中断"));
       } else if (state.result() != null) {
         tasks.save(state.with("COMMITTED", "done", null));
@@ -609,7 +607,9 @@ public class AppPackageImport {
     apps.deleteApp(projectId);
     if (projects.findProject(projectId) != null)
       throw new IllegalStateException("项目记录清理未完成: " + projectId);
-    if (!workbenchRepository.findByProjectId(projectId).isEmpty())
+    if (appRepository.findApp(projectId) != null)
+      throw new IllegalStateException("应用记录清理未完成: " + projectId);
+    if (!appWorkbenchRepository.findByAppId(projectId).isEmpty())
       throw new IllegalStateException("工作台清理未完成: " + projectId);
     if (!authorizationRepository.find(projectId, null).isEmpty())
       throw new IllegalStateException("数据权限规则清理未完成: " + projectId);

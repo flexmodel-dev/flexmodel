@@ -12,7 +12,7 @@ import java.util.List;
 import static dev.flexmodel.codegen.System.appWorkbench;
 
 @ApplicationScoped
-public class WorkbenchFmRepository implements WorkbenchRepository {
+public class AppWorkbenchFmRepository implements AppWorkbenchRepository {
 
   @Inject
   SessionFactory sessionFactory;
@@ -27,29 +27,29 @@ public class WorkbenchFmRepository implements WorkbenchRepository {
   }
 
   @Override
-  public List<AppWorkbench> findByProjectId(String projectId) {
+  public List<AppWorkbench> findByAppId(String appId) {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(AppWorkbench.class)
-        .where(appWorkbench.projectId.eq(projectId))
+        .where(appWorkbench.appId.eq(appId))
         .orderBy(appWorkbench.createdAt, Direction.DESC)
         .execute();
     }
   }
 
   @Override
-  public AppWorkbench findByProjectIdAndId(String projectId, String workbenchId) {
+  public AppWorkbench findByAppIdAndId(String appId, String workbenchId) {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(AppWorkbench.class)
-        .where(appWorkbench.projectId.eq(projectId).and(appWorkbench.id.eq(workbenchId)))
+        .where(appWorkbench.appId.eq(appId).and(appWorkbench.id.eq(workbenchId)))
         .executeOne();
     }
   }
 
   @Override
-  public AppWorkbench findByName(String projectId, String name) {
+  public AppWorkbench findByName(String appId, String name) {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(AppWorkbench.class)
-        .where(appWorkbench.projectId.eq(projectId).and(appWorkbench.name.eq(name)))
+        .where(appWorkbench.appId.eq(appId).and(appWorkbench.name.eq(name)))
         .executeOne();
     }
   }
@@ -65,28 +65,28 @@ public class WorkbenchFmRepository implements WorkbenchRepository {
   }
 
   @Override
-  public long countByProjectId(String projectId) {
+  public long countByAppId(String appId) {
     try (Session session = sessionFactory.createSession()) {
       return session.dsl().selectFrom(AppWorkbench.class)
-        .where(appWorkbench.projectId.eq(projectId))
+        .where(appWorkbench.appId.eq(appId))
         .count();
     }
   }
 
   @Override
-  public void deleteByProjectIdAndId(String projectId, String workbenchId) {
+  public void deleteByAppIdAndId(String appId, String workbenchId) {
     try (Session session = sessionFactory.createSession()) {
       session.dsl().deleteFrom(AppWorkbench.class)
-        .where(appWorkbench.projectId.eq(projectId).and(appWorkbench.id.eq(workbenchId)))
+        .where(appWorkbench.appId.eq(appId).and(appWorkbench.id.eq(workbenchId)))
         .execute();
     }
   }
 
   @Override
-  public void deleteByProjectId(String projectId) {
+  public void deleteByAppId(String appId) {
     try (Session session = sessionFactory.createSession()) {
       session.dsl().deleteFrom(AppWorkbench.class)
-        .where(appWorkbench.projectId.eq(projectId))
+        .where(appWorkbench.appId.eq(appId))
         .execute();
     }
   }

@@ -10,11 +10,7 @@ import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static dev.flexmodel.codegen.System.appRecordHistory;
 import static dev.flexmodel.codegen.System.appRecordHistoryTarget;
@@ -31,7 +27,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
   public void insertEvent(String appId, Map<String, Object> event) {
     try (Session session = openSession()) {
       Map<String, Object> row = new LinkedHashMap<>(event);
-      row.put("project_id", appId);
+      row.put("app_id", appId);
       session.data().insert(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class), row);
     }
   }
@@ -41,7 +37,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
     try (Session session = openSession()) {
       for (Map<String, Object> target : targets) {
         Map<String, Object> row = new LinkedHashMap<>(target);
-        row.put("project_id", appId);
+        row.put("app_id", appId);
         session.data().insert(ReflectionUtils.getModelNameFromClass(AppRecordHistoryTarget.class), row);
       }
     }
@@ -79,7 +75,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
     try (Session session = openSession()) {
       for (List<String> chunk : partition(eventIds)) {
         result.addAll(session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class))
-          .where(appRecordHistory.projectId.eq(appId).and(appRecordHistory.id.in(chunk)))
+          .where(appRecordHistory.appId.eq(appId).and(appRecordHistory.id.in(chunk)))
           .execute());
       }
     }
@@ -89,7 +85,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
   public Map<String, Object> findEvent(String appId, String eventId) {
     try (Session session = openSession()) {
       return session.data().findById(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class), eventId)
-        .filter(row -> appId.equals(row.get("project_id")))
+        .filter(row -> appId.equals(row.get("app_id")))
         .orElse(null);
     }
   }
@@ -97,7 +93,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
   public Map<String, Object> findTarget(String appId, String eventId, String formName, String recordId) {
     try (Session session = openSession()) {
       return session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordHistoryTarget.class))
-        .where(appRecordHistoryTarget.projectId.eq(appId)
+        .where(appRecordHistoryTarget.appId.eq(appId)
           .and(appRecordHistoryTarget.eventId.eq(eventId))
           .and(appRecordHistoryTarget.formName.eq(formName))
           .and(appRecordHistoryTarget.recordId.eq(recordId)))
@@ -117,7 +113,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
       while (true) {
         List<Map<String, Object>> rows = session.dsl()
           .selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class))
-          .where(appRecordHistory.projectId.eq(appId).and(appRecordHistory.formName.eq(formName)))
+          .where(appRecordHistory.appId.eq(appId).and(appRecordHistory.formName.eq(formName)))
           .orderBy(new Query.OrderBy().asc("id"))
           .page(page, DELETE_CHUNK)
           .execute();
@@ -126,17 +122,17 @@ public class AppRecordHistoryRepository extends AbstractRepository {
         page++;
       }
       session.dsl().deleteFrom(AppRecordHistoryTarget.class)
-        .where(appRecordHistoryTarget.projectId.eq(appId)
+        .where(appRecordHistoryTarget.appId.eq(appId)
           .and(appRecordHistoryTarget.formName.eq(formName)))
         .execute();
       for (List<String> chunk : partition(eventIds)) {
         session.dsl().deleteFrom(AppRecordHistoryTarget.class)
-          .where(appRecordHistoryTarget.projectId.eq(appId)
+          .where(appRecordHistoryTarget.appId.eq(appId)
             .and(appRecordHistoryTarget.eventId.in(chunk)))
           .execute();
       }
       session.dsl().deleteFrom(AppRecordHistory.class)
-        .where(appRecordHistory.projectId.eq(appId).and(appRecordHistory.formName.eq(formName)))
+        .where(appRecordHistory.appId.eq(appId).and(appRecordHistory.formName.eq(formName)))
         .execute();
     }
   }
@@ -156,7 +152,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
   }
 
   private static Predicate targetFilter(String appId, String formName, String recordId) {
-    return appRecordHistoryTarget.projectId.eq(appId)
+    return appRecordHistoryTarget.appId.eq(appId)
       .and(appRecordHistoryTarget.formName.eq(formName))
       .and(appRecordHistoryTarget.recordId.eq(recordId));
   }

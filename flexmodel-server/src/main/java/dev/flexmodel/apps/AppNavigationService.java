@@ -18,7 +18,7 @@ import static dev.flexmodel.common.Values.*;
 import static java.util.stream.Collectors.toMap;
 
 /**
- * 应用导航服务，导航存储在项目 metadata 的 app.navigation 节点。
+ * 应用导航服务，导航存储在 f_app 表的 navigation 列。
  *
  * @author cjbi
  */
@@ -413,8 +413,8 @@ public class AppNavigationService {
     List<AppNavRecord> navs,
     DestinationLabels labels
   ) {
-    Project updated = appNavRecordStore.saveNavigation(project, navs);
-    return toResponses(appId, appNavRecordStore.navRecords(updated), labels);
+    appNavRecordStore.saveNavigation(project, navs);
+    return toResponses(appId, navs, labels);
   }
 
   private List<AppNavResponse> toResponses(

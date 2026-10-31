@@ -2,6 +2,7 @@ package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppNavRecord;
+import dev.flexmodel.codegen.entity.App;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
@@ -11,32 +12,48 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
+/**
+ * 应用导航的读取与持久化，导航存储在 f_app.navigation。
+ */
 @ApplicationScoped
 public class AppNavRecordStore {
-
-  private static final String METADATA_APP_KEY = "app";
 
   @Inject
   ProjectService projectService;
 
   @Inject
+  AppRepository appRepository;
+
+  @Inject
   SessionContext sessionContext;
 
+  /**
+   * 校验 appId 对应一个可访问的应用（存在 f_app 行、为顶层项目、非导入重建中），返回其项目。
+   */
   public Project requireAppProject(String appId) {
-    Project project = projectService.findProject(appId);
-    if (project == null || project.getParentProjectId() != null || "default".equals(appId)) {
+    if ("default".equals(appId)) {
       throw new NotFoundException("应用不存在: " + appId);
     }
-    if (AppService.isImporting(project) && !AppService.importBypassed()) {
+    App app = appRepository.findApp(appId);
+    if (app == null) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
+    Project project = projectService.findProject(appId);
+    if (project == null || project.getParentProjectId() != null) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
+    if (AppService.isImporting(app) && !AppService.importBypassed()) {
       throw new NotFoundException("应用不存在: " + appId);
     }
     return project;
   }
 
   public List<AppNavRecord> navRecords(Project project) {
-    Object value = appNode(project).get("navigation");
+    Object value = navigationValue(project.getId());
     if (value == null) {
       return new ArrayList<>();
     }
@@ -54,41 +71,20 @@ public class AppNavRecordStore {
     return result;
   }
 
-  public Project saveNavigation(Project project, List<AppNavRecord> navs) {
-    Map<String, Object> metadata = metadataMap(project);
-    Map<String, Object> app = appNode(project);
-    app.put("navigation", navs);
-    metadata.put(METADATA_APP_KEY, app);
-    project.setMetadata(metadata);
-    project.setUpdatedBy(currentUserId());
-    project.setUpdatedAt(LocalDateTime.now());
-    return projectService.updateProject(project);
-  }
-
-  private Map<String, Object> metadataMap(Project project) {
-    Object metadata = project.getMetadata();
-    if (metadata == null) {
-      return new LinkedHashMap<>();
-    }
-    if (metadata instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, value) -> result.put(String.valueOf(key), value));
-      return result;
-    }
-    return JsonUtils.convertValue(metadata, Map.class);
-  }
-
-  private Map<String, Object> appNode(Project project) {
-    Object app = metadataMap(project).get(METADATA_APP_KEY);
+  public void saveNavigation(Project project, List<AppNavRecord> navs) {
+    App app = appRepository.findApp(project.getId());
     if (app == null) {
-      return new LinkedHashMap<>();
+      throw new NotFoundException("应用不存在: " + project.getId());
     }
-    if (app instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, value) -> result.put(String.valueOf(key), value));
-      return result;
-    }
-    return JsonUtils.convertValue(app, Map.class);
+    app.setNavigation(navs);
+    app.setUpdatedBy(currentUserId());
+    app.setUpdatedAt(LocalDateTime.now());
+    appRepository.save(app);
+  }
+
+  private Object navigationValue(String appId) {
+    App app = appRepository.findApp(appId);
+    return app == null ? null : app.getNavigation();
   }
 
   private String currentUserId() {

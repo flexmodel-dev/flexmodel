@@ -9,6 +9,7 @@ import dev.flexmodel.apps.dto.AppFormFieldRecord;
 import dev.flexmodel.apps.dto.AppFormRecord;
 import dev.flexmodel.apps.dto.AppNavRecord;
 import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
+import dev.flexmodel.codegen.entity.App;
 import dev.flexmodel.codegen.entity.AppWorkbench;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.ProjectUnitOfWork;
@@ -54,11 +55,13 @@ public class AppPackageService {
   @Inject
   AppFormService forms;
   @Inject
-  WorkbenchRepository workbenchRepository;
+  AppWorkbenchRepository appWorkbenchRepository;
   @Inject
   AppApprovalFlowService approvalFlows;
   @Inject
   AppDataAuthorizationRepository authorizationRepository;
+  @Inject
+  AppRepository appRepository;
   @Inject
   AppPackageValidator validator;
   @Inject
@@ -167,7 +170,7 @@ public class AppPackageService {
   private Structure collectStructure(String appId, Project project) {
     List<AppFormRecord> formRecords = forms.rawFormRecords(appId);
     List<AppNavRecord> navs = navStore.navRecords(project);
-    List<WorkbenchExport> workbenches = workbenchRepository.findByProjectId(project.getId()).stream()
+    List<WorkbenchExport> workbenches = appWorkbenchRepository.findByAppId(project.getId()).stream()
       .map(this::workbenchExport).toList();
     List<Map<String, Object>> approvals = approvalFlows.list(appId).stream()
       .map(flow -> approvalExport(flow, appId)).toList();
@@ -198,16 +201,14 @@ public class AppPackageService {
     return export;
   }
 
-  @SuppressWarnings("unchecked")
   private AppInfo appInfo(Project project) {
-    Map<String, Object> metadata = project.getMetadata() instanceof Map<?, ?> map
-      ? (Map<String, Object>) map : Map.of();
-    Map<String, Object> app = metadata.get("app") instanceof Map<?, ?> node
-      ? (Map<String, Object>) node : Map.of();
+    App app = appRepository.findApp(project.getId());
+    String iconName = app == null || app.getIconName() == null ? "Boxes" : app.getIconName();
+    String primaryColor = app == null || app.getPrimaryColor() == null ? "blue" : app.getPrimaryColor();
     return new AppInfo(project.getName(),
       project.getDescription() == null ? "" : project.getDescription(),
-      String.valueOf(app.getOrDefault("iconName", "Boxes")),
-      String.valueOf(app.getOrDefault("primaryColor", "blue")));
+      iconName,
+      primaryColor);
   }
 
   private Map<String, List<Map<String, Object>>> collectData(String appId, String schema,
@@ -249,7 +250,8 @@ public class AppPackageService {
       try {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("project", List.of(project.getName(), project.getDescription(),
-          String.valueOf(project.getUpdatedAt()), String.valueOf(project.getMetadata())));
+          String.valueOf(project.getUpdatedAt())));
+        snapshot.put("app", app);
         snapshot.put("forms", formRecords);
         snapshot.put("navigation", navigation);
         snapshot.put("workbenches", workbenches);

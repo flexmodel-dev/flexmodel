@@ -1,11 +1,11 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.approval.AppApprovalLifecycle;
 import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.dto.AppResponse;
 import dev.flexmodel.apps.dto.AppUpdateRequest;
 import dev.flexmodel.auth.service.UserService;
+import dev.flexmodel.codegen.entity.App;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.codegen.entity.User;
 import dev.flexmodel.common.NotFoundException;
@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * 应用管理服务，应用与项目一一对齐。
+ * 应用管理服务。应用（f_app）与项目（f_project）一对一共享主键。
  *
  * @author cjbi
  */
@@ -35,12 +35,10 @@ public class AppService {
   private static final Pattern ICON_NAME_PATTERN = Pattern.compile("^[A-Z][A-Za-z0-9]{0,63}$");
   private static final String DEFAULT_ICON_NAME = "Boxes";
   private static final String DEFAULT_PRIMARY_COLOR = "blue";
-  private static final String METADATA_APP_KEY = "app";
 
   /**
-   * 应用配置中的 provisioning 状态：导入重建期间应用对列表和普通访问不可见。
+   * f_app.provisioning 状态：导入重建期间应用对列表和普通访问不可见。
    */
-  public static final String PROVISIONING_KEY = "provisioning";
   public static final String PROVISIONING_IMPORTING = "importing";
 
   /**
@@ -51,16 +49,8 @@ public class AppService {
   /**
    * 是否处于导入重建中（应用尚未激活）。
    */
-  static boolean isImporting(Project project) {
-    if (project == null) return false;
-    Object metadata = project.getMetadata();
-    if (metadata instanceof Map<?, ?> map) {
-      Object app = map.get(METADATA_APP_KEY);
-      if (app instanceof Map<?, ?> appNode) {
-        return PROVISIONING_IMPORTING.equals(String.valueOf(appNode.get(PROVISIONING_KEY)));
-      }
-    }
-    return false;
+  static boolean isImporting(App app) {
+    return app != null && PROVISIONING_IMPORTING.equals(app.getProvisioning());
   }
 
   static boolean importBypassed() {
@@ -71,7 +61,10 @@ public class AppService {
   ProjectService projectService;
 
   @Inject
-  WorkbenchRepository workbenchRepository;
+  AppRepository appRepository;
+
+  @Inject
+  AppWorkbenchRepository appWorkbenchRepository;
 
   @Inject
   SessionContext sessionContext;
@@ -85,22 +78,23 @@ public class AppService {
   public List<AppResponse> findApps() {
     Map<String, String> ownerNames = userService.findAll().stream()
       .collect(Collectors.toMap(User::getId, user -> userDisplayName(user, user.getId())));
-    return projectService.findTopLevelProjects().stream()
-      .filter(project -> !isImporting(project))
-      .map(project -> toResponse(
-        project,
-        iconName(project, null),
-        primaryColor(project, null),
-        ownerDisplayName(project.getOwnerId(), ownerNames)))
+    return appRepository.findApps().stream()
+      .filter(app -> !isImporting(app))
+      .map(app -> {
+        Project project = projectService.findProject(app.getId());
+        if (project == null) {
+          return null;
+        }
+        return toResponse(project, app, ownerDisplayName(project.getOwnerId(), ownerNames));
+      })
+      .filter(Objects::nonNull)
       .toList();
   }
 
   public AppResponse findApp(String appId) {
     Project project = requireAppProject(appId);
-    if (isImporting(project) && !importBypassed()) {
-      throw new NotFoundException("应用不存在: " + appId);
-    }
-    return toResponse(project);
+    App app = requireApp(appId);
+    return toResponse(project, app);
   }
 
   public AppResponse createApp(AppCreateRequest request) {
@@ -119,7 +113,6 @@ public class AppService {
     project.setName(request.name().trim());
     project.setDescription(request.description() == null ? "" : request.description());
     project.setEnabled(true);
-    project.setMetadata(Map.of(METADATA_APP_KEY, appMetadata(request.iconName(), request.primaryColor())));
 
     String userId = currentUserId();
     project.setCreatedBy(userId);
@@ -128,7 +121,20 @@ public class AppService {
     project.setUpdatedAt(LocalDateTime.now());
 
     Project created = projectService.createProject(project);
-    return toResponse(created, iconName(created, request.iconName()), primaryColor(created, request.primaryColor()));
+
+    App app = new App();
+    app.setId(created.getId());
+    app.setIconName(iconName(request.iconName()));
+    app.setPrimaryColor(primaryColor(request.primaryColor()));
+    app.setNavigation(List.of());
+    app.setForms(List.of());
+    app.setCreatedBy(userId);
+    app.setUpdatedBy(userId);
+    app.setCreatedAt(LocalDateTime.now());
+    app.setUpdatedAt(LocalDateTime.now());
+    appRepository.save(app);
+
+    return toResponse(created, app, iconName(request.iconName()), primaryColor(request.primaryColor()));
   }
 
   public AppResponse updateApp(String appId, AppUpdateRequest request) {
@@ -139,35 +145,50 @@ public class AppService {
     if (request.description() != null) {
       project.setDescription(request.description());
     }
-
-    Map<String, Object> metadata = metadataMap(project);
-    Map<String, Object> app = appNode(project);
-    app.put("iconName", iconName(project, request.iconName()));
-    app.put("primaryColor", primaryColor(project, request.primaryColor()));
-    metadata.put(METADATA_APP_KEY, app);
-    project.setMetadata(metadata);
-
     project.setUpdatedBy(currentUserId());
     project.setUpdatedAt(LocalDateTime.now());
 
     Project updated = projectService.updateProject(project);
-    return toResponse(updated);
+
+    App app = requireApp(appId);
+    app.setIconName(iconName(request.iconName(), app));
+    app.setPrimaryColor(primaryColor(request.primaryColor(), app));
+    app.setUpdatedBy(currentUserId());
+    app.setUpdatedAt(LocalDateTime.now());
+    appRepository.save(app);
+
+    return toResponse(updated, app);
   }
 
   public void deleteApp(String appId) {
     Project project = requireAppProject(appId);
     appApprovalLifecycle.beforeDelete(appId);
-    workbenchRepository.deleteByProjectId(project.getId());
+    appWorkbenchRepository.deleteByAppId(project.getId());
     appDataAuthorizationService.deleteAppRules(appId);
     projectService.deleteProject(project.getId());
   }
 
   private Project requireAppProject(String appId) {
+    if ("default".equals(appId)) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
+    App app = appRepository.findApp(appId);
+    if (app == null) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
     Project project = projectService.findProject(appId);
-    if (project == null || project.getParentProjectId() != null || "default".equals(appId)) {
+    if (project == null || project.getParentProjectId() != null) {
       throw new NotFoundException("应用不存在: " + appId);
     }
     return project;
+  }
+
+  private App requireApp(String appId) {
+    App app = appRepository.findApp(appId);
+    if (app == null) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
+    return app;
   }
 
   private void validateCreateRequest(AppCreateRequest request) {
@@ -237,67 +258,42 @@ public class AppService {
     return candidate;
   }
 
-  private Map<String, Object> appMetadata(String iconName, String primaryColor) {
-    Map<String, Object> app = new LinkedHashMap<>();
-    app.put("iconName", iconName == null ? DEFAULT_ICON_NAME : iconName);
-    app.put("primaryColor", primaryColor == null ? DEFAULT_PRIMARY_COLOR : primaryColor);
-    app.put("navigation", List.of());
-    return app;
+  private String iconName(String requestedIconName) {
+    return requestedIconName == null ? DEFAULT_ICON_NAME : requestedIconName;
   }
 
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> metadataMap(Project project) {
-    Object metadata = project.getMetadata();
-    if (metadata == null) {
-      return new LinkedHashMap<>();
-    }
-    if (metadata instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, value) -> result.put(String.valueOf(key), value));
-      return result;
-    }
-    return JsonUtils.convertValue(metadata, Map.class);
-  }
-
-  private Map<String, Object> appNode(Project project) {
-    Object app = metadataMap(project).get(METADATA_APP_KEY);
-    if (app == null) {
-      return Map.of();
-    }
-    if (app instanceof Map<?, ?> map) {
-      Map<String, Object> result = new LinkedHashMap<>();
-      map.forEach((key, value) -> result.put(String.valueOf(key), value));
-      return result;
-    }
-    return JsonUtils.convertValue(app, Map.class);
-  }
-
-  private String iconName(Project project, String requestedIconName) {
+  private String iconName(String requestedIconName, App app) {
     if (requestedIconName != null) {
       return requestedIconName;
     }
-    Object value = appNode(project).get("iconName");
-    return value == null ? DEFAULT_ICON_NAME : String.valueOf(value);
+    return isBlank(app.getIconName()) ? DEFAULT_ICON_NAME : app.getIconName();
   }
 
-  private String primaryColor(Project project, String requestedPrimaryColor) {
+  private String primaryColor(String requestedPrimaryColor) {
+    return requestedPrimaryColor == null ? DEFAULT_PRIMARY_COLOR : requestedPrimaryColor;
+  }
+
+  private String primaryColor(String requestedPrimaryColor, App app) {
     if (requestedPrimaryColor != null) {
       return requestedPrimaryColor;
     }
-    Object value = appNode(project).get("primaryColor");
-    return value == null ? DEFAULT_PRIMARY_COLOR : String.valueOf(value);
+    return isBlank(app.getPrimaryColor()) ? DEFAULT_PRIMARY_COLOR : app.getPrimaryColor();
   }
 
-  private AppResponse toResponse(Project project) {
-    return toResponse(project, iconName(project, null), primaryColor(project, null));
+  private AppResponse toResponse(Project project, App app) {
+    return toResponse(project, app, ownerDisplayName(project.getOwnerId()));
   }
 
-  private AppResponse toResponse(Project project, String iconName, String primaryColor) {
-    return toResponse(project, iconName, primaryColor, ownerDisplayName(project.getOwnerId()));
+  private AppResponse toResponse(Project project, App app, String owner) {
+    return toResponse(project, app, iconName(null, app), primaryColor(null, app), owner);
   }
 
-  private AppResponse toResponse(Project project, String iconName, String primaryColor, String owner) {
-    return AppResponse.from(project, owner, iconName, primaryColor);
+  private AppResponse toResponse(Project project, App app, String iconName, String primaryColor) {
+    return toResponse(project, app, iconName, primaryColor, ownerDisplayName(project.getOwnerId()));
+  }
+
+  private AppResponse toResponse(Project project, App app, String iconName, String primaryColor, String owner) {
+    return AppResponse.from(project, owner, iconName, primaryColor, app.getUpdatedAt());
   }
 
   private String ownerDisplayName(String ownerId) {

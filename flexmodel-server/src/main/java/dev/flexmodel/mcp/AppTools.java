@@ -36,10 +36,10 @@ public class AppTools {
   AppRecordService appRecordService;
 
   @Inject
-  WorkbenchService workbenchService;
+  AppWorkbenchService appWorkbenchService;
 
   @Inject
-  WorkbenchDataService workbenchDataService;
+  AppWorkbenchDataService appWorkbenchDataService;
 
   @Inject
   AppApprovalFlowService appApprovalFlowService;
@@ -235,7 +235,7 @@ public class AppTools {
   ) {
     log.info("list_app_workbenches called, appId={}", appId);
     try {
-      return JsonUtils.toJsonString(workbenchService.findWorkbenches(appId));
+      return JsonUtils.toJsonString(appWorkbenchService.findWorkbenches(appId));
     } catch (Exception exception) {
       log.error("list_app_workbenches failed, appId={}", appId, exception);
       return "Error: list_app_workbenches failed - " + exception.getMessage();
@@ -253,7 +253,7 @@ public class AppTools {
   ) {
     log.info("get_app_workbench_capabilities called, appId={}", appId);
     try {
-      return JsonUtils.toJsonString(workbenchService.findCapabilities(appId));
+      return JsonUtils.toJsonString(appWorkbenchService.findCapabilities(appId));
     } catch (Exception exception) {
       log.error("get_app_workbench_capabilities failed, appId={}", appId, exception);
       return "Error: get_app_workbench_capabilities failed - " + exception.getMessage();
@@ -267,7 +267,7 @@ public class AppTools {
   ) {
     log.info("get_app_workbench called, appId={}, workbenchId={}", appId, workbenchId);
     try {
-      return JsonUtils.toJsonString(workbenchService.findWorkbench(appId, workbenchId));
+      return JsonUtils.toJsonString(appWorkbenchService.findWorkbench(appId, workbenchId));
     } catch (Exception exception) {
       log.error("get_app_workbench failed, appId={}, workbenchId={}", appId, workbenchId, exception);
       return "Error: get_app_workbench failed - " + exception.getMessage();
@@ -292,7 +292,7 @@ public class AppTools {
       "get_app_workbench_component_data called, appId={}, workbenchId={}, componentId={}",
       appId, workbenchId, componentId);
     try {
-      return JsonUtils.toJsonString(workbenchDataService.findComponentData(
+      return JsonUtils.toJsonString(appWorkbenchDataService.findComponentData(
         appId, workbenchId, componentId, optionalInteger(page, 1),
         optionalInteger(size, 20), isBlank(search) ? null : search));
     } catch (Exception exception) {
@@ -322,7 +322,7 @@ public class AppTools {
       WorkbenchLayoutRecord layout = isBlank(layoutJson)
         ? WorkbenchLayoutRecord.empty()
         : JsonUtils.parseToObject(layoutJson, WorkbenchLayoutRecord.class);
-      return JsonUtils.toJsonString(workbenchService.createWorkbench(
+      return JsonUtils.toJsonString(appWorkbenchService.createWorkbench(
         appId, new WorkbenchCreateRequest(name, description, layout)));
     } catch (Exception exception) {
       log.error("create_app_workbench failed, appId={}, name={}", appId, name, exception);
@@ -348,7 +348,7 @@ public class AppTools {
       WorkbenchLayoutRecord layout = JsonUtils.parseToObject(layoutJson, WorkbenchLayoutRecord.class);
       WorkbenchPatchRequest request = new WorkbenchPatchRequest();
       request.setLayout(layout);
-      return JsonUtils.toJsonString(workbenchService.patchWorkbench(appId, workbenchId, request));
+      return JsonUtils.toJsonString(appWorkbenchService.patchWorkbench(appId, workbenchId, request));
     } catch (Exception exception) {
       log.error("save_app_workbench_layout failed, appId={}, workbenchId={}", appId, workbenchId, exception);
       return "Error: save_app_workbench_layout failed - " + exception.getMessage();

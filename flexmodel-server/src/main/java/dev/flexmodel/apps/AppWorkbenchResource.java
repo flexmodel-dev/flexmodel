@@ -1,11 +1,6 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
-import dev.flexmodel.apps.dto.WorkbenchComponentDataResponse;
-import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
-import dev.flexmodel.apps.dto.WorkbenchPatchRequest;
-import dev.flexmodel.apps.dto.WorkbenchResponse;
-import dev.flexmodel.apps.dto.WorkbenchSummaryResponse;
+import dev.flexmodel.apps.dto.*;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
@@ -22,18 +17,18 @@ import java.util.List;
 @Path("/apps/{appId}/workbenches")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class WorkbenchResource {
+public class AppWorkbenchResource {
 
   @Inject
-  WorkbenchService workbenchService;
+  AppWorkbenchService appWorkbenchService;
 
   @Inject
-  WorkbenchDataService workbenchDataService;
+  AppWorkbenchDataService appWorkbenchDataService;
 
   @Operation(summary = "获取应用工作台列表")
   @GET
   public List<WorkbenchSummaryResponse> list(@PathParam("appId") String appId) {
-    return workbenchService.findWorkbenches(appId);
+    return appWorkbenchService.findWorkbenches(appId);
   }
 
   @Operation(summary = "创建应用工作台")
@@ -42,7 +37,7 @@ public class WorkbenchResource {
     @PathParam("appId") String appId,
     @Valid WorkbenchCreateRequest request
   ) {
-    WorkbenchResponse response = workbenchService.createWorkbench(appId, request);
+    WorkbenchResponse response = appWorkbenchService.createWorkbench(appId, request);
     return Response.status(Response.Status.CREATED).entity(response).build();
   }
 
@@ -50,7 +45,7 @@ public class WorkbenchResource {
   @GET
   @Path("/capabilities")
   public WorkbenchCapabilityResponse capabilities(@PathParam("appId") String appId) {
-    return workbenchService.findCapabilities(appId);
+    return appWorkbenchService.findCapabilities(appId);
   }
 
   @Parameter(name = "workbenchId", description = "工作台ID", in = ParameterIn.PATH, required = true)
@@ -61,7 +56,7 @@ public class WorkbenchResource {
     @PathParam("appId") String appId,
     @PathParam("workbenchId") String workbenchId
   ) {
-    return workbenchService.findWorkbench(appId, workbenchId);
+    return appWorkbenchService.findWorkbench(appId, workbenchId);
   }
 
   @Parameter(name = "workbenchId", description = "工作台ID", in = ParameterIn.PATH, required = true)
@@ -76,7 +71,7 @@ public class WorkbenchResource {
     @QueryParam("size") @DefaultValue("20") Integer size,
     @QueryParam("search") String search
   ) {
-    return workbenchDataService.findComponentData(appId, workbenchId, componentId, page, size, search);
+    return appWorkbenchDataService.findComponentData(appId, workbenchId, componentId, page, size, search);
   }
 
   @Parameter(name = "workbenchId", description = "工作台ID", in = ParameterIn.PATH, required = true)
@@ -88,7 +83,7 @@ public class WorkbenchResource {
     @PathParam("workbenchId") String workbenchId,
     @Valid WorkbenchPatchRequest request
   ) {
-    return workbenchService.patchWorkbench(appId, workbenchId, request);
+    return appWorkbenchService.patchWorkbench(appId, workbenchId, request);
   }
 
   @Parameter(name = "workbenchId", description = "工作台ID", in = ParameterIn.PATH, required = true)
@@ -99,7 +94,7 @@ public class WorkbenchResource {
     @PathParam("appId") String appId,
     @PathParam("workbenchId") String workbenchId
   ) {
-    workbenchService.deleteWorkbench(appId, workbenchId);
+    appWorkbenchService.deleteWorkbench(appId, workbenchId);
     return Response.noContent().build();
   }
 }

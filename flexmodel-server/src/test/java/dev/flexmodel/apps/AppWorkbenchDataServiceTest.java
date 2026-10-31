@@ -1,23 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.apps.dto.AppCreateRequest;
-import dev.flexmodel.apps.dto.AppFormCreateRequest;
-import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
-import dev.flexmodel.apps.dto.AppFormResponse;
-import dev.flexmodel.apps.dto.WorkbenchChartData;
-import dev.flexmodel.apps.dto.WorkbenchChartConfig;
-import dev.flexmodel.apps.dto.WorkbenchComponentDataResponse;
-import dev.flexmodel.apps.dto.WorkbenchComponentRecord;
-import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
-import dev.flexmodel.apps.dto.WorkbenchDataLoaderConfig;
-import dev.flexmodel.apps.dto.WorkbenchDataLoaderData;
-import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
-import dev.flexmodel.apps.dto.WorkbenchMetricConfig;
-import dev.flexmodel.apps.dto.WorkbenchMetricData;
-import dev.flexmodel.apps.dto.WorkbenchPlacementRecord;
-import dev.flexmodel.apps.dto.WorkbenchResponse;
-import dev.flexmodel.apps.dto.WorkbenchTasksConfig;
+import dev.flexmodel.apps.dto.*;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.ValidationException;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -30,13 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
-class WorkbenchDataServiceTest {
+class AppWorkbenchDataServiceTest {
 
   private static final String SUFFIX = Long.toHexString(System.nanoTime());
 
@@ -50,10 +32,10 @@ class WorkbenchDataServiceTest {
   AppRecordService appRecordService;
 
   @Inject
-  WorkbenchService workbenchService;
+  AppWorkbenchService appWorkbenchService;
 
   @Inject
-  WorkbenchDataService workbenchDataService;
+  AppWorkbenchDataService appWorkbenchDataService;
 
   @Test
   void metricCountSumAndAverageUseFormRecords() {
@@ -63,19 +45,19 @@ class WorkbenchDataServiceTest {
       createRecords(appId, form.name());
       WorkbenchResponse workbench = createWorkbench(appId, form.name(), "count");
 
-      WorkbenchComponentDataResponse count = workbenchDataService.findComponentData(
+      WorkbenchComponentDataResponse count = appWorkbenchDataService.findComponentData(
         appId, workbench.id(), "metric", null, null, null);
       assertInstanceOf(WorkbenchMetricData.class, count.data());
       assertEquals(3, ((WorkbenchMetricData) count.data()).value());
 
       WorkbenchResponse sumWorkbench = createWorkbench(appId, form.name(), "sum");
-      WorkbenchComponentDataResponse sum = workbenchDataService.findComponentData(
+      WorkbenchComponentDataResponse sum = appWorkbenchDataService.findComponentData(
         appId, sumWorkbench.id(), "metric", null, null, null);
       assertInstanceOf(WorkbenchMetricData.class, sum.data());
       assertEquals(400, ((WorkbenchMetricData) sum.data()).value());
 
       WorkbenchResponse averageWorkbench = createWorkbench(appId, form.name(), "avg");
-      WorkbenchComponentDataResponse average = workbenchDataService.findComponentData(
+      WorkbenchComponentDataResponse average = appWorkbenchDataService.findComponentData(
         appId, averageWorkbench.id(), "metric", null, null, null);
       assertInstanceOf(WorkbenchMetricData.class, average.data());
       assertEquals(400.0 / 3, ((WorkbenchMetricData) average.data()).value().doubleValue(), 0.000001);
@@ -92,20 +74,20 @@ class WorkbenchDataServiceTest {
       createRecords(appId, form.name());
       WorkbenchResponse workbench = createWorkbench(appId, form.name(), "count");
 
-      WorkbenchComponentDataResponse chart = workbenchDataService.findComponentData(
+      WorkbenchComponentDataResponse chart = appWorkbenchDataService.findComponentData(
         appId, workbench.id(), "chart", null, null, null);
       assertInstanceOf(WorkbenchChartData.class, chart.data());
       assertEquals(2, ((WorkbenchChartData) chart.data()).rows().size());
       assertEquals("Alpha", ((WorkbenchChartData) chart.data()).rows().getFirst().dimension());
       assertEquals(350, ((WorkbenchChartData) chart.data()).rows().getFirst().value());
 
-      WorkbenchComponentDataResponse firstPage = workbenchDataService.findComponentData(
+      WorkbenchComponentDataResponse firstPage = appWorkbenchDataService.findComponentData(
         appId, workbench.id(), "records", 1, 2, null);
       assertInstanceOf(WorkbenchDataLoaderData.class, firstPage.data());
       assertEquals(2, ((WorkbenchDataLoaderData) firstPage.data()).list().size());
       assertEquals(3, ((WorkbenchDataLoaderData) firstPage.data()).total());
 
-      WorkbenchComponentDataResponse searchResult = workbenchDataService.findComponentData(
+      WorkbenchComponentDataResponse searchResult = appWorkbenchDataService.findComponentData(
         appId, workbench.id(), "records", 1, 20, "Alpha");
       assertInstanceOf(WorkbenchDataLoaderData.class, searchResult.data());
       assertEquals(2, ((WorkbenchDataLoaderData) searchResult.data()).total());
@@ -121,11 +103,11 @@ class WorkbenchDataServiceTest {
       AppFormResponse form = createAppAndForm(appId);
       WorkbenchResponse workbench = createWorkbench(appId, form.name(), "count");
 
-      assertThrows(ValidationException.class, () -> workbenchDataService.findComponentData(
+      assertThrows(ValidationException.class, () -> appWorkbenchDataService.findComponentData(
         appId, workbench.id(), "records", 1, 51, null));
-      assertThrows(ValidationException.class, () -> workbenchDataService.findComponentData(
+      assertThrows(ValidationException.class, () -> appWorkbenchDataService.findComponentData(
         appId, workbench.id(), "tasks", null, null, null));
-      assertThrows(NotFoundException.class, () -> workbenchDataService.findComponentData(
+      assertThrows(NotFoundException.class, () -> appWorkbenchDataService.findComponentData(
         appId, workbench.id(), "missing", null, null, null));
     } finally {
       deleteAppQuietly(appId);
@@ -229,7 +211,7 @@ class WorkbenchDataServiceTest {
       "Workbench data-" + UUID.randomUUID(),
       null,
       new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, components));
-    return workbenchService.createWorkbench(appId, request);
+    return appWorkbenchService.createWorkbench(appId, request);
   }
 
   private String uniqueAppId(String name) {

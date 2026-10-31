@@ -2,7 +2,9 @@ package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.dto.AppDataAuthorization;
-import dev.flexmodel.apps.dto.AppDataAuthorization.*;
+import dev.flexmodel.apps.dto.AppDataAuthorization.Control;
+import dev.flexmodel.apps.dto.AppDataAuthorization.FieldControl;
+import dev.flexmodel.apps.dto.AppDataAuthorization.Selection;
 import dev.flexmodel.codegen.entity.AppDataPermissionControl;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.persistence.ServerSessions;
@@ -13,7 +15,7 @@ import java.util.*;
 
 import static dev.flexmodel.codegen.System.appDataAuthorization;
 import static dev.flexmodel.codegen.System.appDataPermissionControl;
-import static dev.flexmodel.common.Values.*;
+import static dev.flexmodel.common.Values.object;
 
 @ApplicationScoped
 public class AppDataAuthorizationRepository {
@@ -24,7 +26,7 @@ public class AppDataAuthorizationRepository {
 
   public List<AppDataAuthorization> find(String appId, String rootForm) {
     try (var session = sessions.open("system")) {
-      var predicate = appDataAuthorization.projectId.eq(appId);
+      var predicate = appDataAuthorization.appId.eq(appId);
       if (rootForm != null) predicate = predicate.and(appDataAuthorization.formName.eq(rootForm));
       List<AppDataAuthorization> result = new ArrayList<>();
       for (var rule : session.dsl().selectFrom(dev.flexmodel.codegen.entity.AppDataAuthorization.class).where(predicate).execute()) {
@@ -44,7 +46,7 @@ public class AppDataAuthorizationRepository {
       try (var session = sessions.open("system")) {
         var entity = new dev.flexmodel.codegen.entity.AppDataAuthorization();
         entity.setId(rule.id());
-        entity.setProjectId(rule.appId());
+        entity.setAppId(rule.appId());
         entity.setFormName(rule.formName());
         entity.setName(rule.name());
         entity.setEnabled(rule.enabled());
@@ -74,7 +76,7 @@ public class AppDataAuthorizationRepository {
       try (var session = sessions.open("system")) {
         session.dsl().deleteFrom(AppDataPermissionControl.class).where(appDataPermissionControl.authorizationId.eq(rule.id())).execute();
         session.dsl().deleteFrom(dev.flexmodel.codegen.entity.AppDataAuthorization.class)
-          .where(appDataAuthorization.id.eq(rule.id()).and(appDataAuthorization.projectId.eq(rule.appId()))).execute();
+          .where(appDataAuthorization.id.eq(rule.id()).and(appDataAuthorization.appId.eq(rule.appId()))).execute();
       }
       return null;
     });

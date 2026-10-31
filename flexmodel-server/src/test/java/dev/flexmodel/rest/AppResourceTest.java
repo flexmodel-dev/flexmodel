@@ -142,10 +142,6 @@ public class AppResourceTest {
           "metadata": {
             "logSettings": {
               "logRetentionDays": 30
-            },
-            "app": {
-              "iconName": "Tags",
-              "primaryColor": "blue"
             }
           }
         }
@@ -183,9 +179,16 @@ public class AppResourceTest {
       .get("/projects/dev_test")
       .then()
       .statusCode(200)
-      .body("metadata.logSettings.logRetentionDays", equalTo(30))
-      .body("metadata.app.iconName", equalTo("Folder"))
-      .body("metadata.app.primaryColor", equalTo("green"));
+      .body("metadata.logSettings.logRetentionDays", equalTo(30));
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get(BASE_PATH + "/dev_test")
+      .then()
+      .statusCode(200)
+      .body("iconName", equalTo("Folder"))
+      .body("primaryColor", equalTo("green"));
   }
 
   @Test

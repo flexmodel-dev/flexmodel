@@ -136,7 +136,7 @@
   JSON 仍为 `appId`）。
 - 文档 `approvals.md`、`data-permissions.md`、`notifications.md` 同步表名与字段。按用户要求不做旧表/旧字段兼容。
 - 验证：`mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过（clean 仍受运行中 dev.jar 占用）；
-  `WorkbenchServiceTest`、`AppApprovalFlowResourceTest` 通过；`NotificationResourceTest` 7 项中 5 项通过，
+  `AppWorkbenchServiceTest`、`AppApprovalFlowResourceTest` 通过；`NotificationResourceTest` 7 项中 5 项通过，
   2 项失败为 `progress.md` 已记录的既有 outbox/SSE 设计问题，与本次更名无关。
 - Apps UI 审批中心按入口区分布局：从应用菜单进入时保留应用导航并按当前 `appId` 过滤；从通知进入（`/approval/home` 无
   `appId`）时
@@ -156,7 +156,7 @@
 - `AppDataAuthorizationRepository` 不再使用模型名常量与 Map 行，改用 `DSL#selectFrom(Class)` 类型化访问：
   `selectFrom(DataAuthorization.class)` / `selectFrom(DataPermissionControl.class)`、`mergeInto(Class).values(实体)`、
   `deleteFrom(Class)`，过滤条件使用 codegen 元模型 `System.dataAuthorization` / `System.dataPermissionControl` 的
-  `FilterExpression`，与 `WorkbenchFmRepository` 等现有仓库风格一致；删除 `RULE`/`CONTROL` 字符串常量（无其他引用）。
+  `FilterExpression`，与 `AppWorkbenchFmRepository` 等现有仓库风格一致；删除 `RULE`/`CONTROL` 字符串常量（无其他引用）。
 - 验证：全模块 `mvn compile` 通过；
   `mvn test -pl flexmodel-server -Dtest=AppDataPermissionsTest,AppDataAuthorizationResourceTest,AppRecordServiceTest`
   全部通过；`AppRecordResourceTest` 的 5 个失败为 WIP 既有问题（本次重写前的旧 surefire 报告同样失败，涉及记录字段/layout
@@ -175,7 +175,7 @@
   设置为当前创建人的一行逻辑，沿用现有内置字段保护；不增加历史补列、回填或移交逻辑。
 - 验证：全模块 `mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin'`、规定的 `mvn test -q -pl flexmodel-engine`
   、Apps UI `npm run build`、`npm test`（36 项）均通过。后端 `AppPermissionConditionsTest` 3 +
-  `AppDataAuthorizationResourceTest` 4 + `AppRecordServiceTest` 6 + `WorkbenchDataServiceTest` 4 共 17 项通过，日志
+  `AppDataAuthorizationResourceTest` 4 + `AppRecordServiceTest` 6 + `AppWorkbenchDataServiceTest` 4 共 17 项通过，日志
   `logs/data-configuration-focused-tests.log`；覆盖保存限制性配置不改变记录 CRUD、配置管理资格、主子关系清理，以及所有者默认值、不可伪造和更新不变。
 - 扩大后端回归共 39 项最初发现新测试初始化使用不可变 Map，已修复；余下 7 项 `AppFormResourceTest`/`AppRecordResourceTest`
   的布局字段投影和系统鉴权失败，与 feat-108 既有记录一致，未扩展修复。`init.sh` 的 clean 仍被运行中的 dev.jar 锁定，保留用户服务并完成非
@@ -2847,7 +2847,7 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 修复多组件相邻问题：移除 `grid-stack-item-content` 上的 `h-full`，让 GridStack 的上下左右偏移真正生效，组件之间恢复固定间距。
 - 修复拖动/缩放后未发 PATCH 的问题：GridStack 的 `dragstop/resizestop` 回调参数应为 `GridItemHTMLElement`，改为从其
   `gridstackNode` 读取组件 ID 与网格坐标，确保提交真实布局。
-- 新增 `WorkbenchServiceTest` 覆盖旧 `HALF/SHORT` 布局迁移；新增 `WorkbenchStartupMigrationTest`
+- 新增 `AppWorkbenchServiceTest` 覆盖旧 `HALF/SHORT` 布局迁移；新增 `WorkbenchStartupMigrationTest`
   在应用启动前预置旧布局数据，验证迁移监听器确实在引擎初始化后自动执行。
 - 验证：`flexmodel-apps-ui npm run build` 通过（仅既有 chunk 体积与 /logo.png 提示）；
   `mvn test -pl flexmodel-server -am "-Dtest=WorkbenchServiceTest,WorkbenchStartupMigrationTest,WorkbenchResourceTest" "-Dsurefire.failIfNoSpecifiedTests=false"`
@@ -2948,9 +2948,10 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   `schemaVersion` 保持 1。
 - 前端 `WorkbenchHome`、`ComponentCanvas`、`ComponentDesigner` 同步真实数据契约并渲染真实结果；未保存配置仍使用设计器预览示例，
   `tasks` 保持 mock 数据，本次不调整视觉样式。
-- 验证：`mvn compile -pl flexmodel-server -am` 通过；`flexmodel-apps-ui npm run build` 通过；`WorkbenchDataServiceTest` 4
+- 验证：`mvn compile -pl flexmodel-server -am` 通过；`flexmodel-apps-ui npm run build` 通过；`AppWorkbenchDataServiceTest`
+  4
   tests 通过；`WorkbenchServiceTest + AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink` 5 tests 通过；
-  `WorkbenchResourceTest` 新增数据响应与分页校验通过；`bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试；
+  `AppWorkbenchResourceTest` 新增数据响应与分页校验通过；`bash ./init.sh` 通过全模块编译与 `flexmodel-engine` 测试；
   `git diff --check` 通过。
 - 备注：全量 `AppToolsTest` 仍存在与本次无关的既有断言失败；本次仅验证新增工作台数据链路相关测试。
 
@@ -3812,3 +3813,27 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   `Loaded 1 built-in app template(s)`，模板列表 / 实例化 READY / commit COMMITTED（materials 96）/ DELETE 204，确认 jar 内
   ZIP 读取链路可用（统一走 `ClassLoader.getResourceAsStream`，不依赖文件路径）。
 - 遗留：native image 未构建验证；未提交代码。
+
+## Apps - f_app 应用表与 app_id 归属重构（2026-10-31，feat-144）
+
+- 目标：应用配置从 `f_project.metadata.app` JSON 节点迁出为独立平台表 `f_app`（与 `f_project` 一对一共享主键），
+  `f_app_*` 系列表归属语义统一为 `app_id`；应用明确不做历史数据迁移（用户自行处理存量 `metadata.app`）。
+- platform.fml：新增 `model f_app`（id 共享、icon_name、primary_color、provisioning?、navigation?/forms? JSON、审计字段）
+  与 `seed f_app`（dev_test）；`f_app_data_authorization` 的 `project_id` → `app_id`。
+- 新增 `AppRepository` 接口 + `AppFmRepository`（System.app 静态元模型、mergeInto 保存、按 id 删除）。
+- AppService：移除 `METADATA_APP_KEY` 与 JSON 节点读写，`isImporting` 改读 `f_app.provisioning`；`createApp`
+  先建 f_project 再建同 id f_app 行；`findApps/findApp/deleteApp` 以 f_app 为主数据源关联 f_project；
+  `requireAppProject` 校验 f_app 行存在且为顶层项目。
+- 消费方切换：AppNavRecordStore 导航存 `f_app.navigation`；AppFormService 表单存 `f_app.forms`；
+  AppPackageService/AppPackageImport 导入导出与 provisioning 隔离改走 f_app；Workbench*、AppApproval*、
+  AppRecordHistory*、AppRecordDiscussion、AppDataAuthorization 各 Repository 查询列统一 `app_id`
+  （一对一共享主键，列值不变）；AppResponse 同步；AppResourceTest 夹具更新。
+- ProjectPlatformDataCleaner：拆出 `APP_MODELS`（按 app_id 清理；`f_app_data_permission_control` 经
+  authorization_id 间接归属，先于授权行删除）并按共享 id 删除 f_app 行，其余平台表仍按 project_id。
+- 验证：全模块 `mvn compile`（非 clean，dev.jar 文件锁为既有已知阻塞）EXIT=0；`mvn test -pl flexmodel-engine`
+  BUILD SUCCESS；定向后端 9 个测试类 71/71（AppNavigationResourceTest 11、AppDataAuthorizationResourceTest 4、
+  AppRecordResourceTest 6、WorkbenchResourceTest 6、AppPackageValidatorTest 18、AppPackageZipTest 10、
+  AppRecordHistoryRecorderTest 8、AppRecordDiscussionServiceTest 2、AppRecordServiceTest 6）；
+  AppResourceTest 12 项 11 通过，唯一失败 `testCreateAppWithExplicitProjectId`（期望 404 实得 401）为
+  feat-126/127 已记录既有失败，与本次无关。
+- 遗留：未提交代码；历史 `metadata.app` 数据迁移由用户自行处理，无兼容层。

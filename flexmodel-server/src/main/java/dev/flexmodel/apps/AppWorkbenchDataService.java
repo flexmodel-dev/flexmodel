@@ -1,14 +1,8 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.apps.dto.WorkbenchChartData;
-import dev.flexmodel.apps.dto.WorkbenchComponentData;
-import dev.flexmodel.apps.dto.WorkbenchComponentDataResponse;
-import dev.flexmodel.apps.dto.WorkbenchComponentRecord;
-import dev.flexmodel.apps.dto.WorkbenchDataLoaderData;
-import dev.flexmodel.apps.dto.WorkbenchDataPointRecord;
-import dev.flexmodel.apps.dto.WorkbenchMetricData;
-import dev.flexmodel.common.config.EngineConfig;
+import dev.flexmodel.apps.dto.*;
 import dev.flexmodel.common.ValidationException;
+import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.data.DataService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -17,13 +11,13 @@ import java.util.List;
 import java.util.Map;
 
 @ApplicationScoped
-public class WorkbenchDataService {
+public class AppWorkbenchDataService {
 
   private static final int MAX_CHART_GROUPS = 100;
   private static final int MAX_DATA_LOADER_SIZE = 50;
 
   @Inject
-  WorkbenchService workbenchService;
+  AppWorkbenchService appWorkbenchService;
 
   @Inject
   AppFormService appFormService;
@@ -42,7 +36,7 @@ public class WorkbenchDataService {
     Integer size,
     String search
   ) {
-    WorkbenchComponentRecord component = workbenchService.findComponent(appId, workbenchId, componentId);
+    WorkbenchComponentRecord component = appWorkbenchService.findComponent(appId, workbenchId, componentId);
     WorkbenchComponentData data = switch (component.config()) {
       case dev.flexmodel.apps.dto.WorkbenchMetricConfig config -> metricData(appId, config);
       case dev.flexmodel.apps.dto.WorkbenchChartConfig config -> chartData(appId, config);

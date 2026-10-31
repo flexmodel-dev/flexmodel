@@ -32,7 +32,7 @@ public record AppResponse(
   LocalDateTime updatedAt
 ) {
 
-  public static AppResponse from(Project project, String owner, String iconName, String primaryColor) {
+  public static AppResponse from(Project project, String owner, String iconName, String primaryColor, LocalDateTime appUpdatedAt) {
     return new AppResponse(
       project.getId(),
       project.getId(),
@@ -43,6 +43,6 @@ public record AppResponse(
       Objects.requireNonNullElse(project.getEnabled(), true),
       owner,
       project.getCreatedAt(),
-      project.getUpdatedAt());
+      appUpdatedAt != null ? appUpdatedAt : project.getUpdatedAt());
   }
 }

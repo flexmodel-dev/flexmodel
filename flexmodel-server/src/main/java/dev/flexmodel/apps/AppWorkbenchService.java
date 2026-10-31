@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @ApplicationScoped
-public class WorkbenchService {
+public class AppWorkbenchService {
 
   private static final String DEFAULT_NAME = "默认工作台";
   private static final String DATA_ENDPOINT_TEMPLATE =
@@ -30,7 +30,7 @@ public class WorkbenchService {
     "NUMBER", "DECIMAL", "DATE", "DATETIME", "TIME", "CLASSIFICATION", "BOOL", "STATE");
 
   @Inject
-  WorkbenchRepository workbenchRepository;
+  AppWorkbenchRepository appWorkbenchRepository;
 
   @Inject
   AppNavRecordStore appNavRecordStore;
@@ -43,7 +43,7 @@ public class WorkbenchService {
 
   public List<WorkbenchSummaryResponse> findWorkbenches(String appId) {
     Project project = appNavRecordStore.requireAppProject(appId);
-    List<AppWorkbench> workbenches = workbenchRepository.findByProjectId(project.getId());
+    List<AppWorkbench> workbenches = appWorkbenchRepository.findByAppId(project.getId());
     if (workbenches.isEmpty()) {
       AppWorkbench created = createEntity(project.getId(), DEFAULT_NAME, null, WorkbenchLayoutRecord.empty());
       workbenches = List.of(created);
@@ -110,7 +110,7 @@ public class WorkbenchService {
     if (request.hasName() || request.hasDescription() || request.hasLayout()) {
       workbench.setUpdatedBy(currentUserId());
       workbench.setUpdatedAt(LocalDateTime.now());
-      workbenchRepository.save(workbench);
+      appWorkbenchRepository.save(workbench);
     }
     return toResponse(workbench);
   }
@@ -118,14 +118,14 @@ public class WorkbenchService {
   public void deleteWorkbench(String appId, String workbenchId) {
     Project project = appNavRecordStore.requireAppProject(appId);
     AppWorkbench workbench = requireWorkbench(project.getId(), workbenchId);
-    if (workbenchRepository.countByProjectId(project.getId()) <= 1) {
+    if (appWorkbenchRepository.countByAppId(project.getId()) <= 1) {
       throw new ValidationException("至少保留一个工作台");
     }
-    workbenchRepository.deleteByProjectIdAndId(project.getId(), workbenchId);
+    appWorkbenchRepository.deleteByAppIdAndId(project.getId(), workbenchId);
   }
 
   private AppWorkbench createEntity(
-    String projectId,
+    String appId,
     String name,
     String description,
     WorkbenchLayoutRecord layout
@@ -134,7 +134,7 @@ public class WorkbenchService {
     String userId = currentUserId();
     AppWorkbench workbench = new AppWorkbench();
     workbench.setId(UUID.randomUUID().toString());
-    workbench.setProjectId(projectId);
+    workbench.setAppId(appId);
     workbench.setName(name);
     workbench.setDescription(description);
     workbench.setLayout(toLayoutValue(layout));
@@ -142,12 +142,12 @@ public class WorkbenchService {
     workbench.setUpdatedBy(userId);
     workbench.setCreatedAt(now);
     workbench.setUpdatedAt(now);
-    return workbenchRepository.save(workbench);
+    return appWorkbenchRepository.save(workbench);
   }
 
   private AppWorkbench requireWorkbench(String appId, String workbenchId) {
     Project project = appNavRecordStore.requireAppProject(appId);
-    AppWorkbench workbench = workbenchRepository.findByProjectIdAndId(project.getId(), workbenchId);
+    AppWorkbench workbench = appWorkbenchRepository.findByAppIdAndId(project.getId(), workbenchId);
     if (workbench == null) {
       throw new NotFoundException("工作台不存在: " + workbenchId);
     }
@@ -172,7 +172,7 @@ public class WorkbenchService {
   }
 
   private void requireUniqueName(String projectId, String name, String ignoredWorkbenchId) {
-    AppWorkbench existing = workbenchRepository.findByName(projectId, name);
+    AppWorkbench existing = appWorkbenchRepository.findByName(projectId, name);
     if (existing != null && !Objects.equals(existing.getId(), ignoredWorkbenchId)) {
       throw new ValidationException("工作台名称已存在: " + name);
     }

@@ -1,16 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.apps.dto.WorkbenchCapabilityResponse;
-import dev.flexmodel.apps.dto.WorkbenchChartConfig;
-import dev.flexmodel.apps.dto.WorkbenchComponentRecord;
-import dev.flexmodel.apps.dto.WorkbenchComponentSpecRecord;
-import dev.flexmodel.apps.dto.WorkbenchCreateRequest;
-import dev.flexmodel.apps.dto.WorkbenchLayoutRecord;
-import dev.flexmodel.apps.dto.WorkbenchMetricConfig;
-import dev.flexmodel.apps.dto.WorkbenchPlacementRecord;
-import dev.flexmodel.apps.dto.WorkbenchShortcutsConfig;
-import dev.flexmodel.apps.dto.WorkbenchTasksConfig;
+import dev.flexmodel.apps.dto.*;
 import dev.flexmodel.common.ValidationException;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -20,23 +11,18 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 @QuarkusTestResource(SQLiteTestResource.class)
-class WorkbenchServiceTest {
+class AppWorkbenchServiceTest {
 
   @Inject
-  WorkbenchService workbenchService;
+  AppWorkbenchService appWorkbenchService;
 
   @Test
   void capabilityCatalogDescribesTargetSchema() {
-    WorkbenchCapabilityResponse capability = workbenchService.findCapabilities("dev_test");
+    WorkbenchCapabilityResponse capability = appWorkbenchService.findCapabilities("dev_test");
     List<WorkbenchComponentSpecRecord> components = capability.components();
 
     assertEquals(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, capability.schemaVersion());
@@ -69,7 +55,7 @@ class WorkbenchServiceTest {
       null,
       new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(component)));
 
-    assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", request));
+    assertThrows(ValidationException.class, () -> appWorkbenchService.createWorkbench("dev_test", request));
   }
 
   @Test
@@ -86,12 +72,12 @@ class WorkbenchServiceTest {
       null,
       new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(component)));
 
-    assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", request));
+    assertThrows(ValidationException.class, () -> appWorkbenchService.createWorkbench("dev_test", request));
   }
 
   @Test
   void chartTypeControlsSmoothAndAggregationControlsMeasureField() {
-    workbenchService.findWorkbenches("dev_test");
+    appWorkbenchService.findWorkbenches("dev_test");
     assertThrows(ValidationException.class, () -> createChartWorkbench("line", "count", null, null));
     for (String chartType : List.of("bar", "pie")) {
       var saved = createChartWorkbench(chartType, "count", null, null);
@@ -100,7 +86,7 @@ class WorkbenchServiceTest {
         assertInstanceOf(WorkbenchChartConfig.class, savedConfig);
         assertNull(((WorkbenchChartConfig) savedConfig).smooth());
       } finally {
-        workbenchService.deleteWorkbench("dev_test", saved.id());
+        appWorkbenchService.deleteWorkbench("dev_test", saved.id());
       }
     }
     assertThrows(ValidationException.class, () -> createChartWorkbench("bar", "count", "name", null));
@@ -118,7 +104,7 @@ class WorkbenchServiceTest {
       "指标字段校验-" + UUID.randomUUID(),
       null,
       new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(metric)));
-    assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", metricRequest));
+    assertThrows(ValidationException.class, () -> appWorkbenchService.createWorkbench("dev_test", metricRequest));
 
     WorkbenchComponentRecord chart = new WorkbenchComponentRecord(
       "component_chart",
@@ -131,7 +117,7 @@ class WorkbenchServiceTest {
       "图表分组校验-" + UUID.randomUUID(),
       null,
       new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(chart)));
-    assertThrows(ValidationException.class, () -> workbenchService.createWorkbench("dev_test", chartRequest));
+    assertThrows(ValidationException.class, () -> appWorkbenchService.createWorkbench("dev_test", chartRequest));
   }
 
   private WorkbenchChartConfig chartConfig(
@@ -159,6 +145,6 @@ class WorkbenchServiceTest {
       "Chart type validation-" + chartType + "-" + UUID.randomUUID(),
       null,
       new WorkbenchLayoutRecord(WorkbenchLayoutRecord.CURRENT_SCHEMA_VERSION, List.of(component)));
-    return workbenchService.createWorkbench("dev_test", request);
+    return appWorkbenchService.createWorkbench("dev_test", request);
   }
 }

@@ -48,7 +48,7 @@ public class AppApprovalTaskRepository extends AbstractRepository {
   public void insert(String appId, Map<String, Object> task) {
     try (Session session = openSession()) {
       var row = new LinkedHashMap<>(task);
-      row.put("project_id", appId);
+      row.put("app_id", appId);
       session.data().insert(ReflectionUtils.getModelNameFromClass(AppApprovalTask.class), row);
     }
   }
@@ -57,21 +57,21 @@ public class AppApprovalTaskRepository extends AbstractRepository {
     try (Session session = openSession()) {
       var update = session.dsl().update(AppApprovalTask.class);
       values.forEach(update::set);
-      update.where(field("project_id").eq(appId).and(field("id").eq(id))).execute();
+      update.where(field("app_id").eq(appId).and(field("id").eq(id))).execute();
     }
   }
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {
     try (Session session = openSession()) {
       return session.data().findAll(ReflectionUtils.getModelNameFromClass(AppApprovalTask.class),
-        field("project_id").eq(appId).and(predicate == null ? TRUE : predicate));
+        field("app_id").eq(appId).and(predicate == null ? TRUE : predicate));
     }
   }
 
   private Map<String, Object> findOne(String appId, String id) {
     try (Session session = openSession()) {
       return session.data().findById(ReflectionUtils.getModelNameFromClass(AppApprovalTask.class), id)
-        .filter(row -> appId.equals(row.get("project_id")))
+        .filter(row -> appId.equals(row.get("app_id")))
         .orElse(null);
     }
   }

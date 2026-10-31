@@ -20,7 +20,7 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
   public void insert(String appId, Map<String, Object> discussion) {
     try (Session session = openSession()) {
       var row = new LinkedHashMap<>(discussion);
-      row.put("project_id", appId);
+      row.put("app_id", appId);
       session.data().insert(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class), row);
     }
   }
@@ -28,7 +28,7 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
   public Map<String, Object> find(String appId, String formName, String recordId, String discussionId) {
     try (Session session = openSession()) {
       return session.data().findById(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class), discussionId)
-        .filter(row -> appId.equals(row.get("project_id"))
+        .filter(row -> appId.equals(row.get("app_id"))
           && formName.equals(row.get("form_name"))
           && recordId.equals(row.get("record_id")))
         .orElse(null);
@@ -38,7 +38,7 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
   public Map<String, Object> findById(String appId, String discussionId) {
     try (Session session = openSession()) {
       return session.data().findById(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class), discussionId)
-        .filter(row -> appId.equals(row.get("project_id")))
+        .filter(row -> appId.equals(row.get("app_id")))
         .orElse(null);
     }
   }
@@ -58,7 +58,7 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
     if (rootIds.isEmpty()) return List.of();
     try (Session session = openSession()) {
       return session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class))
-        .where(appRecordDiscussion.projectId.eq(appId).and(appRecordDiscussion.parentId.in(rootIds)))
+        .where(appRecordDiscussion.appId.eq(appId).and(appRecordDiscussion.parentId.in(rootIds)))
         .orderBy(new Query.OrderBy().asc("created_at").asc("id"))
         .execute();
     }
@@ -81,7 +81,7 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
   public void deleteThread(String appId, String discussionId) {
     try (Session session = openSession()) {
       session.dsl().deleteFrom(AppRecordDiscussion.class)
-        .where(appRecordDiscussion.projectId.eq(appId)
+        .where(appRecordDiscussion.appId.eq(appId)
           .and(appRecordDiscussion.id.eq(discussionId).or(appRecordDiscussion.parentId.eq(discussionId))))
         .execute();
     }
@@ -97,12 +97,12 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
   public void deleteByForm(String appId, String formName) {
     try (Session session = openSession()) {
       session.dsl().deleteFrom(AppRecordDiscussion.class)
-        .where(appRecordDiscussion.projectId.eq(appId).and(appRecordDiscussion.formName.eq(formName))).execute();
+        .where(appRecordDiscussion.appId.eq(appId).and(appRecordDiscussion.formName.eq(formName))).execute();
     }
   }
 
   private static dev.flexmodel.query.Predicate recordFilter(String appId, String formName, String recordId) {
-    return appRecordDiscussion.projectId.eq(appId)
+    return appRecordDiscussion.appId.eq(appId)
       .and(appRecordDiscussion.formName.eq(formName))
       .and(appRecordDiscussion.recordId.eq(recordId));
   }

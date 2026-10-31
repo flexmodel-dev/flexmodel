@@ -36,7 +36,7 @@ public class AppApprovalRecordLockRepository extends AbstractRepository {
   public void insert(String appId, Map<String, Object> lock) {
     try (Session session = openSession()) {
       var row = new LinkedHashMap<>(lock);
-      row.put("project_id", appId);
+      row.put("app_id", appId);
       session.data().insert(ReflectionUtils.getModelNameFromClass(AppApprovalRecordLock.class), row);
     }
   }
@@ -44,14 +44,14 @@ public class AppApprovalRecordLockRepository extends AbstractRepository {
   public void delete(String appId, String id) {
     try (Session session = openSession()) {
       session.dsl().deleteFrom(AppApprovalRecordLock.class)
-        .where(field("project_id").eq(appId).and(field("id").eq(id))).execute();
+        .where(field("app_id").eq(appId).and(field("id").eq(id))).execute();
     }
   }
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {
     try (Session session = openSession()) {
       return session.data().findAll(ReflectionUtils.getModelNameFromClass(AppApprovalRecordLock.class),
-        field("project_id").eq(appId).and(predicate == null ? TRUE : predicate));
+        field("app_id").eq(appId).and(predicate == null ? TRUE : predicate));
     }
   }
 }

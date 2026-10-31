@@ -114,12 +114,14 @@ public final class AppPackage {
 
   /**
    * 提交执行结果：COMMITTED 携带最终 appId；FAILED / CLEANUP_REQUIRED 携带 error。
+   * phase 用于执行中的进度轮询（provision/forms/.../activating/done）。
    */
-  public record TaskResult(String uploadId, String status, String appId, String appName, String importedAt,
-                           long totalRecords, List<ImportedForm> forms, String error) {
+  public record TaskResult(String uploadId, String status, String phase, String appId, String appName,
+                           String importedAt, long totalRecords, List<ImportedForm> forms, String error) {
     public static TaskResult resultOf(TaskState state) {
-      if (state.result() != null) return state.result();
-      return new TaskResult(state.uploadId(), state.status(), state.appId(), state.name(),
+      boolean active = "COMMITTING".equals(state.status()) || "COMPENSATING".equals(state.status());
+      if (state.result() != null && !active) return state.result();
+      return new TaskResult(state.uploadId(), state.status(), state.phase(), state.appId(), state.name(),
         java.time.Instant.ofEpochMilli(state.updatedAt()).toString(), 0, List.of(), state.error());
     }
   }

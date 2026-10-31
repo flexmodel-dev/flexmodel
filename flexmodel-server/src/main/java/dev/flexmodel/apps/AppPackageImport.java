@@ -169,7 +169,7 @@ public class AppPackageImport {
       run.phase("records");
       AppPackageService.RecordStats stats = writeRecords(plan, content, appId);
 
-      TaskResult result = new TaskResult(plan.uploadId(), "COMMITTED", appId, run.state.name(),
+      TaskResult result = new TaskResult(plan.uploadId(), "COMMITTED", "done", appId, run.state.name(),
         java.time.Instant.now().toString(), stats.total(), stats.forms(), null);
       run.state = run.state.withResult(result);
       tasks.save(run.state);

@@ -1,6 +1,20 @@
 {
   "features": [
     {
+      "id": "feat-142",
+      "name": "Apps - 应用首页加载失败与空状态区分",
+      "description": "应用首页导航加载失败（网络错误或接口 5xx）时展示错误信息与重试按钮，不再误显示“当前分组没有关联菜单”空状态；成功返回空导航时仍展示新增菜单引导。",
+      "status": "done",
+      "evidence": "2026-10-31 flexmodel-apps-ui AppHome：catch 分支记录 toErrorMessage（兜底“加载应用导航失败，请稍后重试。”）并渲染 role=alert 错误卡片 + 重试按钮（设置 isLoading 并通过 reloadKey 触发重新请求，cachedFetch 失败时已清缓存故可重试）；仅请求成功且无首个入口路由时渲染原空状态。验证：Apps npm run build 通过（首次因 Windows Temp 下 esbuild 临时文件删除 Access denied，改用项目内 TEMP 后 tsc -b + vite build 成功）；浏览器实测：失效令牌访问 app_5ef9ed… 显示“请求失败（HTTP 500）”+重试；模拟导航接口返回 [] 显示“当前分组没有关联菜单”+新增菜单；模拟首次 500 后点击重试恢复空状态。未提交代码。"
+    },
+    {
+      "id": "feat-141",
+      "name": "Apps - 应用结构级整包导入导出",
+      "description": "按 docs/plans/app-import-export.md 实现应用定义与可选记录数据的整包导出、预览及创建新应用导入。前后端均已实现并通过验证，待真实后端端到端冒烟。",
+      "status": "in_progress",
+      "evidence": "2026-10-30 前后端全量实现完成。后端（dev.flexmodel.apps）：协议 DTO AppPackage（含 TaskState.result 回执与恢复语义，@RegisterForReflection 全部移除，改由 FlexmodelNativeProcessor registerAppsDtos 以构造器/方法/字段注册 dev.flexmodel.apps.dto.**）；AppPackageZip 受限读写（路径穿越/重复 entry/未知文件/entry≤128/单文件≤50MiB/累计≤100MiB/JSON 深度≤64/planHash）；AppPackageValidator（模型漂移+结构校验、manifest 统计核对、目录成员存在性、业务引用闭包、必填缺失检查）；AppPackageStore+AppPackageTaskRepository（原子暂存、5 分钟清理、任务回执与恢复扫描）；AppPackageService（只读采集+前后结构摘要防并发 409、行数限额、上传预览 INVALID、状态查询、幂等 commit 分发 requestDigest 409）；AppPackageImport（provision→forms→references→layouts→navigation→workbenches→approvals→authorizations→records→activating 分阶段持久重建、provisioning 元数据隔离、启动/定时恢复、补偿核验 deleteApp、CLEANUP_REQUIRED 后台重试）；REST POST /apps/{appId}/package-exports 流式下载、POST/GET /app-packages/imports（multipart 413 限额、状态、commit）。前端：appPackages.ts 改真实 HTTP（上传/状态轮询/commit/导出下载 Content-Disposition 文件名），导入弹窗支持 FAILED/CLEANUP_REQUIRED 区分展示（不宣称回滚成功）与响应丢失轮询找回。验证：全模块 mvn clean compile EXIT=0；mvn test -pl flexmodel-engine EXIT=0；新增 AppPackageZipTest 10/10、AppPackageValidatorTest 17/17；apps-ui npm run build 通过、vitest 43/43、Playwright packages 5/5（API 拦截层改为真实协议 fixture）。剩余：真实后端 dev 起服务端到端冒烟导出→导入全链路。2026-10-30 排障修复：AppPackageStore.stageZip 先创建暂存目录（此前目录不存在必然 NoSuchFileException）；导出资源改为类级 JSON + 方法级 ZIP 并增加 ServerExceptionMapper，全局异常映射器显式 application/json 且移除堆栈数组，前端非 JSON 错误回显 HTTP 状态与 HTML 标题；仅结构导出将模型漂移降级为 manifest warnings、带数据导出仍阻断，修复 validation warnings 未写入 manifest；审批 branch 不再强制 blocks；validator 注入 AppFormService。实测 plm_system 结构导出 200/7323B（manifest 9 条漂移 warning）、includeData=true 仍 400 JSON 带原因、新建应用含记录导出 200 且 dataRows=1；mvn test AppPackageValidatorTest 17/17 + AppPackageZipTest 10/10 BUILD SUCCESS；apps-ui tsc -b EXIT=0（vite build 因沙箱 Node spawn EPERM 未执行）。未提交代码。"
+    },
+    {
       "id": "feat-140",
       "name": "Apps - 菜单重命名为导航（内部语义）",
       "description": "服务端与前端内部抽象由“菜单”统一为“导航”：metadata 节点 app.navigation、REST /navigation、AppNav/NavDestination/NavVisibilityRule、ENTRY 类型、MCP create_app_navigation；UI 组件与搭建者文案保留“菜单”。",
@@ -187,7 +201,9 @@
       "id": "feat-114",
       "name": "Apps UI - 列表附件紧凑展示",
       "description": "主记录和子表列表将附件URL改为缩略图/文件图标、文件名及数量，点击查看全部附件并预览下载，保持紧凑行高。",
-      "dependencies": ["feat-113"],
+      "dependencies": [
+        "feat-113"
+      ],
       "status": "done",
       "evidence": "新增AttachmentCell供RecordList与AppSubformRecords复用，FILE/IMAGE/AVATAR以首个文件缩略图或图标、解码后的原文件名及+剩余数量展示，长文件名截断、空值为-；点击/键盘进入完整附件列表，复用鉴权预览下载，阻止事件冒泡误开记录。验证：Apps UI build通过、附件E2E 7项（新增2项列表/子表/键盘/行高/长名/移动端/冒泡验证）、记录回归4项通过，明暗及375px截图已检查，四文件行高≤60px；原生全模块Maven compile、规定引擎测试、git diff --check通过。Apps UI提交e2d9dec；无后端或engine改动。init.sh clean仍受现有dev.jar锁阻塞，保留服务完成非clean等价验证。"
     },
@@ -195,7 +211,9 @@
       "id": "feat-113",
       "name": "Apps - 附件字段上传与预览",
       "description": "附件字段接入BucketResource，按appId/formId/file上传并获取URL；支持多文件逗号分隔保存、编辑回填、只读预览和下载。",
-      "dependencies": ["feat-109"],
+      "dependencies": [
+        "feat-109"
+      ],
       "status": "done",
       "evidence": "FILE/IMAGE/AVATAR共用上传与附件列表，主表/子表新建编辑及只读详情支持图片/PDF/音视频预览和鉴权下载。使用应用projectId的default桶，缺失自动创建PRIVATE；原始字节PUT到appId/formId/uuid_文件名，BucketResource返回url/path/name，多URL逗号分隔，中文与逗号文件名编码，同名不覆盖。上传中禁止保存/发起流程，支持部分失败重试、移除引用、关闭中止及迟到响应隔离。附件字段新建/编辑容量扩到4000。验证：Apps UI build、34项unit、5项附件E2E、4项记录及5项字段回归通过；明暗与手机截图已检查；BucketAttachmentResourceTest 2项通过，含真实上传下载鉴权、编码文件名、零字节、长URL列表记录保存读回；原生全模块compile及规定引擎测试、git diff --check通过。Apps UI提交009ad5f；未改engine。init.sh clean仍受运行中dev.jar锁阻塞，保留服务完成非clean验证。旧严格长度数据库字段需保存配置扩容，未批量迁移；未引用对象暂不自动回收。"
     },
@@ -203,7 +221,9 @@
       "id": "feat-112",
       "name": "Apps UI - 表单管理四列紧凑布局",
       "description": "表单管理宽屏一行展示四张卡片，缩小卡片间距与内边距，窄屏保持自适应并保留返回导航。",
-      "dependencies": ["feat-111"],
+      "dependencies": [
+        "feat-111"
+      ],
       "status": "done",
       "evidence": "FormManagementContent 网格改为 xl 四列、sm 两列、手机单列；卡片间距与内边距16→12px，缩小图标、描述行高和底部留白，内置徽标禁止挤压换行。验证：npm run build通过，test:settings 7项通过；Playwright用8张卡片实测1440/1280px四列、960/768px两列、375px单列，换行正确、无页面横向或外层溢出、返回按钮可见、无浏览器异常；明暗及手机截图已检查。原生全模块Maven编译、规定引擎测试、git diff --check通过。Apps UI提交f2f0bb9；未改后端及engine。init.sh clean仍受运行中dev.jar文件锁阻塞，保留现有服务并完成非clean等价验证。"
     },
@@ -211,7 +231,9 @@
       "id": "feat-111",
       "name": "Apps UI - 表单设置页面视觉与返回导航统一",
       "description": "统一应用设置表单列表及基本信息、字段管理、设计器的页头、导航与内容样式，补齐加载/异常状态和直达页面的返回入口，适配窄屏和夜间模式。",
-      "dependencies": ["feat-110"],
+      "dependencies": [
+        "feat-110"
+      ],
       "status": "done",
       "evidence": "新增 SettingsPageHeader 与 FormSettingsNav，统一应用设置表单列表、基本信息、字段管理、设计器页头和操作区；列表卡片统一并保留单一新建入口，基本信息使用信息分组及独立删除区，字段列表统一标识与轻量操作。桌面使用一致的侧栏卡片，窄屏使用横向导航，设计器窄屏画布和字段面板可内滚动。各页均有可见返回按钮，直接访问、加载中、接口失败也可返回表单列表；列表返回应用管理，系统设计器返回对应管理页。验证：npm run build通过、npm test 32项、test:settings 7项、test:fields 5项、test:records 4项通过；375/768/960px无页面横向或外层滚动，明暗与手机截图已检查；原生全模块Maven编译与规定引擎测试通过；git diff --check通过。Apps UI提交66eb414。init.sh仍受已有运行中dev.jar文件锁阻塞，已完成非clean等价验证；未修改后端及engine。"
     },
@@ -219,7 +241,9 @@
       "id": "feat-110",
       "name": "Apps UI - 布局字段编辑接入类型属性",
       "description": "表单设计器布局中的修改字段入口支持完整类型属性，保存后同步字段定义并保留未保存布局；内置字段只调整布局。",
-      "dependencies": ["feat-109"],
+      "dependencies": [
+        "feat-109"
+      ],
       "status": "done",
       "evidence": "FormDesigner 布局修改字段复用 FieldConfigEditor，回填并保存必填、默认值、校验、选项和显示格式，区分字段名称与布局显示名称。字段更新后同步父子组件字段定义并携带当前布局草稿，保存失败保留草稿可重试；未改变字段属性及内置字段不发字段更新请求，内置字段只编辑布局。补齐 AppFormService 到 SystemFormService 的扩展字段更新分派，保留核心字段保护，不改 engine。验证：Apps UI build通过、npm test 32项、test:fields 5项、test:records 4项通过；已检查明暗主题截图；后端定向10项通过；原生全模块compile与规定引擎测试通过；git diff --check通过。Apps UI提交c82f77c。init.sh仍受运行中dev.jar锁阻塞，保留服务并执行非clean等价验证。"
     },
@@ -227,7 +251,9 @@
       "id": "feat-109",
       "name": "Apps - 字段类型属性完善",
       "description": "参考 REBUILD 字段文档，在应用层补齐默认值、读写限制、文本常用值和校验、数字精度与格式、日期格式和选项显示属性，接通配置、持久化、记录校验与展示，不修改 engine。",
-      "dependencies": ["feat-025"],
+      "dependencies": [
+        "feat-025"
+      ],
       "status": "done",
       "evidence": "AppFieldConfig 存入应用表单与系统扩展字段 metadata；创建、批量建表、修改和响应保留属性，不修改 flexmodel-engine。补齐默认值、创建/修改限制、文本常用值/最大长度/Java正则、负数限制/小数位/千分位/前后缀、当前日期默认值/日期格式、选项编辑与默认项/显示样式；多选按数组、布尔按是/否/空处理，记录API强制验证，列表与详情共用格式。字段管理和设计器共用编辑器，MCP 创建字段说明同步更新。验证：全模块原生 Maven 编译、规定引擎测试通过；AppFieldRulesTest 4 + AppRecordServiceTest 6 + 新增字段属性REST闭环1 + SystemFormResourceTest 5 共16项通过（含系统扩展字段默认值与禁止修改）；Apps UI build通过、npm test 32项、test:records 4项、test:fields 2项通过，明暗截图已检查；git diff --check通过。Apps UI提交9a32a5c。扩大后端回归37项有7项既有布局投影/系统鉴权失败，未扩展修复；init.sh clean仍被运行中dev.jar锁定，保留服务并完成非clean等价验证。详见progress.md与flexmodel-server/docs/field-properties.md。"
     },
@@ -235,7 +261,9 @@
       "id": "feat-108",
       "name": "Apps UI - 多层抽屉递减宽度",
       "description": "同时打开多个右侧 Drawer 时，上层宽度小于下层，保留下层可见边缘；支持兄弟与嵌套抽屉、视口缩放及关闭后重开。",
-      "dependencies": ["feat-105"],
+      "dependencies": [
+        "feat-105"
+      ],
       "status": "done",
       "evidence": "DrawerContent 按打开后的 Portal 顺序追踪右侧抽屉，以实际下层宽度限制上层，桌面至少留 3rem（48px）、窄屏至少留 1rem（16px），保留更窄的自定义宽度；ResizeObserver 跟踪下层尺寸，卸载时清理叠层；左侧 MobileNavDrawer 不参与。验证：npm run build 通过；npm test 27 项通过；npm run test:records 4 项通过；Playwright 浏览器验证兄弟/嵌套三层抽屉、自定义宽度、窗口缩放、Escape 逐层关闭及重开，无浏览器异常：1440px 视口宽度为 1184/1136/1088px，375px 视口为 375/359/343px，自定义窄抽屉为 1184/720/672px；明暗主题截图 artifacts/drawer-stack-{desktop,dark,mobile}.png。原生 Maven 全模块编译和引擎测试通过。init.sh 清理阶段仍被运行中后端锁定的 flexmodel-server-dev.jar 阻塞，未停止现有服务。"
     },

@@ -47,6 +47,8 @@ public class AppFormService {
   private static final String METADATA_FORMS_KEY = "forms";
   private static final String METADATA_LEGACY_FORM_LAYOUTS_KEY = "formLayouts";
   private static final Pattern FORM_NAME_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{0,63}$");
+  // 字段标识不限命名风格，仅排除会破坏 SQL 标识符转义的字符。
+  private static final Pattern FIELD_NAME_PATTERN = Pattern.compile("^[^\\x00-\\x1f`\"\\[\\]]{1,64}$");
   private static final int MAX_LAYOUT_ITEMS = 500;
   private static final int MAX_VIEW_TABS = 20;
   private static final int MAX_VIEW_TAB_CONDITIONS = 10;
@@ -96,6 +98,29 @@ public class AppFormService {
 
   @Inject
   AppDataAuthorizationService dataAuthorization;
+
+  /**
+   * 整包导入导出使用：按项目 metadata 原始记录读取全部表单，不经过 findForms 的实体合成。
+   */
+  List<AppFormRecord> rawFormRecords(String appId) {
+    return formRecords(requireAppProject(appId));
+  }
+
+  static Set<String> reservedSystemFormNames() {
+    return RESERVED_SYSTEM_FORM_NAMES;
+  }
+
+  static Set<String> builtinFieldNames() {
+    return BUILTIN_FIELDS;
+  }
+
+  static Set<String> fieldTypes() {
+    return FIELD_TYPES;
+  }
+
+  static Set<String> optionFieldTypes() {
+    return OPTION_TYPES;
+  }
 
   public List<AppFormResponse> findForms(String appId) {
     if ("system".equals(appId)) {
@@ -795,6 +820,9 @@ public class AppFormService {
     if (project == null || project.getParentProjectId() != null || "default".equals(appId)) {
       throw new NotFoundException("应用不存在: " + appId);
     }
+    if (AppService.isImporting(project) && !AppService.importBypassed()) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
     return project;
   }
 
@@ -1313,8 +1341,8 @@ public class AppFormService {
   private String resolveFieldName(EntityDefinition entity, String requestedName, String label) {
     if (!isBlank(requestedName)) {
       String fieldName = requestedName.trim();
-      if (!FORM_NAME_PATTERN.matcher(fieldName).matches()) {
-        throw new ValidationException("字段标识只能以小写字母开头，并可包含小写字母、数字或下划线");
+      if (!FIELD_NAME_PATTERN.matcher(fieldName).matches()) {
+        throw new ValidationException("字段标识不能包含引号、反引号、方括号或控制字符");
       }
       if (!isFieldNameAvailable(entity, fieldName)) {
         throw new ValidationException("字段标识已存在: " + fieldName);

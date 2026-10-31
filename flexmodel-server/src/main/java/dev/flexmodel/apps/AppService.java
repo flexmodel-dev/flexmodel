@@ -37,6 +37,36 @@ public class AppService {
   private static final String DEFAULT_PRIMARY_COLOR = "blue";
   private static final String METADATA_APP_KEY = "app";
 
+  /**
+   * 应用配置中的 provisioning 状态：导入重建期间应用对列表和普通访问不可见。
+   */
+  public static final String PROVISIONING_KEY = "provisioning";
+  public static final String PROVISIONING_IMPORTING = "importing";
+
+  /**
+   * 整包导入在同一线程内重建应用，需临时绕过 provisioning 访问守卫。
+   */
+  static final ThreadLocal<Boolean> IMPORT_BYPASS = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+  /**
+   * 是否处于导入重建中（应用尚未激活）。
+   */
+  static boolean isImporting(Project project) {
+    if (project == null) return false;
+    Object metadata = project.getMetadata();
+    if (metadata instanceof Map<?, ?> map) {
+      Object app = map.get(METADATA_APP_KEY);
+      if (app instanceof Map<?, ?> appNode) {
+        return PROVISIONING_IMPORTING.equals(String.valueOf(appNode.get(PROVISIONING_KEY)));
+      }
+    }
+    return false;
+  }
+
+  static boolean importBypassed() {
+    return Boolean.TRUE.equals(IMPORT_BYPASS.get());
+  }
+
   @Inject
   ProjectService projectService;
 
@@ -56,6 +86,7 @@ public class AppService {
     Map<String, String> ownerNames = userService.findAll().stream()
       .collect(Collectors.toMap(User::getId, user -> userDisplayName(user, user.getId())));
     return projectService.findTopLevelProjects().stream()
+      .filter(project -> !isImporting(project))
       .map(project -> toResponse(
         project,
         iconName(project, null),
@@ -65,7 +96,11 @@ public class AppService {
   }
 
   public AppResponse findApp(String appId) {
-    return toResponse(requireAppProject(appId));
+    Project project = requireAppProject(appId);
+    if (isImporting(project) && !importBypassed()) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
+    return toResponse(project);
   }
 
   public AppResponse createApp(AppCreateRequest request) {

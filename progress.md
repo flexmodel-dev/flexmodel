@@ -3664,3 +3664,111 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 验证：Apps npm run build、files浅色/夜间4项Playwright（新增排序2项及原有编辑删除2项）、全模块非clean Maven
   compile、规定引擎测试通过；检查两种主题菜单截图。init.sh已运行，clean仍受现有运行中dev.jar文件锁阻塞，未停止开发服务。
 - 根仓库本轮开始已有大量未提交改动（含feature_list/progress），保留原内容，不创建混合提交；仅提交Apps本次两个目标文件。
+
+## 应用导入导出技术方案评审（2026-10-30，feat-141）
+
+- 本次范围为 docs/plans/app-import-export.md 的技术评审；未修改方案正文或业务代码，未提交。feature_list.json 新增 feat-141
+  并标记 in_progress，仅表示设计评审已开始，功能尚未实现。
+- 对照现有表单、导航、工作台、审批、数据权限、记录导入暂存/执行、项目生命周期与事务实现检查方案。发现需补齐的设计：跨实例成员校验与处理策略；导航及子流程
+  ID 重映射、审批分阶段保存和发布；平台库/业务库/DDL 的补偿与中断恢复；ZIP
+  解压资源限制；明确的所有者/管理员校验和暂存用户绑定；确认导入幂等；选择性导出/截断后的业务引用闭包；已有自引用、互相引用表单的重建（现有
+  AppFormResourceTest 已包含自引用创建用例）。
+- 验证：执行 bash ./init.sh，Java 25 检查通过，随后在 Maven clean 阶段因无法删除
+  flexmodel-server/target/test-classes/dev/flexmodel/rest
+  失败，规定引擎测试未执行。未为文档评审停止现有服务或修改构建环境；基线未通过，不能声称构建验证完成。feature_list.json JSON
+  解析与 git diff --check 通过。
+- 待后续先修订方案及补齐上述验收场景，再进入实现；保留现有 flexmodel-ui 子模块和未跟踪 flexmodel-apps-ui 状态。
+
+## 应用导入导出方案修订（2026-10-30，feat-141）
+
+- 合并用户提交的评审与上一轮结论，重写方案：确定两阶段建表/引用及最后保存布局、资源 ID
+  映射、审批状态恢复、身份缺失阻断、完整字段数据迁移与审计字段归属、引用闭包及超限拒绝、只读采集、受限临时
+  ZIP、持久幂等任务、provisioning 隔离和可核验补偿恢复。
+- 补全资源协议、接口、前端列表导入入口与 settings 路由、行数接口及验收矩阵，修正100行写入批次、每记录历史、createApp
+  请求与非完整备份承诺。仅修订文档，功能尚未实现。
+- 验证：git diff --check 与 feature_list.json JSON 解析；沿用上轮 init.sh clean 无法删除测试输出目录的基线阻塞，本次无代码变更未重复构建。
+
+## 应用包导出范围简化（2026-10-30，feat-141）
+
+- 按用户要求固定导出全部业务表单；包含数据时携带全部业务表单记录。移除 dataForms
+  选择参数、勾选交互及导出前表单统计接口；取消部分表选择带来的引用补齐流程，保留引用完整性校验及超限整体拒绝。同步修改协议、流程、前端与验收条目。
+- 仅文档调整，功能仍未实现；验证 JSON 解析及 git diff --check，不重复构建。
+
+## 应用导入导出前端 mock 页面（2026-10-30，feat-141）
+
+- 按方案先实现前端页面与 mock：`services/appPackages.ts` 模拟应用包上传、校验、commit、下载与 50 MiB / 5,000 条限制；导入包文件名包含
+  `invalid` 时返回阻断预览，包含 `nodata` 时模拟无记录包。
+- 按用户要求移除独立「导入导出」设置页，导出改为应用卡片更多菜单和基本设置页头直接打开 `AppPackageExportDialog`
+  ：一个包含记录数据开关 + 取消/导出按钮的轻量确认弹窗，确认后立即下载 mock `.flexmodel.zip`，不再跳转。
+- `AppManagement` 工具栏新增「导入应用」入口；恢复完整版 `AppPackageImportDialog`：上传 .flexmodel.zip →
+  统计摘要、导入内容、表单与记录明细、阻断项、名称输入 → 确认导入 → 完成统计；仅移除上传说明与风险提示等占位面板，保留进度状态。INVALID
+  禁止确认；mock 导入成功不写入后端、不创建真实应用。
+- 验证：`npm run build`（tsc + vite）通过；`npm run test:packages` 5 项 Playwright 通过（导出弹窗直接下载、两处导出入口、导入主流程与
+  INVALID、夜间主题、390px 无横向溢出），截图位于 `flexmodel-apps-ui/artifacts/app-packages-*.png`。未提交代码；nested
+  flexmodel-apps-ui 仓库原有的 staged 删除改动未触碰。
+- 待后续：接入真实 REST、包协议解析/校验、导入任务状态与后端补偿；当前 mock 下载物为 JSON 载荷的 `.flexmodel.zip`。
+
+## 应用整包导入导出后端实现与前端接入（2026-10-30，feat-141）
+
+- 后端 dev.flexmodel.apps 全量落地：DTO AppPackage（TaskState 增加 result 预写回执，支持中断后恢复 COMMITTED）；移除全部
+  @RegisterForReflection，FlexmodelNativeProcessor 新增 registerAppsDtos 构建步骤（constructors/methods/fields，Jandex glob
+  展开 dev.flexmodel.apps.dto.**，records 的暂存文件 Jackson 往返需要构造器反射）。
+- AppPackageZip 受限读写（路径穿越/绝对路径/反斜杠、重复 entry、未知文件、entry≤128、单文件≤50MiB、累计≤100MiB、JSON
+  深度≤64、planHash 稳定摘要）；AppPackageStore（原子写 stage→rename、5 分钟清理：stage 30 分钟 TTL、任务 7 天 TTL 跳过
+  COMMITTING/COMPENSATING）+ AppPackageTaskRepository（归属过滤 find、恢复扫描 findAny/all）。
+- AppPackageService：导出走只读采集 + 前后结构摘要比对（变化 409），数据在业务库快照内分页采集（id 排序），行数超限整包拒绝；上传预览（校验
+  INVALID 仍暂存可查看阻断项）、状态查询（回执优先于预览，COMMITTED 不受预览过期影响）、commit（planHash 409、名称 100
+  上限、requestDigest=sha256 (name+\0+planHash) 幂等，终态回执直接返回）。
+- AppPackageImport：64 路条带锁；阶段
+  provision→forms→references→layouts→navigation→workbenches→approvals→authorizations→records→activating
+  每步先落盘；表单两阶段重建（先骨架后 REFERENCE），导航父先子后重建（createNav 分配新 ID
+  形成映射表），工作台快捷入口按映射重写（缺失即拒），审批先建草稿→重写子流程 flowId→子先行 enable，记录 prepareImport 剥离 id
+  后回填主键、批量 100 insertAll + afterCommit 历史事件；补偿调用 deleteApp 并核验项目/工作台/权限/schema 注册清理，失败置
+  CLEANUP_REQUIRED 由 @Scheduled 10 分钟与 StartupEvent 恢复扫描重试；项目记录缺失时仅清 schema 注册残留（createProject
+  中途失败的分支）。
+- REST：POST /apps/{appId}/package-exports（流式下载、UTF-8 filename*、发完删临时文件）；POST
+  /app-packages/imports（multipart、扩展名放宽为 .zip、50MiB 413）、GET /{uploadId}（预览或回执）、POST /{uploadId}/commit。
+- 前端 appPackages.ts 从 mock 改真实 HTTP；AppPackageImportDialog 提交响应丢失时轮询 GET 找回回执，FAILED（已清理）与
+  CLEANUP_REQUIRED（后台重试清理，不宣称回滚成功）分开展示；resourceIcon 增加 authorizations 映射。
+- 修复校验缺口：业务 REFERENCE 引用包外表单未检查（validateFieldReferences 补齐）、数据行缺失必填列未检查；collectNav 导航 ID
+  唯一性与 FORM 目的地集合分离。
+- 验证：全模块 mvn clean compile EXIT=0（经用户确认停止锁 dev.jar 的 Quarkus dev 进程 PID 37652 后 clean 通过）；mvn test
+  -pl flexmodel-engine EXIT=0；新增 AppPackageZipTest 10/10（含手工小端字节构造重复 entry 的 ZIP）、AppPackageValidatorTest
+  17/17；apps-ui npm run build 通过、vitest 43/43、Playwright test:packages 5/5（route 拦截层改为真实协议 fixture，上传按文件名区分
+  INVALID）。
+- 剩余：真实后端 dev 起服务端到端冒烟（导出→上传→预览→commit→核验新应用与记录）；schema 物理残留（createProject
+  半途失败且无项目记录时）只清注册表，库中孤儿 schema 记日志待人工处理。未提交代码。
+
+## 应用整包导出排障与修复（2026-10-30）
+
+- 现象：`POST /api/apps/{appId}/package-exports` 返回 500/400 但界面只显示“请求失败”，无具体原因。
+- 根因一：Quarkus dev 热重载时 `SchemaObject` 引用的 JavaCC 生成类 `ModelParser` 在 `flexmodel-core/target/classes` 缺失，整个
+  dev 应用重启失败，所有 `/api` 请求返回 dev-mode HTML 错误页。重编译 engine core 恢复生成类并重启 dev 后恢复。
+- 根因二：`AppPackageExportResource` 类级 `@Produces("application/zip")` 使异常响应按 ZIP 协商，RESTEasy 找不到 writer
+  后退化为
+  `Map.toString()`（如 `{code=-1, ...}`），前端 `response.json()` 解析失败，只剩通用提示。
+- 修复：
+  - 导出资源改为类级 JSON + 方法级 ZIP，并加 `@ServerExceptionMapper`（ValidationException 400、WebApplicationException
+    原状态），
+    错误体统一 `{code,message,success}` JSON；全局异常映射器显式 `application/json`，移除 500 响应里的堆栈数组。
+  - `AppPackageStore.stageZip()` 先 `createDirectories(root())`，修复暂存目录不存在时必然 `NoSuchFileException`。
+  - 仅结构导出（includeData=false）时模型漂移降级为 manifest warnings；带数据导出仍阻断。修复 validation warnings 晚于
+    manifest 生成导致未写入包的问题。
+  - 审批分支节点不再强制要求 blocks（扁平连线表达同样合法），避免历史流程阻断导出。
+  - 前端 `requestResponse` 非 JSON 错误时回显 HTTP 状态与 HTML 标题；导出弹窗错误区可滚动。
+  - `AppPackageValidator` 改为注入 `AppFormService`，不再 `new`。
+- 验证：dev 后端实测 plm_system 结构导出 200/7323B（manifest 含 9 条漂移 warning）；includeData=true 仍 400 JSON 带原因；新建应用
+  +表单+记录导出 200（含 data/test_form.json 与 dataRows=1）；未登录 401 JSON；AppPackageValidatorTest/AppPackageZipTest 结果见
+  feature_list。apps-ui `tsc -b` 通过（vite build 因 DSH 沙箱禁止 Node spawn 未能执行）。
+- 遗留：导出成功时 UI 未展示 manifest warnings（仅导入预览可见）；带数据导出对历史漂移应用仍阻断，需先修模型或后续再评估策略。
+
+## 应用首页加载失败与空状态区分（2026-10-31）
+
+- 现象：应用首页导航接口失败（网络错误或 500）时，`AppHome` 的 catch 仅把 loading 置 false，页面被误渲染为“当前分组没有关联菜单”
+  空状态，让失败看起来像“没有数据”。
+- 修复：`AppHome` 记录错误信息（`toErrorMessage`，兜底“加载应用导航失败，请稍后重试。”），失败时渲染错误卡片与“重试”按钮；
+  重试设置 loading 并通过 `reloadKey` 重新请求（`cachedFetch` 失败时已清缓存，可正常重发）；仅请求成功且无入口路由时保留原空状态
+  与“新增菜单”引导。
+- 验证：apps-ui `npm run build` 通过（Windows 下 esbuild 默认 Temp 删除临时文件 Access denied，将 TEMP/TMP 指向项目内目录后
+  tsc -b + vite build 成功）；浏览器实测：失效令牌访问应用显示“请求失败（HTTP 500）”+重试；模拟导航接口返回 `[]` 显示空状态与
+  新增菜单；模拟首次 500 后点击重试恢复空状态。未提交代码。

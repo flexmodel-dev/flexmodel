@@ -29,6 +29,9 @@ public class AppNavRecordStore {
     if (project == null || project.getParentProjectId() != null || "default".equals(appId)) {
       throw new NotFoundException("应用不存在: " + appId);
     }
+    if (AppService.isImporting(project) && !AppService.importBypassed()) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
     return project;
   }
 

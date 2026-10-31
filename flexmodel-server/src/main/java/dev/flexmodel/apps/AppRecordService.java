@@ -1,16 +1,12 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.dto.AppFormFieldResponse;
-import dev.flexmodel.apps.dto.AppFormItemRecord;
-import dev.flexmodel.apps.dto.AppFormResponse;
-import dev.flexmodel.apps.dto.AppFormViewTabRecord;
-import dev.flexmodel.apps.dto.AppReferenceValueResponse;
+import dev.flexmodel.apps.dto.*;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.ProjectUnitOfWork;
-import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;
+import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.data.DataService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -18,13 +14,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 应用表单记录服务。对外仅暴露表单名称，内部映射为实体记录操作。
@@ -530,8 +520,30 @@ public class AppRecordService {
     return values;
   }
 
+  /**
+   * 导入不做创建校验：包内数据来自同构应用，未知字段与内置字段直接忽略，
+   * 值校验失败保留原值，尽量完成导入；主键由导入流程设置。
+   */
   Map<String, Object> prepareImport(AppFormResponse form, Map<String, Object> input) {
-    return sanitizeInput(form, input, true, null);
+    Map<String, AppFormFieldResponse> fields = new LinkedHashMap<>();
+    form.fields().forEach(field -> fields.put(field.name(), field));
+    Map<String, Object> values = new LinkedHashMap<>();
+    input.forEach((name, value) -> {
+      AppFormFieldResponse field = fields.get(name);
+      if (field == null || field.builtin() || AppFieldRules.isEmpty(value)) return;
+      try {
+        values.put(name, AppFieldRules.validateValue(field, value));
+      } catch (RuntimeException error) {
+        values.put(name, value);
+      }
+    });
+    fields.values().forEach(field -> {
+      if (!field.builtin() && !values.containsKey(field.name())) {
+        Object defaultValue = AppFieldRules.defaultValue(field);
+        if (defaultValue != null) values.put(field.name(), defaultValue);
+      }
+    });
+    return values;
   }
 
   void assignCreationFields(AppFormResponse form, Map<String, Object> values, String userId) {

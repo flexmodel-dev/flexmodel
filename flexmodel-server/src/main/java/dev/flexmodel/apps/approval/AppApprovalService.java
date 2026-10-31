@@ -1,6 +1,6 @@
 package dev.flexmodel.apps.approval;
 
-import dev.flexmodel.apps.AppRecordHistoryRecorder;
+import dev.flexmodel.apps.record.AppRecordHistoryRecorder;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.ValidationException;

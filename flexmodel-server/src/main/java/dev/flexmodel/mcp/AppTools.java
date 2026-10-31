@@ -1,11 +1,23 @@
 package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.*;
+import dev.flexmodel.apps.app.AppService;
+import dev.flexmodel.apps.app.dto.AppCreateRequest;
+import dev.flexmodel.apps.app.dto.AppResponse;
 import dev.flexmodel.apps.approval.AppApprovalCapabilities;
 import dev.flexmodel.apps.approval.AppApprovalFlowModel;
 import dev.flexmodel.apps.approval.AppApprovalFlowService;
-import dev.flexmodel.apps.dto.*;
+import dev.flexmodel.apps.form.AppFormService;
+import dev.flexmodel.apps.form.dto.*;
+import dev.flexmodel.apps.navigation.AppNavigationService;
+import dev.flexmodel.apps.navigation.dto.AppNavSaveRequest;
+import dev.flexmodel.apps.navigation.dto.NavDestinationRequest;
+import dev.flexmodel.apps.record.AppRecordService;
+import dev.flexmodel.apps.workbench.AppWorkbenchDataService;
+import dev.flexmodel.apps.workbench.AppWorkbenchService;
+import dev.flexmodel.apps.workbench.dto.WorkbenchCreateRequest;
+import dev.flexmodel.apps.workbench.dto.WorkbenchLayoutRecord;
+import dev.flexmodel.apps.workbench.dto.WorkbenchPatchRequest;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.inject.Inject;

@@ -2,10 +2,10 @@ package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.SQLiteTestResource;
+import dev.flexmodel.apps.approval.AppApprovalFlowDefinitionRepository;
 import dev.flexmodel.apps.approval.AppApprovalFlowModel;
 import dev.flexmodel.apps.approval.AppApprovalFlowService;
-import dev.flexmodel.apps.approval.AppApprovalFlowDefinitionRepository;
-import dev.flexmodel.apps.AppFormService;
+import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.auth.dto.CreateApiKeyRequest;
 import dev.flexmodel.auth.service.ApiKeyService;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -15,11 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.*;

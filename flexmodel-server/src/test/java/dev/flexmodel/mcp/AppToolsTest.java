@@ -2,10 +2,13 @@ package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.apps.AppFormService;
-import dev.flexmodel.apps.AppRecordService;
-import dev.flexmodel.apps.AppService;
-import dev.flexmodel.apps.dto.*;
+import dev.flexmodel.apps.app.AppService;
+import dev.flexmodel.apps.app.dto.AppResponse;
+import dev.flexmodel.apps.form.AppFormService;
+import dev.flexmodel.apps.form.dto.AppFormResponse;
+import dev.flexmodel.apps.navigation.dto.AppNavResponse;
+import dev.flexmodel.apps.record.AppRecordService;
+import dev.flexmodel.apps.workbench.dto.*;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -72,7 +75,7 @@ class AppToolsTest {
 
       var nav = JsonUtils.parseToObject(appTools.create_app_navigation(
           appId, "ENTRY", "订单", "ShoppingCart", null, "FORM", formName),
-        dev.flexmodel.apps.dto.AppNavResponse.class);
+        dev.flexmodel.apps.navigation.dto.AppNavResponse.class);
       assertEquals("FORM", nav.destination().type());
       assertEquals(formName, nav.destination().id());
       assertNotNull(nav.pageRoute());
@@ -404,7 +407,7 @@ class AppToolsTest {
     assertEquals(appId, app.id());
   }
 
-  private dev.flexmodel.apps.dto.AppFormFieldResponse fieldByName(AppFormResponse form, String label) {
+  private dev.flexmodel.apps.form.dto.AppFormFieldResponse fieldByName(AppFormResponse form, String label) {
     return form.fields().stream()
       .filter(field -> label.equals(field.label()))
       .findFirst()

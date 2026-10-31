@@ -1,14 +1,7 @@
 package dev.flexmodel.system;
 
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.dto.AppFormFieldCreateRequest;
-import dev.flexmodel.apps.dto.AppFormFieldResponse;
-import dev.flexmodel.apps.dto.AppFormFieldUpdateRequest;
-import dev.flexmodel.apps.dto.AppFormFieldOptionResponse;
-import dev.flexmodel.apps.dto.AppFormItemRecord;
-import dev.flexmodel.apps.dto.AppFormLayoutRecord;
-import dev.flexmodel.apps.dto.AppFormResponse;
+import dev.flexmodel.apps.form.dto.*;
 import dev.flexmodel.auth.dto.ResourceTreeResponse;
 import dev.flexmodel.auth.service.ResourceService;
 import dev.flexmodel.codegen.entity.UserDepartment;
@@ -18,39 +11,16 @@ import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.graphql.dto.GraphQLRefreshEvent;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.SchemaObject;
-import dev.flexmodel.model.field.BooleanField;
-import dev.flexmodel.model.field.DateField;
-import dev.flexmodel.model.field.DateTimeField;
-import dev.flexmodel.model.field.FloatField;
-import dev.flexmodel.model.field.IntField;
-import dev.flexmodel.model.field.JSONField;
-import dev.flexmodel.model.field.StringField;
-import dev.flexmodel.model.field.TimeField;
-import dev.flexmodel.model.field.TypedField;
+import dev.flexmodel.model.field.*;
 import dev.flexmodel.modeling.ModelService;
-import dev.flexmodel.system.dto.SystemComponentRecord;
-import dev.flexmodel.system.dto.SystemFormColumnRecord;
-import dev.flexmodel.system.dto.SystemFormFieldRecord;
-import dev.flexmodel.system.dto.SystemFormItemRecord;
-import dev.flexmodel.system.dto.SystemFormLayoutRecord;
-import dev.flexmodel.system.dto.SystemFormMetadataRecord;
-import dev.flexmodel.system.dto.SystemFormPageRecord;
-import dev.flexmodel.system.dto.SystemFormResponse;
-import dev.flexmodel.system.dto.SystemFormSaveRequest;
+import dev.flexmodel.reflect.ReflectionUtils;
+import dev.flexmodel.system.dto.*;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -187,7 +157,7 @@ public class SystemFormService {
       false,
       false,
       request.options(),
-      request.referenceForm(), dev.flexmodel.apps.AppFieldRules.validateConfig(request.type(), request.config()));
+      request.referenceForm(), dev.flexmodel.apps.form.AppFieldRules.validateConfig(request.type(), request.config()));
     List<SystemFormFieldRecord> fields = new ArrayList<>(current.fields());
     fields.add(field);
     SystemFormResponse saved = saveForm(formName, withFields(current, fields));
@@ -211,7 +181,7 @@ public class SystemFormService {
       existing.virtual(),
       existing.readonly(),
       request.options(),
-      request.referenceForm(), dev.flexmodel.apps.AppFieldRules.validateConfig(existing.type(),
+      request.referenceForm(), dev.flexmodel.apps.form.AppFieldRules.validateConfig(existing.type(),
         request.config() == null ? existing.config() : request.config()));
     List<SystemFormFieldRecord> fields = current.fields().stream()
       .map(item -> item.name().equals(existing.name()) ? updated : item)
@@ -582,7 +552,7 @@ public class SystemFormService {
       if (!FIELD_TYPES.contains(field.type())) {
         throw new ValidationException("字段类型不合法: " + field.type());
       }
-      dev.flexmodel.apps.AppFieldRules.validateConfig(field.type(), field.config());
+      dev.flexmodel.apps.form.AppFieldRules.validateConfig(field.type(), field.config());
       if (isBlank(field.label())) {
         throw new ValidationException("字段展示名不能为空: " + name);
       }
@@ -694,7 +664,7 @@ public class SystemFormService {
           !actualCoreField && coreField,
           false,
           field.options(),
-          field.referenceForm(), dev.flexmodel.apps.AppFieldRules.validateConfig(field.type(), field.config()));
+          field.referenceForm(), dev.flexmodel.apps.form.AppFieldRules.validateConfig(field.type(), field.config()));
       })
       .toList();
   }

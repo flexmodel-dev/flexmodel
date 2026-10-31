@@ -1,9 +1,12 @@
 package dev.flexmodel.apps.approval;
 
+import dev.flexmodel.common.ProjectUnitOfWork;
+import dev.flexmodel.common.SessionContext;
+import dev.flexmodel.common.SqlErrors;
+import dev.flexmodel.common.ValidationException;
+import dev.flexmodel.common.messaging.ReliableMessages;
 import dev.flexmodel.common.messaging.RuntimeMessageRepository;
 import dev.flexmodel.directory.DirectoryService;
-import dev.flexmodel.common.*;
-import dev.flexmodel.common.messaging.ReliableMessages;
 import dev.flexmodel.flow.event.DurableFlowListener;
 import dev.flexmodel.notification.NotificationService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -11,10 +14,13 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.ClientErrorException;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
-import static dev.flexmodel.apps.AppRecordHistoryContext.*;
 import static dev.flexmodel.apps.approval.AppApprovalJson.*;
+import static dev.flexmodel.apps.record.AppRecordHistoryContext.Snapshot;
 import static dev.flexmodel.common.Values.*;
 
 /**
@@ -52,9 +58,9 @@ public class AppApprovalRuntime implements DurableFlowListener {
   @Inject
   SessionContext current;
   @Inject
-  dev.flexmodel.apps.AppRecordHistoryRecorder history;
+  dev.flexmodel.apps.record.AppRecordHistoryRecorder history;
   @Inject
-  dev.flexmodel.apps.AppRecordHistoryContext historyContext;
+  dev.flexmodel.apps.record.AppRecordHistoryContext historyContext;
 
   public Map<String, Object> submit(String appId, String form, String recordId, String flowId, String key) {
     if (key == null || key.isBlank() || key.length() > 120) throw new ValidationException("提交必须携带有效幂等键");

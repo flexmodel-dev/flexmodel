@@ -1,6 +1,6 @@
 package dev.flexmodel.apps.approval;
 
-import dev.flexmodel.apps.AppFormService;
+import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.directory.DirectoryService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

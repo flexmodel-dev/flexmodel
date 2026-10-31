@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-145",
+      "name": "Apps - dev.flexmodel.apps 按特性垂直分包",
+      "description": "将 dev.flexmodel.apps 根包与 dto 大杂烩按业务特性垂直分包：app/form/navigation/record/workbench/apppackage/template/transfer/dataauthorization（approval 原样保留），DTO 迁入各特性 *.dto 子包，测试类同步迁移，外部引用 import 重写。",
+      "status": "done",
+      "evidence": "2026-10-31 完成（未提交）。git mv 迁移 125 个文件（111 主代码 + 14 测试），包声明与全仓 import 重写（146 文件实质变更）。跨包访问的原 package-private 成员改 public：AppService.isImporting/importBypassed/IMPORT_BYPASS、AppFormService.rawFormRecords/reservedSystemFormNames/builtinFieldNames/fieldTypes/optionFieldTypes/normalizeQueryFilter、AppRecordService.prepareImport/assignCreationFields/buildFilter/buildSort/exposedFields/RecordContext、AppTemplateCatalog.open、AppPackageZip.json。验证：mvn clean compile 全模块 EXIT=0；mvn test-compile -pl flexmodel-server EXIT=0；apps 包 13/15 测试类全绿（AppWorkbenchServiceTest、AppRecordDiscussionNotificationTest 失败经 stash 基线对照确认为 HEAD 既有失败）；engine 102 测试全绿；mcp/rest 8 个测试类失败数与 HEAD 基线逐类一致。"
+    },
+    {
       "id": "feat-144",
       "name": "Apps - f_app 应用表与 app_id 归属重构",
       "description": "新增平台表 f_app（与 f_project 一对一共享主键），应用配置（iconName、primaryColor、provisioning、navigation、forms）从 f_project.metadata.app JSON 节点迁出为强类型列；f_app_* 系列表归属语义统一为 app_id；不做历史数据迁移。",

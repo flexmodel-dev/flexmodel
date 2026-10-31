@@ -1,21 +1,25 @@
 package dev.flexmodel.apps.approval;
 
-import dev.flexmodel.apps.AppFormService;
-import dev.flexmodel.apps.AppRecordService;
+import dev.flexmodel.apps.form.AppFormService;
+import dev.flexmodel.apps.record.AppRecordService;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.project.ProjectService;
-import dev.flexmodel.query.*;
+import dev.flexmodel.query.Predicate;
 import dev.flexmodel.query.Query.OrderBy;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import static dev.flexmodel.apps.approval.AppApprovalJson.*;
+import static dev.flexmodel.apps.approval.AppApprovalJson.value;
 import static dev.flexmodel.common.Values.*;
-import static dev.flexmodel.query.Expressions.*;
+import static dev.flexmodel.query.Expressions.TRUE;
+import static dev.flexmodel.query.Expressions.field;
 
 /**
  * Application metadata is resolved on the server. No datasource or raw filter is accepted from nodes.

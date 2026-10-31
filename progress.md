@@ -1,5 +1,32 @@
 # Session Progress Log
 
+## Apps - dev.flexmodel.apps 按特性垂直分包重构（2026-10-31，feat-145）
+
+- dev.flexmodel.apps 根包与 dto 大杂烩按业务特性拆分为子包，每个特性内 DTO 放 `*.dto` 子包：
+  `app`（AppResource/AppService/AppRepository/AppFmRepository + AppCreateRequest/AppResponse/AppUpdateRequest）、
+  `form`（AppFormResource/AppFormService/AppFieldRules + AppForm*/AppField*/AppReferenceValueResponse DTO）、
+  `navigation`（AppNavigationResource/Service/AppNavRecordStore + AppNav*/NavDestination*/NavVisibilityRule DTO）、
+  `record`（AppRecordResource/Service + Discussion*/History* 3+7 类 + 对应 DTO）、
+  `workbench`（AppWorkbench* 5 类 + Workbench* 20 DTO）、
+  `apppackage`（AppPackage* 8 类 + AppPackage DTO）、
+  `template`（AppTemplateCatalog/Resource + AppTemplate DTO）、
+  `transfer`（AppTransfer* 7 类 + AppTransfer DTO）、
+  `dataauthorization`（AppDataAuthorization* + AppPermissionConditions + DTO）、
+  `approval`（原样保留）。
+- 测试类同步迁入对应子包（src/test dev.flexmodel.apps 下 14 个 Test）；外部引用（mcp/system/notification/project/rest
+  测试）import 全部重写。
+- 跨包可见性调整（原同包 package-private）：AppService.isImporting/importBypassed/IMPORT_BYPASS、
+  AppFormService.rawFormRecords/reservedSystemFormNames/builtinFieldNames/fieldTypes/optionFieldTypes/normalizeQueryFilter、
+  AppRecordService.prepareImport/assignCreationFields/buildFilter/buildSort/exposedFields/RecordContext、
+  AppTemplateCatalog.open 改为 public；AppPackageZip.json 改 public（模板测试注入 ObjectMapper）。
+- 修复脚本误加 import：ProjectPlatformDataCleaner 曾被错误加入 dto AppDataAuthorization import 遮蔽 codegen 同名实体，已移除；
+  AppTemplateCatalogTest/AppToolsTest 补外层类 import（嵌套类型 import 导致启发式漏加）。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` EXIT=0（停掉两个 quarkus:dev 进程解锁 target）；
+  `mvn test-compile -pl flexmodel-server` EXIT=0；apps 包测试 13/15 类全绿；
+  AppWorkbenchServiceTest（3F/2E）与 AppRecordDiscussionNotificationTest（1F）经 git stash 基线对照确认为 HEAD 既有失败，与重构无关；
+  引擎 102 测试全绿。mcp/rest 8 个测试类失败数与 HEAD 基线完全一致（AppToolsTest 5、AppFormResourceTest 14 等，均为既有失败）。
+- 未提交代码。
+
 ## Apps - 菜单重命名为导航（2026-10-30，feat-140）
 
 - 服务端：AppMenuService/AppMenuResource/AppMenuRecordStore 更名为

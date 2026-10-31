@@ -1,14 +1,18 @@
 package dev.flexmodel.notification;
 
-import dev.flexmodel.common.messaging.*;
-import dev.flexmodel.apps.AppRecordDiscussionRepository;
+import dev.flexmodel.apps.record.AppRecordDiscussionRepository;
+import dev.flexmodel.common.messaging.ReliableMessageHandler;
+import dev.flexmodel.common.messaging.ReliableMessages;
 import dev.flexmodel.directory.DirectoryService;
 import dev.flexmodel.project.ProjectRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Producers only enqueue in their project transaction; delivery owns a separate system transaction.

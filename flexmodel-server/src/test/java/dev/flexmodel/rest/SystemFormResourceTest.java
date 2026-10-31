@@ -1,9 +1,9 @@
 package dev.flexmodel.rest;
 
 import dev.flexmodel.SQLiteTestResource;
-import dev.flexmodel.apps.AppFormService;
-import dev.flexmodel.apps.dto.AppFieldConfig;
-import dev.flexmodel.apps.dto.AppFormFieldUpdateRequest;
+import dev.flexmodel.apps.form.AppFormService;
+import dev.flexmodel.apps.form.dto.AppFieldConfig;
+import dev.flexmodel.apps.form.dto.AppFormFieldUpdateRequest;
 import dev.flexmodel.common.ValidationException;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;

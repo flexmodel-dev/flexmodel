@@ -1,8 +1,8 @@
 package dev.flexmodel.apps.approval;
 
 import dev.flexmodel.JsonUtils;
-import dev.flexmodel.apps.AppFormService;
-import dev.flexmodel.apps.dto.AppFormResponse;
+import dev.flexmodel.apps.form.AppFormService;
+import dev.flexmodel.apps.form.dto.AppFormResponse;
 import dev.flexmodel.directory.DirectoryService;
 import dev.flexmodel.flow.dto.model.FlowModel;
 import jakarta.enterprise.context.ApplicationScoped;

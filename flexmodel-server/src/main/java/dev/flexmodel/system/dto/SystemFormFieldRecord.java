@@ -1,8 +1,8 @@
 package dev.flexmodel.system.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import dev.flexmodel.apps.dto.AppFormFieldOptionResponse;
-import dev.flexmodel.apps.dto.AppFieldConfig;
+import dev.flexmodel.apps.form.dto.AppFieldConfig;
+import dev.flexmodel.apps.form.dto.AppFormFieldOptionResponse;
 
 import java.util.List;
 

@@ -26,7 +26,7 @@ class AppRecordServiceTest {
     AppFormFieldResponse referenceField = new AppFormFieldResponse(
       "customer_id", "Customer", "REFERENCE", false, false, null, "customer");
     AppFormResponse form = new AppFormResponse(
-      "orders", "Orders", "", "name", "name", true,
+      "orders", "Orders", "", "name", "name", true, false,
       LocalDateTime.now(), LocalDateTime.now(), List.of(nameField, referenceField), null, List.of());
     RecordingDataService dataService = new RecordingDataService();
     AppRecordService service = new AppRecordService();
@@ -47,13 +47,13 @@ class AppRecordServiceTest {
     AppFormFieldResponse customerReference = new AppFormFieldResponse(
       "customer_id", "Customer", "REFERENCE", false, false, null, "customer");
     AppFormResponse orderForm = new AppFormResponse(
-      "orders", "Orders", "", "name", "name", true,
+      "orders", "Orders", "", "name", "name", true, false,
       LocalDateTime.now(), LocalDateTime.now(), List.of(orderName, customerReference),
       layout("name", "customer_id"), List.of());
     AppFormFieldResponse customerName = new AppFormFieldResponse(
       "name", "Name", "TEXT", true, false, null, null);
     AppFormResponse customerForm = new AppFormResponse(
-      "customer", "Customer", "", "name", "name", true,
+      "customer", "Customer", "", "name", "name", true, false,
       LocalDateTime.now(), LocalDateTime.now(), List.of(customerName), null, List.of());
     RenderingDataService dataService = new RenderingDataService();
     AppRecordService service = new AppRecordService();
@@ -81,7 +81,7 @@ class AppRecordServiceTest {
     AppFormFieldResponse secretField = new AppFormFieldResponse(
       "secret", "Secret", "TEXT", false, false, null, null);
     AppFormResponse form = new AppFormResponse(
-      "orders", "Orders", "", "name", "name", true,
+      "orders", "Orders", "", "name", "name", true, false,
       LocalDateTime.now(), LocalDateTime.now(), List.of(nameField, secretField),
       layout("name"), List.of());
     RenderingDataService dataService = new RenderingDataService();
@@ -102,7 +102,7 @@ class AppRecordServiceTest {
     AppFormFieldResponse nameField = new AppFormFieldResponse(
       "name", "Name", "TEXT", true, false, null, null);
     AppFormResponse form = new AppFormResponse(
-      "orders", "Orders", "", "name", "name", true,
+      "orders", "Orders", "", "name", "name", true, false,
       LocalDateTime.now(), LocalDateTime.now(), List.of(nameField), null,
       List.of(new AppFormViewTabRecord("zhang", "张姓", Map.of(
         "_and", List.of(Map.of("name", Map.of("_contains", "张")))))));
@@ -124,7 +124,7 @@ class AppRecordServiceTest {
     AppFormFieldResponse nameField = new AppFormFieldResponse(
       "name", "Name", "TEXT", true, false, null, null);
     AppFormResponse form = new AppFormResponse(
-      "orders", "Orders", "", "name", "name", true,
+      "orders", "Orders", "", "name", "name", true, false,
       LocalDateTime.now(), LocalDateTime.now(), List.of(nameField), null,
       List.of(new AppFormViewTabRecord("zhang", "张姓", Map.of(
         "_and", List.of(Map.of("name", Map.of("_contains", "张")))))));
@@ -146,7 +146,7 @@ class AppRecordServiceTest {
     AppFormFieldResponse nameField = new AppFormFieldResponse(
       "name", "Name", "TEXT", true, false, null, null);
     AppFormResponse form = new AppFormResponse(
-      "orders", "Orders", "", "name", "name", true,
+      "orders", "Orders", "", "name", "name", true, false,
       LocalDateTime.now(), LocalDateTime.now(), List.of(nameField), null, List.of());
     AppRecordService service = new AppRecordService();
     service.appFormService = new StubAppFormService(form);

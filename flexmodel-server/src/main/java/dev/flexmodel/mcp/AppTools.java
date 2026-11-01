@@ -162,16 +162,23 @@ public class AppTools {
     using concise English snake_case matching ^[a-z][a-z0-9_]{0,63}$. The server \
     validates the name and returns the final form contract. If name is omitted, \
     the server derives it from an ASCII label or falls back to a random name. \
-    The form contract also contains viewTabs, the record-list tab configuration. \
-    Each view tab is {id,label,filter}. Configure tabs by PATCHing the form with \
-    {"viewTabs":[...]} only. A tab id is optional, must be unique, at most 64 \
-    characters, and cannot be "all"; a label must be non-empty, unique, and at \
-    most 32 characters. filter must be {"_and":[{field:{operator:value}}, ...]} \
-    with 1-10 conditions. Each condition may reference one existing field and \
-    one operator. Numeric and date/time fields support _eq, _ne, _gt, _gte, \
-    _lt, and _lte. BOOL and choice/reference-like fields support _eq and _ne. \
-    Other text-like fields also support _contains, _not_contains, \
-    _starts_with, and _ends_with. A REFERENCE field must set referenceForm to \
+    The form contract also contains viewTabs. Each view is \
+    {id,label,type,filter,sort,displayFields,config}. type allows TABLE, KANBAN, \
+    CALENDAR, GALLERY, DETAIL, HIERARCHY, or GANTT. id is optional and must be \
+    unique and at most 64 characters; "all" is the reserved fixed table view and \
+    cannot be created as a custom view. Configure views by PATCHing the form with \
+    {"viewTabs":[...]} only. filter may be null or \
+    {"_and":[...]} / {"_or":[...]} with 1-10 conditions. Each condition may \
+    reference one existing field and one operator. Numeric and date/time fields \
+    support _eq, _ne, _gt, _gte, _lt, and _lte. BOOL and choice/reference-like \
+    fields support _eq and _ne. Other text-like fields also support _contains, \
+    _not_contains, _starts_with, and _ends_with. sort is {field,order} or null. \
+    displayFields is an array of existing field names. config carries type-specific \
+    settings: KANBAN groupField/titleField; CALENDAR startField/endField/titleField/ \
+    calendarUnit; GALLERY coverField/titleField/imageFit; DETAIL detailMode; \
+    HIERARCHY parentField/hierarchyMode; GANTT startField/endField/titleField/ \
+    ganttScale. HIERARCHY parentField must be a REFERENCE field to the same form. \
+    A REFERENCE field must set referenceForm to \
     a form name returned by list_app_forms. The available reference targets \
     include the built-in forms f_user, f_role, and f_department, plus any \
     user-created forms in the same app.\

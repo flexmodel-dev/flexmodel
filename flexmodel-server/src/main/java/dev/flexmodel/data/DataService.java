@@ -36,6 +36,25 @@ public class DataService {
     return dataRepository.countRecords(projectId, datasourceName, modelName, filter);
   }
 
+  public long countRecords(String projectId, String modelName, String filter) {
+    return dataRepository.countRecords(
+      projectId, projectService.resolveDatabaseName(projectId), modelName, filter);
+  }
+
+  public List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String datasourceName,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    String filter,
+    int limit
+  ) {
+    return dataRepository.aggregateRecords(
+      projectId, datasourceName, modelName, dimensionField, measureField, aggregation, filter, limit);
+  }
+
   public List<Map<String, Object>> aggregateRecords(
     String projectId,
     String datasourceName,

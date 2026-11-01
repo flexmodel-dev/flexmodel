@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-146",
+      "name": "Apps - 记录页签栏滚动条/下划线修复与图标精简",
+      "description": "记录列表页签栏（全部/草稿/…）右侧出现多余竖向滚动条并裁掉激活页签下划线，修复后页签栏无滚动条、激活下划线完整显示；页签去掉视图类型图标，仅保留文字。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-apps-ui，未提交）。根因：ViewBar 页签 ul 的 overflow-x-auto 使 overflow-y 由 visible 计算为 auto 成为滚动容器，页签按钮 -mb-0.5 负外边距让按钮边框盒比 flex 行高高 2px，形成 2px 纵向可滚动溢出，Chromium 在页签末尾绘制 15px 竖向滚动条并裁掉 2px 激活下划线。修改：移除按钮 -mb-0.5，使 ul 高度与按钮一致、消除纵向溢出；ul 保留 overflow-x-auto overflow-y-hidden 防止后续溢出再次生成纵向滚动条；按用户要求页签按钮不再渲染 VIEW_TYPE_META 视图图标，仅保留文字（新增视图下拉图标保留）。验证：tsc -b 与 vite build 通过（TEMP 指向项目内规避 esbuild 临时目录 Access denied）；构建产物 + Mock API 无头 Chromium 实测，修复前 scrollHeight 38/clientHeight 36、竖向滚动条占位 15px、下划线可见 0px，修复后 scrollHeight=clientHeight=38、滚动条占位 0、下划线 2px 完整可见且页签坐标不变，五个页签文本为 全部/草稿/审批中/已批准/已入库。"
+    },
+    {
       "id": "feat-145",
       "name": "Apps - dev.flexmodel.apps 按特性垂直分包",
       "description": "将 dev.flexmodel.apps 根包与 dto 大杂烩按业务特性垂直分包：app/form/navigation/record/workbench/apppackage/template/transfer/dataauthorization（approval 原样保留），DTO 迁入各特性 *.dto 子包，测试类同步迁移，外部引用 import 重写。",

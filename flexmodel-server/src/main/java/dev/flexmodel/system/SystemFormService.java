@@ -355,7 +355,7 @@ public class SystemFormService {
         item.readonly(),
         item.formName(),
         item.referenceField())).toList()),
-      List.of());
+      List.of(new AppFormViewTabRecord("all", "全部", "TABLE", null, null, List.of(), AppViewConfig.empty())));
   }
 
   private EntityDefinition requireEntity(String formName) {

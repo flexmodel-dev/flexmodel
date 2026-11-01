@@ -3918,3 +3918,21 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   `mvn test -pl flexmodel-engine` BUILD SUCCESS；定向 server 测试 17 个类 103/103 通过
   （含 AppDataAuthorizationResourceTest 4、SystemFormResourceTest 5、审批/表单/记录/导入导出相关单元测试）。
 - 遗留：未提交代码；`dev_test` 无 `f_app` 的测试覆盖缺口按用户决策接受。
+
+## Apps 记录页签栏竖向滚动条与下划线修复（2026-11-01）
+
+- 现象：记录列表页签（全部/草稿/审批中/已批准/已入库）右侧多出一条 15px 宽竖向滚动条，挤压页签区域宽度；修复过程中还发现激活页签下划线被裁掉。
+- 根因：`ViewBar` 页签 `<ul>` 使用 `overflow-x-auto`，按 CSS 规范另一轴 `overflow-y` 由 `visible` 计算为 `auto`，因此
+  `<ul>` 是滚动容器；
+  页签按钮 `-mb-0.5` 负外边距让按钮边框盒比 flex 行高高 2px，产生 2px 纵向可滚动溢出，Chromium 在页签末尾绘制竖向滚动条，
+  同时把按钮底部 2px 的激活下划线裁掉。
+- 修复：移除页签按钮的 `-mb-0.5`，使 `<ul>` 高度与按钮一致、消除纵向溢出，激活下划线完整显示；`<ul>` 保留
+  `overflow-y-hidden` 兜底，避免后续样式变化再次触发纵向滚动条（横向滚动能力不变）。
+- 验证：`tsc -b` 与 `vite build` 通过（构建时把 TEMP/TMP 指向项目内目录，规避 esbuild 清理系统临时目录被拒）。用构建产物 +
+  Mock API 在
+  无头 Chromium 实测：修复前 `scrollHeight 38 / clientHeight 36`、竖向滚动条占位 15px、下划线可见高度 0；修复后
+  `scrollHeight = clientHeight = 38`、滚动条占位 0、下划线 2px 完整可见，页签及其它元素坐标不变。
+- 追加：按用户要求去掉页签上的视图类型图标（`ViewBar` 页签按钮不再渲染 `VIEW_TYPE_META[type].icon`，仅保留文字；
+  “新增视图”下拉中的图标保留）。`tsc -b`、`vite build` 通过，构建产物实测五个页签文本为 全部/草稿/审批中/已批准/已入库、
+  无竖向滚动条，下划线完整。
+

@@ -359,61 +359,216 @@ public class AppPackageValidator {
     List<AppFormViewTabRecord> viewTabs = info.record.viewTabs();
     if (viewTabs == null || viewTabs.isEmpty()) return;
     String path = info.path() + ".viewTabs";
-    if (viewTabs.size() > MAX_VIEW_TABS) {
-      issues.add("VIEW_TAB_LIMIT", path, "视图页签数量超过 " + MAX_VIEW_TABS);
-      return;
-    }
     Set<String> ids = new LinkedHashSet<>();
     Set<String> labels = new LinkedHashSet<>();
+    int customViews = 0;
     for (int index = 0; index < viewTabs.size(); index++) {
       AppFormViewTabRecord tab = viewTabs.get(index);
       String tabPath = path + "[" + index + "]";
-      if (tab == null || isBlank(tab.label()) || tab.label().length() > 32) {
-        issues.add("VIEW_TAB_INVALID", tabPath + ".label", "视图页签名称需要 1 至 32 个字符");
+      if (tab == null) {
+        issues.add("VIEW_TAB_INVALID", tabPath, "视图配置不能为空");
         continue;
       }
-      if (!labels.add(tab.label())) {
-        issues.add("VIEW_TAB_INVALID", tabPath + ".label", "视图页签名称重复: " + tab.label());
+      String id = isBlank(tab.id()) ? null : tab.id().trim();
+      if (id != null && !ids.add(id)) {
+        issues.add("VIEW_TAB_INVALID", tabPath + ".id", "视图标识重复: " + id);
       }
-      if (!isBlank(tab.id())) {
-        if (tab.id().length() > 64 || "all".equals(tab.id()) || !ids.add(tab.id())) {
-          issues.add("VIEW_TAB_INVALID", tabPath + ".id", "视图页签标识不合法或重复: " + tab.id());
-        }
+      customViews++;
+      if (customViews > MAX_VIEW_TABS) {
+        issues.add("VIEW_TAB_LIMIT", path, "视图数量超过 " + MAX_VIEW_TABS + " 个自定义视图");
+        return;
+      }
+      if (id != null && id.length() > 64) {
+        issues.add("VIEW_TAB_INVALID", tabPath + ".id", "视图标识不能超过 64 个字符");
+      }
+      if (isBlank(tab.label()) || tab.label().length() > 32) {
+        issues.add("VIEW_TAB_INVALID", tabPath + ".label", "视图名称需要 1 至 32 个字符");
+      } else if (!labels.add(tab.label())) {
+        issues.add("VIEW_TAB_INVALID", tabPath + ".label", "视图名称重复: " + tab.label());
+      }
+      String type = isBlank(tab.type()) ? "TABLE" : tab.type().trim().toUpperCase(Locale.ROOT);
+      if (!AppFormService.viewTypes().contains(type)) {
+        issues.add("VIEW_TAB_INVALID", tabPath + ".type", "视图类型不合法: " + tab.type());
+        continue;
       }
       if (tab.filter() != null) {
         validateViewTabFilter(info, tab.filter(), tabPath + ".filter", issues);
       }
+      validateViewTabSort(info, tab.sort(), tabPath + ".sort", issues);
+      validateViewDisplayFields(info, tab.displayFields(), tabPath + ".displayFields", issues);
+      validateViewTabConfig(info, type, tab.config(), tabPath + ".config", issues);
+    }
+  }
+
+  private void validateViewTabSort(FormInfo info, AppViewSort sort, String path, Issues issues) {
+    if (sort == null) return;
+    if (isBlank(sort.field())) {
+      issues.add("VIEW_TAB_INVALID", path + ".field", "排序字段不能为空");
+      return;
+    }
+    String field = sort.field().trim();
+    if (!info.allFields.contains(field) && !Set.of("id", "created_at", "updated_at").contains(field)) {
+      issues.add("VIEW_TAB_INVALID", path + ".field", "排序字段不存在: " + field);
+    }
+    if (!isBlank(sort.order()) && !Set.of("ASC", "DESC").contains(sort.order().trim().toUpperCase(Locale.ROOT))) {
+      issues.add("VIEW_TAB_INVALID", path + ".order", "排序方向不合法: " + sort.order());
+    }
+  }
+
+  private void validateViewDisplayFields(
+    FormInfo info,
+    List<String> displayFields,
+    String path,
+    Issues issues
+  ) {
+    if (displayFields == null || displayFields.isEmpty()) return;
+    if (displayFields.size() > 60) {
+      issues.add("VIEW_TAB_INVALID", path, "显示字段不能超过 60 个");
+    }
+    Set<String> seen = new LinkedHashSet<>();
+    for (int index = 0; index < displayFields.size(); index++) {
+      String fieldName = displayFields.get(index);
+      if (isBlank(fieldName) || "id".equals(fieldName) || !info.allFields.contains(fieldName)) {
+        issues.add("VIEW_TAB_INVALID", path + "[" + index + "]", "显示字段不存在: " + fieldName);
+      } else if (!seen.add(fieldName)) {
+        issues.add("VIEW_TAB_INVALID", path + "[" + index + "]", "显示字段重复: " + fieldName);
+      }
+    }
+  }
+
+  private void validateViewTabConfig(
+    FormInfo info,
+    String type,
+    AppViewConfig config,
+    String path,
+    Issues issues
+  ) {
+    if (config == null) {
+      if (Set.of("KANBAN", "CALENDAR", "HIERARCHY", "GANTT").contains(type)) {
+        issues.add("VIEW_TAB_INVALID", path, "视图缺少专属配置");
+      }
+      return;
+    }
+    switch (type) {
+      case "KANBAN" -> {
+        AppFormFieldRecord group = requireViewField(info, config.groupField(), path + ".groupField", "看板分组字段", issues);
+        if (group != null && !Set.of("PICKLIST", "SELECT", "CLASSIFICATION", "BOOL", "REFERENCE").contains(group.type())) {
+          issues.add("VIEW_TAB_INVALID", path + ".groupField", "看板分组字段类型不支持: " + group.label());
+        }
+        requireViewField(info, config.titleField(), path + ".titleField", "卡片标题字段", issues);
+      }
+      case "CALENDAR" -> {
+        AppFormFieldRecord start = requireViewField(info, config.startField(), path + ".startField", "日历开始字段", issues);
+        AppFormFieldRecord end = requireViewField(info, config.endField(), path + ".endField", "日历结束字段", issues);
+        validateViewDateFields(start, end, path, issues);
+        requireViewField(info, config.titleField(), path + ".titleField", "日历标题字段", issues);
+        validateViewEnum(config.calendarUnit(), Set.of("MONTH", "WEEK", "DAY"), path + ".calendarUnit", issues);
+      }
+      case "GALLERY" -> {
+        AppFormFieldRecord cover = requireViewField(info, config.coverField(), path + ".coverField", "画廊封面字段", issues);
+        if (cover != null && !Set.of("FILE", "IMAGE", "AVATAR").contains(cover.type())) {
+          issues.add("VIEW_TAB_INVALID", path + ".coverField", "画廊封面字段必须是附件类字段: " + cover.label());
+        }
+        requireViewField(info, config.titleField(), path + ".titleField", "画廊标题字段", issues);
+        validateViewEnum(config.imageFit(), Set.of("COVER", "CONTAIN"), path + ".imageFit", issues);
+      }
+      case "DETAIL" -> validateViewEnum(config.detailMode(), Set.of("LIST", "SINGLE"), path + ".detailMode", issues);
+      case "HIERARCHY" -> {
+        AppFormFieldRecord parent = requireViewField(info, config.parentField(), path + ".parentField", "层级父节点字段", issues);
+        if (parent != null && (!"REFERENCE".equals(parent.type())
+          || !info.record.name().equals(parent.referenceForm()))) {
+          issues.add("VIEW_TAB_INVALID", path + ".parentField", "层级父节点字段必须关联本表单: " + parent.label());
+        }
+        validateViewEnum(config.hierarchyMode(), Set.of("TREE", "TABLE"), path + ".hierarchyMode", issues);
+      }
+      case "GANTT" -> {
+        AppFormFieldRecord start = requireViewField(info, config.startField(), path + ".startField", "甘特开始字段", issues);
+        AppFormFieldRecord end = requireViewField(info, config.endField(), path + ".endField", "甘特结束字段", issues);
+        validateViewDateFields(start, end, path, issues);
+        if (start == null || end == null || isBlank(config.endField())) {
+          issues.add("VIEW_TAB_INVALID", path, "甘特必须配置开始和结束字段");
+        }
+        requireViewField(info, config.titleField(), path + ".titleField", "甘特标题字段", issues);
+        validateViewEnum(config.ganttScale(), Set.of("DAY", "WEEK", "MONTH"), path + ".ganttScale", issues);
+      }
+      default -> {
+      }
+    }
+  }
+
+  private AppFormFieldRecord requireViewField(
+    FormInfo info,
+    String fieldName,
+    String path,
+    String label,
+    Issues issues
+  ) {
+    if (isBlank(fieldName)) return null;
+    AppFormFieldRecord field = info.businessFields.get(fieldName.trim());
+    if (field == null) {
+      issues.add("VIEW_TAB_INVALID", path, label + "不存在: " + fieldName);
+    }
+    return field;
+  }
+
+  private void validateViewDateFields(
+    AppFormFieldRecord start,
+    AppFormFieldRecord end,
+    String path,
+    Issues issues
+  ) {
+    Set<String> dateTypes = Set.of("DATE", "DATETIME");
+    if (start != null && !dateTypes.contains(start.type())) {
+      issues.add("VIEW_TAB_INVALID", path + ".startField", "开始字段必须是日期或日期时间: " + start.label());
+    }
+    if (end != null) {
+      if (!dateTypes.contains(end.type())) {
+        issues.add("VIEW_TAB_INVALID", path + ".endField", "结束字段必须是日期或日期时间: " + end.label());
+      } else if (start != null && !start.type().equals(end.type())) {
+        issues.add("VIEW_TAB_INVALID", path + ".endField", "起止字段必须同为日期或同为日期时间");
+      }
+    }
+  }
+
+  private void validateViewEnum(String value, Set<String> allowed, String path, Issues issues) {
+    if (!isBlank(value) && !allowed.contains(value.trim().toUpperCase(Locale.ROOT))) {
+      issues.add("VIEW_TAB_INVALID", path, "配置值不合法: " + value);
     }
   }
 
   private void validateViewTabFilter(FormInfo info, Map<String, Object> filter, String path, Issues issues) {
-    if (filter.size() != 1 || !(filter.get("_and") instanceof List<?> conditions)) {
-      issues.add("VIEW_TAB_INVALID", path, "视图页签筛选条件必须为 _and 结构");
+    if (filter.size() != 1) {
+      issues.add("VIEW_TAB_INVALID", path, "视图筛选条件必须包含全部或任一条件组");
+      return;
+    }
+    String logic = String.valueOf(filter.keySet().iterator().next());
+    if (!Set.of("_and", "_or").contains(logic) || !(filter.get(logic) instanceof List<?> conditions)) {
+      issues.add("VIEW_TAB_INVALID", path, "视图筛选条件必须为 _and 或 _or 结构");
       return;
     }
     if (conditions.isEmpty() || conditions.size() > 10) {
-      issues.add("VIEW_TAB_INVALID", path, "视图页签筛选条件数量必须在 1 到 10 之间");
+      issues.add("VIEW_TAB_INVALID", path, "视图筛选条件数量必须在 1 到 10 之间");
       return;
     }
     for (int index = 0; index < conditions.size(); index++) {
       Object value = conditions.get(index);
-      String conditionPath = path + "._and[" + index + "]";
+      String conditionPath = path + "." + logic + "[" + index + "]";
       if (!(value instanceof Map<?, ?> condition) || condition.size() != 1) {
-        issues.add("VIEW_TAB_INVALID", conditionPath, "视图页签每个筛选条件只能包含一个字段");
+        issues.add("VIEW_TAB_INVALID", conditionPath, "视图每个筛选条件只能包含一个字段");
         continue;
       }
       String fieldName = String.valueOf(condition.keySet().iterator().next());
       AppFormFieldRecord field = info.businessFields.get(fieldName);
       if ("id".equals(fieldName)) {
-        issues.add("VIEW_TAB_INVALID", conditionPath, "视图页签筛选条件不支持 id 字段");
+        issues.add("VIEW_TAB_INVALID", conditionPath, "视图筛选条件不支持 id 字段");
         continue;
       }
       if (field == null) {
-        issues.add("VIEW_TAB_INVALID", conditionPath, "视图页签筛选字段不存在: " + fieldName);
+        issues.add("VIEW_TAB_INVALID", conditionPath, "视图筛选字段不存在: " + fieldName);
         continue;
       }
       if (!(condition.get(fieldName) instanceof Map<?, ?> operatorMap) || operatorMap.size() != 1) {
-        issues.add("VIEW_TAB_INVALID", conditionPath + "." + fieldName, "视图页签筛选字段只能配置一个操作符");
+        issues.add("VIEW_TAB_INVALID", conditionPath + "." + fieldName, "视图筛选字段只能配置一个操作符");
         continue;
       }
       String operator = String.valueOf(operatorMap.keySet().iterator().next());

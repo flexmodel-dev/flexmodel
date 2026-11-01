@@ -11,8 +11,10 @@ import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.data.DataService;
+import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.ClientErrorException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -51,6 +53,9 @@ public class AppRecordService {
 
   @Inject
   ProjectUnitOfWork transactions;
+
+  @Inject
+  ProjectService projectService;
 
   public PageDTO<Map<String, Object>> findRecords(
     String appId,
@@ -105,6 +110,165 @@ public class AppRecordService {
   public void requireRecordExists(String appId, String formName, String recordId) {
     ResolvedForm form = resolveForm(appId, formName);
     requireRecord(appId, form, recordId);
+  }
+
+  // ------------------------------------------------------------------ 视图查询
+
+  public PageDTO<Map<String, Object>> queryViewRecords(
+    String appId,
+    AppFormResponse form,
+    int page,
+    int size,
+    String filter,
+    String sort,
+    Collection<String> extraFields
+  ) {
+    PageDTO<Map<String, Object>> result = findPagingRecords(
+      appId, form, Math.max(page, 1), Math.clamp(size, 1, 10000), filter, sort,
+      referenceFields(form));
+    renderReferenceValues(appId, form, result);
+    LinkedHashSet<String> exposed = new LinkedHashSet<>(exposedFields(form));
+    if (extraFields != null) exposed.addAll(extraFields);
+    return projectRecords(result, exposed);
+  }
+
+  public long countViewRecords(String appId, AppFormResponse form, String filter) {
+    if (form.builtin()) {
+      return dataService.countRecords(appId, SYSTEM_SCHEMA, form.name(), filter);
+    }
+    return dataService.countRecords(appId, form.name(), filter);
+  }
+
+  public List<Map<String, Object>> aggregateViewRecords(
+    String appId,
+    AppFormResponse form,
+    String dimensionField,
+    String filter,
+    int limit
+  ) {
+    if (form.builtin()) {
+      return dataService.aggregateRecords(
+        appId, SYSTEM_SCHEMA, form.name(), dimensionField, null, "count", filter, limit);
+    }
+    return dataService.aggregateRecords(
+      appId, projectService.resolveDatabaseName(appId), form.name(), dimensionField, null, "count", filter, limit);
+  }
+
+  public Map<String, String> referenceLabels(
+    String appId,
+    AppFormResponse form,
+    String fieldName,
+    Collection<String> ids
+  ) {
+    if (ids == null || ids.isEmpty()) {
+      return Map.of();
+    }
+    AppFormFieldResponse field = form.fields().stream()
+      .filter(item -> item.name().equals(fieldName))
+      .findFirst()
+      .orElse(null);
+    if (field == null || !"REFERENCE".equals(field.type())
+      || field.referenceForm() == null || field.referenceForm().isBlank()) {
+      return Map.of();
+    }
+    List<String> distinctIds = ids.stream()
+      .filter(Objects::nonNull)
+      .map(String::valueOf)
+      .filter(value -> !value.isBlank())
+      .distinct()
+      .toList();
+    AppFormResponse referenceForm = appFormService.findForm(appId, field.referenceForm());
+    Map<String, String> labels = new LinkedHashMap<>();
+    for (int start = 0; start < distinctIds.size(); start += MAX_SIZE) {
+      List<String> batch = distinctIds.subList(start, Math.min(start + MAX_SIZE, distinctIds.size()));
+      String filter = JsonUtils.toJsonString(Map.of("id", Map.of("_in", batch)));
+      PageDTO<Map<String, Object>> page = findPagingRecords(
+        appId, referenceForm, 1, batch.size(), filter, null, null);
+      page.list().forEach(record -> {
+        Object id = record.get("id");
+        if (id != null) {
+          labels.put(String.valueOf(id), displayValue(record, referenceForm, id));
+        }
+      });
+    }
+    return labels;
+  }
+
+  /**
+   * 视图拖拽写入：事务内锁定记录、校验原值后更新，并复用操作历史能力。
+   * 并发修改返回 409，由前端恢复原位置并刷新。
+   */
+  public Map<String, Object> moveViewRecord(
+    String appId,
+    AppFormResponse form,
+    String recordId,
+    Map<String, Object> expected,
+    Map<String, Object> values
+  ) {
+    if (form.builtin()) {
+      throw new ValidationException("内置表单不支持视图拖拽");
+    }
+    if (values == null || values.isEmpty()) {
+      throw new ValidationException("拖拽未产生字段变化");
+    }
+    ResolvedForm resolved = new ResolvedForm(form, form.name());
+    Map<String, Object> updated = transactions.execute(appId, () -> {
+      ProjectUnitOfWork.lock(appId, form.name(), "id", recordId);
+      Map<String, Object> before = requireRecord(appId, resolved, recordId);
+      if (expected != null) {
+        expected.forEach((fieldName, expectedValue) -> {
+          if (!sameFieldValue(before.get(fieldName), expectedValue)) {
+            throw new ClientErrorException("记录已被其他用户修改，请刷新后重试", 409);
+          }
+        });
+      }
+      Map<String, Object> writableValues = new LinkedHashMap<>(values);
+      writableValues.put("updated_by", currentUserId());
+      writableValues.put("updated_at", LocalDateTime.now());
+      updateRecord(appId, form, recordId, writableValues);
+      Map<String, Object> after = requireRecord(appId, resolved, recordId);
+      if (historyCaptureEnabled(appId, form)) {
+        appRecordHistoryRecorder.updated(appId, form, recordId, before, after);
+      }
+      return after;
+    });
+    return projectRecord(form, renderReferenceRecord(appId, form, updated));
+  }
+
+  public Map<String, Object> requireRecordForView(
+    String appId,
+    AppFormResponse form,
+    String recordId
+  ) {
+    return requireRecord(appId, new ResolvedForm(form, form.name()), recordId);
+  }
+
+  private boolean sameFieldValue(Object current, Object expected) {
+    return Objects.equals(normalizeFieldValue(current), normalizeFieldValue(expected));
+  }
+
+  private String normalizeFieldValue(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof Map<?, ?> reference) {
+      Object id = reference.get("id");
+      return id == null ? null : String.valueOf(id);
+    }
+    if (value instanceof Collection<?> collection) {
+      if (collection.isEmpty()) return null;
+      return normalizeFieldValue(collection.iterator().next());
+    }
+    if (value instanceof java.sql.Timestamp timestamp) {
+      return timestamp.toLocalDateTime().toString();
+    }
+    if (value instanceof java.sql.Date date) {
+      return date.toLocalDate().toString();
+    }
+    if (value instanceof Number number) {
+      return new java.math.BigDecimal(number.toString()).stripTrailingZeros().toPlainString();
+    }
+    return String.valueOf(value);
   }
 
   public Map<String, Object> createRecord(
@@ -331,7 +495,16 @@ public class AppRecordService {
     if (page == null || page.list() == null) {
       return page;
     }
-    Set<String> exposedFields = exposedFields(form);
+    return projectRecords(page, exposedFields(form));
+  }
+
+  private PageDTO<Map<String, Object>> projectRecords(
+    PageDTO<Map<String, Object>> page,
+    Set<String> exposedFields
+  ) {
+    if (page == null || page.list() == null) {
+      return page;
+    }
     List<Map<String, Object>> records = page.list().stream()
       .map(record -> projectRecord(record, exposedFields))
       .toList();
@@ -614,20 +787,15 @@ public class AppRecordService {
   }
 
   private Map<String, Object> resolveViewTabFilter(AppFormResponse form, String viewTabId) {
-    if (viewTabId == null || viewTabId.isBlank() || "all".equals(viewTabId.trim())) {
+    if (viewTabId == null || viewTabId.isBlank()) {
       return null;
     }
     String normalizedViewTabId = viewTabId.trim();
-    return (form.viewTabs() == null ? List.<AppFormViewTabRecord>of() : form.viewTabs()).stream()
-      .filter(tab -> tab != null && normalizedViewTabId.equals(tab.id()))
+    AppFormViewTabRecord tab = (form.viewTabs() == null ? List.<AppFormViewTabRecord>of() : form.viewTabs()).stream()
+      .filter(item -> item != null && normalizedViewTabId.equals(item.id()))
       .findFirst()
-      .map(tab -> {
-        if (tab.filter() == null) {
-          throw new ValidationException("视图页签筛选条件不能为空");
-        }
-        return tab.filter();
-      })
-      .orElseThrow(() -> new ValidationException("视图页签不存在: " + normalizedViewTabId));
+      .orElseThrow(() -> new ValidationException("视图不存在: " + normalizedViewTabId));
+    return tab.filter();
   }
 
   public String buildSort(AppFormResponse form, String sortField, String sortOrder) {
@@ -640,10 +808,16 @@ public class AppRecordService {
         throw new ValidationException("排序字段不存在: " + normalizedSortField);
       }
     }
-    return JsonUtils.toJsonString(List.of(Map.of(
-      "field", normalizedSortField,
-      "order", normalizedSortOrder
-    )));
+    return JsonUtils.toJsonString(stableSorts(normalizedSortField, normalizedSortOrder));
+  }
+
+  private List<Map<String, String>> stableSorts(String sortField, String order) {
+    List<Map<String, String>> sorts = new ArrayList<>();
+    sorts.add(Map.of("field", sortField, "order", order));
+    if (!"id".equals(sortField)) {
+      sorts.add(Map.of("field", "id", "order", "ASC"));
+    }
+    return sorts;
   }
 
   private String normalizeSortOrder(String sortOrder) {

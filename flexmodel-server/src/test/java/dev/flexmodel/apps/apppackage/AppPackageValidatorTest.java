@@ -345,4 +345,42 @@ class AppPackageValidatorTest {
       List.of());
     assertTrue(validate(content(List.of(record), Map.of())).valid());
   }
+
+  @org.junit.jupiter.api.Test
+  void validatesTypedViewConfiguration() {
+    var record = formWithViews(List.of(
+      new AppFormViewTabRecord("all", "全部", "TABLE", null, null, List.of(), AppViewConfig.empty()),
+      new AppFormViewTabRecord("board", "看板", "KANBAN",
+        Map.of("_or", List.of(Map.of("status", Map.of("_eq", "1")))),
+        new AppViewSort("name", "ASC"), List.of("name", "start"),
+        new AppViewConfig("status", "name", null, null, null, null, null, null, null, null, null)),
+      new AppFormViewTabRecord("cal", "日历", "CALENDAR", null, null, List.of(),
+        new AppViewConfig(null, "name", null, null, "start", "end", "MONTH", null, null, null, null))));
+    assertTrue(validate(content(List.of(record), Map.of())).valid());
+  }
+
+  @org.junit.jupiter.api.Test
+  void rejectsUnknownViewTypeAndMissingConfig() {
+    var unknownType = formWithViews(List.of(
+      new AppFormViewTabRecord("bad", "地图", "MAP", null, null, List.of(), null)));
+    assertTrue(codes(validate(content(List.of(unknownType), Map.of()))).contains("VIEW_TAB_INVALID"));
+
+    var missingConfig = formWithViews(List.of(
+      new AppFormViewTabRecord("board", "看板", "KANBAN", null, null, List.of(), null)));
+    assertTrue(codes(validate(content(List.of(missingConfig), Map.of()))).contains("VIEW_TAB_INVALID"));
+  }
+
+  private AppFormRecord formWithViews(List<AppFormViewTabRecord> views) {
+    var fields = List.of(
+      required("name", "TEXT"),
+      field("status", "SELECT"),
+      field("start", "DATE"),
+      field("end", "DATE"));
+    List<AppFormItemRecord> items = fields.stream()
+      .map(item -> new AppFormItemRecord("FIELD", item.name(), item.label(), null, "FULL", null, null, null, null))
+      .toList();
+    return new AppFormRecord("f_order", "订单", "", "name", "name",
+      LocalDateTime.of(2026, 1, 1, 0, 0), LocalDateTime.of(2026, 1, 1, 0, 0),
+      fields, new AppFormLayoutRecord(items), views);
+  }
 }

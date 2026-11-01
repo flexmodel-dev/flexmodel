@@ -28,7 +28,7 @@ class AppTransferPlannerTest {
     return new AppFormFieldResponse(name, name, type, false, false, null, target);
   }
   AppFormResponse form(String name, AppFormFieldResponse... fields) {
-    return new AppFormResponse(name, name, "", "name", "name", true, LocalDateTime.of(2026, 1, 1, 0, 0), null,
+    return new AppFormResponse(name, name, "", "name", "name", true, false, LocalDateTime.of(2026, 1, 1, 0, 0), null,
       List.of(fields), new AppFormLayoutRecord(List.of()), List.of());
   }
   SheetData sheet(String name, String[]... rows) {

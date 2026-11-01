@@ -54,8 +54,18 @@ public class AppFormService {
   // 字段标识不限命名风格，仅排除会破坏 SQL 标识符转义的字符。
   private static final Pattern FIELD_NAME_PATTERN = Pattern.compile("^[^\\x00-\\x1f`\"\\[\\]]{1,64}$");
   private static final int MAX_LAYOUT_ITEMS = 500;
-  private static final int MAX_VIEW_TABS = 20;
-  private static final int MAX_VIEW_TAB_CONDITIONS = 10;
+  private static final int MAX_CUSTOM_VIEWS = 20;
+  private static final int MAX_VIEW_FILTER_CONDITIONS = 10;
+  private static final int MAX_VIEW_DISPLAY_FIELDS = 60;
+  public static final String ALL_VIEW_ID = "all";
+  private static final String ALL_VIEW_LABEL = "全部";
+  private static final Set<String> VIEW_TYPES = Set.of(
+    "TABLE", "KANBAN", "CALENDAR", "GALLERY", "DETAIL", "HIERARCHY", "GANTT");
+  private static final Set<String> VIEW_GROUP_FIELD_TYPES = Set.of(
+    "PICKLIST", "SELECT", "CLASSIFICATION", "BOOL", "REFERENCE");
+  private static final Set<String> VIEW_DATE_FIELD_TYPES = Set.of("DATE", "DATETIME");
+  private static final Set<String> VIEW_ATTACHMENT_FIELD_TYPES = Set.of("FILE", "IMAGE", "AVATAR");
+  private static final Set<String> VIEW_BUILTIN_SORT_FIELDS = Set.of("id", "created_at", "updated_at");
   private static final Set<String> FORM_ITEM_TYPES = Set.of("FIELD", "SECTION", "SUBFORM");
   private static final Set<String> FORM_ITEM_WIDTHS = Set.of(
     "QUARTER", "THIRD", "HALF", "TWO_THIRDS", "THREE_QUARTERS", "FULL");
@@ -132,6 +142,10 @@ public class AppFormService {
     return OPTION_TYPES;
   }
 
+  public static Set<String> viewTypes() {
+    return VIEW_TYPES;
+  }
+
   public List<AppFormResponse> findForms(String appId) {
     if ("system".equals(appId)) {
       return systemFormService.findForms().stream()
@@ -194,7 +208,7 @@ public class AppFormService {
         .map(field -> toFieldRecord(field, fieldRecords.get(field.getName())))
         .toList(),
       new AppFormLayoutRecord(List.of()),
-      List.of());
+      List.of(allView()));
     try {
       saveFormRecord(project, record);
     } catch (RuntimeException caught) {
@@ -371,7 +385,7 @@ public class AppFormService {
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
     AppFormRecord current = resolved.record() == null ? defaultRecord(project, entity) : resolved.record();
-    List<AppFormViewTabRecord> viewTabs = normalizeViewTabs(current, request.viewTabs());
+    List<AppFormViewTabRecord> viewTabs = normalizeViews(current, request.viewTabs());
     AppFormRecord updated = new AppFormRecord(
       current.name(),
       current.label(),
@@ -387,36 +401,231 @@ public class AppFormService {
     return toResponse(project, entity, updated);
   }
 
-  private List<AppFormViewTabRecord> normalizeViewTabs(
+  private List<AppFormViewTabRecord> normalizeViews(
     AppFormRecord current,
     List<AppFormViewTabRecord> viewTabs
   ) {
-    if (viewTabs.size() > MAX_VIEW_TABS) {
-      throw new ValidationException("视图页签数量不能超过 " + MAX_VIEW_TABS);
-    }
     Map<String, AppFormFieldRecord> fields = current.fields().stream()
       .collect(Collectors.toMap(AppFormFieldRecord::name, Function.identity(), (left, right) -> right));
     Set<String> ids = new LinkedHashSet<>();
     Set<String> labels = new LinkedHashSet<>();
     List<AppFormViewTabRecord> result = new ArrayList<>();
+    int viewCount = 0;
     for (AppFormViewTabRecord tab : viewTabs) {
-      if (tab == null || isBlank(tab.label())) {
-        throw new ValidationException("视图页签名称不能为空");
-      }
-      String label = tab.label().trim();
-      if (label.length() > 32) {
-        throw new ValidationException("视图页签名称不能超过 32 个字符");
-      }
-      if (!labels.add(label)) {
-        throw new ValidationException("视图页签名称重复: " + label);
+      if (tab == null) {
+        throw new ValidationException("视图配置不能为空");
       }
       String id = isBlank(tab.id()) ? UUID.randomUUID().toString() : tab.id().trim();
-      if (id.length() > 64 || "all".equals(id) || !ids.add(id)) {
-        throw new ValidationException("视图页签标识不合法或重复: " + id);
+      if (id.length() > 64 || !ids.add(id)) {
+        throw new ValidationException("视图标识不合法或重复: " + id);
       }
-      result.add(new AppFormViewTabRecord(id, label, normalizeViewTabFilter(fields, tab.filter())));
+      viewCount++;
+      if (viewCount > MAX_CUSTOM_VIEWS) {
+        throw new ValidationException("视图数量不能超过 " + MAX_CUSTOM_VIEWS);
+      }
+      result.add(normalizeCustomView(fields, current.name(), id, tab, labels));
     }
     return List.copyOf(result);
+  }
+
+  private AppFormViewTabRecord normalizeCustomView(
+    Map<String, AppFormFieldRecord> fields,
+    String formName,
+    String id,
+    AppFormViewTabRecord tab,
+    Set<String> labels
+  ) {
+    if (isBlank(tab.label())) {
+      throw new ValidationException("视图名称不能为空");
+    }
+    String label = tab.label().trim();
+    if (label.length() > 32) {
+      throw new ValidationException("视图名称不能超过 32 个字符");
+    }
+    if (!labels.add(label)) {
+      throw new ValidationException("视图名称重复: " + label);
+    }
+    String type = isBlank(tab.type()) ? "TABLE" : tab.type().trim().toUpperCase(Locale.ROOT);
+    if (!VIEW_TYPES.contains(type)) {
+      throw new ValidationException("视图类型不合法: " + type);
+    }
+    return new AppFormViewTabRecord(
+      id,
+      label,
+      type,
+      normalizeViewFilter(fields, tab.filter()),
+      normalizeViewSort(fields, tab.sort()),
+      normalizeDisplayFields(fields, tab.displayFields()),
+      normalizeViewConfig(fields, formName, type, tab.config()));
+  }
+
+  private AppViewSort normalizeViewSort(
+    Map<String, AppFormFieldRecord> fields,
+    AppViewSort sort
+  ) {
+    if (sort == null || isBlank(sort.field())) {
+      return null;
+    }
+    String field = sort.field().trim();
+    if (!fields.containsKey(field) && !VIEW_BUILTIN_SORT_FIELDS.contains(field)) {
+      throw new ValidationException("视图排序字段不存在: " + field);
+    }
+    String order = isBlank(sort.order()) ? "ASC" : sort.order().trim().toUpperCase(Locale.ROOT);
+    if (!Set.of("ASC", "DESC").contains(order)) {
+      throw new ValidationException("视图排序方向不合法: " + order);
+    }
+    return new AppViewSort(field, order);
+  }
+
+  private List<String> normalizeDisplayFields(
+    Map<String, AppFormFieldRecord> fields,
+    List<String> displayFields
+  ) {
+    if (displayFields == null || displayFields.isEmpty()) {
+      return List.of();
+    }
+    if (displayFields.size() > MAX_VIEW_DISPLAY_FIELDS) {
+      throw new ValidationException("视图显示字段不能超过 " + MAX_VIEW_DISPLAY_FIELDS + " 个");
+    }
+    Set<String> result = new LinkedHashSet<>();
+    for (String value : displayFields) {
+      if (isBlank(value)) {
+        continue;
+      }
+      String fieldName = value.trim();
+      if ("id".equals(fieldName) || !fields.containsKey(fieldName)) {
+        throw new ValidationException("视图显示字段不存在: " + fieldName);
+      }
+      if (!result.add(fieldName)) {
+        throw new ValidationException("视图显示字段重复: " + fieldName);
+      }
+    }
+    return List.copyOf(result);
+  }
+
+  private AppViewConfig normalizeViewConfig(
+    Map<String, AppFormFieldRecord> fields,
+    String formName,
+    String type,
+    AppViewConfig config
+  ) {
+    AppViewConfig source = config == null ? AppViewConfig.empty() : config;
+    return switch (type) {
+      case "KANBAN" -> {
+        AppFormFieldRecord groupField = requireViewField(fields, source.groupField(), "看板分组字段");
+        if (!VIEW_GROUP_FIELD_TYPES.contains(groupField.type())) {
+          throw new ValidationException("看板分组字段必须是单值选项、布尔或引用字段: " + groupField.label());
+        }
+        yield new AppViewConfig(groupField.name(), optionalViewField(fields, source.titleField(), "卡片标题字段"),
+          null, null, null, null, null, null, null, null, null);
+      }
+      case "CALENDAR" -> {
+        AppFormFieldRecord startField = requireViewField(fields, source.startField(), "日历开始字段");
+        requireDateField(startField, "日历开始字段");
+        AppFormFieldRecord endField = optionalViewFieldRecord(fields, source.endField(), "日历结束字段");
+        if (endField != null && !endField.type().equals(startField.type())) {
+          throw new ValidationException("日历起止字段必须同为日期或同为日期时间");
+        }
+        yield new AppViewConfig(null, optionalViewField(fields, source.titleField(), "日历标题字段"),
+          null, null, startField.name(), endField == null ? null : endField.name(),
+          normalizeEnum(source.calendarUnit(), Set.of("MONTH", "WEEK", "DAY"), "MONTH", "日历默认周期"),
+          null, null, null, null);
+      }
+      case "GALLERY" -> {
+        AppFormFieldRecord coverField = optionalViewFieldRecord(fields, source.coverField(), "画廊封面字段");
+        if (coverField != null && !VIEW_ATTACHMENT_FIELD_TYPES.contains(coverField.type())) {
+          throw new ValidationException("画廊封面字段必须是附件、图片或头像字段: " + coverField.label());
+        }
+        yield new AppViewConfig(null, optionalViewField(fields, source.titleField(), "画廊标题字段"),
+          coverField == null ? null : coverField.name(),
+          normalizeEnum(source.imageFit(), Set.of("COVER", "CONTAIN"), "COVER", "画廊图片裁切方式"),
+          null, null, null, null, null, null, null);
+      }
+      case "DETAIL" -> new AppViewConfig(null, null, null, null, null, null, null,
+        normalizeEnum(source.detailMode(), Set.of("LIST", "SINGLE"), "LIST", "详情展示模式"),
+        null, null, null);
+      case "HIERARCHY" -> {
+        AppFormFieldRecord parentField = requireViewField(fields, source.parentField(), "层级父节点字段");
+        if (!"REFERENCE".equals(parentField.type()) || !formName.equals(parentField.referenceForm())) {
+          throw new ValidationException("层级父节点字段必须是关联本表单的引用字段: " + parentField.label());
+        }
+        yield new AppViewConfig(null, optionalViewField(fields, source.titleField(), "层级标题字段"),
+          null, null, null, null, null, null, parentField.name(),
+          normalizeEnum(source.hierarchyMode(), Set.of("TREE", "TABLE"), "TREE", "层级展示形态"), null);
+      }
+      case "GANTT" -> {
+        AppFormFieldRecord startField = requireViewField(fields, source.startField(), "甘特开始字段");
+        AppFormFieldRecord endField = requireViewField(fields, source.endField(), "甘特结束字段");
+        requireDateField(startField, "甘特开始字段");
+        requireDateField(endField, "甘特结束字段");
+        if (!startField.type().equals(endField.type())) {
+          throw new ValidationException("甘特起止字段必须同为日期或同为日期时间");
+        }
+        yield new AppViewConfig(null, optionalViewField(fields, source.titleField(), "甘特标题字段"),
+          null, null, startField.name(), endField.name(), null, null, null, null,
+          normalizeEnum(source.ganttScale(), Set.of("DAY", "WEEK", "MONTH"), "WEEK", "甘特默认刻度"));
+      }
+      default -> AppViewConfig.empty();
+    };
+  }
+
+  private AppFormFieldRecord requireViewField(
+    Map<String, AppFormFieldRecord> fields,
+    String fieldName,
+    String label
+  ) {
+    if (isBlank(fieldName)) {
+      throw new ValidationException(label + "不能为空");
+    }
+    AppFormFieldRecord field = fields.get(fieldName.trim());
+    if (field == null) {
+      throw new ValidationException(label + "不存在: " + fieldName);
+    }
+    return field;
+  }
+
+  private String optionalViewField(
+    Map<String, AppFormFieldRecord> fields,
+    String fieldName,
+    String label
+  ) {
+    if (isBlank(fieldName)) {
+      return null;
+    }
+    return requireViewField(fields, fieldName, label).name();
+  }
+
+  private AppFormFieldRecord optionalViewFieldRecord(
+    Map<String, AppFormFieldRecord> fields,
+    String fieldName,
+    String label
+  ) {
+    if (isBlank(fieldName)) {
+      return null;
+    }
+    return requireViewField(fields, fieldName, label);
+  }
+
+  private void requireDateField(AppFormFieldRecord field, String label) {
+    if (!VIEW_DATE_FIELD_TYPES.contains(field.type())) {
+      throw new ValidationException(label + "必须是日期或日期时间字段: " + field.label());
+    }
+  }
+
+  private String normalizeEnum(String value, Set<String> allowed, String fallback, String label) {
+    if (isBlank(value)) {
+      return fallback;
+    }
+    String normalized = value.trim().toUpperCase(Locale.ROOT);
+    if (!allowed.contains(normalized)) {
+      throw new ValidationException(label + "不合法: " + value);
+    }
+    return normalized;
+  }
+
+  public static AppFormViewTabRecord allView() {
+    return new AppFormViewTabRecord(
+      ALL_VIEW_ID, ALL_VIEW_LABEL, "TABLE", null, null, List.of(), AppViewConfig.empty());
   }
 
   public Map<String, Object> normalizeQueryFilter(AppFormResponse form, String json) {
@@ -438,35 +647,42 @@ public class AppFormService {
       if (!field.builtin()) fields.put(field.name(), new AppFormFieldRecord(
         field.name(), field.label(), field.type(), field.required(), false, field.options(), field.referenceForm()));
     }
-    Map<String, Object> normalized = normalizeViewTabFilter(fields, Map.of("_and", filter.get(logic)));
+    Map<String, Object> normalized = normalizeViewFilter(fields, Map.of("_and", filter.get(logic)));
     return Map.of(logic, normalized.get("_and"));
   }
 
-  private Map<String, Object> normalizeViewTabFilter(
+  private Map<String, Object> normalizeViewFilter(
     Map<String, AppFormFieldRecord> fields,
     Map<String, Object> filter
   ) {
-    if (filter == null || filter.size() != 1 || !(filter.get("_and") instanceof List<?> conditions)) {
-      throw new ValidationException("视图页签筛选条件必须为 _and 结构");
+    if (filter == null) {
+      return null;
     }
-    if (conditions.isEmpty() || conditions.size() > MAX_VIEW_TAB_CONDITIONS) {
-      throw new ValidationException("视图页签筛选条件数量必须在 1 到 " + MAX_VIEW_TAB_CONDITIONS + " 之间");
+    if (filter.size() != 1) {
+      throw new ValidationException("视图筛选条件必须包含全部或任一条件组");
+    }
+    String logic = filter.keySet().iterator().next();
+    if (!Set.of("_and", "_or").contains(logic) || !(filter.get(logic) instanceof List<?> conditions)) {
+      throw new ValidationException("视图筛选条件必须为 _and 或 _or 结构");
+    }
+    if (conditions.isEmpty() || conditions.size() > MAX_VIEW_FILTER_CONDITIONS) {
+      throw new ValidationException("视图筛选条件数量必须在 1 到 " + MAX_VIEW_FILTER_CONDITIONS + " 之间");
     }
     List<Object> normalizedConditions = new ArrayList<>();
     for (Object conditionValue : conditions) {
       if (!(conditionValue instanceof Map<?, ?> condition) || condition.size() != 1) {
-        throw new ValidationException("视图页签每个筛选条件只能包含一个字段");
+        throw new ValidationException("视图每个筛选条件只能包含一个字段");
       }
       String fieldName = String.valueOf(condition.keySet().iterator().next());
       if ("id".equals(fieldName)) {
-        throw new ValidationException("视图页签筛选条件不支持 id 字段");
+        throw new ValidationException("视图筛选条件不支持 id 字段");
       }
       AppFormFieldRecord field = fields.get(fieldName);
       if (field == null) {
-        throw new ValidationException("视图页签筛选字段不存在: " + fieldName);
+        throw new ValidationException("视图筛选字段不存在: " + fieldName);
       }
       if (!(condition.get(fieldName) instanceof Map<?, ?> operatorMap) || operatorMap.size() != 1) {
-        throw new ValidationException("视图页签筛选字段只能配置一个操作符: " + field.label());
+        throw new ValidationException("视图筛选字段只能配置一个操作符: " + field.label());
       }
       String operator = String.valueOf(operatorMap.keySet().iterator().next());
       if (!viewTabOperators(field.type()).contains(operator)) {
@@ -479,7 +695,7 @@ public class AppFormService {
       normalizedCondition.put(fieldName, normalizedOperator);
       normalizedConditions.add(normalizedCondition);
     }
-    return Map.of("_and", normalizedConditions);
+    return Map.of(logic, normalizedConditions);
   }
 
   private Set<String> viewTabOperators(String type) {
@@ -545,33 +761,6 @@ public class AppFormService {
         yield text;
       }
     };
-  }
-
-  private List<AppFormViewTabRecord> withoutViewTabField(
-    List<AppFormViewTabRecord> viewTabs,
-    String fieldName
-  ) {
-    if (viewTabs == null || viewTabs.isEmpty()) {
-      return List.of();
-    }
-    List<AppFormViewTabRecord> result = new ArrayList<>();
-    for (AppFormViewTabRecord tab : viewTabs) {
-      if (tab == null || tab.filter() == null || !(tab.filter().get("_and") instanceof List<?> conditions)) {
-        continue;
-      }
-      List<?> filtered = conditions.stream()
-        .filter(condition -> !(condition instanceof Map<?, ?> map) || !map.containsKey(fieldName))
-        .toList();
-      if (filtered.isEmpty()) {
-        continue;
-      }
-      if (filtered.size() == conditions.size()) {
-        result.add(tab);
-      } else {
-        result.add(new AppFormViewTabRecord(tab.id(), tab.label(), Map.of("_and", filtered)));
-      }
-    }
-    return List.copyOf(result);
   }
 
   public void deleteForm(String appId, String formName) {
@@ -735,6 +924,12 @@ public class AppFormService {
     if (isFieldUsedAsSubform(project, formName, fieldName)) {
       throw new ValidationException("字段已被子表单引用，请先移除相关子表单布局");
     }
+    if (resolved.record() != null) {
+      List<String> viewLabels = viewsReferencingField(resolved.record().viewTabs(), fieldName);
+      if (!viewLabels.isEmpty()) {
+        throw new ValidationException("字段已被视图引用，请先调整视图配置: " + String.join("、", viewLabels));
+      }
+    }
     entity.getIndexes().stream()
       .filter(index -> index.containsField(fieldName))
       .toList()
@@ -756,7 +951,7 @@ public class AppFormService {
         LocalDateTime.now(),
         fields,
         withoutLayoutField(current.layout(), fieldName),
-        withoutViewTabField(current.viewTabs(), fieldName)));
+        current.viewTabs()));
     });
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
@@ -950,9 +1145,7 @@ public class AppFormService {
     AppFormLayoutRecord layout = record == null || record.layout() == null
       ? new AppFormLayoutRecord(List.of())
       : record.layout();
-    List<AppFormViewTabRecord> viewTabs = record == null || record.viewTabs() == null
-      ? List.of()
-      : record.viewTabs();
+    List<AppFormViewTabRecord> viewTabs = storedViewTabs(record == null ? null : record.viewTabs());
     return new AppFormResponse(
       formName,
       label,
@@ -968,6 +1161,30 @@ public class AppFormService {
         .toList(),
       layout,
       viewTabs);
+  }
+
+  /**
+   * 读取时补齐历史配置缺失的通用字段，视图本身按存储顺序原样返回。
+   */
+  private List<AppFormViewTabRecord> storedViewTabs(List<AppFormViewTabRecord> viewTabs) {
+    if (viewTabs == null || viewTabs.isEmpty()) {
+      return List.of();
+    }
+    List<AppFormViewTabRecord> result = new ArrayList<>();
+    for (AppFormViewTabRecord tab : viewTabs) {
+      if (tab == null) {
+        continue;
+      }
+      result.add(new AppFormViewTabRecord(
+        tab.id(),
+        tab.label(),
+        isBlank(tab.type()) ? "TABLE" : tab.type(),
+        tab.filter(),
+        tab.sort(),
+        tab.displayFields() == null ? List.of() : tab.displayFields(),
+        tab.config() == null ? AppViewConfig.empty() : tab.config()));
+    }
+    return List.copyOf(result);
   }
 
   private AppFormFieldResponse toFieldResponse(
@@ -1037,7 +1254,7 @@ public class AppFormService {
       project.getUpdatedAt(),
       entity.getFields().stream().map(field -> toFieldRecord(field, null)).toList(),
       new AppFormLayoutRecord(List.of()),
-      List.of());
+      List.of(allView()));
   }
 
   private String defaultDisplayField(EntityDefinition entity) {
@@ -1247,6 +1464,54 @@ public class AppFormService {
       .anyMatch(item -> "SUBFORM".equals(item.type())
         && formName.equals(item.formName())
         && fieldName.equals(item.referenceField()));
+  }
+
+  private List<String> viewsReferencingField(List<AppFormViewTabRecord> viewTabs, String fieldName) {
+    if (viewTabs == null || viewTabs.isEmpty()) {
+      return List.of();
+    }
+    return viewTabs.stream()
+      .filter(Objects::nonNull)
+      .filter(tab -> viewReferencesField(tab, fieldName))
+      .map(AppFormViewTabRecord::label)
+      .toList();
+  }
+
+  private boolean viewReferencesField(AppFormViewTabRecord tab, String fieldName) {
+    if (tab.sort() != null && fieldName.equals(tab.sort().field())) {
+      return true;
+    }
+    if (tab.displayFields() != null && tab.displayFields().contains(fieldName)) {
+      return true;
+    }
+    AppViewConfig config = tab.config();
+    if (config != null && (fieldName.equals(config.groupField())
+      || fieldName.equals(config.titleField())
+      || fieldName.equals(config.coverField())
+      || fieldName.equals(config.startField())
+      || fieldName.equals(config.endField())
+      || fieldName.equals(config.parentField()))) {
+      return true;
+    }
+    return filterReferencesField(tab.filter(), fieldName);
+  }
+
+  private boolean filterReferencesField(Object filter, String fieldName) {
+    if (!(filter instanceof Map<?, ?> map)) {
+      return false;
+    }
+    for (Map.Entry<?, ?> entry : map.entrySet()) {
+      String key = String.valueOf(entry.getKey());
+      if (key.startsWith("_")) {
+        if (entry.getValue() instanceof List<?> conditions
+          && conditions.stream().anyMatch(condition -> filterReferencesField(condition, fieldName))) {
+          return true;
+        }
+      } else if (fieldName.equals(key)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private AppFormRecord withLayout(AppFormRecord record, AppFormLayoutRecord layout) {

@@ -96,6 +96,21 @@ public class DataFmRepository implements DataRepository {
     String aggregation,
     int limit
   ) {
+    return aggregateRecords(
+      projectId, datasourceName, modelName, dimensionField, measureField, aggregation, null, limit);
+  }
+
+  @Override
+  public List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String datasourceName,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    String filter,
+    int limit
+  ) {
     try (Session session = open(datasourceName)) {
       boolean grouped = !StringUtils.isBlank(dimensionField);
       Query.Builder builder = Query.Builder.create()
@@ -110,6 +125,9 @@ public class DataFmRepository implements DataRepository {
             default -> throw new IllegalArgumentException("不支持的聚合方式: " + aggregation);
           }
         });
+      if (!StringUtils.isBlank(filter)) {
+        builder.where(filter);
+      }
       if (grouped) {
         builder
           .groupBy(groupBy -> groupBy.field(dimensionField))

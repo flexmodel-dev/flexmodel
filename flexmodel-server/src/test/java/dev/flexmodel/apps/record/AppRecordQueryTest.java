@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class AppRecordQueryTest {
   private final AppFormService forms = new AppFormService();
   private final AppFormResponse form = new AppFormResponse(
-    "orders", "订单", "", "title", "title", true, LocalDateTime.now(), LocalDateTime.now(),
+    "orders", "订单", "", "title", "title", true, false, LocalDateTime.now(), LocalDateTime.now(),
     List.of(new AppFormFieldResponse("title", "名称", "TEXT", false, false, null, null),
       new AppFormFieldResponse("amount", "金额", "DECIMAL", false, false, null, null),
       new AppFormFieldResponse("approved", "已确认", "BOOL", false, false, null, null),

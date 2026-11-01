@@ -3936,3 +3936,53 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   “新增视图”下拉中的图标保留）。`tsc -b`、`vite build` 通过，构建产物实测五个页签文本为 全部/草稿/审批中/已批准/已入库、
   无竖向滚动条，下划线完整。
 
+## Apps 七种视图交互优化（2026-11-01）
+
+- 统一查询状态：`useViewQuery` 刷新时保留旧数据，新增 `isFetching` 与 `reload`；各视图首次加载使用骨架/居中加载，
+  后台刷新只显示顶部细进度条，失败时可重试，避免翻页、拖拽、保存后整块闪成空白。
+- 记录页工具栏：搜索框常驻并带清空；高级查询保留原按钮与文案；临时筛选用可移除 chip 展示，支持清空临时筛选和
+  “保存为视图筛选”；移除视图筛选 chip（按用户要求不再展示“视图筛选 N 个条件”这一列）；主标题与副标题同一行展示，
+  窄屏只保留主标题；去掉无效的共享/移交/批量编辑按钮，批量操作栏只保留编辑、删除、导出选中和清空选择。
+- 页签管理：改用 dnd-kit 拖拽排序，增加重命名、复制、向左/向右移动；删除最后一个视图被阻止；新增视图时按字段能力禁用
+  不可用类型并自动补齐分组/日期/父级等默认字段；页签视觉样式按原有 `px-3 py-2 text-sm` 下划线样式保留。
+- 视图设置抽屉：按“基本信息 → 专属设置 → 数据筛选 → 默认排序 → 显示字段”分组；字段选择改为可搜索选择器；
+  显示字段支持全部/自定义、拖拽排序和搜索添加；保存时统一校验并自动滚动到错误分区；关闭前提示未保存修改。
+- 表格：页码/每页数量与服务端上限对齐（30/50/100/200），修复初始值 30 不在选项中的空显示；勾选只作用于当前页并支持
+  半选、翻页清空；空状态恢复为之前的简单“暂无数据”占位，不提供清除筛选/新建记录按钮。
+- 看板：整张卡片可点击打开；跨列拖拽使用 DragOverlay 和乐观移动，失败回滚；刷新时不再把各列重置到第一页；
+  列头/计数固定，空列提供投放提示。
+- 日历：补齐上一/下一周期、今天、日期跳转、月/周/日切换和当前周期标题；拖拽仍保持时长；未排期记录支持继续加载，
+  窄屏改为抽屉；FullCalendar 使用主题变量适配夜间模式。
+- 甘特：工具栏支持今天、前后平移、日期跳转、日/周/月刻度切换和窗口内继续加载；拖拽时显示目标天数预览；首次加载、
+  切换刻度或平移后自动滚动到“今天”；未排期抽屉/侧栏支持分页与错误重试；行悬停与左右滚动同步。
+- 层级：去掉 ECharts 树，改为可键盘操作的层级树/树形表格，支持子级懒加载、加载更多、失败重试、收起全部、
+  根节点分页和异常提示；详情视图支持跨页上一条/下一条与窄屏列表/详情分步浏览，操作按钮右对齐；画廊卡片整卡点击、
+  操作菜单常驻、封面失败显示占位。
+- 修复选项筛选值：筛选控件改为提交选项 id（此前提交选项文本，关联记录存储 id 时筛选结果为空）。
+- 验证：`npm test` 52/52 通过（新增 `viewUtils.test.ts` 9 项）；`npm run build`（tsc -b + vite build）通过；
+  使用 Mock API + 构建产物无头 Chromium 实测表格/搜索/每页数量/设置保存/新增看板/跨列拖拽/日历翻页/层级展开/
+  甘特刻度与自动滚动/夜间日历，控制台无错误。构建命令需将 TEMP/TMP 指向项目内 `.tmp` 规避 esbuild 临时目录清理问题。
+
+## Apps 通知点击不跳转通知中心（2026-11-01）
+
+- 问题：点击顶部铃铛中的通知或站内通知浮窗，会通过 `navigate('/notifications?open=...')` 跳到通知中心页面，
+  丢失当前页面上下文。
+- 修复：新增 `NotificationDetailDrawer`，抽取原通知中心详情抽屉（详情加载、自动标记已读、查看审批/讨论记录抽屉），
+  供通知中心、铃铛和浮窗共用；NotificationProvider 增加 `openNotification` 全局打开详情抽屉；铃铛通知项由 `Link`
+  改为 `onSelect`，浮窗点击改为打开抽屉；通知中心继续支持 `/notifications?open=` 深链。
+- 验证：`npm run build` 通过；构建产物 + Mock API 无头 Chromium 实测，在表单页点击铃铛通知后 URL 保持
+  `/#/apps/nb/records` 不变、通知详情抽屉正常出现、控制台无错误。
+
+## 内置系统表单设置/设计 Project not found 修复（2026-11-01）
+
+- 问题：内置表单 f_user/f_department/f_role 的设置、表单设计页面走 `/api/apps/system/forms/*`，AuthFilter 把伪 appId
+  `system` 当成真实项目校验，`ProjectService.findProject("system")` 返回 null 后抛 `Project not found`。
+- 修复：AuthFilter 提取 `appId` 后对 `system` 伪 appId 置空 projectId，跳过项目校验但仍要求系统 JWT；
+  `fillSessionContextForProvider` 增加 projectId 为 null 的保护。AppFormService 本身已支持 `system` 表单分支，无需改前端路由。
+- 新增测试：`SystemFormResourceTest.testSystemFormsAccessibleThroughAppScopedRoute`，覆盖
+  `GET /apps/system/forms` 与 `GET /apps/system/forms/f_user`。
+- 验证：`mvn -q -pl flexmodel-server -am -DskipTests compile` 通过；
+  `mvn -q -pl flexmodel-server -Dtest=SystemFormResourceTest test` 6/6 通过（含新增用例）；日志中的 SQLite busy、
+  9999 端口连接失败为既有环境噪声，不影响测试结果。
+
+

@@ -1,6 +1,27 @@
 {
   "features": [
     {
+      "id": "feat-149",
+      "name": "Apps - 修复内置表单设置/设计报 Project not found",
+      "description": "内置系统表单（f_user/f_department/f_role）通过伪 appId system 访问 /api/apps/system/forms/* 时，AuthFilter 把 system 当成真实项目校验并抛出 Project not found；改为对 system 伪 appId 跳过项目校验，仍要求系统 JWT。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-server，未提交）。AuthFilter 提取 appId 后对 system 置空 projectId，避免 fillSessionContextForUser 校验不存在项目；fillSessionContextForProvider 增加 null project 保护。新增 SystemFormResourceTest.testSystemFormsAccessibleThroughAppScopedRoute，覆盖 GET /apps/system/forms 与 /apps/system/forms/f_user。验证：mvn -q -pl flexmodel-server -am -DskipTests compile 通过；mvn -q -pl flexmodel-server -Dtest=SystemFormResourceTest test 6/6 通过（含新增用例），日志中 SQLite busy/9999 连接失败为既有环境噪声，不影响测试结果。"
+    },
+    {
+      "id": "feat-148",
+      "name": "Apps - 通知铃铛与站内浮窗点击不跳转通知中心",
+      "description": "点击顶部铃铛中的通知或站内通知浮窗时，不再跳转到通知中心页面，而是在当前页面打开共享的通知详情抽屉；自动标记已读，并可从详情继续打开关联审批/讨论记录抽屉。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-apps-ui，未提交）。新增 components/notifications/NotificationDetailDrawer.tsx，抽取原通知中心详情 Drawer（加载详情、标记已读、查看审批/讨论）供通知中心、铃铛和浮窗共用；NotificationProvider 增加 openNotification 全局打开详情抽屉，浮窗点击改为打开抽屉；NotificationBell 通知项由 Link 改为 onSelect 打开抽屉；Notifications 页面改用共享抽屉，保留 /notifications?open= 深链。验证：npm run build 通过；构建产物 + Mock API 无头 Chromium 实测，在表单页点击铃铛通知后 URL 保持 /#/apps/nb/records 不变、通知详情抽屉正常出现、控制台无错误。"
+    },
+    {
+      "id": "feat-147",
+      "name": "Apps - 七种视图交互优化",
+      "description": "在不改变视图数据模型的前提下优化七种视图的实际操作体验：查询刷新不闪烁、页签支持拖拽/重命名/删除保护、设置抽屉分组校验、表格分页与勾选、看板乐观拖拽、日历周期导航、甘特刻度与定位、层级树懒加载、画廊与详情交互，并修复选项筛选值提交文本导致筛选不到记录的问题。",
+      "status": "done",
+      "evidence": "2026-11-01 完成（flexmodel-apps-ui，未提交）。核心改动：useViewQuery 刷新保留旧数据并增加 isFetching/reload；新增 viewFeedback 骨架与细进度条、viewUtils 纯函数、FieldPicker、ViewFiltersEditor、ViewDisplayFieldsEditor、ViewTypeSettings、UnscheduledList；RecordList 紧凑头部（主标题与副标题同一行，窄屏只保留主标题）、工具栏常驻搜索、可移除临时筛选 chip、移除“视图筛选 N 个条件”chip、空状态恢复简单占位、移除无效批量按钮；ViewBar 使用 dnd-kit 排序并增加重命名、复制、左右移动、最后一个视图删除保护、按字段能力禁用新增类型、自动默认字段，页签视觉保持原有 px-3 py-2 text-sm 下划线样式；ViewSettingsDrawer 重做为分组抽屉并自动滚动到错误分区；TableView 修复每页数量初始值 30 不在选项中、半选/本页勾选、分页上限 200；Kanban 整卡点击、DragOverlay 乐观移动与失败回滚、刷新不重置分页；Calendar 增加上一/下一周期、日期跳转、当前周期标题、未排期继续加载与移动端抽屉、FullCalendar 夜间主题；Gantt 增加今日/平移/日期跳转/日周月切换、窗口分页、拖拽天数预览、首次及刻度切换后自动滚动到今日；Hierarchy 移除 ECharts 改为可键盘操作的懒加载树/树形表格；Detail 支持跨页上一条/下一条和窄屏列表/详情切换，内嵌记录操作按钮右对齐；Gallery 整卡点击、常驻操作菜单、封面失败占位；RecordFilterControls 选项筛选改为提交 option id。验证：npm test 52/52（含新增 viewUtils.test.ts 9 项）；npm run build（tsc -b + vite build，TEMP/TMP 指向项目内 .tmp）通过；构建产物 + Mock API 无头 Chromium 实测表格/搜索/每页数量/设置保存/新增看板/跨列拖拽/日历翻页/层级展开/甘特刻度与自动滚动/夜间日历，控制台无错误。"
+    },
+    {
       "id": "feat-146",
       "name": "Apps - 记录页签栏滚动条/下划线修复与图标精简",
       "description": "记录列表页签栏（全部/草稿/…）右侧出现多余竖向滚动条并裁掉激活页签下划线，修复后页签栏无滚动条、激活下划线完整显示；页签去掉视图类型图标，仅保留文字。",

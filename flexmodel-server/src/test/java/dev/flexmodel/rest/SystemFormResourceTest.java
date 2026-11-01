@@ -55,6 +55,24 @@ public class SystemFormResourceTest {
   }
 
   @Test
+  void testSystemFormsAccessibleThroughAppScopedRoute() {
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get("/apps/system/forms")
+      .then()
+      .statusCode(200)
+      .body("name", hasItem("f_user"));
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get("/apps/system/forms/f_user")
+      .then()
+      .statusCode(200)
+      .body("name", equalTo("f_user"));
+  }
+
+  @Test
   void testRoleFormContainsServerInjectedPermissionTree() {
     given()
       .header("Authorization", testTokenHelper.getAuthorizationHeader())

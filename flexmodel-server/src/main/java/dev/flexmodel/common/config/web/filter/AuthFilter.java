@@ -80,6 +80,10 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
 
     String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
     if (projectId == null) projectId = requestContext.getUriInfo().getPathParameters().getFirst("appId");
+    // 内置系统表单使用伪 appId "system"，不对应真实项目；认证仍然要求系统 JWT。
+    if ("system".equals(projectId)) {
+      projectId = null;
+    }
 
     if (isOpenSurface) {
       // ---- OPEN surface: API Key (open scope) + system JWT + IdP + anonymous ----
@@ -319,6 +323,11 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
    */
   private void fillSessionContextForProvider(ContainerRequestContext requestContext, String projectId,
       AuthResult result) {
+    if (projectId == null) {
+      sessionContext.setUserId(result.getUserId());
+      sessionContext.setPermissions(result.getPermissions());
+      return;
+    }
     Project project = projectService.findProject(projectId);
     if (project == null) {
       throw new AuthException("Project not found");

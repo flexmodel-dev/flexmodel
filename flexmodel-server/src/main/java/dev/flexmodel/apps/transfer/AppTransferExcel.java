@@ -20,6 +20,8 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.zip.ZipFile;
 
+import static dev.flexmodel.apps.transfer.dto.AppTransfer.*;
+
 @ApplicationScoped
 public class AppTransferExcel {
   static final String META = "__flexmodel";

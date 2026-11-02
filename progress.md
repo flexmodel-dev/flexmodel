@@ -1,5 +1,50 @@
 # Session Progress Log
 
+## Apps - 数据权限条件值类型（2026-11-02，feat-153）
+
+- 条件 `_eq`/`_ne` 比较值支持三种值类型：自定义字面量、当前用户 `{"_user": "id"}`、字段引用
+  `{"_field": "路径"}`（本表裸路径或 `引用字段.目标字段` 一级路径）。动态值仅 `_eq`/`_ne`；
+  `_user` 仅 REFERENCE/TEXT 字段；`_field` 两端类型一致或一端 REFERENCE 对另一端 TEXT/内置 id；
+  引用表单不存在、多级路径拒绝。
+- 后端 `AppPermissionConditions.validate` 增加 `Function<String, List<AppFormFieldResponse>>` 引用表单解析器参数
+  （`AppDataAuthorizationService` 用 `appFormService.findForm` 解析，缺失返回 null）；注意 lambda 参数名与方法内局部变量
+  `name` 冲突需改名；javac 流作用域：`if (!(x instanceof String p) || …) fail();` 之后 p 不可用，需重新 cast。
+- 前端：`FilterConditionEditor` 增加 `valueTypes` / `resolveFormFields` props；`_eq`/`_ne` 时显示「值类型」选择
+  （自定义/当前用户/字段引用），字段引用渲染分组路径选择（本表字段 + REFERENCE 解析目标表单），
+  类型兼容规则 `typesCompatible` 与服务端 `requireCompatible` 保持一致；`FormDataPermissions` 传入三种值类型与全应用表单解析。
+- 文档：`data-permissions.md` §5.4 增加值类型表格与 dataScope 边界（归属范围用 dataScope，
+  非所有者字段的当前用户匹配用条件值类型，二者 AND）。
+- 验证：`mvn test-compile -pl flexmodel-server` 通过；apps-ui `npm run build` 通过；
+  按用户要求未执行测试用例（`AppPermissionConditionsTest` 已更新待运行）。
+- 遗留：动态值的运行时解析（当前用户 id、字段引用渲染为列比较）待运行时授权引擎接入，渲染可复用
+  `FieldReference`/`SqlConditionRenderer` 机制；Playwright permissions 3 项失败仍未核查（见 feat-152）。
+- 未提交代码。
+
+## Apps - 数据权限条件复用记录查询 filter DSL（2026-11-02，feat-152）
+
+- 后端 `AppPermissionConditions`：`{field, operator, value}` / `{logic, children}` 自定义树改为 records.md 的
+  filter DSL（`_eq/_ne/_gt/_gte/_lt/_lte/_contains/_not_contains/_starts_with/_ends_with/_in/_nin/_between`、
+  同层隐式 AND、`{"字段": 值}` 快捷等值、`_and`/`_or`，`_eq`/`_ne` + null 空值）。保留深度≤8、节点≤100；
+  禁止关联路径与 `_field` 引用。实现注意：javac 流作用域下 `if (!(x instanceof T t) || …) fail();`
+  之后不能直接用 t（fail 可能正常返回），沿用旧代码重新 cast 的写法。
+- 测试：`AppPermissionConditionsTest` 重写为 DSL 用例；`AppDataAuthorizationResourceTest` 条件与断言改 DSL
+  （`controls[0].condition.name._eq` 回读、未知字段 400）。
+- 前端（flexmodel-apps-ui）：`dataAuthorization.ts` 的 `PermissionCondition` → `FilterCondition`（新增于
+  `services/appForms.ts`，与 `AppViewFilterCondition` 同处）；条件编辑器抽为公共组件
+  `components/biz/FilterConditionEditor.tsx`（`FilterConditionEditor`，产出 `{字段: {操作符: 值}}` 叶子与
+  `_and`/`_or` 分组，操作符矩阵与文案复用 `RecordFilterControls` 的 `viewTabOperators`/`viewTabOperatorLabels`，
+  追加 `_between/_in/_nin` 与 IS_NULL/IS_NOT_NULL 录入糖，存储为 `_eq`/`_ne` + null），
+  `FormDataPermissions` 改为引用该组件，其他需要编辑 filter DSL 的场景可直接复用；e2e `data-permissions.spec.ts`
+  断言同步为 `{name: {_eq: ''}}`。
+- 文档：`data-permissions.md` §5.4 改为 filter DSL 示例与操作符清单并链接 records.md；
+  `form-display-control.md` §6.1 算子表数据权限行改为引用 filter DSL。
+- 验证：`mvn test -pl flexmodel-server -Dtest=AppPermissionConditionsTest,AppDataAuthorizationResourceTest` 7/7；
+  全模块 `mvn compile`（非 clean，dev.jar 文件锁为既有已知阻塞）通过；apps-ui `npm run build` 通过
+  （TEMP/TMP 指向项目内规避 esbuild Access denied），抽公共组件后再次 build 通过。
+- 遗留风险：Playwright `test:permissions` 首跑 3 项失败（含不涉及条件编辑的 403 用例，疑似环境问题但未定位），
+  按用户要求停止跑测试；下次会话应优先跑 `npm run test:permissions` 核查是否与条件编辑器改动相关。
+- 未提交代码。
+
 ## Apps - dev.flexmodel.apps 按特性垂直分包重构（2026-10-31，feat-145）
 
 - dev.flexmodel.apps 根包与 dto 大杂烩按业务特性拆分为子包，每个特性内 DTO 放 `*.dto` 子包：

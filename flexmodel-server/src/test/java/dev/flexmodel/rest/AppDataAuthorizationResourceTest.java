@@ -77,10 +77,10 @@ class AppDataAuthorizationResourceTest {
     var f = fixture();
     try {
       call("admin", Method.GET, f.rules(), null, 200).then().body("size()", equalTo(0));
-      var condition = Map.<String, Object>of("field", "name", "operator", "EQ", "value", "不匹配的条件");
+      var condition = Map.<String, Object>of("name", Map.of("_eq", "不匹配的条件"));
       var request = rule(f, List.of(control("orders", condition)));
       String id = call("admin", Method.POST, f.rules(), request, 200).then()
-        .body("controls.size()", equalTo(1)).body("controls[0].condition.value", equalTo("不匹配的条件"))
+        .body("controls.size()", equalTo(1)).body("controls[0].condition.name._eq", equalTo("不匹配的条件"))
         .extract().path("id");
       call("admin", Method.GET, f.rules(), null, 200).then().body("size()", equalTo(1))
         .body("[0].subjects[0].ids[0]", equalTo(f.user())).body("[0].dataScope[0].type", equalTo("SELF"));
@@ -132,7 +132,7 @@ class AppDataAuthorizationResourceTest {
       request.put("unexpected", true);
       call("admin", Method.POST, f.rules(), request, 400);
       request.remove("unexpected");
-      request.put("controls", List.of(control("orders", Map.of("field", "missing", "operator", "EQ", "value", "x"))));
+      request.put("controls", List.of(control("orders", Map.of("missing", Map.of("_eq", "x")))));
       call("admin", Method.POST, f.rules(), request, 400);
       request.put("controls", List.of(control("orders", null), control("orders", null)));
       call("admin", Method.POST, f.rules(), request, 400);

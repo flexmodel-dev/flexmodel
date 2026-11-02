@@ -89,7 +89,13 @@ public class AppDataAuthorizationService {
       });
       if (row.get("condition") != null && !(row.get("condition") instanceof Map<?, ?>)) fail("权限条件必须为对象");
       Map<String, Object> condition = row.get("condition") == null ? null : object(row.get("condition"));
-      AppPermissionConditions.validate(condition, targetForm.fields());
+      AppPermissionConditions.validate(condition, targetForm.fields(), formName -> {
+        try {
+          return appFormService.findForm(appId, formName).fields();
+        } catch (RuntimeException error) {
+          return null;
+        }
+      });
       controls.add(new Control(target, Boolean.TRUE.equals(row.get("readAll")), Boolean.TRUE.equals(row.get("writeAll")),
         Boolean.TRUE.equals(row.get("allowDelete")), fieldControls, condition));
     }

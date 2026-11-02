@@ -438,7 +438,8 @@ public class AppTools {
   @Tool(description = """
     Create a navigation entry linked to the app workbench. This is the one-call way to \
     expose an app's workbench in navigation; it creates an ENTRY with BUILTIN \
-    destinationId=workbench.\
+    destinationId=workbench. The other built-in pages (files, approval) are exposed the \
+    same way via create_app_navigation with destinationType=BUILTIN.\
     """)
   public String create_app_workbench_navigation(
     @ToolArg(description = "The app ID") String appId,
@@ -463,7 +464,9 @@ public class AppTools {
     Create an app navigation entry. This is step 4 of the app creation flow. \
     navType allows GROUP or ENTRY. GROUP must not bind a destination. ENTRY must bind \
     destinationType BUILTIN, FORM, or LINK. Use destinationId=formName when binding a form, \
-    or destinationId=http/https URL when binding a link. \
+    or destinationId=http/https URL when binding a link. BUILTIN pages (workbench, files, \
+    approval) are only accessible inside an app after a navigation ENTRY binds them; \
+    bind the built-in pages the app needs, for example workbench and approval. \
     iconName is a Lucide icon name in PascalCase, for example Home, Package, or Rocket.\
     """)
   public String create_app_navigation(
@@ -473,7 +476,10 @@ public class AppTools {
     @ToolArg(description = "Navigation entry icon name") String iconName,
     @ToolArg(description = "Parent navigation ID, only for a nested ENTRY") String parentId,
     @ToolArg(description = "Destination type: BUILTIN, FORM, or LINK, required for ENTRY") String destinationType,
-    @ToolArg(description = "BUILTIN page ID, form name, or http/https URL, required for ENTRY") String destinationId
+    @ToolArg(description = """
+      BUILTIN page ID (workbench, files, or approval), form name, or http/https URL, \
+      required for ENTRY\
+      """) String destinationId
   ) {
     log.info("create_app_navigation called, appId={}, navType={}, name={}", appId, navType, name);
     try {

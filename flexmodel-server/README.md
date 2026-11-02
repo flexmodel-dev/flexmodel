@@ -87,6 +87,8 @@ Apps 记录操作历史的采集规则、事件类型、存储模型与查询接
 
 Apps 表单高级查询的气泡框、条件结构与筛选导出见 [表单高级查询](docs/record-query.md)。
 
+应用表单的字段状态矩阵、选项联动与条件规则设计见 [表单显示控制技术方案](docs/form-display-control.md)（设计与取舍依据，尚未实现）。
+
 应用整包导入导出见 [应用包导入导出](../docs/plans/app-import-export.md)
 ；从内置模板创建应用见 [应用模板](../docs/plans/app-templates.md)。
 

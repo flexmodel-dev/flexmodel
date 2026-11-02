@@ -1,6 +1,20 @@
 {
   "features": [
     {
+      "id": "feat-151",
+      "name": "Apps - 修复画廊封面图片不显示",
+      "description": "画廊视图选择图片字段并上传图片后封面不显示：此前直接把附件地址塞进 <img src>，浏览器不会携带 Authorization，私有桶图片返回 401 后落回占位。改为复用 AttachmentField 的鉴权加载逻辑，先以 Bearer 请求取回 blob 再生成 object URL 展示。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-apps-ui，未提交）。AttachmentField 导出 useAttachmentImageSource（复用 useFilePreview/loadAttachment 的鉴权 blob 加载与 object URL 回收）；GalleryView 按附件扩展名判断图片，加载中显示 AppLoading、失败或无图片显示 ImageOff，不再直接使用附件 URL。验证：npm run build 通过；构建产物 + Mock API（PNG 附件端点）无头 Chromium 实测，画廊卡片 <img> 可见且 naturalWidth=1，附件请求携带 Bearer cover-test，控制台无错误。"
+    },
+    {
+      "id": "feat-150",
+      "name": "Apps - 修复视图设置字段选择器被抽屉遮挡",
+      "description": "视图设置抽屉内“封面字段/标题字段/排序字段”等 FieldPicker 的 Popover z-index 为 50，低于抽屉的 z-1040，弹层内容被抽屉覆盖导致无法选择，即使表单已有图片字段也选不了封面。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-apps-ui，未提交）。FieldPicker 的 PopoverContent 增加 z-[1100]，高于抽屉 z-1040 和 Select 内容 z-1050；标题、封面、排序等字段选择器共用此组件。验证：npm run build 通过；构建产物 + Mock API 无头 Chromium 实测，表单含 IMAGE 字段“照片”时打开画廊视图设置，封面字段弹层正常显示“照片”，点击后触发器显示“照片”，控制台无错误。"
+    },
+    {
       "id": "feat-149",
       "name": "Apps - 修复内置表单设置/设计报 Project not found",
       "description": "内置系统表单（f_user/f_department/f_role）通过伪 appId system 访问 /api/apps/system/forms/* 时，AuthFilter 把 system 当成真实项目校验并抛出 Project not found；改为对 system 伪 appId 跳过项目校验，仍要求系统 JWT。",

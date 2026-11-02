@@ -3985,4 +3985,29 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   `mvn -q -pl flexmodel-server -Dtest=SystemFormResourceTest test` 6/6 通过（含新增用例）；日志中的 SQLite busy、
   9999 端口连接失败为既有环境噪声，不影响测试结果。
 
+## 视图设置字段选择器被抽屉遮挡修复（2026-11-01）
 
+- 问题：画廊视图设置里“封面字段”点击无反应，即使表单已有图片字段；实际是 FieldPicker 的 Popover 使用 z-50，
+  被 z-1040 的设置抽屉覆盖，点击事件也被抽屉拦截。
+- 修复：FieldPicker 的 PopoverContent 提升到 z-[1100]（高于抽屉 z-1040 与 Select 内容 z-1050），
+  标题字段、封面字段、排序字段等共用该组件一次修复。
+- 验证：`npm run build` 通过；构建产物 + Mock API 无头 Chromium 实测，表单含 IMAGE 字段“照片”时打开画廊视图设置，
+  封面字段弹层正常显示“照片”，点击后触发器显示“照片”，控制台无错误。
+
+## 画廊封面图片不显示修复（2026-11-01）
+
+- 问题：画廊视图选择图片字段并上传图片后封面不显示。此前 `<img src={attachmentUrl}>` 由浏览器直接请求私有桶附件，
+  不会携带 Authorization，接口返回 401 后页面落回占位图。
+- 修复：AttachmentField 导出 `useAttachmentImageSource`，复用 `useFilePreview/loadAttachment` 的 Bearer 鉴权请求与
+  object URL 回收；GalleryView 按附件扩展名判断图片类型，加载中显示 AppLoading，失败/无图显示 ImageOff。
+- 验证：`npm run build` 通过；构建产物 + Mock API（PNG 附件端点）无头 Chromium 实测，画廊卡片 `<img>` 可见且
+  `naturalWidth=1`，附件请求携带 `Bearer cover-test`，控制台无错误。
+
+## 表单显示控制技术方案文档（2026-11-02）
+
+- 新增 `flexmodel-server/docs/form-display-control.md`：应用表单字段状态（VISIBLE/READONLY/HIDDEN）× 场景（CREATE/EDIT，
+  DETAIL 继承 EDIT）的矩阵模型、选项联动与条件规则契约、保存校验 V1—V13、双端求值与服务端写入复核入口、设计器交互、
+  分期（P0 矩阵 + 复核 → P1 选项联动 → P2 条件规则 → P3 流程节点）与验收矩阵。
+- 结论：抄矩阵派形态 + 选项联动派入口，条件规则留作例外通道，不引入自由公式；字段级安全仍归数据权限 `field_controls`。
+- 现状边界记录在文档第 1 节：显示控制仍是 `hidden`/`readonly` 两个静态布尔，`required` 绑 NOT NULL，运行时零条件求值。
+- 同步在 `flexmodel-server/README.md` 文档清单追加该条目（标注尚未实现）。纯文档，未改动代码，未提交。

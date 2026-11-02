@@ -1,6 +1,48 @@
 {
   "features": [
     {
+      "id": "feat-159",
+      "name": "Apps - 显示控制非活动页签空白卡片修复",
+      "description": "为显示控制 TabsContent 增加 flex 后，Tailwind flex 覆盖了 Radix 非活动页签的 hidden 属性，导致表单布局下方多出一张空白卡片。为显示控制 TabsContent 增加 data-[state=inactive]:hidden，并在 e2e 中断言非活动页签不可见。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。FormDesigner 显示控制 TabsContent className 增加 data-[state=inactive]:hidden；field-config e2e 在布局页断言 [data-state=\"inactive\"][hidden] 为 hidden，确保下方不再出现空白卡片。验证：npm run build 通过；npm test 63/63 通过；npm run test:fields 8/8 通过。"
+    },
+    {
+      "id": "feat-158",
+      "name": "MCP - save_app_form_layout 支持字段显示控制",
+      "description": "AppTools.save_app_form_layout 新增可选 controlsJson，按字段名接收 hidden/required/readonly 控制并写入 layout.controls；scenes 取 CREATE/UPDATE，condition 复用记录查询 filter DSL。省略 controlsJson 保留现有控制并按新布局字段裁剪，传 {} 清空；get_app_form 工具说明同步返回 layout.controls。工具描述明确控制键必须属于 itemsJson、内置字段忽略控制、条件字段需先通过 get_app_form 确认。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。AppTools.save_app_form_layout 增加 required=false 的 controlsJson 参数，使用 JsonUtils.parseToMap + convertValue 解析为 Map<String,AppFormFieldControls>；未传时读取当前表单 controls 并裁剪到新布局字段；构造 AppFormLayoutRequest(items, controls)。更新工具描述与 get_app_form 描述，补充 controls 示例、场景/条件语义、省略与清空规则。文档同步 flexmodel-website/docs/tutorial/features/mcp-server.md 与 docs/plans/app-tools-mcp.md。新增 AppToolsTest 覆盖 controls 解析、空对象清空、非对象拒绝，3/3 通过；mvn -q -pl flexmodel-server -am -DskipTests compile 通过。"
+    },
+    {
+      "id": "feat-157",
+      "name": "Apps - 表单布局内置字段标识",
+      "description": "表单布局画布中，已布局且为内置字段的字段显示“内置”Badge，样式与主显字段的“名称”Badge 一致（bg-primary/10 text-primary）；非内置字段不显示。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。FormDesigner 布局项在显示“名称”Badge 的位置增加 entry.field.builtin 条件渲染“内置”Badge，复用同一 Badge 样式。验证：npm run build 通过；npm test 63/63 通过；npm run test:fields 8/8 通过（内置字段布局用例新增“内置”标识可见断言）。截图：flexmodel-apps-ui/artifacts/form-layout-builtin-badge.png。"
+    },
+    {
+      "id": "feat-156",
+      "name": "Apps - 显示控制矩阵表头吸顶与滚动容器修复",
+      "description": "显示控制页签改为单一纵向/横向滚动容器，表头（字段、隐藏、必填、只读）使用 sticky 吸顶，字段行滚动时表头保持固定；底部说明移出滚动区固定展示，避免出现嵌套滚动条和表头随内容滚走。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。FormDesigner 的显示控制 TabsContent 改为 flex column + overflow-hidden；FormAdvancedControls 的表格容器改为 min-h-0 flex-1 overflow-auto overscroll-contain，统一横向与纵向滚动；thead 各 th 增加 sticky top-0 z-10，底部说明作为固定 flex 子项。验证：npm run build 通过；npm test 63/63 通过；npm run test:fields 8/8 通过（新增“显示控制表头在纵向滚动时保持固定”e2e，矮视口滚动后断言表头 y 坐标不变）。截图：flexmodel-apps-ui/artifacts/form-controls-sticky-header.png。"
+    },
+    {
+      "id": "feat-155",
+      "name": "Apps - 内置字段始终展示且只读，不可配置字段控制",
+      "description": "显示控制矩阵中内置字段（field.builtin）不再允许勾选隐藏/必填/只读或设置条件：隐藏与必填展示为字段默认状态并禁用，只读的新建时/编辑时始终勾选并禁用，条件入口禁用并标注“内置”。运行时 parseFormLayout 对内置字段强制可见且只读，不应用任何 hidden/required/readonly 控制；后端保存布局时忽略内置字段的控制配置，不持久化。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。前端：FormAdvancedControls 为 builtin 行增加“内置”标识，禁用 6 个场景复选框与 3 个条件按钮，隐藏/必填按字段默认值展示，只读两场景强制勾选；禁用态使用 opacity/弱化文字。parseFormLayout 对 field.builtin 强制 hidden=false、readonly=true、不应用 required 控制（新增 1 个单元用例）。后端：AppFormService.saveFormLayout 汇总 BUILTIN_FIELDS 与当前字段记录中的 builtin 字段名，normalizeControls 跳过这些字段，保证内置字段控制不被持久化。验证：mvn -q -pl flexmodel-server -am -DskipTests compile 通过；AppPackageZipTest/AppPackageValidatorTest/AppRecordServiceTest/SystemFormResourceTest 通过；npm run build 通过；npm test 63/63 通过；npm run test:fields 7/7 通过（新增内置字段只读禁用 e2e）。截图：flexmodel-apps-ui/artifacts/form-controls-builtin.png。"
+    },
+    {
+      "id": "feat-154",
+      "name": "Apps - 应用表单字段控制（场景 + 条件）",
+      "description": "表单布局新增 layout.controls[字段名].hidden/required/readonly 配置，每项包含 scenes（CREATE/UPDATE）与可选 condition（记录查询 filter DSL）。不存在某属性时保持默认行为（不隐藏、字段默认必填、可编辑但受权限与 creatable/updatable 约束）；scenes 不含当前场景时不生效；无条件时在场景内始终生效，有条件时按当前表单值实时求值。前端设计器“显示控制”页签按字段×隐藏/必填/只读列出新建时/编辑时勾选与条件入口，复用 FilterConditionEditor；新增/编辑弹窗、记录抽屉与内联编辑面板统一通过 parseFormLayout 应用隐藏、必填、只读。系统表单保留原有静态隐藏/只读配置，不展示显示控制页签。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。后端：AppFormLayoutRecord/Request 增加 controls；新增 AppFormFieldControls/AppFormFieldControlRecord；AppFormService.saveFormLayout 校验控制字段属于布局、scenes 非空且仅为 CREATE/UPDATE、禁止空条件对象，并清除应用表单布局项上的旧静态 hidden/readonly；删除字段时同步移除其控制配置。前端（flexmodel-apps-ui）：services/appForms.ts 定义 AppFormScene/AppFormControl/AppFormControls 并归一化 layout.controls；新增 lib/filterCondition.ts 实现 filter DSL 客户端求值与 lib/filterCondition.test.ts（6 用例）；parseFormLayout 增加 scene+values 解析并向运行时组件输出 requiredFieldNames/entry.readonly/entry.required（4 用例）；新增 components/biz/form/FormAdvancedControls.tsx 复用 FilterConditionEditor 实现矩阵与条件弹窗；FormDesigner“显示控制”页签、保存时同时提交 items 与 controls，切换该页签隐藏字段列表侧栏；AppRecordFormModal/AppRecordDrawer/AppRecordPanel 按 CREATE/UPDATE 场景和当前值应用控制，只读字段不参与交互必填校验。测试：mvn compile -pl flexmodel-server -am 通过；mvn test -pl flexmodel-engine 通过；AppPackageZipTest/AppPackageValidatorTest/AppRecordServiceTest/SystemFormResourceTest 通过（AppPackageZipTest 新增 controls 打包往返断言）；npm run build 通过；npm test 62/62 通过；npm run test:fields 6/6 通过（新增显示控制 e2e，并修正 field-config 用例中过期的 navigation/view 查询 mock）。"
+    },
+    {
       "id": "feat-153",
       "name": "Apps - 数据权限条件值类型（自定义/当前用户/字段引用）",
       "description": "数据权限条件 _eq/_ne 的比较值支持三种值类型：自定义字面量、当前用户 {\"_user\": \"id\"}（运行时解析为访问用户 id，仅 REFERENCE/TEXT 字段）、字段引用 {\"_field\": \"路径\"}（本表裸路径或 引用字段.目标字段 一级路径，两端类型一致或 REFERENCE 对目标 id/TEXT）。与 data_scope 边界：归属范围用 dataScope，非所有者字段的当前用户匹配用条件值类型。动态值运行时解析待授权引擎接入后生效，当前仅保存与校验配置。",

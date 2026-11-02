@@ -169,6 +169,7 @@ LOCATION, SIGN, BOOL, STATE
 - `appId`
 - `formName`
 - `itemsJson`
+- `controlsJson`：可选，字段显示控制
 
 `itemsJson` 是扁平有序数组，每项结构与 `AppFormItemRecord` 对齐：
 
@@ -198,6 +199,41 @@ LOCATION, SIGN, BOOL, STATE
   }
 ]
 ```
+
+`controlsJson` 是可选对象，键为 `itemsJson` 中的字段名，值为该字段的 `hidden` / `required` / `readonly` 控制：
+
+```json
+{
+  "order_amount": {
+    "hidden": {
+      "scenes": [
+        "CREATE",
+        "UPDATE"
+      ],
+      "condition": {
+        "status": {
+          "_eq": "REJECTED"
+        }
+      }
+    }
+  },
+  "remark": {
+    "required": {
+      "scenes": [
+        "CREATE"
+      ]
+    },
+    "readonly": {
+      "scenes": [
+        "UPDATE"
+      ]
+    }
+  }
+}
+```
+
+`scenes` 非空，取 `CREATE` / `UPDATE`；`condition` 复用记录查询 filter DSL，缺省表示在所选场景始终生效。
+省略 `controlsJson` 时保留当前控制并按新布局裁剪，传 `{}` 清空全部控制。内置字段始终展示且只读，控制会被忽略。
 
 约束：
 

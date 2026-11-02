@@ -69,6 +69,7 @@ public class AppFormService {
   private static final Set<String> FORM_ITEM_TYPES = Set.of("FIELD", "SECTION", "SUBFORM");
   private static final Set<String> FORM_ITEM_WIDTHS = Set.of(
     "QUARTER", "THIRD", "HALF", "TWO_THIRDS", "THREE_QUARTERS", "FULL");
+  private static final Set<String> FORM_CONTROL_SCENES = Set.of("CREATE", "UPDATE");
   private static final String NAME_FIELD = "name";
   private static final Set<String> BUILTIN_FIELDS = Set.of(
     "id", "owner_id", "created_by", "updated_by", "created_at", "updated_at");
@@ -370,7 +371,14 @@ public class AppFormService {
     ResolvedForm resolved = requireForm(project, appId, formName);
     EntityDefinition entity = resolved.entity();
     AppFormRecord current = resolved.record() == null ? defaultRecord(project, entity) : resolved.record();
-    AppFormLayoutRecord layout = normalizeLayoutItems(project, appId, entity, request);
+    Set<String> builtinFieldNames = new HashSet<>(BUILTIN_FIELDS);
+    if (current.fields() != null) {
+      current.fields().stream()
+        .filter(AppFormFieldRecord::builtin)
+        .map(AppFormFieldRecord::name)
+        .forEach(builtinFieldNames::add);
+    }
+    AppFormLayoutRecord layout = normalizeLayoutItems(project, appId, entity, request, builtinFieldNames);
     AppFormRecord updated = withLayout(current, layout);
     saveFormRecord(project, updated);
     return toResponse(project, entity, updated);
@@ -1325,7 +1333,8 @@ public class AppFormService {
     Project project,
     String appId,
     EntityDefinition entity,
-    AppFormLayoutRequest request
+    AppFormLayoutRequest request,
+    Set<String> builtinFieldNames
   ) {
     if (request.items() == null || request.items().isEmpty() || request.items().size() > MAX_LAYOUT_ITEMS) {
       throw new ValidationException("表单布局项数量不合法");
@@ -1342,7 +1351,71 @@ public class AppFormService {
     if (items.stream().noneMatch(item -> "FIELD".equals(item.type()))) {
       throw new ValidationException("表单布局必须包含字段");
     }
-    return new AppFormLayoutRecord(items);
+    return new AppFormLayoutRecord(items, normalizeControls(request.controls(), items, builtinFieldNames));
+  }
+
+  private Map<String, AppFormFieldControls> normalizeControls(
+    Map<String, AppFormFieldControls> controls,
+    List<AppFormItemRecord> items,
+    Set<String> builtinFieldNames
+  ) {
+    if (controls == null || controls.isEmpty()) {
+      return null;
+    }
+    if (controls.size() > MAX_LAYOUT_ITEMS) {
+      throw new ValidationException("字段控制数量不能超过 " + MAX_LAYOUT_ITEMS);
+    }
+    Set<String> fieldNames = items.stream()
+      .filter(item -> "FIELD".equals(item.type()))
+      .map(AppFormItemRecord::name)
+      .collect(Collectors.toSet());
+    Map<String, AppFormFieldControls> result = new LinkedHashMap<>();
+    for (Map.Entry<String, AppFormFieldControls> entry : controls.entrySet()) {
+      String fieldName = entry.getKey();
+      if (!fieldNames.contains(fieldName)) {
+        throw new ValidationException("字段控制对应的字段不在布局中: " + fieldName);
+      }
+      // 内置字段始终展示且只读，不接受控制配置。
+      if (builtinFieldNames.contains(fieldName)) {
+        continue;
+      }
+      AppFormFieldControls value = entry.getValue();
+      if (value == null) {
+        continue;
+      }
+      AppFormFieldControls normalized = new AppFormFieldControls(
+        normalizeControl(value.hidden(), "隐藏"),
+        normalizeControl(value.required(), "必填"),
+        normalizeControl(value.readonly(), "只读"));
+      if (normalized.hidden() == null && normalized.required() == null && normalized.readonly() == null) {
+        continue;
+      }
+      result.put(fieldName, normalized);
+    }
+    return result.isEmpty() ? null : result;
+  }
+
+  private AppFormFieldControlRecord normalizeControl(AppFormFieldControlRecord control, String label) {
+    if (control == null) {
+      return null;
+    }
+    if (control.scenes() == null || control.scenes().isEmpty()) {
+      throw new ValidationException(label + "控制至少选择一个场景");
+    }
+    Set<String> scenes = new LinkedHashSet<>();
+    for (String scene : control.scenes()) {
+      String normalized = scene == null ? "" : scene.trim().toUpperCase(Locale.ROOT);
+      if (!FORM_CONTROL_SCENES.contains(normalized)) {
+        throw new ValidationException(label + "控制场景不合法: " + scene);
+      }
+      if (!scenes.add(normalized)) {
+        throw new ValidationException(label + "控制场景重复: " + scene);
+      }
+    }
+    if (control.condition() != null && control.condition().isEmpty()) {
+      throw new ValidationException(label + "控制条件不能为空对象");
+    }
+    return new AppFormFieldControlRecord(List.copyOf(scenes), control.condition());
   }
 
   private AppFormItemRecord normalizeLayoutItem(
@@ -1378,8 +1451,8 @@ public class AppFormService {
           normalizeLayoutText(item.label()),
           normalizeLayoutText(item.tip()),
           item.width(),
-          item.hidden(),
-          item.readonly(),
+          null,
+          null,
           null,
           null);
       }
@@ -1538,9 +1611,15 @@ public class AppFormService {
   }
 
   private AppFormLayoutRecord withoutLayoutField(AppFormLayoutRecord layout, String fieldName) {
+    Map<String, AppFormFieldControls> controls = layout == null ? null : layout.controls();
+    if (controls != null && controls.containsKey(fieldName)) {
+      Map<String, AppFormFieldControls> remaining = new LinkedHashMap<>(controls);
+      remaining.remove(fieldName);
+      controls = remaining.isEmpty() ? null : remaining;
+    }
     return new AppFormLayoutRecord(layoutItems(layout).stream()
       .filter(item -> !"FIELD".equals(item.type()) || !fieldName.equals(item.name()))
-      .toList());
+      .toList(), controls);
   }
 
   private List<AppFormItemRecord> layoutItems(AppFormLayoutRecord layout) {

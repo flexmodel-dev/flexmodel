@@ -1,6 +1,8 @@
 package dev.flexmodel.apps.apppackage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.flexmodel.apps.form.dto.AppFormFieldControlRecord;
+import dev.flexmodel.apps.form.dto.AppFormFieldControls;
 import dev.flexmodel.apps.form.dto.AppFormFieldRecord;
 import dev.flexmodel.apps.form.dto.AppFormItemRecord;
 import dev.flexmodel.apps.form.dto.AppFormLayoutRecord;
@@ -45,7 +47,11 @@ class AppPackageZipTest {
       LocalDateTime.of(2026, 1, 1, 0, 0), LocalDateTime.of(2026, 1, 1, 0, 0), List.of(name, amount),
       new AppFormLayoutRecord(List.of(
         new AppFormItemRecord("FIELD", "name", "名称", null, "FULL", null, null, null, null),
-        new AppFormItemRecord("FIELD", "amount", "金额", null, "FULL", null, null, null, null))),
+        new AppFormItemRecord("FIELD", "amount", "金额", null, "FULL", null, null, null, null)),
+        Map.of("name", new AppFormFieldControls(
+          new AppFormFieldControlRecord(List.of("CREATE", "UPDATE"), Map.of("amount", Map.of("_gt", 0))),
+          null,
+          new AppFormFieldControlRecord(List.of("UPDATE"), null)))),
       List.of());
     return new Content(manifest, app, List.of(form), List.of(), List.of(), List.of(), List.of(), Map.of(), Map.of());
   }
@@ -63,6 +69,11 @@ class AppPackageZipTest {
     assertEquals("f_order", read.forms().getFirst().name());
     assertEquals(2, read.forms().getFirst().fields().size());
     assertEquals("name", read.forms().getFirst().displayField());
+    var controls = read.forms().getFirst().layout().controls();
+    assertEquals(List.of("CREATE", "UPDATE"), controls.get("name").hidden().scenes());
+    assertEquals(Map.of("amount", Map.of("_gt", 0)), controls.get("name").hidden().condition());
+    assertEquals(List.of("UPDATE"), controls.get("name").readonly().scenes());
+    assertNull(controls.get("name").required());
     assertEquals(FORMAT, read.manifest().format());
     assertEquals(VERSION, read.manifest().version());
     assertEquals(7, read.rawFiles().size());

@@ -24,9 +24,12 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * MCP 工具：Flexmodel Apps
@@ -109,7 +112,8 @@ public class AppTools {
 
   @Tool(description = """
     Get one form of a Flexmodel App by formName. The response contains \
-    generated field names and the current flat layout.items contract.\
+    generated field names, the current flat layout.items, and layout.controls \
+    when field controls are configured.\
     """)
   public String get_app_form(
     @ToolArg(description = "The app ID") String appId,
@@ -216,12 +220,22 @@ public class AppTools {
   }
 
   @Tool(description = """
-    Save the flat form layout. This is step 3 of the app creation flow. \
+    Save the flat form layout and optional field controls. This is step 3 of the app creation flow. \
     itemsJson must be a JSON array of flat layout nodes. type allows FIELD, \
     SECTION, or SUBFORM. width allows QUARTER, THIRD, HALF, TWO_THIRDS, \
     THREE_QUARTERS, or FULL. SECTION is a full-width separator, not a container; \
     children is not allowed. FIELD.name must come from create_app_form or \
-    get_app_form. Every business field must appear exactly once.\
+    get_app_form. Every business field must appear exactly once. \
+    controlsJson is an optional JSON object keyed by field name, for example: \
+    {"title":{"hidden":{"scenes":["CREATE","UPDATE"],"condition":{"status":{"_eq":"REJECTED"}}},"required":{"scenes":["CREATE"]}}}. \
+    Each value may contain hidden, required, and readonly controls. Each control must have a \
+    non-empty scenes array using CREATE and/or UPDATE; condition is optional and uses the same \
+    filter DSL as record queries (implicit AND, _eq/_ne/_gt/_gte/_lt/_lte/_contains/_not_contains/\
+    _starts_with/_ends_with/_in/_nin/_between, _and/_or). Condition field names must exist in \
+    the form returned by get_app_form. Without condition the control always \
+    applies in the selected scenes. Omit controlsJson to keep the current controls; pass {} to \
+    clear all controls. Control keys must exist in itemsJson. Builtin fields always stay visible \
+    and readonly and ignore controls.\
     """)
   public String save_app_form_layout(
     @ToolArg(description = "The app ID") String appId,
@@ -229,19 +243,66 @@ public class AppTools {
     @ToolArg(description = """
       JSON array string of flat layout items, for example: \
       [{"type":"FIELD","name":"name","width":"HALF"}].\
-      """) String itemsJson
+      """) String itemsJson,
+    @ToolArg(description = """
+      Optional JSON object of field controls keyed by field name, for example: \
+      {"title":{"hidden":{"scenes":["CREATE","UPDATE"],"condition":{"status":{"_eq":"REJECTED"}}}},\
+      "amount":{"readonly":{"scenes":["UPDATE"]}}}. Omit to keep existing controls; pass {} to clear.\
+      """, required = false) String controlsJson
   ) {
     log.info("save_app_form_layout called, appId={}, formName={}", appId, formName);
     try {
       List<AppFormItemRecord> items = List.of(JsonUtils.parseToObject(
         itemsJson, AppFormItemRecord[].class));
+      Map<String, AppFormFieldControls> controls = controlsJson == null || controlsJson.isBlank()
+        ? currentControls(appId, formName, items)
+        : parseControls(controlsJson);
       AppFormResponse form = appFormService.saveFormLayout(
-        appId, formName, new AppFormLayoutRequest(items));
+        appId, formName, new AppFormLayoutRequest(items, controls));
       return JsonUtils.toJsonString(form);
     } catch (Exception exception) {
       log.error("save_app_form_layout failed, appId={}, formName={}", appId, formName, exception);
       return "Error: save_app_form_layout failed - " + exception.getMessage();
     }
+  }
+
+  /**
+   * 未传 controlsJson 时保留当前控制，并按新的布局字段裁剪，避免 AI 仅调整布局时清空控制。
+   */
+  private Map<String, AppFormFieldControls> currentControls(
+    String appId,
+    String formName,
+    List<AppFormItemRecord> items
+  ) {
+    AppFormResponse current = appFormService.findForm(appId, formName);
+    Map<String, AppFormFieldControls> stored = current.layout() == null
+      ? null
+      : current.layout().controls();
+    if (stored == null || stored.isEmpty()) {
+      return null;
+    }
+    Set<String> fieldNames = items.stream()
+      .filter(item -> "FIELD".equals(item.type()))
+      .map(AppFormItemRecord::name)
+      .collect(Collectors.toSet());
+    Map<String, AppFormFieldControls> preserved = new LinkedHashMap<>();
+    stored.forEach((fieldName, control) -> {
+      if (fieldNames.contains(fieldName)) {
+        preserved.put(fieldName, control);
+      }
+    });
+    return preserved.isEmpty() ? null : preserved;
+  }
+
+  static Map<String, AppFormFieldControls> parseControls(String controlsJson) {
+    Map<String, Object> values = JsonUtils.parseToMap(controlsJson);
+    if (values == null) {
+      throw new IllegalArgumentException("controlsJson must be a JSON object");
+    }
+    Map<String, AppFormFieldControls> controls = new LinkedHashMap<>();
+    values.forEach((fieldName, value) ->
+      controls.put(fieldName, JsonUtils.convertValue(value, AppFormFieldControls.class)));
+    return controls;
   }
 
   @Tool(description = """

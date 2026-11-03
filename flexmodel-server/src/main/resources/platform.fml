@@ -1,3 +1,18 @@
+model f_app {
+  id : String @id @length("64") @comment("应用ID，与 f_project.id 一对一共享"),
+  icon_name : String @length("64") @comment("图标名"),
+  primary_color : String @length("32") @comment("主色"),
+  provisioning? : String @length("32") @comment("导入重建状态，空表示正常"),
+  navigation? : JSON @comment("导航配置"),
+  forms? : JSON @comment("表单配置"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @system,
+  @index(name:"IDX_idx_created_at", unique: false, fields: [created_at: (sort: "desc")]),
+  @comment("应用")
+}
 model f_app_data_authorization {
   id : String @id @default(uuid()) @length("64"),
   app_id : String @length("64"),
@@ -138,20 +153,6 @@ model f_project {
   @index(name: "IDX_PROJECT_PARENT", fields: [parent_project_id]),
   @system,
   @comment("项目")
-}
-model f_app {
-  id : String @id @length("64") @comment("应用ID，与 f_project.id 一对一共享"),
-  icon_name : String @length("64") @comment("图标名"),
-  primary_color : String @length("32") @comment("主色"),
-  provisioning? : String @length("32") @comment("导入重建状态，空表示正常"),
-  navigation? : JSON @comment("导航配置"),
-  forms? : JSON @comment("表单配置"),
-  created_by? : String @comment("创建人"),
-  updated_by? : String @comment("更新人"),
-  created_at? : DateTime @default(now()) @comment("创建时间"),
-  updated_at? : DateTime @default(now()) @comment("更新时间"),
-  @system,
-  @comment("应用")
 }
 model f_branch {
   id : String @id @default(uuid()),

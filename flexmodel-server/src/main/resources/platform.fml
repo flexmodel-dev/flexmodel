@@ -4,7 +4,7 @@ model f_app {
   primary_color : String @length("32") @comment("主色"),
   provisioning? : String @length("32") @comment("导入重建状态，空表示正常"),
   navigation? : JSON @comment("导航配置"),
-  forms? : JSON @comment("表单配置"),
+  forms? : f_app_form[] @comment("应用表单") @relation(localField: "id", foreignField: "app_id", cascadeDelete: "true"),
   created_by? : String @comment("创建人"),
   updated_by? : String @comment("更新人"),
   created_at? : DateTime @default(now()) @comment("创建时间"),
@@ -12,6 +12,16 @@ model f_app {
   @system,
   @index(name:"IDX_idx_created_at", unique: false, fields: [created_at: (sort: "desc")]),
   @comment("应用")
+}
+model f_app_form {
+  id : String @id @default(uuid()) @length("64"),
+  app_id : String @length("64") @comment("所属应用ID"),
+  app? : f_app @comment("所属应用") @relation(localField: "app_id", foreignField: "id", cascadeDelete: "false"),
+  name : String @length("64") @comment("表单英文名称，同时作为实体名"),
+  content : JSON @comment("表单全量配置（展示名、描述、主显/搜索字段、字段、布局、视图页签等）"),
+  @index(name: "UQ_APP_FORM_NAME", unique: true, fields: [app_id, name]),
+  @system,
+  @comment("应用表单")
 }
 model f_app_data_authorization {
   id : String @id @default(uuid()) @length("64"),

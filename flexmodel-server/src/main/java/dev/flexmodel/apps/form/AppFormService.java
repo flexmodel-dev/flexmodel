@@ -101,6 +101,9 @@ public class AppFormService {
   AppRepository appRepository;
 
   @Inject
+  AppFormRepository appFormRepository;
+
+  @Inject
   AppNavigationRepository appNavRecordStore;
 
   @Inject
@@ -122,10 +125,11 @@ public class AppFormService {
   AppDataAuthorizationService dataAuthorization;
 
   /**
-   * 整包导入导出使用：按项目 metadata 原始记录读取全部表单，不经过 findForms 的实体合成。
+   * 整包导入导出使用：按 f_app_form 原始记录读取全部表单，不经过 findForms 的实体合成。
    */
   public List<AppFormRecord> rawFormRecords(String appId) {
-    return formRecords(requireAppProject(appId));
+    requireAppProject(appId);
+    return formRecords(appId);
   }
 
   public static Set<String> reservedSystemFormNames() {
@@ -173,7 +177,7 @@ public class AppFormService {
         .toList();
     }
     Project project = requireAppProject(appId);
-    Map<String, AppFormRecord> records = formRecords(project).stream()
+    Map<String, AppFormRecord> records = formRecords(appId).stream()
       .collect(Collectors.toMap(AppFormRecord::name, Function.identity(), (left, right) -> right,
         LinkedHashMap::new));
     List<AppFormResponse> builtinForms = systemFormService.findForms().stream()
@@ -193,7 +197,7 @@ public class AppFormService {
       return systemFormService.toAppFormResponse(systemFormService.findForm(formName));
     }
     Project project = requireAppProject(appId);
-    ResolvedForm form = requireForm(project, appId, formName);
+    ResolvedForm form = requireForm(appId, formName);
     return toResponse(project, form.entity(), form.record());
   }
 
@@ -210,7 +214,7 @@ public class AppFormService {
     String formName = validateFormName(request.name());
     String label = validateFormLabel(request.label());
     List<PreparedField> preparedFields = prepareFields(appId, fields);
-    ensureUniqueFormName(project, appId, formName);
+    ensureUniqueFormName(appId, formName);
     EntityDefinition entity = buildFormEntity(formName, label, request.createDisplayField());
     Map<String, AppFormFieldRecord> fieldRecords = builtinFieldRecords();
     fieldRecords.putAll(addPreparedFields(formName, entity, preparedFields));
@@ -230,7 +234,7 @@ public class AppFormService {
       new AppFormLayoutRecord(List.of()),
       List.of(allView()));
     try {
-      saveFormRecord(project, record);
+      saveFormRecord(appId, record);
     } catch (RuntimeException caught) {
       try {
         modelingService.dropModel(appId, formName);
@@ -331,7 +335,7 @@ public class AppFormService {
   public AppFormResponse updateForm(String appId, String formName, AppFormUpdateRequest request) {
     requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
-    ResolvedForm resolved = requireForm(project, appId, formName);
+    ResolvedForm resolved = requireForm(appId, formName);
     EntityDefinition entity = resolved.entity();
     AppFormRecord current = resolved.record() == null ? defaultRecord(project, entity) : resolved.record();
     String displayField = current.displayField();
@@ -361,7 +365,7 @@ public class AppFormService {
       current.fields(),
       current.layout(),
       current.viewTabs());
-    saveFormRecord(project, updated);
+    saveFormRecord(appId, updated);
     return toResponse(project, entity, updated);
   }
 
@@ -387,7 +391,7 @@ public class AppFormService {
     }
     requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
-    ResolvedForm resolved = requireForm(project, appId, formName);
+    ResolvedForm resolved = requireForm(appId, formName);
     EntityDefinition entity = resolved.entity();
     AppFormRecord current = resolved.record() == null ? defaultRecord(project, entity) : resolved.record();
     Set<String> builtinFieldNames = new HashSet<>(BUILTIN_FIELDS);
@@ -397,9 +401,9 @@ public class AppFormService {
         .map(AppFormFieldRecord::name)
         .forEach(builtinFieldNames::add);
     }
-    AppFormLayoutRecord layout = normalizeLayoutItems(project, appId, entity, request, builtinFieldNames);
+    AppFormLayoutRecord layout = normalizeLayoutItems(appId, entity, request, builtinFieldNames);
     AppFormRecord updated = withLayout(current, layout);
-    saveFormRecord(project, updated);
+    saveFormRecord(appId, updated);
     return toResponse(project, entity, updated);
   }
 
@@ -409,7 +413,7 @@ public class AppFormService {
       throw new ValidationException("viewTabs 不能为空");
     }
     Project project = requireAppProject(appId);
-    ResolvedForm resolved = requireForm(project, appId, formName);
+    ResolvedForm resolved = requireForm(appId, formName);
     EntityDefinition entity = resolved.entity();
     AppFormRecord current = resolved.record() == null ? defaultRecord(project, entity) : resolved.record();
     List<AppFormViewTabRecord> viewTabs = normalizeViews(current, request.viewTabs());
@@ -424,7 +428,7 @@ public class AppFormService {
       current.fields(),
       current.layout(),
       viewTabs);
-    saveFormRecord(project, updated);
+    saveFormRecord(appId, updated);
     return toResponse(project, entity, updated);
   }
 
@@ -662,7 +666,7 @@ public class AppFormService {
   public AppViewCapabilityResponse findViewCapabilities(String appId, String formName) {
     requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
-    ResolvedForm resolved = requireForm(project, appId, formName);
+    ResolvedForm resolved = requireForm(appId, formName);
     AppFormRecord current = resolved.record() == null ? defaultRecord(project, resolved.entity()) : resolved.record();
     Map<String, AppFormFieldRecord> fieldRecords = builtinFieldRecords();
     current.fields().forEach(field -> fieldRecords.put(field.name(), field));
@@ -880,13 +884,13 @@ public class AppFormService {
     requireNotBuiltinForm(formName);
     appApprovalLifecycle.beforeDeleteForm(appId, formName);
     Project project = requireAppProject(appId);
-    ResolvedForm resolved = requireForm(project, appId, formName);
+    ResolvedForm resolved = requireForm(appId, formName);
     EntityDefinition entity = resolved.entity();
     String entityName = entity.getName();
     if (isBoundToNavigation(project, formName)) {
       throw new ValidationException("表单已被菜单绑定，请先解除菜单关联");
     }
-    if (isFormUsedAsSubform(project, formName)) {
+    if (isFormUsedAsSubform(appId, formName)) {
       throw new ValidationException("表单已被子表单引用，请先移除相关子表单布局");
     }
     modelingService.dropModel(appId, entityName);
@@ -900,10 +904,10 @@ public class AppFormService {
     } catch (RuntimeException error) {
       log.warn("Failed to clean form histories for {}/{}: {}", appId, formName, error.getMessage());
     }
-    List<AppFormRecord> records = formRecords(project).stream()
+    List<AppFormRecord> records = formRecords(appId).stream()
       .filter(record -> !record.name().equals(entityName))
       .toList();
-    persistFormRecords(project, records);
+    persistFormRecords(appId, records);
   }
 
   public AppFormFieldResponse createField(
@@ -917,7 +921,7 @@ public class AppFormService {
     requireNotBuiltinForm(formName);
     validateFieldType(request.type());
     Project project = requireAppProject(appId);
-    ResolvedForm resolved = requireForm(project, appId, formName);
+    ResolvedForm resolved = requireForm(appId, formName);
     EntityDefinition entity = resolved.entity();
     String entityName = entity.getName();
     String fieldName = resolveFieldName(entity, request.name(), request.label());
@@ -936,18 +940,18 @@ public class AppFormService {
       options,
       referenceForm, config);
     try {
-      AppFormRecord current = findFormRecord(project, entityName).orElseGet(() -> defaultRecord(project, entity));
+      AppFormRecord current = findFormRecord(appId, entityName).orElseGet(() -> defaultRecord(project, entity));
       List<AppFormFieldRecord> fields = new ArrayList<>(current.fields());
       fields.add(fieldRecord);
       AppFormLayoutRecord layout = current.layout() == null
         ? new AppFormLayoutRecord(List.of())
         : current.layout();
-      saveFormRecord(project, withLayout(withFields(current, fields), layout));
+      saveFormRecord(appId, withLayout(withFields(current, fields), layout));
     } catch (RuntimeException caught) {
       modelingService.dropField(appId, entityName, fieldName);
       throw caught;
     }
-    return toFieldResponse(project, field, fieldRecord);
+    return toFieldResponse(appId, field, fieldRecord);
   }
 
   public AppFormFieldResponse updateField(
@@ -961,7 +965,7 @@ public class AppFormService {
     }
     requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
-    ResolvedForm resolved = requireForm(project, appId, formName);
+    ResolvedForm resolved = requireForm(appId, formName);
     EntityDefinition entity = resolved.entity();
     String entityName = entity.getName();
     TypedField<?, ?> field = requireField(entity, fieldName);
@@ -981,7 +985,7 @@ public class AppFormService {
       .findFirst()
       .map(AppFormFieldRecord::referenceForm)
       .orElse(null);
-    if (isFieldUsedAsSubform(project, formName, fieldName)
+    if (isFieldUsedAsSubform(appId, formName, fieldName)
       && request.referenceForm() != null
       && !request.referenceForm().trim().equals(currentReferenceForm)) {
       throw new ValidationException("子表单引用字段不允许修改引用表单");
@@ -1013,28 +1017,28 @@ public class AppFormService {
       false,
       options,
       referenceForm, config);
-    AppFormRecord current = findFormRecord(project, entityName).orElseGet(() -> defaultRecord(project, entity));
+    AppFormRecord current = findFormRecord(appId, entityName).orElseGet(() -> defaultRecord(project, entity));
     List<AppFormFieldRecord> fields = current.fields().stream()
       .map(item -> item.name().equals(fieldName) ? updatedRecord : item)
       .collect(Collectors.toCollection(ArrayList::new));
     if (fields.stream().noneMatch(item -> item.name().equals(fieldName))) {
       fields.add(updatedRecord);
     }
-    saveFormRecord(project, withFields(current, fields));
-    return toFieldResponse(project, field, updatedRecord);
+    saveFormRecord(appId, withFields(current, fields));
+    return toFieldResponse(appId, field, updatedRecord);
   }
 
   public void deleteField(String appId, String formName, String fieldName) {
     requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
-    ResolvedForm resolved = requireForm(project, appId, formName);
+    ResolvedForm resolved = requireForm(appId, formName);
     EntityDefinition entity = resolved.entity();
     String entityName = entity.getName();
     requireField(entity, fieldName);
     if (BUILTIN_FIELDS.contains(fieldName)) {
       throw new ValidationException("内置字段不允许删除");
     }
-    if (isFieldUsedAsSubform(project, formName, fieldName)) {
+    if (isFieldUsedAsSubform(appId, formName, fieldName)) {
       throw new ValidationException("字段已被子表单引用，请先移除相关子表单布局");
     }
     if (resolved.record() != null) {
@@ -1054,7 +1058,7 @@ public class AppFormService {
         .toList();
       String displayField = fieldName.equals(current.displayField()) ? null : current.displayField();
       String searchField = fieldName.equals(current.searchField()) ? null : current.searchField();
-      saveFormRecord(project, new AppFormRecord(
+      saveFormRecord(appId, new AppFormRecord(
         current.name(),
         current.label(),
         current.description(),
@@ -1069,11 +1073,11 @@ public class AppFormService {
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
   }
 
-  private ResolvedForm requireForm(Project project, String appId, String formName) {
+  private ResolvedForm requireForm(String appId, String formName) {
     if (RESERVED_SYSTEM_FORM_NAMES.contains(formName)) {
       throw new NotFoundException("表单不存在: " + formName);
     }
-    AppFormRecord record = formRecords(project).stream()
+    AppFormRecord record = formRecords(appId).stream()
       .filter(item -> item.name().equals(formName))
       .findFirst()
       .orElse(null);
@@ -1259,7 +1263,7 @@ public class AppFormService {
       record == null ? project.getCreatedAt() : record.createdAt(),
       record == null ? project.getUpdatedAt() : record.updatedAt(),
       entity.getFields().stream()
-        .map(field -> toFieldResponse(project, field, findFieldRecord(record, field.getName()).orElse(null)))
+        .map(field -> toFieldResponse(project.getId(), field, findFieldRecord(record, field.getName()).orElse(null)))
         .toList(),
       layout,
       viewTabs);
@@ -1290,14 +1294,14 @@ public class AppFormService {
   }
 
   private AppFormFieldResponse toFieldResponse(
-    Project project,
+    String appId,
     TypedField<?, ?> field,
     AppFormFieldRecord record
   ) {
     String type = record == null ? inferFieldType(field) : record.type();
     String referenceForm = record != null && !isBlank(record.referenceForm())
       ? record.referenceForm()
-      : referenceForm(project, field);
+      : referenceForm(appId, field);
     return new AppFormFieldResponse(
       field.getName(),
       record == null ? blankToDefault(field.getComment(), field.getName()) : record.label(),
@@ -1308,12 +1312,12 @@ public class AppFormService {
       referenceForm, false, false, record == null ? null : record.config());
   }
 
-  private String referenceForm(Project project, TypedField<?, ?> field) {
+  private String referenceForm(String appId, TypedField<?, ?> field) {
     if (!(field instanceof ModelRefField refField)) {
       return null;
     }
     String targetEntityName = refField.getFrom();
-    return formRecords(project).stream()
+    return formRecords(appId).stream()
       .filter(record -> record.name().equals(targetEntityName))
       .findFirst()
       .map(AppFormRecord::name)
@@ -1378,8 +1382,8 @@ public class AppFormService {
       record.viewTabs());
   }
 
-  private java.util.Optional<AppFormRecord> findFormRecord(Project project, String formName) {
-    return formRecords(project).stream()
+  private java.util.Optional<AppFormRecord> findFormRecord(String appId, String formName) {
+    return formRecords(appId).stream()
       .filter(record -> record.name().equals(formName))
       .findFirst();
   }
@@ -1393,39 +1397,52 @@ public class AppFormService {
       .findFirst();
   }
 
-  private void saveFormRecord(Project project, AppFormRecord replacement) {
-    List<AppFormRecord> records = formRecords(project).stream()
+  private void saveFormRecord(String appId, AppFormRecord replacement) {
+    List<AppFormRecord> records = formRecords(appId).stream()
       .filter(record -> !record.name().equals(replacement.name()))
       .collect(Collectors.toCollection(ArrayList::new));
     records.add(replacement);
-    persistFormRecords(project, records);
+    persistFormRecords(appId, records);
   }
 
-  private void persistFormRecords(Project project, List<AppFormRecord> records) {
-    List<Map<String, Object>> converted = records.stream()
-      .map(record -> {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> value = JsonUtils.convertValue(record, Map.class);
-        return value;
-      })
-      .toList();
+  private void persistFormRecords(String appId, List<AppFormRecord> records) {
     Map<String, Set<String>> children = new LinkedHashMap<>();
     for (AppFormRecord record : records)
       children.put(record.name(), layoutItems(record.layout()).stream()
         .filter(item -> "SUBFORM".equals(item.type())).map(AppFormItemRecord::formName).collect(Collectors.toSet()));
-    dataAuthorization.reconcile(project.getId(), records.stream().map(AppFormRecord::name).collect(Collectors.toSet()), children);
-    App app = appRepository.findApp(project.getId());
-    if (app == null) {
-      throw new NotFoundException("应用不存在: " + project.getId());
+    dataAuthorization.reconcile(appId, records.stream().map(AppFormRecord::name).collect(Collectors.toSet()), children);
+    appFormRepository.deleteByAppId(appId);
+    for (AppFormRecord record : records) {
+      appFormRepository.save(toAppFormRow(appId, record));
     }
-    app.setForms(converted);
+    App app = appRepository.findApp(appId);
+    if (app == null) {
+      throw new NotFoundException("应用不存在: " + appId);
+    }
     app.setUpdatedBy(currentUserId());
     app.setUpdatedAt(LocalDateTime.now());
     appRepository.save(app);
   }
 
+  private AppForm toAppFormRow(String appId, AppFormRecord record) {
+    AppForm row = new AppForm();
+    row.setId(UUID.randomUUID().toString());
+    row.setAppId(appId);
+    row.setName(record.name());
+    row.setContent(JsonUtils.convertValue(record, Map.class));
+    return row;
+  }
+
+  private AppFormRecord toAppFormRecord(AppForm row) {
+    if (row.getContent() == null) {
+      return new AppFormRecord(
+        row.getName(), row.getName(), "",
+        null, null, null, null, List.of(), new AppFormLayoutRecord(List.of()), List.of());
+    }
+    return JsonUtils.convertValue(row.getContent(), AppFormRecord.class);
+  }
+
   private AppFormLayoutRecord normalizeLayoutItems(
-    Project project,
     String appId,
     EntityDefinition entity,
     AppFormLayoutRequest request,
@@ -1441,7 +1458,7 @@ public class AppFormService {
     Set<String> subformKeys = new LinkedHashSet<>();
     List<AppFormItemRecord> items = request.items().stream()
       .map(item -> normalizeLayoutItem(
-        project, appId, fieldNames, item, usedFieldNames, subformKeys))
+        appId, fieldNames, item, usedFieldNames, subformKeys))
       .toList();
     if (items.stream().noneMatch(item -> "FIELD".equals(item.type()))) {
       throw new ValidationException("表单布局必须包含字段");
@@ -1514,7 +1531,6 @@ public class AppFormService {
   }
 
   private AppFormItemRecord normalizeLayoutItem(
-    Project project,
     String appId,
     Set<String> fieldNames,
     AppFormItemRecord item,
@@ -1582,7 +1598,7 @@ public class AppFormService {
         }
         String formName = item.formName().trim();
         String referenceField = item.referenceField().trim();
-        validateSubformItem(project, appId, formName, referenceField);
+        validateSubformItem(appId, formName, referenceField);
         if (!subformKeys.add(formName + '\0' + referenceField)) {
           throw new ValidationException("子表单重复");
         }
@@ -1601,14 +1617,13 @@ public class AppFormService {
   }
 
   private void validateSubformItem(
-    Project project,
     String appId,
     String formName,
     String referenceField
   ) {
     ResolvedForm child;
     try {
-      child = requireForm(project, appId, formName);
+      child = requireForm(appId, formName);
     } catch (NotFoundException caught) {
       throw new ValidationException("子表单不存在: " + formName);
     }
@@ -1620,14 +1635,14 @@ public class AppFormService {
     }
   }
 
-  private boolean isFormUsedAsSubform(Project project, String formName) {
-    return formRecords(project).stream()
+  private boolean isFormUsedAsSubform(String appId, String formName) {
+    return formRecords(appId).stream()
       .flatMap(record -> layoutItems(record.layout()).stream())
       .anyMatch(item -> "SUBFORM".equals(item.type()) && formName.equals(item.formName()));
   }
 
-  private boolean isFieldUsedAsSubform(Project project, String formName, String fieldName) {
-    return formRecords(project).stream()
+  private boolean isFieldUsedAsSubform(String appId, String formName, String fieldName) {
+    return formRecords(appId).stream()
       .flatMap(record -> layoutItems(record.layout()).stream())
       .anyMatch(item -> "SUBFORM".equals(item.type())
         && formName.equals(item.formName())
@@ -1729,15 +1744,9 @@ public class AppFormService {
     return normalized.isEmpty() ? null : normalized;
   }
 
-  private List<AppFormRecord> formRecords(Project project) {
-    App app = appRepository.findApp(project.getId());
-    Object value = app == null ? null : app.getForms();
-    if (!(value instanceof List<?> list)) {
-      return List.of();
-    }
-    return list.stream()
-      .map(item -> JsonUtils.convertValue(item, AppFormRecord.class))
-      .filter(Objects::nonNull)
+  private List<AppFormRecord> formRecords(String appId) {
+    return appFormRepository.findByAppId(appId).stream()
+      .map(this::toAppFormRecord)
       .toList();
   }
 
@@ -1767,11 +1776,11 @@ public class AppFormService {
     return nav.children() != null && nav.children().stream().anyMatch(child -> containsFormDestination(child, formName));
   }
 
-  private void ensureUniqueFormName(Project project, String appId, String formName) {
+  private void ensureUniqueFormName(String appId, String formName) {
     if (RESERVED_SYSTEM_FORM_NAMES.contains(formName)) {
       throw new ValidationException("琛ㄥ崟鍐呯儴鏍囪瘑宸插瓨鍦? " + formName);
     }
-    boolean metadataExists = formRecords(project).stream()
+    boolean metadataExists = formRecords(appId).stream()
       .anyMatch(record -> record.name().equals(formName));
     boolean schemaObjectExists = modelingService.findModels(appId).stream()
       .map(SchemaObject::getName)

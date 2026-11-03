@@ -1538,6 +1538,16 @@
       "dependencies": [],
       "status": "done",
       "evidence": "2026-11-03 完成（flexmodel-engine + flexmodel-server + flexmodel-ui，未提交）。引擎：ScalarType.TEXT(\"Text\")、TextField、Jackson 子类型注册、FML 解析与回写、SqlContext(LONGVARCHAR)/MongoContext 类型处理器、JdbcModelRegistry 反向映射 LONGVARCHAR→Text；codegen JavaType TEXT→String；GraphQL type/comparison 映射 String/StringComparisonExp。服务端：AppFormService.buildField 的 NTEXT/FILE/IMAGE/AVATAR → TextField，inferFieldType(TextField)→NTEXT，SystemFormService 同步。前端：建模字段类型下拉新增 Text、字段输入用 TextArea、FML 补全与高亮、移除无效的 String.text 开关。文档：overview/modeling 类型表与 MCP 说明补充 Text。测试：新增 MySQLSqlDialectTest（longtext 生成 + 行内字节预算回归）、ASTNodeConverterTest.textTypeIsParsedAsTextField、JsonSerializeTest.textFieldSurvivesJsonRoundTrip；mvn test -pl flexmodel-engine/flexmodel-core 通过；mvn compile -pl flexmodel-server -am 通过；flexmodel-ui npx tsc -b 通过。"
+    },
+    {
+      "id": "feat-167",
+      "name": "Apps - f_app.forms 拆分独立 f_app_form 表",
+      "description": "将 f_app.forms JSON 列拆为独立平台表 f_app_form（一表单一行，(app_id, name) 唯一）：外层仅保留 id、app_id、name（唯一索引与寻址键）与 content（AppFormRecord 全量 JSON，冗余 name/label/description），label/description 不作为外层列；f_app 移除 forms JSON 列，改为 f_app_form[] 关联（cascadeDelete），f_app_form 反向 app 关联，app.getForms() 可经 expand 获取全部表单；AppFormService 读写改经 AppFormRepository 按 app_id 直查（不通过 Project/App 行）。不做历史数据迁移。",
+      "dependencies": [
+        "feat-144"
+      ],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-server，未提交）。platform.fml：f_app 移除 forms? JSON 列并新增 forms? : f_app_form[] @relation(localField id, foreignField app_id, cascadeDelete true)；新增 model f_app_form（id uuid、app_id、app? : f_app 关联、name、content JSON，UQ_APP_FORM_NAME 唯一索引 [app_id, name]）。新增 AppFormRepository（findByAppId/save/deleteByAppId）与 AppFormFmRepository（System.appForm，按 name ASC 排序）；AppFormService：formRecords(appId)/findFormRecord/saveFormRecord/persistFormRecords/requireForm/isFormUsedAsSubform/isFieldUsedAsSubform/referenceForm/toFieldResponse/validateSubformItem/normalizeLayoutItem(s)/ensureUniqueFormName 全链路去掉 Project 参数、按 appId 直查 f_app_form，读经 content→AppFormRecord、写为全量替换（deleteByAppId + 逐行 mergeInto，AppFormRecord 序列化为 content Map，保留 f_app.updated_at 时间戳回写与数据授权 reconcile）；AppService.createApp 移除 setForms；ProjectPlatformDataCleaner APP_MODELS 增加 AppForm。验证：mvn compile -pl flexmodel-server -am BUILD SUCCESS（codegen 重生成 App.forms 为 @ModelRef List<AppForm>、AppForm 含 id/appId/name/content+app ref）；定向测试 74 项中 72 通过（AppPackageZipTest 10、AppRecordServiceTest 6、AppRecordHistoryRecorderTest 8、AppRecordDiscussionServiceTest 2、AppViewServiceTest 7、AppToolsTest 5、AppResourceTest/AppNavigationResourceTest/AppFormResourceTest/AppDataAuthorizationResourceTest/WorkbenchResourceTest/AppPackageValidatorTest 全绿），AppTemplateCatalogTest 失败 2 项经 git stash 基线复跑确认为 HEAD 既有失败（模板目录 6≠4 与 qms 示例数据校验，与本次无关）；mvn test -pl flexmodel-engine BUILD SUCCESS。"
     }
   ]
 }

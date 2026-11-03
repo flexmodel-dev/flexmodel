@@ -126,7 +126,6 @@ public class AppService {
     app.setIconName(iconName(request.iconName()));
     app.setPrimaryColor(primaryColor(request.primaryColor()));
     app.setNavigation(List.of());
-    app.setForms(List.of());
     app.setCreatedBy(userId);
     app.setUpdatedBy(userId);
     app.setCreatedAt(LocalDateTime.now());

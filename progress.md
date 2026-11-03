@@ -1,5 +1,33 @@
 # Session Progress Log
 
+## Apps - f_app.forms 拆分独立 f_app_form 表（2026-11-03，feat-167）
+
+- 需求：f_app 的 forms JSON 列拆为独立平台表 f_app_form，一表单一行；外层列按需精简，
+  AppForm 查询不通过 Project/App 行，f_app 与 f_app_form 建立双向关联且 app.getForms () 可用。
+- 最终结构（platform.fml）：
+  - `f_app` 移除 `forms? : JSON` 列，新增 `forms? : f_app_form[] @relation(localField: "id",
+    foreignField: "app_id", cascadeDelete: "true")`（@ModelRef，非列，expand 可取）；
+  - 新增 `f_app_form`：`id`(uuid)、`app_id`、`app? : f_app` 反向关联（cascadeDelete false）、
+    `name`、`content : JSON`；UQ_APP_FORM_NAME 唯一索引 `[app_id, name]`。
+  - 取舍：`name` 保留外层（唯一索引须列级强制一表单一行 + 寻址键）；`label`/`description`
+    不查询，仅存 content（冗余 name/label/description 无妨）；content 即整个 AppFormRecord
+    （含 displayField/searchField/fields/layout/viewTabs/createdAt/updatedAt）。
+- 读写路径：新增 `AppFormRepository`（findByAppId/save/deleteByAppId）+ `AppFormFmRepository`
+  （System.appForm 静态元模型，name ASC）；AppFormService 的 formRecords/findFormRecord/
+  saveFormRecord/persistFormRecords/requireForm/isFormUsedAsSubform/isFieldUsedAsSubform/
+  referenceForm/toFieldResponse/validateSubformItem/normalizeLayoutItem (s)/ensureUniqueFormName
+  全部去掉 Project 参数、按 appId 直查 f_app_form；persistFormRecords 保持整表替换语义
+  （deleteByAppId + 逐行 mergeInto）并保留 f_app.updated_at/updated_by 回写与数据授权
+  reconcile；AppService.createApp 移除 setForms；ProjectPlatformDataCleaner APP_MODELS 加
+  AppForm（关联 cascadeDelete 与显式清理双保险）。
+- 生成实体核对：App.forms 为 `@ModelRef List<AppForm>`（关系非列），AppForm 为
+  id/appId/app (@ModelRef)/name/content。
+- 验证：mvn compile -pl flexmodel-server -am BUILD SUCCESS；定向测试 74 项 72 通过
+  （AppTemplateCatalogTest 失败 2 项经 git stash 基线复跑确认为 HEAD 既有失败：内置模板
+  6≠4 与 qms 示例数据选项校验，与本次无关）；mvn test -pl flexmodel-engine BUILD SUCCESS。
+- 注意：需重启 quarkus:dev 才会在库中创建 f_app_form 表；历史 f_app.forms JSON 数据不做
+  迁移（按项目约定不保留兼容层）。未提交代码。
+
 ## 引擎 - 系统模型迁移字段重复修复（2026-11-03，feat-165）
 
 - 现象：`GET /api/system/forms/f_user/records` 报 `Duplicate column name 'phone'`，生成 SQL 中

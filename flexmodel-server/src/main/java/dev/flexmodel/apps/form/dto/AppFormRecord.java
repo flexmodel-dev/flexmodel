@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 应用表单在项目 metadata 中的存储结构。
+ * 应用表单记录（f_app_form 表的内存结构，整包导入导出与内部传递使用）。
  *
  * @param name          表单英文名称，同时作为实体名
  * @param label         表单展示名

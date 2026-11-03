@@ -37,6 +37,7 @@ public class ProjectPlatformDataCleaner {
     AppApprovalRecordLock.class,
     AppApprovalInstance.class,
     AppWorkbench.class,
+    AppForm.class,
     AppDataAuthorization.class
   );
 

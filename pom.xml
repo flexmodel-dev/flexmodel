@@ -37,6 +37,16 @@
         <quarkus-jdbc-sqlite.version>3.0.11</quarkus-jdbc-sqlite.version>
         <quarkus-mcp-server-http.version>1.12.0</quarkus-mcp-server-http.version>
         <quickjs4j.version>0.1.0</quickjs4j.version>
+      <!--
+        quarkus-poi 传递引入的 zstd-jni 1.5.7-21 在 JDK 22+ 通过 Multi-Release JAR 使用
+        FFM（java.lang.foreign）实现本地绑定。GraalVM Native Image 分析
+        ZstdBinding.compressBound 时无法处理 MethodHandle.linkToNative，导致 native 构建失败：
+        AnalysisError$ParsingError: unexpected input could not be handled: linkToNative。
+        Netty 在 zstd-jni 存在时会启用 zstd 压缩分支，使该路径在 native 构建中可达。
+        固定到未包含 FFM 实现的 1.5.7-6（JNI 绑定）；待 GraalVM 修复
+        （oracle/graal#14860）或 zstd-jni 提供 native-image 兼容实现后可移除。
+      -->
+      <zstd-jni.version>1.5.7-6</zstd-jni.version>
         <compiler-plugin.version>3.15.0</compiler-plugin.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
@@ -46,6 +56,11 @@
     </properties>
     <dependencyManagement>
         <dependencies>
+          <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <version>${zstd-jni.version}</version>
+          </dependency>
             <dependency>
                 <groupId>io.agroal</groupId>
                 <artifactId>agroal-pool</artifactId>

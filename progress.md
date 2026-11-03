@@ -1,5 +1,24 @@
 # Session Progress Log
 
+## Native 镜像编译失败：zstd-jni FFM linkToNative（2026-11-03，build fix）
+
+- 现象：`mvn clean package -Pnative -pl flexmodel-server -am` 在 analysis 阶段失败：
+  `AnalysisError$ParsingError ... com.github.luben.zstd.ZstdBinding.compressBound`，
+  cause 为 `VMError$HostedError: should not reach here: unexpected input could not be handled: linkToNative`。
+- 根因：quarkus-poi 2.2.2 传递引入 zstd-jni 1.5.7-21。该版本是 Multi-Release JAR，JDK 22+ 走
+  FFM（java.lang.foreign）实现本地绑定；Quarkus native 默认在构建期初始化所有类，`ZstdBinding` 的
+  downcall MethodHandle 成为镜像堆常量，GraalVM 25 无法 intrinsify `linkToNative`（oracle/graal#14860）。
+  Netty 4.1.130 在 zstd-jni 存在时会启用 zstd 压缩分支，使 `ZstdEncoder.allocateBuffer →
+  Zstd.compressBound` 在 native 分析中可达。此前使用 POI 6.0.0（无 zstd-jni）时不会触发。
+- 修复：根 pom 新增 `zstd-jni.version=1.5.7-6` 并在 dependencyManagement 固定。该版本为 JNI 实现、无 FFM，
+  与 commons-compress 1.28 使用的 zstd API 兼容。不能直接 exclude zstd-jni：缺失时 commons-compress 的
+  `ZstdCompressorInputStream` / `ZstdDecompressCtx` 在 native 构建中无法解析（camel-quarkus#8860）。
+- 验证：`mvn -o dependency:tree -pl flexmodel-server` 显示 `zstd-jni:1.5.7-6`；
+  `mvn -o clean compile -pl flexmodel-server -DskipTests` BUILD SUCCESS。原生镜像本身待 CI 验证
+  （本机无 MSVC / 可用 Docker，无法本地执行 native-image）。
+- 备注：JNI 版 zstd 在 native 运行期仍需 native 库资源（本应用业务未使用 zstd，仅 Netty 可选压缩会触达）；
+  等 GraalVM 修复 FFM downcall 分析或 zstd-jni 提供 native-image 兼容实现后可移除该固定。未执行 git commit/push。
+
 ## Apps - 整包导入结构重建批量化（2026-11-03，perf，不修改 engine）
 
 - 需求：在不改 `flexmodel-engine` 的前提下，尽量把表单与引用字段一次建好，消除结构重建的 O (F²) 写入。

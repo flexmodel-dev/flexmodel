@@ -1,6 +1,5 @@
 package dev.flexmodel.apps;
 
-import dev.flexmodel.apps.approval.AppApprovalLifecycle;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationService;
 import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.dto.AppResponse;
@@ -29,8 +28,6 @@ import java.util.stream.Collectors;
  */
 @ApplicationScoped
 public class AppService {
-  @Inject
-  AppApprovalLifecycle appApprovalLifecycle;
 
   private static final Pattern PROJECT_ID_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{1,62}$");
   private static final Pattern PRIMARY_COLOR_PATTERN = Pattern.compile("^[a-z][a-z0-9-]{0,31}$");
@@ -164,7 +161,6 @@ public class AppService {
 
   public void deleteApp(String appId) {
     Project project = requireAppProject(appId);
-    appApprovalLifecycle.beforeDelete(appId);
     appWorkbenchRepository.deleteByAppId(project.getId());
     appDataAuthorizationService.deleteAppRules(appId);
     projectService.deleteProject(project.getId());

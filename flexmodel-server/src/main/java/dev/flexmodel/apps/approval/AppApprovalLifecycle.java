@@ -1,6 +1,5 @@
 package dev.flexmodel.apps.approval;
 
-import dev.flexmodel.common.ProjectDeletionGuard;
 import dev.flexmodel.common.ValidationException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -15,7 +14,7 @@ import static dev.flexmodel.apps.approval.AppApprovalJson.flatten;
 import static dev.flexmodel.common.Values.*;
 
 @ApplicationScoped
-public class AppApprovalLifecycle implements ProjectDeletionGuard {
+public class AppApprovalLifecycle {
   @Inject
   AppApprovalInstanceRepository appApprovalInstanceRepository;
   @Inject
@@ -25,12 +24,6 @@ public class AppApprovalLifecycle implements ProjectDeletionGuard {
 
   private boolean active(Map<String, Object> run) {
     return !Set.of("APPROVED", "REJECTED", "TERMINATED").contains(text(run, "status"));
-  }
-
-  @Override
-  public void beforeDelete(String appId) {
-    if (appApprovalInstanceRepository.findAll(appId).stream().anyMatch(this::active))
-      throw new ValidationException("应用仍有未结束的审批，请先处理或终止");
   }
 
   public void beforeDeleteForm(String appId, String form) {

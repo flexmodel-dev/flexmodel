@@ -1,5 +1,38 @@
 # Session Progress Log
 
+## 引擎 - 系统模型迁移字段重复修复（2026-11-03，feat-165）
+
+- 现象：`GET /api/system/forms/f_user/records` 报 `Duplicate column name 'phone'`，生成 SQL 中
+  phone/avatar/manager_user_id/status 各出现两次。
+- 根因链：SessionFactory.applyBuildItemSchemas 对保留运行时模型（f_user/f_department/f_role）先经
+  mergedFields 把种子新字段合并进实体（已含 phone），migrateEntity→createEntity 将合并实体注册；随后
+  migrateEntity 按启动前快照 older 做字段 diff，older 无 phone 便调 createField，而
+  SqlSchemaService.createField 向已含该字段的注册实体无条件 addField 并 register 持久化——字段被写入
+  两次，且因 mergedFields 保留 existing 全部条目，重复跨重启持续存在。记录查询无投影时
+  SqlStatementBuilder.appendProjection 按字段列表逐列生成 SELECT，重复字段即重复列。恰好是
+  phone（feat-119 新增）、avatar、manager_user_id、status 这些“后加进 platform.fml”的列中招。
+- 修复（flexmodel-core 两处，共 +9 行，不改 EntityDefinition 建模层，外层限制）：
+  SqlSchemaService.createField 在注册实体已含同名字段时幂等跳过（跳过 addField/register/createColumn
+  直接返回；modifyField 为先 removeField 再 addField 不受影响）；SessionFactory.mergedFields 用现有
+  fieldNames Set 对 existing 字段流去重——启动迁移时以去重后的定义重新 register，自愈已被污染的持久化定义，
+  无需手工清库。
+- 验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过（clean 因运行中
+  flexmodel-server-dev.jar 文件锁跳过，未停用户服务）；mvn test -pl flexmodel-engine 全绿。
+  修复在 engine 内，需重启 quarkus:dev 生效；重启后迁移会自动清理 f_user 重复字段。未提交代码。
+
+## Apps - 移除应用删除的未结束审批限制（2026-11-03，fix）
+
+- 需求：删除应用报“应用仍有未结束的审批，请先处理或终止”，用户要求不再限制，删除时直接清理相关数据。
+- 方案：审批数据（实例/任务/等待/记录锁）与流程数据（FlowInstance/RuntimeMessage/Quartz 作业等）
+  在 `ProjectService.deleteProject` 中已由 `ProjectPlatformDataCleaner` 与 `project.deleted` 事件全量清理，
+  无需后台终止流程，直接移除限制即可。
+- 改动：`AppApprovalLifecycle` 不再实现 `ProjectDeletionGuard`，删除 `beforeDelete` 校验
+  （保留 `beforeDeleteForm` 表单删除校验）；`AppService.deleteApp` 移除 guard 调用与注入。
+  `ProjectDeletionGuard` 接口及 `ProjectService` 的 guard 迭代保留作为扩展点（当前无实现）。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过；
+  测试源码无 `beforeDelete`/`ProjectDeletionGuard` 引用。
+- 未提交代码。
+
 ## Apps - 导航绑定具体工作台（2026-11-03，feat-162）
 
 - 需求：导航菜单关联项选择内置“工作台”页面时支持配置具体工作台，未配置或未选择时默认第一个工作台。

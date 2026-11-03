@@ -122,6 +122,9 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     // 更新实体定义，添加新字段
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(field.getModelName());
     if (entity != null) {
+      if (entity.getField(field.getName()) != null) {
+        return field;
+      }
       entity.addField(field);
       modelRegistry.register(sessionContext.getSchemaName(), entity);
     }

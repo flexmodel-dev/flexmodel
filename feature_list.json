@@ -1516,6 +1516,14 @@
       "evidence": "2026-11-02 完成，无代码改动（产物在 %TEMP% 下的 erp_*/plm_* 脚本与本地 dev 库中的应用）。PLM app_970eb8b43e3a：15 张 plm_ 表单、168 个视图页签、示例数据齐备。ERP erp_system：34 张 erp_ 业务表单（主数据→采购→销售→库存→生产→财务全链路）、31 张表单布局共 904 布局项 + 96 条字段显示控制、419 个视图页签（TABLE 216/KANBAN 114/DETAIL 33/CALENDAR 27/GANTT 13/GALLERY 10/HIERARCHY 6）、8 个导航分组约 29 个入口、2 个工作台（经营驾驶舱 15 组件、供应链与库存监控 16 组件，31 个可取数组件全部返回真实数据）、7 条已发布审批流（含费用报销子流程）、301 条示例记录。验证：erp_verify3.mjs 回读全部表单——601 处 REFERENCE 完整性检查 0 悬空 0 必填缺失，385 个带筛选页签逐个执行筛选/排序 DSL 全部命中 ≥1 条且 0 报错，工作台组件逐个取数 0 失败；写入前先由 erp_schema.mjs 导出 34 张表单契约、erp_data.mjs --dry 离线校验 290 条记录再真实写入。过程中修正三类契约误用并记录在 progress.md：视图筛选必须为 _and/_or 结构、KANBAN groupField 不接受 STATE 字段、筛选值不能为空串；MCP 工具业务错误以普通文本 Error: 返回而 isError 仍为 false（首轮 434 页签实际 0 落库）；create_app_mock_records 需显式传子表上下文三参数且 DATE 空值必须为 null。未执行 git commit/push。"
     },
     {
+      "id": "feat-165",
+      "name": "引擎 - 系统模型迁移字段重复导致 Duplicate column 修复",
+      "description": "f_user 等保留运行时模型在系统 schema 启动迁移时产生重复字段：SessionFactory.mergedFields 已将种子新字段合并进实体并经 migrateEntity→createEntity 注册，随后 migrateEntity 对 older 快照做字段级 diff 调 createField，SqlSchemaService.createField 又向已含该字段的注册实体无条件 addField 并持久化，导致 phone/avatar/manager_user_id/status 在存储定义中出现两次，SELECT 列列表（SqlStatementBuilder 无投影分支按字段列表逐列生成）出现 Duplicate column。修复不改建模层，在外层限制：createField 在注册实体已含同名字段时幂等跳过；mergedFields 对已存储实体字段列表按名称去重，启动迁移时自愈已被污染的持久化定义。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-core，未提交；EntityDefinition 建模层未改动）。SqlSchemaService.createField：entity.getField 同名非空时直接返回，跳过 addField/register/createColumn（modifyField 为先 removeField 再 addField 不受影响）；SessionFactory.mergedFields：用 fieldNames Set 对 existing 字段流去重并 filter null。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过（clean 因运行中 dev 服务锁文件跳过）；mvn test -pl flexmodel-engine 全绿。需重启 quarkus:dev 生效，重启时迁移会以去重后的定义重新持久化 f_user，自动清理已重复的存储字段。"
+    },
+    {
       "id": "feat-164",
       "name": "视图配置与整包导出支持内置字段",
       "description": "MCP 创建的应用在导出整包时报「VIEW_TAB_INVALID … 日历开始字段不存在: created_at」：保存视图（save_app_form_views）允许引用内置字段（id/owner_id/created_by/updated_by/created_at/updated_at），但导出校验器在包内 forms[].fields 未枚举内置条目时无法解析这些字段，保存与导出语义不一致。要求全链路一致地支持内置字段：保存、能力目录、导出校验三条链路在记录缺失内置条目时也能解析内置字段。",

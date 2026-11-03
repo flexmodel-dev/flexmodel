@@ -165,9 +165,12 @@ public class SessionFactory {
     Set<String> fieldNames = new LinkedHashSet<>();
     List<TypedField<?, ?>> fields = existing.getFields().stream()
       .<TypedField<?, ?>>map(field -> {
-        fieldNames.add(field.getName());
+        if (!fieldNames.add(field.getName())) {
+          return null;
+        }
         return incomingFields.getOrDefault(field.getName(), field);
       })
+      .filter(Objects::nonNull)
       .toList();
     List<TypedField<?, ?>> result = new ArrayList<>(fields);
     incoming.getFields().stream()

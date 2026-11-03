@@ -76,6 +76,8 @@ class AppTemplateCatalogTest {
     AppTemplateCatalog catalog = catalog();
     catalog.load(this::classpath);
     assertFalse(catalog.summaries().isEmpty(), "应至少内置一个应用模板");
+    // 目录里的 index 条目必须全部可加载，防止坏包被静默跳过后前端少模板。
+    assertEquals(4, catalog.summaries().size());
     AppTemplate.Summary erp = catalog.summaries().stream()
       .filter(summary -> "erp".equals(summary.id())).findFirst().orElseThrow();
     assertEquals("ERP 企业资源计划", erp.name());
@@ -83,6 +85,16 @@ class AppTemplateCatalogTest {
     assertTrue(erp.includesData());
     assertNotNull(erp.exportedAt());
     assertEquals("erp", catalog.require("erp").summary().id());
+    AppTemplate.Summary scm = catalog.summaries().stream()
+      .filter(summary -> "scm".equals(summary.id())).findFirst().orElseThrow();
+    assertEquals("SCM 供应链管理", scm.name());
+    assertEquals(11, scm.formCount());
+    assertEquals("scm", catalog.require("scm").summary().id());
+    AppTemplate.Summary wms = catalog.summaries().stream()
+      .filter(summary -> "wms".equals(summary.id())).findFirst().orElseThrow();
+    assertEquals("WMS 仓库管理系统", wms.name());
+    assertEquals(13, wms.formCount());
+    assertEquals("wms", catalog.require("wms").summary().id());
   }
 
   @Test

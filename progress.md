@@ -4297,3 +4297,25 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   builtInTemplatesArePortable 基线目录零 issue 零 warning）、AppPackageValidatorTest 21/21、AppPackageZipTest
   10/10。启动目录现可加载 2 个内置模板，前端模板画廊应同时可见 plm 与 erp。
 - 未执行 git commit/push（遵循 AGENTS.md）。
+
+## WMS 内置模板修复与模板清洗工具（2026-11-03，feat-143）
+
+- 现象：新增 wms.flexmodel.zip 后前端依旧选不到该模板；另发现本机 dev 服务全接口 500。
+- WMS 包问题（与前三个模板同型）：10 条审批执行人 users/organizations 引用源实例身份；18 处示例数据 f_user
+  引用；f_outbound_item.outbound_order 4 处引用误用 displayField 文本（“启明贸易销售出库-SB11月”）而非记录
+  id；f_inbound_item/f_outbound_item 必填 name 4+4 行空值。index id 与文件名一致（wms）。
+- 新增固化工具 flexmodel-server/tools/app-template-sanitize.mjs（Node 零依赖，内置 zip 读写）：check 模式报告
+  id↔文件名、索引注册、审批执行人来源、必填系统引用字段、示例数据引用（含 displayField→id
+  映射检测）、必填空值、附件值、数据权限、导航可见性等全部问题，--fix
+  自动完成可机械化修复（users/organizations→roles[admin|developer] 或 initiator、系统引用置空、必填系统引用字段放宽、displayField
+  引用映射回 id）并重新打包；其余仅报告待人工处理。此后新增模板入库流程：导出 → node tools/app-template-sanitize.mjs --fix →
+  人工处理 WARN → 提交。
+- WMS 修复：name 空值按 batch_no 填充后，工具 --fix 完成（审批规则改写 10 条、系统引用置空 18 处、displayField 引用映射 4
+  处），check 四个模板全部 [OK]。
+- 测试：AppTemplateCatalogTest 目录完整性断言 3→4 并新增 wms 断言（13 表单）；mvn test -pl flexmodel-server
+  -Dtest=AppPackage *Test,AppTemplate*Test 全绿（7+21+10），同时验证工具重打包的 zip 可被 AppPackageZip 严格解析。
+- 事故与恢复：上轮被中断的构建导致 target/classes 残缺（codegen entity 0 类），本机 8080 dev 服务全接口 500（含
+  /auth/login）；经 mvn test-compile -pl flexmodel-server 恢复 BUILD SUCCESS，dev 服务需重启 quarkus:dev
+  后生效——此前用户端反复“模板有问题”的体感很可能部分源于该坏服务。
+- 校验严格度结论（回应“是不是校验太严格了”）：docs/plans/app-templates.md:208 明确 users/organizations
+  执行人“实际上无法跨实例移植”，基线目录校验是有意设计；放松只会把失败推迟到导入/启用时刻。真正缺的是入库清洗工序，已由工具补齐。未提交代码。

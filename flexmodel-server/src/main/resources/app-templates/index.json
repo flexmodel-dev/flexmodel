@@ -15,6 +15,30 @@
       "category": "企业管理",
       "iconName": "Calculator",
       "order": 2
+    },
+    {
+      "id": "scm",
+      "name": "SCM 供应链管理",
+      "description": "供应链管理：供应商准入与绩效考核、产品物料与供货目录、采购申请与订单、出入库流水与库存台账、物流发运跟踪，配套条件审批流与供应链运营看板",
+      "category": "企业管理",
+      "iconName": "Truck",
+      "order": 3
+    },
+    {
+      "id": "wms",
+      "name": "WMS 仓库管理系统",
+      "description": "仓库管理系统：库区库位与托盘容器管理、物料主数据与收货质检、入库上架、出库拣货、库位库存台账、移库与盘点管理，配套出库/移库审批流与仓储运营看板",
+      "category": "企业管理",
+      "iconName": "Warehouse",
+      "order": 4
+    },
+    {
+      "id": "mes",
+      "name": "MES 制造执行系统",
+      "description": "制造执行系统：产品物料/工序/工作中心/设备/人员主数据，工艺路线与BOM，生产工单与工序计划、领料、报工、质量检验、设备维修保养，配套工单下达/维修审批流与生产运营看板",
+      "category": "企业管理",
+      "iconName": "Factory",
+      "order": 5
     }
   ]
 }

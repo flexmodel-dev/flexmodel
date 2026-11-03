@@ -188,7 +188,7 @@
 
 ## Apps - 数据权限条件值类型（2026-11-02，feat-153）
 
-- 条件 `_eq`/`_ne` 比较值支持三种值类型：自定义字面量、当前用户 `{"_user": "id"}`、字段引用
+- 条件 `_eq`/`_ne` 比较值支持三种值类型：固定值字面量、当前用户 `{"_user": "id"}`、字段引用
   `{"_field": "路径"}`（本表裸路径或 `引用字段.目标字段` 一级路径）。动态值仅 `_eq`/`_ne`；
   `_user` 仅 REFERENCE/TEXT 字段；`_field` 两端类型一致或一端 REFERENCE 对另一端 TEXT/内置 id；
   引用表单不存在、多级路径拒绝。
@@ -196,8 +196,12 @@
   （`AppDataAuthorizationService` 用 `appFormService.findForm` 解析，缺失返回 null）；注意 lambda 参数名与方法内局部变量
   `name` 冲突需改名；javac 流作用域：`if (!(x instanceof String p) || …) fail();` 之后 p 不可用，需重新 cast。
 - 前端：`FilterConditionEditor` 增加 `valueTypes` / `resolveFormFields` props；`_eq`/`_ne` 时显示「值类型」选择
-  （自定义/当前用户/字段引用），字段引用渲染分组路径选择（本表字段 + REFERENCE 解析目标表单），
+  （固定值/当前用户/字段引用），字段引用渲染分组路径选择（本表字段 + REFERENCE 解析目标表单），
   类型兼容规则 `typesCompatible` 与服务端 `requireCompatible` 保持一致；`FormDataPermissions` 传入三种值类型与全应用表单解析。
+- 样式统一为 shadcn/ui：`FilterConditionEditor` 原生 `<select>` 全部改为 `ui/select`（Select/SelectTrigger/SelectValue/
+  SelectContent/SelectItem，分组用 SelectGroup/SelectLabel，布尔值未选时用 placeholder，宽度 h-9/w-40/w-28/w-24/w-52）；
+  `FormDataPermissions` 原生 `<input type="checkbox">` 全部改为 `ui/checkbox`（启用规则、数据范围、表头三开关、
+  逐字段读写删），aria-label 与既有 e2e 定位保持不变。
 - 文档：`data-permissions.md` §5.4 增加值类型表格与 dataScope 边界（归属范围用 dataScope，
   非所有者字段的当前用户匹配用条件值类型，二者 AND）。
 - 验证：`mvn test-compile -pl flexmodel-server` 通过；apps-ui `npm run build` 通过；

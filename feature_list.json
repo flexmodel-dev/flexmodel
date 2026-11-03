@@ -65,10 +65,10 @@
     },
     {
       "id": "feat-153",
-      "name": "Apps - 数据权限条件值类型（自定义/当前用户/字段引用）",
-      "description": "数据权限条件 _eq/_ne 的比较值支持三种值类型：自定义字面量、当前用户 {\"_user\": \"id\"}（运行时解析为访问用户 id，仅 REFERENCE/TEXT 字段）、字段引用 {\"_field\": \"路径\"}（本表裸路径或 引用字段.目标字段 一级路径，两端类型一致或 REFERENCE 对目标 id/TEXT）。与 data_scope 边界：归属范围用 dataScope，非所有者字段的当前用户匹配用条件值类型。动态值运行时解析待授权引擎接入后生效，当前仅保存与校验配置。",
+      "name": "Apps - 数据权限条件值类型（固定值/当前用户/字段引用）",
+      "description": "数据权限条件 _eq/_ne 的比较值支持三种值类型：固定值字面量、当前用户 {\"_user\": \"id\"}（运行时解析为访问用户 id，仅 REFERENCE/TEXT 字段）、字段引用 {\"_field\": \"路径\"}（本表裸路径或 引用字段.目标字段 一级路径，两端类型一致或 REFERENCE 对目标 id/TEXT）。与 data_scope 边界：归属范围用 dataScope，非所有者字段的当前用户匹配用条件值类型。动态值运行时解析待授权引擎接入后生效，当前仅保存与校验配置。",
       "status": "done",
-      "evidence": "2026-11-02 完成（未提交）。后端：AppPermissionConditions.validate 增加引用表单解析器参数（AppDataAuthorizationService 以 appFormService.findForm 解析 referenceForm，缺失返回 null 报引用表单不存在）；validateOperand 校验动态值仅 _eq/_ne、_user 仅 id 且字段为 REFERENCE/TEXT、_field 路径为裸路径（本表字段存在且类型兼容）或 ref.target 一级路径（ref 为 REFERENCE 且 target 存在于 referenceForm 且类型兼容），requireCompatible 规则：同类型或一端 REFERENCE 对另一端 TEXT/内置 id；多级路径拒绝。测试：AppPermissionConditionsTest 增补动态值接受/拒绝用例并更新签名。前端（flexmodel-apps-ui）：FilterConditionEditor 增加 valueTypes（literal/currentUser/field）与 resolveFormFiles props，叶子节点在 _eq/_ne 时显示值类型选择（自定义/当前用户/字段引用），字段引用渲染分组路径选择（本表字段 + 各 REFERENCE 字段解析目标表单字段，按与服务端一致的类型兼容规则过滤），typesCompatible/fieldReferenceGroups 为共享辅助函数；FormDataPermissions 传入三种值类型与全应用表单解析。文档：data-permissions.md §5.4 增加值类型表格、字段引用路径与类型规则、与 data_scope 的边界说明。验证：mvn test-compile -pl flexmodel-server 通过；apps-ui npm run build 通过（TEMP/TMP 指向项目内）；按用户要求未执行测试用例，测试留待后续运行。实现注意：javac 流作用域下 if (!(x instanceof T t) || …) fail(); 之后 t 不可用（fail 可能正常返回），需重新 cast。"
+      "evidence": "2026-11-02 完成（未提交）。后端：AppPermissionConditions.validate 增加引用表单解析器参数（AppDataAuthorizationService 以 appFormService.findForm 解析 referenceForm，缺失返回 null 报引用表单不存在）；validateOperand 校验动态值仅 _eq/_ne、_user 仅 id 且字段为 REFERENCE/TEXT、_field 路径为裸路径（本表字段存在且类型兼容）或 ref.target 一级路径（ref 为 REFERENCE 且 target 存在于 referenceForm 且类型兼容），requireCompatible 规则：同类型或一端 REFERENCE 对另一端 TEXT/内置 id；多级路径拒绝。测试：AppPermissionConditionsTest 增补动态值接受/拒绝用例并更新签名。前端（flexmodel-apps-ui）：FilterConditionEditor 增加 valueTypes（literal/currentUser/field）与 resolveFormFiles props，叶子节点在 _eq/_ne 时显示值类型选择（固定值/当前用户/字段引用），字段引用渲染分组路径选择（本表字段 + 各 REFERENCE 字段解析目标表单字段，按与服务端一致的类型兼容规则过滤），typesCompatible/fieldReferenceGroups 为共享辅助函数；FormDataPermissions 传入三种值类型与全应用表单解析。文档：data-permissions.md §5.4 增加值类型表格、字段引用路径与类型规则、与 data_scope 的边界说明。验证：mvn test-compile -pl flexmodel-server 通过；apps-ui npm run build 通过（TEMP/TMP 指向项目内）；按用户要求未执行测试用例，测试留待后续运行。实现注意：javac 流作用域下 if (!(x instanceof T t) || …) fail(); 之后 t 不可用（fail 可能正常返回），需重新 cast。"
     },
     {
       "id": "feat-152",

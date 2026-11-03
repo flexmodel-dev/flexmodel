@@ -16,6 +16,7 @@ import dev.flexmodel.apps.navigation.AppNavigationService;
 import dev.flexmodel.apps.navigation.dto.AppNavRecord;
 import dev.flexmodel.apps.navigation.dto.AppNavResponse;
 import dev.flexmodel.apps.navigation.dto.AppNavSaveRequest;
+import dev.flexmodel.apps.navigation.dto.NavDestinationRecord;
 import dev.flexmodel.apps.navigation.dto.NavDestinationRequest;
 import dev.flexmodel.apps.record.AppRecordHistoryEvent;
 import dev.flexmodel.apps.record.AppRecordHistoryRecorder;
@@ -25,6 +26,7 @@ import dev.flexmodel.apps.workbench.AppWorkbenchService;
 import dev.flexmodel.apps.workbench.dto.WorkbenchComponentRecord;
 import dev.flexmodel.apps.workbench.dto.WorkbenchCreateRequest;
 import dev.flexmodel.apps.workbench.dto.WorkbenchLayoutRecord;
+import dev.flexmodel.apps.workbench.dto.WorkbenchResponse;
 import dev.flexmodel.apps.workbench.dto.WorkbenchShortcutsConfig;
 import dev.flexmodel.codegen.entity.App;
 import dev.flexmodel.codegen.entity.Project;
@@ -177,10 +179,12 @@ public class AppPackageImport {
       applyLayouts(appId, content.forms());
 
       run.phase("navigation");
-      Map<String, String> navIds = rebuildNavigation(appId, content.navigation());
+      Map<String, String> workbenchNavRefs = new LinkedHashMap<>();
+      Map<String, String> navIds = rebuildNavigation(appId, content.navigation(), workbenchNavRefs);
 
       run.phase("workbenches");
-      rebuildWorkbenches(appId, content.workbenches(), navIds);
+      Map<String, String> workbenchIds = rebuildWorkbenches(appId, content.workbenches(), navIds);
+      rewriteWorkbenchDestinations(appId, workbenchNavRefs, navIds, workbenchIds);
 
       run.phase("approvals");
       rebuildApprovals(appId, content.approvals());
@@ -292,28 +296,52 @@ public class AppPackageImport {
 
   // ---------------------------------------------------------------- 导航与工作台
 
-  private Map<String, String> rebuildNavigation(String appId, List<AppNavRecord> navs) {
+  private Map<String, String> rebuildNavigation(String appId, List<AppNavRecord> navs,
+                                                Map<String, String> workbenchNavRefs) {
     Map<String, String> ids = new LinkedHashMap<>();
     for (AppNavRecord nav : navs == null ? List.<AppNavRecord>of() : navs)
-      createNavNode(appId, nav, null, ids);
+      createNavNode(appId, nav, null, ids, workbenchNavRefs);
     return ids;
   }
 
-  private void createNavNode(String appId, AppNavRecord nav, String newParentId, Map<String, String> ids) {
+  private void createNavNode(String appId, AppNavRecord nav, String newParentId, Map<String, String> ids,
+                             Map<String, String> workbenchNavRefs) {
+    NavDestinationRecord destinationRecord = nav.destination();
+    if (destinationRecord != null && destinationRecord.workbenchId() != null && !destinationRecord.workbenchId().isBlank()) {
+      workbenchNavRefs.put(nav.id(), destinationRecord.workbenchId());
+    }
+    NavDestinationRequest destination = destinationRecord == null ? null
+      : new NavDestinationRequest(destinationRecord.type(), destinationRecord.id());
     AppNavResponse created = navigation.createNav(appId, new AppNavSaveRequest(nav.type(), nav.name(), nav.iconName(),
-      newParentId, nav.destination() == null ? null
-      : new NavDestinationRequest(nav.destination().type(), nav.destination().id()), nav.visibility()));
+      newParentId, destination, nav.visibility()));
     ids.put(nav.id(), created.id());
     for (AppNavRecord child : nav.children() == null ? List.<AppNavRecord>of() : nav.children())
-      createNavNode(appId, child, created.id(), ids);
+      createNavNode(appId, child, created.id(), ids, workbenchNavRefs);
   }
 
-  private void rebuildWorkbenches(String appId, List<WorkbenchExport> exports, Map<String, String> navIds) {
+  private Map<String, String> rebuildWorkbenches(String appId, List<WorkbenchExport> exports, Map<String, String> navIds) {
+    Map<String, String> ids = new LinkedHashMap<>();
     for (WorkbenchExport export : exports == null ? List.<WorkbenchExport>of() : exports) {
       WorkbenchLayoutRecord layout = export.layout() == null
         ? WorkbenchLayoutRecord.empty() : rewriteShortcuts(export.layout(), navIds);
-      appWorkbenchService.createWorkbench(appId, new WorkbenchCreateRequest(export.name(), export.description(), layout));
+      WorkbenchResponse created = appWorkbenchService.createWorkbench(appId, new WorkbenchCreateRequest(export.name(),
+        export.description(), layout));
+      ids.put(export.id(), created.id());
     }
+    return ids;
+  }
+
+  private void rewriteWorkbenchDestinations(String appId, Map<String, String> workbenchNavRefs,
+                                            Map<String, String> navIds, Map<String, String> workbenchIds) {
+    workbenchNavRefs.forEach((oldNavId, oldWorkbenchId) -> {
+      String newNavId = navIds.get(oldNavId);
+      String newWorkbenchId = workbenchIds.get(oldWorkbenchId);
+      if (newNavId == null || newWorkbenchId == null) {
+        throw new ValidationException("导航关联工作台映射缺失: " + oldWorkbenchId);
+      }
+      navigation.patchNav(appId, newNavId, Map.of("destination",
+        Map.of("type", "BUILTIN", "id", "workbench", "workbenchId", newWorkbenchId)));
+    });
   }
 
   private WorkbenchLayoutRecord rewriteShortcuts(WorkbenchLayoutRecord layout, Map<String, String> navIds) {
@@ -360,9 +388,11 @@ public class AppPackageImport {
       body.put("revision", response.get("revision"));
       created.put(text(flow, "id"), approvalService.save(appId, text(response, "id"), body));
     }
+    // 共享已启用集合：子流程随父流程先行启用后，顶层循环不得用陈旧 revision 重复启用。
+    Set<String> enabled = new HashSet<>();
     for (Map<String, Object> flow : approvals) {
       if ("enabled".equals(text(flow, "status")))
-        enableWithChildren(appId, flow, approvals, created, ids, new HashSet<>());
+        enableWithChildren(appId, flow, approvals, created, ids, enabled);
     }
     for (Map<String, Object> flow : approvals) {
       if ("disabled".equals(text(flow, "status")))
@@ -383,7 +413,7 @@ public class AppPackageImport {
       approvals.stream().filter(child -> childOldId.equals(text(child, "id"))).findFirst()
         .ifPresent(child -> enableWithChildren(appId, child, approvals, created, ids, visited));
     }
-    approvalService.status(appId, ids.get(oldId), "enabled", revision(created.get(oldId)));
+    created.put(oldId, approvalService.status(appId, ids.get(oldId), "enabled", revision(created.get(oldId))));
   }
 
   private Object rewriteSubflows(Object definition, Map<String, String> ids) {

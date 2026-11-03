@@ -1,5 +1,53 @@
 # Session Progress Log
 
+## Apps - 导航绑定具体工作台（2026-11-03，feat-162）
+
+- 需求：导航菜单关联项选择内置“工作台”页面时支持配置具体工作台，未配置或未选择时默认第一个工作台。
+- 后端：`NavDestinationRecord/Request/Response` 扩展可选 `workbenchId`（保留二参紧凑构造，存量 JSON 缺省反序列化为 null）；
+  `AppNavigationService.validatedNav` BUILTIN 分支校验——仅 `workbench` 页面允许配置、workbenchId 须存在于当前应用
+  （注入 `AppWorkbenchRepository.findByAppIdAndId`），非 BUILTIN 类型携带 workbenchId 拒绝；响应透出 workbenchId。
+- MCP 同步：`create_app_navigation` / `create_app_workbench_navigation` 增加可选 `workbenchId` 参数
+  （`list_app_workbenches` 获取），描述说明缺省时打开第一个工作台。
+- 整包导出导入：Validator 校验导航 workbenchId 引用包内工作台；导入时工作台 id 重新生成——导航先建
+  （暂存 workbenchNavRefs，不带 workbenchId），工作台重建得到 oldId→newId 映射后 `rewriteWorkbenchDestinations`
+  经 `patchNav` 回填 destination。
+- 前端：`NavDestinationPicker` 选中 `BUILTIN:workbench` 时显示工作台下拉——按用户要求不提供“默认”选项项，
+  未选择即默认第一个（`value={workbenchId || undefined}` + 占位“未选择时默认第一个工作台”）；
+  `MenuEditorDialog` EditorForm/编辑回填/保存/移动全链路携带 workbenchId；
+  `WorkbenchHome` 接收 workbenchId prop，加载后当前选中无效或未设置时回退第一个；`AppMenuPage`（路由页）与
+  `AppNavPage` 的 BuiltinPage 透传 `destination.workbenchId`。
+- 验证：`mvn compile -pl flexmodel-server -am` 通过；AppToolsTest 5/5、AppPackageValidatorTest 20/20 通过
+  （AppNavigationResourceTest 已不存在，历史引用）；apps-ui `npm run build`（TEMP/TMP 指向项目内）通过。
+- 修复切换工作台闪动：每次切换详情加载会 `setIsLoading(true)` 把整个网格替换成 AppLoading（GridStack 销毁重建），
+  改为仅 `isLoading && !workbench` 时显示整块 loading，切换期间保留当前内容直到新工作台就绪
+  （WorkbenchHome.tsx 内容区分支）；`npm run build` 复验通过。
+- 文档：mcp-server.md 工具表更新 create_app_navigation/create_app_workbench_navigation 说明。
+- 未提交代码。
+
+## Apps - MCP 视图页签工具与内置页面导航提示词（2026-11-02，feat-160/feat-161）
+
+- feat-160（内置页面导航提示词）：内置页面（workbench 工作台、files 文件、approval 审批中心/待办中心，
+  见 `AppNavigationService.builtInDestinations`）必须绑定导航 ENTRY 才能在应用内访问；
+  `create_app_navigation` 工具描述补列三个合法 BUILTIN destinationId 与绑定要求，
+  `create_app_workbench_navigation` 补充 files/approval 经 create_app_navigation 暴露。
+- feat-161（视图页签工具）：MCP 此前无法配置视图页签——`create_app_form` 描述还引导 AI
+  “通过 PATCH 表单配置视图”，但 MCP 中没有 PATCH 工具。按项目“能力目录优先”模式
+  （get_app_workbench_capabilities / get_app_approval_capabilities）新增两个工具：
+  - `get_app_form_view_capabilities`：`AppFormService.findViewCapabilities` 返回 7 种视图类型契约
+    （各类型 config 字段必填/可选、可引用字段类型、枚举值、默认值，由校验常量直接生成保证不漂移）、
+    按当前表单字段类型的筛选操作符、内置排序字段、数量/长度限制、表单真实字段清单、当前视图与示例；
+    新增 DTO AppViewCapabilityResponse/AppViewTypeSpecRecord/AppViewConfigSpecRecord/AppViewFieldOptionRecord。
+  - `save_app_form_views`：`viewsJson` JSON 数组整体替换视图列表，复用 `AppFormService.patchForm` 校验；
+    描述精简为“能力目录优先 + 整体替换语义 + 示例”（先 get_app_form_view_capabilities、至少保留一个视图）。
+    `create_app_form` 描述移除误导性 PATCH 指引；`get_app_form` 描述补充返回 viewTabs。
+- 测试：AppToolsTest 新增 `parsesViewTabsFromJson`/`rejectsNonArrayViewTabs`（parseViews 静态化便于测试），
+  5/5 通过；`mvn compile -pl flexmodel-server -am` 通过。
+- 文档：mcp-server.md 工具表新增两个视图工具行与用法示例（能力目录优先），
+  并修正 feat-140 遗留的 create_app_menu/create_app_workbench_menu 旧名称。
+- 事故记录：本会话早前写入的 progress.md/feature_list.json feat-160 条目被并行会话回退丢失
+  （代码改动一直在工作区），本次已重新写回；工作区另有并行会话的 workbench/app-templates 改动，未触碰。
+- 未提交代码。
+
 ## Apps - 数据权限条件值类型（2026-11-02，feat-153）
 
 - 条件 `_eq`/`_ne` 比较值支持三种值类型：自定义字面量、当前用户 `{"_user": "id"}`、字段引用
@@ -4128,3 +4176,124 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 工具描述补充控制格式、场景/条件语义、内置字段忽略控制、条件字段需先通过 `get_app_form` 确认；
   `get_app_form` 描述说明返回 `layout.controls`。文档同步 mcp-server.md 与 app-tools-mcp.md。
 - 新增 `AppToolsTest` 覆盖 controls 解析、空对象清空、非对象拒绝（3/3 通过）；后端编译通过。
+
+## 工作台指标卡小数位数配置（2026-11-02）
+
+- 指标卡此前直接输出聚合原始值，`avg` 返回的全精度小数（如 7.9307142857142855）铺满卡片。
+- 新增指标配置 `decimalPlaces`：默认 4、可配 0-6，语义为“最多保留 N 位”（不补零，整数仍显示 3）。
+  前端 `WorkbenchMetricConfig`/`normalizeComponentConfig` 补默认值，`ComponentCanvas` 用
+  `toLocaleString('zh-CN', {useGrouping: true, maximumFractionDigits})` 渲染；组件设计器“数据”页签
+  新增“小数位数”输入并在预览值中体现效果；后端 `WorkbenchMetricConfig` record 增加 `Integer decimalPlaces`，
+  保存时校验 0-6，指标组件规格示例配置补充该字段。
+- 验证：`npm run build`（tsc+vite）通过；`npx vitest run` 63/63 通过；`mvn test-compile -pl flexmodel-server`
+  通过；`mvn test -pl flexmodel-server -Dtest=AppWorkbenchDataServiceTest` 4/4 通过。未在浏览器实测真实工作台。
+
+## PLM 视图页签配置（2026-11-02）
+
+- 15 张 plm_* 表单共写入 165 个视图页签：TABLE 筛选视图（含 displayFields 精简列）、KANBAN、CALENDAR、
+  GANTT、GALLERY、DETAIL 全部用上；HIERARCHY 未能启用——平台要求 parentField 是“关联本表单的引用字段”，
+  现有 15 张表单都没有自引用字段。
+- 契约来源：`AppFormService.normalizeViews/normalizeViewConfig/viewTabOperators`，与
+  `get_app_form_view_capabilities` 目录一致（maxViews 20、maxFilterConditions 10、label≤32、id≤64，
+  筛选必须是 _and/_or 单字段单操作符，DATE/DATETIME 起止字段同类型）。
+- 本地 dev 库中 PLM 应用的 appId 为 `app_970eb8b43e3a`（非早期的 plm_lifecycle 命名）。
+- 环境记录：后端 dev 实例的 MCP 端点是 `/api/mcp?api_key=...`（`quarkus.http.root-path=/api`）；
+  flexmodel 连接器因 18:26–18:29 的 live reload 抖动变成 `status: failed / CONNECTION_REFUSED`，
+  用 qoder-settings `manage_app_mcp` 的 retry 恢复为 ready，但本会话工具目录未刷新，故视图写入走同一
+  MCP 端点的 JSON-RPC 直连完成。
+- 验证：`get_app_form_view_capabilities` 回读 plm_ecn 为 14 个页签且筛选/排序已规范化落库；
+  示例数据仍在（plm_part 24、plm_drawing 9、plm_ecn_task 8、plm_bom_line 28）。
+
+## 视图刷新页签下方横线修复（2026-11-02，feat-162）
+
+- 现象（用户截图）：切换视图或刷新时，页签下方的记录内容区顶部出现一条横线，位置在页签与表头之间。
+- 根因：`ViewFetchingBar` 在内容区顶部绘制 2px 全宽进度条（轨道 `bg-primary/15` + 1/3 宽动画段），
+  距页签分隔线只有 12px（内容区 `p-3`）且紧贴表头；当动画段移出可视区时只剩整条轨道，看起来就是
+  多出来的一条分隔线。另：批量操作栏折叠时 `max-h-0` 仍保留 `border-b`，把页签分隔线叠成 2px。
+- 修改：删除 `ViewFetchingBar` 与 `index.css` 的 `view-progress` 关键帧；新增
+  `components/biz/views/viewFetching.tsx`（`ViewFetchingProvider` + `useViewFetching`），七个视图把
+  `isFetching && !isLoading` 上报给 RecordList；工具栏刷新按钮拉取中旋转 `RefreshCw`、`title` 改为
+  「正在刷新…」并加 `aria-busy`；批量操作栏改为选中时才加 `border-b`。
+- 验证：`tsc -b` 通过；`npm run build` exit 0；`npx vitest run` 63/63 通过；Mock API（查询延迟 1.2s）
+  + 无头 Chromium（1440/1600×900、DPR 2）实测 idle/切换视图/刷新三种状态下页签与表头之间不存在任何
+    ≤4px 全宽元素（修复前刷新时为 y=189、2px 高、1270px 宽），刷新图标 `animate-spin` 出现并在请求结束
+    后恢复；截图 `flexmodel-apps-ui/artifacts/view-refresh-no-line.png`。
+- 遗留（与本改动无关）：`e2e/records.spec.ts` 仍 mock `/forms/.../menus`，应用已改用 `/navigation`，
+  导致 `npm run test:records` 15 项在 setup 阶段全部失败。
+
+## ERP 企业资源计划应用（仅用 App tools，2026-11-02）
+
+- 应用 `erp_system`：34 张 `erp_` 业务表单 + f_user/f_department/f_role，未使用云函数，全部能力来自 flexmodel MCP App
+  tools。
+- 业务链路：主数据（仓库/库位/会计科目/客商/物料+BOM）→ 采购（申请→订单→入库）→ 销售（订单→出库）→ 库存（结存/流水/调拨/盘点）→
+  生产（工单/领料/报工）→ 财务（凭证/发票/应收/应付/收付款/费用报销）。
+- 布局：31 张表单写入 layout，共 904 个布局项、96 条字段显示控制（scenes + 条件），25 张表单带显示控制，明细子表单不配显示控制。
+- 视图：419 个页签——TABLE 216 / KANBAN 114 / DETAIL 33 / CALENDAR 27 / GANTT 13 / GALLERY 10 / HIERARCHY 6。
+- 导航：8 个分组、约 29 个入口（含审批中心、附件中心两个 BUILTIN 入口）。
+- 工作台：经营驾驶舱 15 组件、供应链与库存监控 16 组件；31 个可取数组件（metric/chart/dataloader）全部返回真实数据，shortcuts/tasks
+  为纯前端组件不支持取数接口。
+- 审批流：7 条全部发布（status=2、rev=2），节点 10–26 个，覆盖 gateway/branch/update/create/query/delete/notification
+  与子流程（费用报销→费用票据预审流）。
+- 数据：301 条示例记录，跨单据 REFERENCE 全部为真实 id；601 处引用完整性检查 0 悬空、0 必填缺失；385 个带筛选的页签逐个执行
+  DSL，全部命中 ≥1 条且 0 报错。
+- 验证方式：`erp_schema.mjs` 先导出 34 张表单契约（erp_schema.json）供离线校验；`erp_data.mjs --dry` 先校验全部待写记录再真实写入；
+  `erp_verify3.mjs` 统一回读表单/记录/页签/布局/引用/页签取数/工作台组件取数/审批流。
+- 关键契约教训（写脚本时必须遵守）：
+  1. 视图筛选必须是 `{_and:[{field:{op:value}}]}` 或 `{_or:[...]}`，裸 `{field:{op}}` 直接被拒（“视图筛选条件必须为 _and
+     或 _or 结构”）；KANBAN 的 groupField 不接受 STATE 字段；任何类型的筛选值都不能是空串。
+  2. MCP 工具把业务错误作为 **普通文本** `Error: ...` 返回（`isError` 仍为 false），只判断 `isError` 会把失败当成功——ERP
+     视图首轮“写入 434 页签”实际 0 条落库。脚本必须判断 `text.startsWith('Error:')`。
+  3. `create_app_mock_records` 必须显式传 `mainFormName/mainRecordId/referenceField`（空串代表非子表上下文）；DATE/DATETIME
+     传 `''` 会通过 isEmpty 校验却在持久化阶段报 `Text '' could not be parsed`，必须传 `null`；批量写入按序执行并在第 N
+     条中止，重试只能从第 N 条开始，否则产生重复记录。
+- 本轮清理：`erp_wipe.mjs` 删除首轮半成品 207 条后整批重载；`erp_dedupe.mjs` 按业务单号去重，删除 1 条重复应收。
+- 未提交任何 git 改动（遵循 AGENTS.md「不要主动提交代码」）。
+
+## 视图配置与整包导出支持内置字段（2026-11-03，feat-164）
+
+- 现象：MCP 创建的应用导出整包报
+  `导出内容校验失败：VIEW_TAB_INVALID forms[N].viewTabs[M].config.startField: 日历开始字段不存在: created_at`。保存侧
+  `save_app_form_views`（patchForm→normalizeViews）用 `current.fields()` 构建 fields map，记录含内置条目时引用 created_at
+  可通过；但导出校验器 `AppPackageValidator.FormInfo` 的 builtinFields/allFields 只来自包内 `forms[].fields`
+  实际枚举的条目——存量应用的表单记录未枚举内置条目时两侧语义分裂。
+- 决策（用户拍板）： **需要支持内置字段**，不收紧保存侧，而是让保存、能力目录、导出校验三条链路在记录缺失内置条目时也能解析内置字段。
+- 修改（flexmodel-server）：
+  - `AppFormService.builtinFieldRecords()`
+    新增静态规范目录：id=TEXT、owner_id/created_by/updated_by=REFERENCE→f_user、created_at/updated_at=DATETIME，全部
+    builtin=true；`systemFieldRecords()` 删除，`createFormWithFields` 的字段记录种子改用新目录（行为等价：id/created_at/updated_at
+    此前 record=null 走推断，现由目录提供同值记录，仅 id 的 required 由 true 变 false，更符合系统生成语义）。
+  - `normalizeViews` 的 fields map 先用内置目录打底再覆盖 `current.fields()`；`normalizeViewSort` 删除
+    `VIEW_BUILTIN_SORT_FIELDS` 豁免（常量删除，目录已覆盖 id/created_at/updated_at）。
+  - `findViewCapabilities` 的字段清单与筛选操作符 filterOperators 同样以内置目录打底（存量表单 AI 也能看到并使用内置字段）。
+  - `AppPackageValidator.FormInfo` 构造时用目录预填 `builtinFields` 与 `allFields`，`resolveField` 永远可解析六个内置字段；
+    `validateViewTabSort` 的内联豁免 Set 简化为 allFields 判断；displayFields 对 `id`
+    的显式拒绝保留（与保存侧一致），其余内置字段可用于显示/排序/日历起止/看板分组（KANBAN groupField 支持 REFERENCE，owner_id
+    可分组）。授权校验 fieldControls 引用内置字段由「权限字段不存在」warning 变为命中「内置字段不能授权修改」write
+    检查分支，语义更正确且仍只产生 warning。
+- 新增 `AppPackageValidatorTest.acceptsViewTabsReferencingBuiltinFields`：表单 fields 不含内置条目时（复现用户场景）日历
+  startField=created_at、endField=updated_at、排序 created_at、显示字段 created_at 全部通过；displayFields 引用 `id` 仍被拒绝。
+- 验证：`mvn compile -pl flexmodel-server -am` 通过；
+  `mvn test -pl flexmodel-server -Dtest=AppPackageValidatorTest,AppToolsTest` 26/26（Validator 21、AppTools 5）；
+  `mvn test -pl flexmodel-engine` BUILD SUCCESS。未执行 git commit/push。
+- 遗留：用户侧曾报错的应用（AI 已存 startField=created_at 的视图）现在导出应直接通过，无需重新保存视图；若仍有问题需检查该应用
+  `f_app.forms` 记录的实际 fields 内容。
+
+## 内置模板 erp 无法加载修复（2026-11-03，feat-143）
+
+- 现象：前端「从模板创建」只显示 plm，选不到 erp。根因：erp.flexmodel.zip（上次会话由 MCP 搭建的 ERP
+  应用导出替换）审批执行人引用源实例用户/组织，AppTemplateCatalog 启动时以平台基线目录（仅 admin 用户、admin/developer
+  角色、无组织）校验产生硬性 issue，WARN 跳过；plm/erp 示例数据另有 377 处 f_user/f_department 引用产生不可移植
+  warning；AppTemplateCatalogTest 仍断言旧模板 erp-system（4 表单/「ERP 管理系统」），与替换后的目录脱节。
+- 修复：
+  - erp 19 条 users/organizations 审批规则 →
+    roles（总经理/主管→admin、财务/出纳/库管/复核等→developer、scope=self、includeChildren=false），通知节点的 organizations
+    规则 → initiator（values 置空），与 plm 既有写法对齐。
+  - 两包示例数据 f_user/f_department 引用值全部置 null（erp 232、plm 145），业务 REFERENCE 均验证包内可解析；5
+    个必填系统引用字段（erp_expense.claimant、plm_product.owner_user、plm_ecr.initiator、plm_ecn.initiator、plm_ecn_task.assignee）required →
+    false。
+  - 用 .NET ZipArchive 重新打包（entry 名正斜杠、固定 7 个结构文件 + data/*.json），替换 app-templates 下两个 zip。
+  - AppTemplateCatalogTest：erp-system → erp，名称「ERP 企业资源计划」、formCount 34、builtInPackage ("erp")。
+- 验证：mvn test -pl flexmodel-server -Dtest=AppPackage *Test,AppTemplate*Test 全绿：AppTemplateCatalogTest 7/7（含
+  builtInTemplatesArePortable 基线目录零 issue 零 warning）、AppPackageValidatorTest 21/21、AppPackageZipTest
+  10/10。启动目录现可加载 2 个内置模板，前端模板画廊应同时可见 plm 与 erp。
+- 未执行 git commit/push（遵循 AGENTS.md）。

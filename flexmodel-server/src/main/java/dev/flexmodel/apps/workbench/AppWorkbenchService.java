@@ -26,6 +26,7 @@ public class AppWorkbenchService {
     "/api/apps/{appId}/workbenches/{workbenchId}/components/{componentId}/data";
   private static final int GRID_COLUMNS = 12;
   private static final int MAX_GRID_HEIGHT = 24;
+  private static final int MAX_DECIMAL_PLACES = 6;
   private static final Set<String> CHART_TYPES = Set.of("line", "bar", "pie");
   private static final Set<String> AGGREGATIONS = Set.of("count", "sum", "avg");
   private static final Set<String> PALETTES = Set.of("primary", "multi");
@@ -273,6 +274,10 @@ public class AppWorkbenchService {
       if (isBlank(metricConfig.aggregation()) || !AGGREGATIONS.contains(metricConfig.aggregation())) {
         throw new ValidationException("工作台指标聚合方式不合法: " + metricConfig.aggregation());
       }
+      Integer decimalPlaces = metricConfig.decimalPlaces();
+      if (decimalPlaces != null && (decimalPlaces < 0 || decimalPlaces > MAX_DECIMAL_PLACES)) {
+        throw new ValidationException("工作台指标小数位数必须在 0 到 " + MAX_DECIMAL_PLACES + " 之间: " + decimalPlaces);
+      }
       if ("count".equals(metricConfig.aggregation())) {
         if (!isBlank(metricConfig.field())) {
           throw new ValidationException("工作台记录数指标不能配置聚合字段: " + metricConfig.field());
@@ -410,7 +415,7 @@ public class AppWorkbenchService {
     return List.of(
       new WorkbenchComponentSpecRecord("metric", null, "指标", "突出展示核心指标", 3, 3,
         List.of("type", "formName", "aggregation"), Map.of(
-        "type", "metric", "formName", "<form.name>", "aggregation", "count"),
+        "type", "metric", "formName", "<form.name>", "aggregation", "count", "decimalPlaces", 4),
         DATA_ENDPOINT_TEMPLATE),
       new WorkbenchComponentSpecRecord("chart", "line", "折线图", "观察数据趋势", 6, 4,
         List.of("type", "chartType", "formName", "dimensionField",

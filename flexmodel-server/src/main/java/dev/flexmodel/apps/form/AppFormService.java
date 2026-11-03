@@ -57,6 +57,8 @@ public class AppFormService {
   private static final int MAX_CUSTOM_VIEWS = 20;
   private static final int MAX_VIEW_FILTER_CONDITIONS = 10;
   private static final int MAX_VIEW_DISPLAY_FIELDS = 60;
+  private static final int VIEW_LABEL_MAX_LENGTH = 32;
+  private static final int VIEW_ID_MAX_LENGTH = 64;
   public static final String ALL_VIEW_ID = "all";
   private static final String ALL_VIEW_LABEL = "全部";
   private static final Set<String> VIEW_TYPES = Set.of(
@@ -65,7 +67,6 @@ public class AppFormService {
     "PICKLIST", "SELECT", "CLASSIFICATION", "BOOL", "REFERENCE");
   private static final Set<String> VIEW_DATE_FIELD_TYPES = Set.of("DATE", "DATETIME");
   private static final Set<String> VIEW_ATTACHMENT_FIELD_TYPES = Set.of("FILE", "IMAGE", "AVATAR");
-  private static final Set<String> VIEW_BUILTIN_SORT_FIELDS = Set.of("id", "created_at", "updated_at");
   private static final Set<String> FORM_ITEM_TYPES = Set.of("FIELD", "SECTION", "SUBFORM");
   private static final Set<String> FORM_ITEM_WIDTHS = Set.of(
     "QUARTER", "THIRD", "HALF", "TWO_THIRDS", "THREE_QUARTERS", "FULL");
@@ -135,6 +136,24 @@ public class AppFormService {
     return BUILTIN_FIELDS;
   }
 
+  /**
+   * 内置字段的规范记录目录：即使表单记录未枚举内置条目，
+   * 视图配置、能力目录与导出校验也能解析这些字段。
+   */
+  public static Map<String, AppFormFieldRecord> builtinFieldRecords() {
+    Map<String, AppFormFieldRecord> fields = new LinkedHashMap<>();
+    fields.put("id", new AppFormFieldRecord("id", "ID", "TEXT", false, true, null, null));
+    fields.put("created_by", new AppFormFieldRecord(
+      "created_by", "创建人", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
+    fields.put("owner_id", new AppFormFieldRecord(
+      "owner_id", "所有者", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
+    fields.put("updated_by", new AppFormFieldRecord(
+      "updated_by", "更新人", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
+    fields.put("created_at", new AppFormFieldRecord("created_at", "创建时间", "DATETIME", false, true, null, null));
+    fields.put("updated_at", new AppFormFieldRecord("updated_at", "更新时间", "DATETIME", false, true, null, null));
+    return fields;
+  }
+
   public static Set<String> fieldTypes() {
     return FIELD_TYPES;
   }
@@ -193,7 +212,7 @@ public class AppFormService {
     List<PreparedField> preparedFields = prepareFields(appId, fields);
     ensureUniqueFormName(project, appId, formName);
     EntityDefinition entity = buildFormEntity(formName, label, request.createDisplayField());
-    Map<String, AppFormFieldRecord> fieldRecords = systemFieldRecords();
+    Map<String, AppFormFieldRecord> fieldRecords = builtinFieldRecords();
     fieldRecords.putAll(addPreparedFields(formName, entity, preparedFields));
 
     modelingService.createModel(appId, entity);
@@ -413,8 +432,8 @@ public class AppFormService {
     AppFormRecord current,
     List<AppFormViewTabRecord> viewTabs
   ) {
-    Map<String, AppFormFieldRecord> fields = current.fields().stream()
-      .collect(Collectors.toMap(AppFormFieldRecord::name, Function.identity(), (left, right) -> right));
+    Map<String, AppFormFieldRecord> fields = builtinFieldRecords();
+    current.fields().forEach(field -> fields.put(field.name(), field));
     Set<String> ids = new LinkedHashSet<>();
     Set<String> labels = new LinkedHashSet<>();
     List<AppFormViewTabRecord> result = new ArrayList<>();
@@ -424,7 +443,7 @@ public class AppFormService {
         throw new ValidationException("视图配置不能为空");
       }
       String id = isBlank(tab.id()) ? UUID.randomUUID().toString() : tab.id().trim();
-      if (id.length() > 64 || !ids.add(id)) {
+      if (id.length() > VIEW_ID_MAX_LENGTH || !ids.add(id)) {
         throw new ValidationException("视图标识不合法或重复: " + id);
       }
       viewCount++;
@@ -447,8 +466,8 @@ public class AppFormService {
       throw new ValidationException("视图名称不能为空");
     }
     String label = tab.label().trim();
-    if (label.length() > 32) {
-      throw new ValidationException("视图名称不能超过 32 个字符");
+    if (label.length() > VIEW_LABEL_MAX_LENGTH) {
+      throw new ValidationException("视图名称不能超过 " + VIEW_LABEL_MAX_LENGTH + " 个字符");
     }
     if (!labels.add(label)) {
       throw new ValidationException("视图名称重复: " + label);
@@ -475,7 +494,7 @@ public class AppFormService {
       return null;
     }
     String field = sort.field().trim();
-    if (!fields.containsKey(field) && !VIEW_BUILTIN_SORT_FIELDS.contains(field)) {
+    if (!fields.containsKey(field)) {
       throw new ValidationException("视图排序字段不存在: " + field);
     }
     String order = isBlank(sort.order()) ? "ASC" : sort.order().trim().toUpperCase(Locale.ROOT);
@@ -634,6 +653,92 @@ public class AppFormService {
   public static AppFormViewTabRecord allView() {
     return new AppFormViewTabRecord(
       ALL_VIEW_ID, ALL_VIEW_LABEL, "TABLE", null, null, List.of(), AppViewConfig.empty());
+  }
+
+  /**
+   * AI 生成视图页签前读取的能力目录：视图类型契约、按字段类型的筛选操作符、
+   * 限制、当前表单字段与现有视图。目录直接由校验常量生成，与 patchForm 保持一致。
+   */
+  public AppViewCapabilityResponse findViewCapabilities(String appId, String formName) {
+    requireNotBuiltinForm(formName);
+    Project project = requireAppProject(appId);
+    ResolvedForm resolved = requireForm(project, appId, formName);
+    AppFormRecord current = resolved.record() == null ? defaultRecord(project, resolved.entity()) : resolved.record();
+    Map<String, AppFormFieldRecord> fieldRecords = builtinFieldRecords();
+    current.fields().forEach(field -> fieldRecords.put(field.name(), field));
+    Map<String, List<String>> filterOperators = new LinkedHashMap<>();
+    fieldRecords.values().stream()
+      .map(AppFormFieldRecord::type)
+      .filter(Objects::nonNull)
+      .distinct()
+      .forEach(type -> filterOperators.put(type, List.copyOf(viewTabOperators(type))));
+    return new AppViewCapabilityResponse(
+      viewTypeSpecs(),
+      filterOperators,
+      List.of("id", "created_at", "updated_at"),
+      Map.of(
+        "maxViews", MAX_CUSTOM_VIEWS,
+        "maxFilterConditions", MAX_VIEW_FILTER_CONDITIONS,
+        "maxDisplayFields", MAX_VIEW_DISPLAY_FIELDS,
+        "labelMaxLength", VIEW_LABEL_MAX_LENGTH,
+        "idMaxLength", VIEW_ID_MAX_LENGTH),
+      fieldRecords.values().stream()
+        .map(field -> new AppViewFieldOptionRecord(
+          field.name(), field.label(), field.type(), field.builtin()))
+        .toList(),
+      storedViewTabs(current.viewTabs()),
+      exampleViews());
+  }
+
+  private List<AppViewTypeSpecRecord> viewTypeSpecs() {
+    List<AppViewTypeSpecRecord> result = new ArrayList<>();
+    result.add(new AppViewTypeSpecRecord("TABLE", "表格", List.of()));
+    result.add(new AppViewTypeSpecRecord("KANBAN", "看板", List.of(
+      new AppViewConfigSpecRecord("groupField", true, List.copyOf(VIEW_GROUP_FIELD_TYPES), null, null,
+        "分组字段，须为单值选项、布尔或引用字段"),
+      new AppViewConfigSpecRecord("titleField", false, null, null, null, "卡片标题字段"))));
+    result.add(new AppViewTypeSpecRecord("CALENDAR", "日历", List.of(
+      new AppViewConfigSpecRecord("startField", true, List.copyOf(VIEW_DATE_FIELD_TYPES), null, null,
+        "开始字段，日期或日期时间"),
+      new AppViewConfigSpecRecord("endField", false, List.copyOf(VIEW_DATE_FIELD_TYPES), null, null,
+        "结束字段，须与开始字段同为日期或同为日期时间"),
+      new AppViewConfigSpecRecord("titleField", false, null, null, null, "事件标题字段"),
+      new AppViewConfigSpecRecord("calendarUnit", false, null, List.of("MONTH", "WEEK", "DAY"), "MONTH",
+        "默认周期"))));
+    result.add(new AppViewTypeSpecRecord("GALLERY", "画廊", List.of(
+      new AppViewConfigSpecRecord("coverField", false, List.copyOf(VIEW_ATTACHMENT_FIELD_TYPES), null, null,
+        "封面字段，附件、图片或头像"),
+      new AppViewConfigSpecRecord("titleField", false, null, null, null, "卡片标题字段"),
+      new AppViewConfigSpecRecord("imageFit", false, null, List.of("COVER", "CONTAIN"), "COVER",
+        "图片裁切方式"))));
+    result.add(new AppViewTypeSpecRecord("DETAIL", "详情", List.of(
+      new AppViewConfigSpecRecord("detailMode", false, null, List.of("LIST", "SINGLE"), "LIST",
+        "详情展示模式"))));
+    result.add(new AppViewTypeSpecRecord("HIERARCHY", "层级", List.of(
+      new AppViewConfigSpecRecord("parentField", true, List.of("REFERENCE"), null, null,
+        "父节点字段，须为关联本表单的引用字段"),
+      new AppViewConfigSpecRecord("titleField", false, null, null, null, "节点标题字段"),
+      new AppViewConfigSpecRecord("hierarchyMode", false, null, List.of("TREE", "TABLE"), "TREE",
+        "层级展示形态"))));
+    result.add(new AppViewTypeSpecRecord("GANTT", "甘特", List.of(
+      new AppViewConfigSpecRecord("startField", true, List.copyOf(VIEW_DATE_FIELD_TYPES), null, null,
+        "开始字段，日期或日期时间"),
+      new AppViewConfigSpecRecord("endField", true, List.copyOf(VIEW_DATE_FIELD_TYPES), null, null,
+        "结束字段，须与开始字段同为日期或同为日期时间"),
+      new AppViewConfigSpecRecord("titleField", false, null, null, null, "任务标题字段"),
+      new AppViewConfigSpecRecord("ganttScale", false, null, List.of("DAY", "WEEK", "MONTH"), "WEEK",
+        "默认刻度"))));
+    return result;
+  }
+
+  private List<Map<String, Object>> exampleViews() {
+    return List.of(
+      Map.of("id", "all", "label", "全部", "type", "TABLE",
+        "sort", Map.of("field", "created_at", "order", "DESC")),
+      Map.of("label", "高优先级", "type", "TABLE",
+        "filter", Map.of("_and", List.of(Map.of("priority", Map.of("_eq", "high"))))),
+      Map.of("label", "状态看板", "type", "KANBAN",
+        "config", Map.of("groupField", "status", "titleField", "name")));
   }
 
   public Map<String, Object> normalizeQueryFilter(AppFormResponse form, String json) {
@@ -1045,17 +1150,6 @@ public class AppFormService {
     fields.add(new StringField("updated_by").setLength(64).setComment("更新人"));
     fields.add(new DateTimeField("created_at").setDefaultValue(DefaultValue.NOW).setComment("创建时间"));
     fields.add(new DateTimeField("updated_at").setDefaultValue(DefaultValue.NOW).setComment("更新时间"));
-    return fields;
-  }
-
-  private Map<String, AppFormFieldRecord> systemFieldRecords() {
-    Map<String, AppFormFieldRecord> fields = new LinkedHashMap<>();
-    fields.put("owner_id", new AppFormFieldRecord(
-      "owner_id", "所有者", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
-    fields.put("created_by", new AppFormFieldRecord(
-      "created_by", "创建人", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
-    fields.put("updated_by", new AppFormFieldRecord(
-      "updated_by", "更新人", "REFERENCE", false, true, null, SystemFormService.USER_FORM));
     return fields;
   }
 

@@ -112,8 +112,8 @@ public class AppTools {
 
   @Tool(description = """
     Get one form of a Flexmodel App by formName. The response contains \
-    generated field names, the current flat layout.items, and layout.controls \
-    when field controls are configured.\
+    generated field names, the current flat layout.items, layout.controls \
+    when field controls are configured, and the current viewTabs.\
     """)
   public String get_app_form(
     @ToolArg(description = "The app ID") String appId,
@@ -166,22 +166,10 @@ public class AppTools {
     using concise English snake_case matching ^[a-z][a-z0-9_]{0,63}$. The server \
     validates the name and returns the final form contract. If name is omitted, \
     the server derives it from an ASCII label or falls back to a random name. \
-    The form contract also contains viewTabs. Each view is \
-    {id,label,type,filter,sort,displayFields,config}. type allows TABLE, KANBAN, \
-    CALENDAR, GALLERY, DETAIL, HIERARCHY, or GANTT. id is optional and must be \
-    unique and at most 64 characters; "all" is the reserved fixed table view and \
-    cannot be created as a custom view. Configure views by PATCHing the form with \
-    {"viewTabs":[...]} only. filter may be null or \
-    {"_and":[...]} / {"_or":[...]} with 1-10 conditions. Each condition may \
-    reference one existing field and one operator. Numeric and date/time fields \
-    support _eq, _ne, _gt, _gte, _lt, and _lte. BOOL and choice/reference-like \
-    fields support _eq and _ne. Other text-like fields also support _contains, \
-    _not_contains, _starts_with, and _ends_with. sort is {field,order} or null. \
-    displayFields is an array of existing field names. config carries type-specific \
-    settings: KANBAN groupField/titleField; CALENDAR startField/endField/titleField/ \
-    calendarUnit; GALLERY coverField/titleField/imageFit; DETAIL detailMode; \
-    HIERARCHY parentField/hierarchyMode; GANTT startField/endField/titleField/ \
-    ganttScale. HIERARCHY parentField must be a REFERENCE field to the same form. \
+    The form contract also contains viewTabs, the record page tabs. A new form \
+    starts with the default "all" table view; configure the complete view tab \
+    list (TABLE, KANBAN, CALENDAR, GALLERY, DETAIL, HIERARCHY, GANTT) with \
+    save_app_form_views after this step. \
     A REFERENCE field must set referenceForm to \
     a form name returned by list_app_forms. The available reference targets \
     include the built-in forms f_user, f_role, and f_department, plus any \
@@ -303,6 +291,66 @@ public class AppTools {
     values.forEach((fieldName, value) ->
       controls.put(fieldName, JsonUtils.convertValue(value, AppFormFieldControls.class)));
     return controls;
+  }
+
+  @Tool(description = """
+    Get the AI-friendly view tab capability catalog for one form. It returns the \
+    view type specs (TABLE, KANBAN, CALENDAR, GALLERY, DETAIL, HIERARCHY, GANTT) \
+    with per-type config field contracts (required or optional, allowed field \
+    types, enum values, defaults), the filter operators available for each field \
+    type of this form, the builtin sort fields, size limits, the form's real \
+    fields, and the current views. Call this before generating the view tab \
+    list with save_app_form_views.\
+    """)
+  public String get_app_form_view_capabilities(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "The form name returned by create_app_form or list_app_forms") String formName
+  ) {
+    log.info("get_app_form_view_capabilities called, appId={}, formName={}", appId, formName);
+    try {
+      return JsonUtils.toJsonString(appFormService.findViewCapabilities(appId, formName));
+    } catch (Exception exception) {
+      log.error("get_app_form_view_capabilities failed, appId={}, formName={}", appId, formName, exception);
+      return "Error: get_app_form_view_capabilities failed - " + exception.getMessage();
+    }
+  }
+
+  @Tool(description = """
+    Replace the complete view tab list of one form. Views are the record page tabs \
+    users switch between, such as a filtered table, a kanban board, or a calendar. \
+    This is an optional step of the app creation flow, after save_app_form_layout. \
+    Before calling this tool, use get_app_form_view_capabilities to obtain the view \
+    type specs, per-type config contracts, the filter operators for this form's \
+    fields, and the current views. Every new form starts with the default view \
+    {"id":"all","label":"全部","type":"TABLE"}. viewsJson REPLACES the whole list: \
+    include every view you want to keep and keep at least one view. Each view is \
+    {id,label,type,filter,sort,displayFields,config}; type allows TABLE, KANBAN, \
+    CALENDAR, GALLERY, DETAIL, HIERARCHY, or GANTT. Example viewsJson: \
+    [{"id":"all","label":"全部","type":"TABLE","sort":{"field":"created_at","order":"DESC"}},\
+    {"label":"High priority","type":"TABLE","filter":{"_and":[{"priority":{"_eq":"high"}}]}},\
+    {"label":"Status board","type":"KANBAN","config":{"groupField":"status","titleField":"name"}}]\
+    """)
+  public String save_app_form_views(
+    @ToolArg(description = "The app ID") String appId,
+    @ToolArg(description = "The form name returned by create_app_form or list_app_forms") String formName,
+    @ToolArg(description = """
+      JSON array string of the complete view tab list, for example: \
+      [{"id":"all","label":"全部","type":"TABLE"},{"label":"Board","type":"KANBAN","config":{"groupField":"status"}}].\
+      Get the full contract from get_app_form_view_capabilities.\
+      """) String viewsJson
+  ) {
+    log.info("save_app_form_views called, appId={}, formName={}", appId, formName);
+    try {
+      return JsonUtils.toJsonString(appFormService.patchForm(
+        appId, formName, new AppFormPatchRequest(parseViews(viewsJson))));
+    } catch (Exception exception) {
+      log.error("save_app_form_views failed, appId={}, formName={}", appId, formName, exception);
+      return "Error: save_app_form_views failed - " + exception.getMessage();
+    }
+  }
+
+  static List<AppFormViewTabRecord> parseViews(String viewsJson) {
+    return List.of(JsonUtils.parseToObject(viewsJson, AppFormViewTabRecord[].class));
   }
 
   @Tool(description = """
@@ -438,14 +486,20 @@ public class AppTools {
   @Tool(description = """
     Create a navigation entry linked to the app workbench. This is the one-call way to \
     expose an app's workbench in navigation; it creates an ENTRY with BUILTIN \
-    destinationId=workbench. The other built-in pages (files, approval) are exposed the \
-    same way via create_app_navigation with destinationType=BUILTIN.\
+    destinationId=workbench. Optionally pass workbenchId (from list_app_workbenches) to \
+    bind one specific workbench; when omitted the entry opens the app's first workbench. \
+    The other built-in pages (files, approval) are exposed the same way via \
+    create_app_navigation with destinationType=BUILTIN.\
     """)
   public String create_app_workbench_navigation(
     @ToolArg(description = "The app ID") String appId,
     @ToolArg(description = "Navigation entry display name, required") String name,
     @ToolArg(description = "Navigation entry icon name, optional") String iconName,
-    @ToolArg(description = "Parent navigation ID, only for a nested entry") String parentId
+    @ToolArg(description = "Parent navigation ID, only for a nested entry") String parentId,
+    @ToolArg(description = """
+      Specific workbench ID from list_app_workbenches, optional. \
+      Omit to open the app's first workbench by default.\
+      """, required = false) String workbenchId
   ) {
     log.info("create_app_workbench_navigation called, appId={}, name={}", appId, name);
     try {
@@ -453,7 +507,7 @@ public class AppTools {
         appId,
         new AppNavSaveRequest(
           "ENTRY", name, iconName, parentId,
-          new NavDestinationRequest("BUILTIN", "workbench"), null)));
+          new NavDestinationRequest("BUILTIN", "workbench", isBlank(workbenchId) ? null : workbenchId), null)));
     } catch (Exception exception) {
       log.error("create_app_workbench_navigation failed, appId={}, name={}", appId, name, exception);
       return "Error: create_app_workbench_navigation failed - " + exception.getMessage();
@@ -467,6 +521,8 @@ public class AppTools {
     or destinationId=http/https URL when binding a link. BUILTIN pages (workbench, files, \
     approval) are only accessible inside an app after a navigation ENTRY binds them; \
     bind the built-in pages the app needs, for example workbench and approval. \
+    When destinationId=workbench, optionally set workbenchId (from list_app_workbenches) \
+    to bind one specific workbench; when omitted the entry opens the app's first workbench. \
     iconName is a Lucide icon name in PascalCase, for example Home, Package, or Rocket.\
     """)
   public String create_app_navigation(
@@ -479,13 +535,17 @@ public class AppTools {
     @ToolArg(description = """
       BUILTIN page ID (workbench, files, or approval), form name, or http/https URL, \
       required for ENTRY\
-      """) String destinationId
+      """) String destinationId,
+    @ToolArg(description = """
+      Specific workbench ID from list_app_workbenches, only for destinationType=BUILTIN \
+      and destinationId=workbench; omit to open the app's first workbench by default\
+      """, required = false) String workbenchId
   ) {
     log.info("create_app_navigation called, appId={}, navType={}, name={}", appId, navType, name);
     try {
       NavDestinationRequest destination = isBlank(destinationType) && isBlank(destinationId)
         ? null
-        : new NavDestinationRequest(destinationType, destinationId);
+        : new NavDestinationRequest(destinationType, destinationId, isBlank(workbenchId) ? null : workbenchId);
       return JsonUtils.toJsonString(appNavigationService.createNav(
         appId, new AppNavSaveRequest(navType, name, iconName, parentId, destination, null)));
     } catch (Exception exception) {

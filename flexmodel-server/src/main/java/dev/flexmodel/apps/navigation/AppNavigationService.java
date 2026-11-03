@@ -4,6 +4,7 @@ import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.apps.form.dto.AppFormResponse;
 import dev.flexmodel.apps.navigation.dto.*;
+import dev.flexmodel.apps.workbench.AppWorkbenchRepository;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.SessionContext;
@@ -43,6 +44,9 @@ public class AppNavigationService {
 
   @Inject
   AppFormService appFormService;
+
+  @Inject
+  AppWorkbenchRepository appWorkbenchRepository;
 
   @Inject
   SessionContext sessionContext;
@@ -302,8 +306,14 @@ public class AppNavigationService {
       if (BUILTIN_DESTINATION_TYPE.equals(destinationRequest.type()) && !BUILTIN_DESTINATIONS.containsKey(destinationRequest.id())) {
         throw new ValidationException("内置模块不存在: " + destinationRequest.id());
       }
+      if (!BUILTIN_DESTINATION_TYPE.equals(destinationRequest.type()) && !isBlank(destinationRequest.workbenchId())) {
+        throw new ValidationException("仅工作台内置页面支持配置具体工作台");
+      }
       if (BUILTIN_DESTINATION_TYPE.equals(destinationRequest.type())) {
-        destination = new NavDestinationRecord(BUILTIN_DESTINATION_TYPE, destinationRequest.id());
+        destination = new NavDestinationRecord(
+          BUILTIN_DESTINATION_TYPE,
+          destinationRequest.id(),
+          validatedWorkbenchId(appId, destinationRequest));
       }
       if (FORM_DESTINATION_TYPE.equals(destinationRequest.type())) {
         requireFormName(appId, destinationRequest.id());
@@ -324,6 +334,21 @@ public class AppNavigationService {
       ? (existing == null || existing.visibility() == null ? List.of() : existing.visibility())
       : validatedVisibility(request.visibility());
     return new AppNavRecord(id, type, name, request.iconName(), parentId, destination, children, visibility);
+  }
+
+  private String validatedWorkbenchId(String appId, NavDestinationRequest destinationRequest) {
+    String workbenchId = isBlank(destinationRequest.workbenchId()) ? null : destinationRequest.workbenchId().trim();
+    if (workbenchId == null) {
+      return null;
+    }
+    if (!"workbench".equals(destinationRequest.id())) {
+      throw new ValidationException("仅工作台内置页面支持配置具体工作台");
+    }
+    Project project = appNavRecordStore.requireAppProject(appId);
+    if (appWorkbenchRepository.findByAppIdAndId(project.getId(), workbenchId) == null) {
+      throw new ValidationException("工作台不存在: " + workbenchId);
+    }
+    return workbenchId;
   }
 
   private List<NavVisibilityRule> validatedVisibility(List<NavVisibilityRule> visibility) {
@@ -433,7 +458,8 @@ public class AppNavigationService {
     NavDestinationResponse destinationResponse = destination == null ? null : new NavDestinationResponse(
       destination.type(),
       destination.id(),
-      destinationLabel(destination, labels));
+      destinationLabel(destination, labels),
+      destination.workbenchId());
     return new AppNavResponse(
       nav.id(),
       nav.type(),

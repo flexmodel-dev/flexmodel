@@ -77,12 +77,12 @@ class AppTemplateCatalogTest {
     catalog.load(this::classpath);
     assertFalse(catalog.summaries().isEmpty(), "应至少内置一个应用模板");
     AppTemplate.Summary erp = catalog.summaries().stream()
-      .filter(summary -> "erp-system".equals(summary.id())).findFirst().orElseThrow();
-    assertEquals("ERP 管理系统", erp.name());
-    assertEquals(4, erp.formCount());
+      .filter(summary -> "erp".equals(summary.id())).findFirst().orElseThrow();
+    assertEquals("ERP 企业资源计划", erp.name());
+    assertEquals(34, erp.formCount());
     assertTrue(erp.includesData());
     assertNotNull(erp.exportedAt());
-    assertEquals("erp-system", catalog.require("erp-system").summary().id());
+    assertEquals("erp", catalog.require("erp").summary().id());
   }
 
   @Test
@@ -90,7 +90,7 @@ class AppTemplateCatalogTest {
     AppTemplateCatalog catalog = catalog();
     catalog.load(this::classpath);
     assertThrows(WebApplicationException.class, () -> catalog.require("missing"));
-    assertThrows(WebApplicationException.class, () -> catalog.require("../erp-system"));
+    assertThrows(WebApplicationException.class, () -> catalog.require("../erp"));
     assertThrows(WebApplicationException.class, () -> catalog.require(null));
   }
 
@@ -112,7 +112,7 @@ class AppTemplateCatalogTest {
 
   @Test
   void skipsInvalidDuplicateMissingAndBrokenEntries() throws IOException {
-    byte[] pkg = builtInPackage("erp-system");
+    byte[] pkg = builtInPackage("erp");
     String index = """
       {"templates":[
         {"id":"demo","name":"演示模板","order":2},

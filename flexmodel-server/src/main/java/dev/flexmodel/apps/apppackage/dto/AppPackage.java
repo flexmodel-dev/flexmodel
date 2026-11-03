@@ -28,7 +28,7 @@ public final class AppPackage {
   public static final int MAX_JSON_DEPTH = 64;
 
   // 结构限额
-  public static final int MAX_FORMS = 20;
+  public static final int MAX_FORMS = 50;
   public static final int MAX_FIELDS_PER_FORM = 500;
   public static final int MAX_LAYOUT_ITEMS = 500;
   public static final int MAX_VIEW_TABS = 20;

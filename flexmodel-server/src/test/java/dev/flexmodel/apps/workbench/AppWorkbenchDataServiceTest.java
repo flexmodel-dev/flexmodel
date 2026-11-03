@@ -167,7 +167,7 @@ class AppWorkbenchDataServiceTest {
 
   private WorkbenchResponse createWorkbench(String appId, String formName, String aggregation) {
     WorkbenchMetricConfig metric = new WorkbenchMetricConfig(
-      formName, aggregation, "count".equals(aggregation) ? null : "amount");
+      formName, aggregation, "count".equals(aggregation) ? null : "amount", null);
     WorkbenchChartConfig chart = new WorkbenchChartConfig(
       "bar", formName, "category", "amount", "sum", true, true, false, "primary");
     WorkbenchDataLoaderConfig records = new WorkbenchDataLoaderConfig(
@@ -181,7 +181,7 @@ class AppWorkbenchDataServiceTest {
     String aggregation,
     String field
   ) {
-    WorkbenchMetricConfig metric = new WorkbenchMetricConfig(formName, aggregation, field);
+    WorkbenchMetricConfig metric = new WorkbenchMetricConfig(formName, aggregation, field, null);
     WorkbenchDataLoaderConfig records = new WorkbenchDataLoaderConfig(
       formName, List.of("id", "customer", "amount", "category"));
     return saveWorkbench(appId, metric, null, records);

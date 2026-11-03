@@ -1,6 +1,7 @@
 package dev.flexmodel.apps.apppackage;
 
 import dev.flexmodel.apps.apppackage.AppPackageZip.Content;
+import dev.flexmodel.apps.apppackage.dto.AppPackage;
 import dev.flexmodel.apps.dataauthorization.dto.AppDataAuthorization.Selection;
 import dev.flexmodel.apps.form.AppFieldRules;
 import dev.flexmodel.apps.form.AppFormService;
@@ -98,16 +99,26 @@ public class AppPackageValidator {
     final int index;
     final AppFormRecord record;
     final Map<String, AppFormFieldRecord> businessFields = new LinkedHashMap<>();
+    final Map<String, AppFormFieldRecord> builtinFields = new LinkedHashMap<>();
     final Set<String> allFields = new LinkedHashSet<>();
     final Set<String> layoutFieldNames = new LinkedHashSet<>();
 
     FormInfo(int index, AppFormRecord record) {
       this.index = index;
       this.record = record;
+      AppFormService.builtinFieldRecords().forEach((name, field) -> {
+        builtinFields.put(name, field);
+        allFields.add(name);
+      });
     }
 
     String path() {
       return "forms[" + index + "]";
+    }
+
+    AppFormFieldRecord resolveField(String name) {
+      AppFormFieldRecord field = businessFields.get(name);
+      return field != null ? field : builtinFields.get(name);
     }
   }
 
@@ -239,6 +250,8 @@ public class AppPackageValidator {
       if (field.builtin()) {
         if (!BUILTIN_FIELDS.contains(field.name())) {
           issues.add("FIELD_INVALID", fieldPath + ".builtin", "未知内置字段: " + field.name());
+        } else {
+          info.builtinFields.put(field.name(), field);
         }
         continue;
       }
@@ -407,7 +420,7 @@ public class AppPackageValidator {
       return;
     }
     String field = sort.field().trim();
-    if (!info.allFields.contains(field) && !Set.of("id", "created_at", "updated_at").contains(field)) {
+    if (!info.allFields.contains(field)) {
       issues.add("VIEW_TAB_INVALID", path + ".field", "排序字段不存在: " + field);
     }
     if (!isBlank(sort.order()) && !Set.of("ASC", "DESC").contains(sort.order().trim().toUpperCase(Locale.ROOT))) {
@@ -504,7 +517,7 @@ public class AppPackageValidator {
     Issues issues
   ) {
     if (isBlank(fieldName)) return null;
-    AppFormFieldRecord field = info.businessFields.get(fieldName.trim());
+    AppFormFieldRecord field = info.resolveField(fieldName.trim());
     if (field == null) {
       issues.add("VIEW_TAB_INVALID", path, label + "不存在: " + fieldName);
     }
@@ -558,7 +571,7 @@ public class AppPackageValidator {
         continue;
       }
       String fieldName = String.valueOf(condition.keySet().iterator().next());
-      AppFormFieldRecord field = info.businessFields.get(fieldName);
+      AppFormFieldRecord field = info.resolveField(fieldName);
       if ("id".equals(fieldName)) {
         issues.add("VIEW_TAB_INVALID", conditionPath, "视图筛选条件不支持 id 字段");
         continue;
@@ -659,10 +672,15 @@ public class AppPackageValidator {
                                          Map<String, Object> directory, Issues issues) {
     Set<String> navIds = new LinkedHashSet<>();
     Set<String> formEntryIds = new LinkedHashSet<>();
+    Set<String> workbenchIds = content.workbenches() == null ? Set.of() : content.workbenches().stream()
+      .map(AppPackage.WorkbenchExport::id)
+      .filter(java.util.Objects::nonNull)
+      .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
     List<AppNavRecord> navs = content.navigation() == null ? List.of() : content.navigation();
     int[] count = {0};
     for (int index = 0; index < navs.size(); index++) {
-      collectNav(navs.get(index), "navigation[" + index + "]", null, forms, directory, issues, navIds, formEntryIds, count, 1);
+      collectNav(navs.get(index), "navigation[" + index + "]", null, forms, directory, issues, navIds, formEntryIds,
+        workbenchIds, count, 1);
     }
     if (count[0] > MAX_NAV_NODES) {
       issues.add("NAV_LIMIT", "navigation", "导航节点超过 " + MAX_NAV_NODES + " 个上限");
@@ -672,7 +690,7 @@ public class AppPackageValidator {
 
   private void collectNav(AppNavRecord nav, String path, String expectedParent, Map<String, FormInfo> forms,
                           Map<String, Object> directory, Issues issues, Set<String> navIds, Set<String> formEntryIds,
-                          int[] count, int depth) {
+                          Set<String> workbenchIds, int[] count, int depth) {
     if (nav == null) {
       issues.add("NAV_INVALID", path, "导航节点为空");
       return;
@@ -713,6 +731,13 @@ public class AppPackageValidator {
           case "BUILTIN" -> {
             if (!BUILTIN_DESTINATIONS.contains(destination.id())) {
               issues.add("NAV_INVALID", path + ".destination.id", "内置模块不存在: " + destination.id());
+            } else if (destination.workbenchId() != null && !destination.workbenchId().isBlank()) {
+              if (!"workbench".equals(destination.id())) {
+                issues.add("NAV_INVALID", path + ".destination.workbenchId", "仅工作台内置页面支持配置具体工作台");
+              } else if (!workbenchIds.contains(destination.workbenchId())) {
+                issues.add("NAV_INVALID", path + ".destination.workbenchId",
+                  "导航关联工作台不在包内: " + destination.workbenchId());
+              }
             }
           }
           case "FORM" -> {
@@ -757,7 +782,7 @@ public class AppPackageValidator {
     if (nav.children() != null) {
       for (int index = 0; index < nav.children().size(); index++) {
         collectNav(nav.children().get(index), path + ".children[" + index + "]", nav.id(),
-          forms, directory, issues, navIds, formEntryIds, count, depth + 1);
+          forms, directory, issues, navIds, formEntryIds, workbenchIds, count, depth + 1);
       }
     }
   }
@@ -872,12 +897,12 @@ public class AppPackageValidator {
         issues.add("WORKBENCH_INVALID", path + ".chartType", "工作台图表类型不合法");
       }
       if (form != null) {
-        AppFormFieldRecord dimension = form.businessFields.get(chart.dimensionField());
+        AppFormFieldRecord dimension = form.resolveField(chart.dimensionField());
         if (isBlank(chart.dimensionField())) {
           issues.add("WORKBENCH_INVALID", path + ".dimensionField", "工作台图表必须配置分组字段");
-        } else if (dimension == null && !BUILTIN_FIELDS.contains(chart.dimensionField())) {
+        } else if (dimension == null) {
           issues.add("WORKBENCH_INVALID", path + ".dimensionField", "工作台分组字段不存在: " + chart.dimensionField());
-        } else if (dimension != null && !GROUPABLE_TYPES.contains(dimension.type())) {
+        } else if (!GROUPABLE_TYPES.contains(dimension.type())) {
           issues.add("WORKBENCH_INVALID", path + ".dimensionField", "工作台分组字段类型不支持: " + dimension.type());
         }
       }
@@ -950,7 +975,7 @@ public class AppPackageValidator {
   }
 
   private void requireMeasureField(FormInfo form, String field, String path, Issues issues) {
-    AppFormFieldRecord record = form.businessFields.get(field);
+    AppFormFieldRecord record = form.resolveField(field);
     if (isBlank(field) || record == null) {
       issues.add("WORKBENCH_INVALID", path, "工作台指标聚合字段不存在: " + field);
     } else if (!MEASURE_TYPES.contains(record.type())) {

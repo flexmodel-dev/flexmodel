@@ -6,6 +6,7 @@ package dev.flexmodel.apps.workbench.dto;
 public record WorkbenchMetricConfig(
   String formName,
   String aggregation,
-  String field
+  String field,
+  Integer decimalPlaces
 ) implements WorkbenchComponentConfig {
 }

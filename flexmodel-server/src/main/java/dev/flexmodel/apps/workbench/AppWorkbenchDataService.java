@@ -1,6 +1,8 @@
 package dev.flexmodel.apps.workbench;
 
 import dev.flexmodel.apps.form.AppFormService;
+import dev.flexmodel.apps.form.dto.AppFormFieldOptionResponse;
+import dev.flexmodel.apps.form.dto.AppFormFieldResponse;
 import dev.flexmodel.apps.record.AppRecordService;
 import dev.flexmodel.apps.workbench.dto.*;
 import dev.flexmodel.common.ValidationException;
@@ -11,6 +13,7 @@ import jakarta.inject.Inject;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class AppWorkbenchDataService {
@@ -70,9 +73,21 @@ public class AppWorkbenchDataService {
       config.measureField(),
       config.aggregation(),
       MAX_CHART_GROUPS);
+    var dimensionField = appFormService.findForm(appId, config.formName()).fields().stream()
+      .filter(field -> config.dimensionField() != null && config.dimensionField().equals(field.name()))
+      .findFirst()
+      .orElse(null);
+    Map<String, String> optionTexts = dimensionField == null || dimensionField.options() == null
+      ? Map.of()
+      : dimensionField.options().stream()
+      .filter(option -> option.id() != null)
+      .collect(Collectors.toMap(
+        AppFormFieldOptionResponse::id,
+        option -> option.text() == null || option.text().isBlank() ? option.id() : option.text(),
+        (left, right) -> right));
     return new WorkbenchChartData(rows.stream()
       .map(row -> new WorkbenchDataPointRecord(
-        dimensionValue(row.get("dimension")),
+        dimensionValue(row.get("dimension"), dimensionField, optionTexts),
         numberValue(row, "value")))
       .toList());
   }
@@ -114,8 +129,13 @@ public class AppWorkbenchDataService {
     return value instanceof Number number ? number : 0;
   }
 
-  private String dimensionValue(Object value) {
-    return value == null || String.valueOf(value).isBlank() ? "未填写" : String.valueOf(value);
+  private String dimensionValue(Object value, AppFormFieldResponse field, Map<String, String> optionTexts) {
+    if (value == null || String.valueOf(value).isBlank()) return "未填写";
+    String raw = String.valueOf(value);
+    if (field != null && "BOOL".equals(field.type())) {
+      return "true".equals(raw) ? "是" : "否";
+    }
+    return optionTexts.getOrDefault(raw, raw);
   }
 
   private int normalizedPage(Integer page) {

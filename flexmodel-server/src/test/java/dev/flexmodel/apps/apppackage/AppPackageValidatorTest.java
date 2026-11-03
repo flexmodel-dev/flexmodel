@@ -370,6 +370,23 @@ class AppPackageValidatorTest {
     assertTrue(codes(validate(content(List.of(missingConfig), Map.of()))).contains("VIEW_TAB_INVALID"));
   }
 
+  @org.junit.jupiter.api.Test
+  void acceptsViewTabsReferencingBuiltinFields() {
+    var record = formWithViews(List.of(
+      new AppFormViewTabRecord("all", "全部", "TABLE", null,
+        new AppViewSort("created_at", "DESC"), List.of("name", "created_at"), AppViewConfig.empty()),
+      new AppFormViewTabRecord("cal", "日历", "CALENDAR", null, null, List.of(),
+        new AppViewConfig(null, "name", null, null, "created_at", "updated_at", "MONTH",
+          null, null, null, null))));
+    var result = validate(content(List.of(record), Map.of()));
+    assertTrue(result.valid(), result.issues().toString());
+
+    var idDisplay = formWithViews(List.of(
+      new AppFormViewTabRecord("all", "全部", "TABLE", null, null, List.of("name", "id"),
+        AppViewConfig.empty())));
+    assertTrue(codes(validate(content(List.of(idDisplay), Map.of()))).contains("VIEW_TAB_INVALID"));
+  }
+
   private AppFormRecord formWithViews(List<AppFormViewTabRecord> views) {
     var fields = List.of(
       required("name", "TEXT"),

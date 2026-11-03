@@ -1,12 +1,20 @@
 {
   "templates": [
     {
-      "id": "erp-system",
-      "name": "ERP 管理系统",
-      "description": "企业资源计划管理应用：供应商与物料基础数据、采购订单主子表管理、订单审批流程与经营看板",
+      "id": "plm",
+      "name": "PLM 产品生命周期管理",
+      "description": "产品生命周期管理：产品与物料主数据、图文档与版本签发、EBOM/MBOM 结构、工艺路线与工序、ECR/ECN 设计变更会签与执行跟踪、研发看板",
       "category": "企业管理",
       "iconName": "Container",
-      "order": 10
+      "order": 1
+    },
+    {
+      "id": "erp",
+      "name": "ERP 企业资源计划",
+      "description": "企业资源计划：物料/仓库/库位/客商/科目主数据，BOM 与 MRP，采购申请-订单-入库，销售订单-出库-开票，库存流水/盘点/调拨，生产工单-领料-报工，凭证-应收-应付-收付款与费用报销，配套审批流与经营看板",
+      "category": "企业管理",
+      "iconName": "Calculator",
+      "order": 2
     }
   ]
 }

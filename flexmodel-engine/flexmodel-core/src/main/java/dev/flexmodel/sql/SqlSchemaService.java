@@ -61,6 +61,7 @@ public class SqlSchemaService extends BaseService implements SchemaService {
 
   @Override
   public EntityDefinition createEntity(EntityDefinition entity) {
+    validateTextConstraints(entity);
     // 保存到ModelRegistry中
     modelRegistry.register(sessionContext.getSchemaName(), entity);
     SqlTable sqlTable = toSqlTable(entity);
@@ -85,6 +86,24 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     // 保存到ModelRegistry中
     modelRegistry.register(sessionContext.getSchemaName(), anEnum);
     return anEnum;
+  }
+
+  /**
+   * 大文本列在多数数据库不能直接建索引/唯一键，提前拒绝并给出明确提示。
+   */
+  private void validateTextConstraints(EntityDefinition entity) {
+    for (TypedField<?, ?> field : entity.getFields()) {
+      if (field instanceof TextField && field.isUnique()) {
+        throw new IllegalArgumentException("Text 类型字段不支持唯一约束: " + field.getName());
+      }
+    }
+    for (IndexDefinition index : entity.getIndexes()) {
+      for (IndexDefinition.Field indexField : index.getFields()) {
+        if (entity.getField(indexField.fieldName()) instanceof TextField) {
+          throw new IllegalArgumentException("Text 类型字段不支持索引: " + indexField.fieldName());
+        }
+      }
+    }
   }
 
   private void createTable(SqlTable sqlTable) {
@@ -119,6 +138,9 @@ public class SqlSchemaService extends BaseService implements SchemaService {
 
   @Override
   public TypedField<?, ?> createField(TypedField<?, ?> field) {
+    if (field instanceof TextField && field.isUnique()) {
+      throw new IllegalArgumentException("Text 类型字段不支持唯一约束: " + field.getName());
+    }
     // 更新实体定义，添加新字段
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(field.getModelName());
     if (entity != null) {
@@ -237,6 +259,12 @@ public class SqlSchemaService extends BaseService implements SchemaService {
   @Override
   public IndexDefinition createIndex(IndexDefinition index) {
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(index.getModelName());
+    // 大文本列无法直接建索引（MySQL 需要前缀索引，Oracle/DB2/SQL Server 不支持）
+    for (IndexDefinition.Field indexField : index.getFields()) {
+      if (entity.getField(indexField.fieldName()) instanceof TextField) {
+        throw new IllegalArgumentException("Text 类型字段不支持索引: " + indexField.fieldName());
+      }
+    }
     entity.addIndex(index);
     modelRegistry.register(sessionContext.getSchemaName(), entity);
 

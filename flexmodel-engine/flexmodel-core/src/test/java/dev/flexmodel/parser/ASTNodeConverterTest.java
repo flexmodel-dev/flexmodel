@@ -9,6 +9,7 @@ import dev.flexmodel.model.EnumDefinition;
 import dev.flexmodel.model.EnumElement;
 import dev.flexmodel.model.field.ModelRefField;
 import dev.flexmodel.model.field.RelationStrategy;
+import dev.flexmodel.model.field.TextField;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.parser.impl.ModelParser;
 import dev.flexmodel.parser.impl.ParseException;
@@ -75,6 +76,27 @@ public class ASTNodeConverterTest {
     assertEquals("classId", relation.getForeignField());
     assertNotNull(relation.getFilter());
     assertEquals(Map.of("activeStudents.status", Map.of("_eq", "ACTIVE")), relation.getFilter());
+  }
+
+  @Test
+  void textTypeIsParsedAsTextField() throws ParseException {
+    String fml = """
+      model Article {
+        id : Long @id,
+        content : Text @comment("正文"),
+        summary? : Text
+      }
+      """;
+    List<SchemaObject> models = ASTNodeConverter.parseFML(fml).getModels();
+    EntityDefinition entity = (EntityDefinition) models.get(0);
+    assertInstanceOf(TextField.class, entity.getField("content"));
+    assertEquals("Text", entity.getField("content").getType());
+    assertTrue(entity.getField("summary").isNullable());
+
+    // 反向序列化为 FML 时保持 Text 类型
+    ModelParser.Model model = ASTNodeConverter.fromSchemaEntity(entity);
+    assertEquals("Text", model.fields.get(1).type);
+    assertEquals("Text", model.fields.get(2).type);
   }
 
   @Test

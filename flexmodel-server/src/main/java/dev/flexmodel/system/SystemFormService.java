@@ -618,7 +618,7 @@ public class SystemFormService {
     boolean required
   ) {
     TypedField<?, ?> field = switch (type) {
-      case "NTEXT" -> new StringField(fieldName).setLength(4000);
+      case "NTEXT" -> new TextField(fieldName);
       case "PHONE", "EMAIL", "URL", "TAG" -> new StringField(fieldName).setLength(512);
       case "SELECT" -> new StringField(fieldName).setLength(255);
       case "TEXT" -> new StringField(fieldName).setLength(255);
@@ -775,6 +775,7 @@ public class SystemFormService {
   }
 
   private String inferFieldType(TypedField<?, ?> field) {
+    if (field instanceof TextField) return "NTEXT";
     if (field instanceof JSONField) return "MULTISELECT";
     if (field instanceof IntField) return "NUMBER";
     if (field instanceof FloatField) return "DECIMAL";

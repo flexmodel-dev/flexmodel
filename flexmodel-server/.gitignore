@@ -38,4 +38,4 @@ storage/
 
 ### Logs ###
 logs/
-/pages/
+src/main/resources/application-dev.properties

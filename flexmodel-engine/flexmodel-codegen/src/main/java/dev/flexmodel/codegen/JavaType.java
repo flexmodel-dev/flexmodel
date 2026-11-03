@@ -11,6 +11,7 @@ public enum JavaType {
 
   MODEL_REF(ScalarType.MODEL_REF_TYPE, null, null, null),
   STRING(STRING_TYPE, null, "String", "String"),
+  TEXT(TEXT_TYPE, null, "String", "String"),
   FLOAT(FLOAT_TYPE, null, "Double", "Double"),
   INT(INT_TYPE, null, "Integer", "Integer"),
   LONG(LONG_TYPE, null, "Long", "Long"),

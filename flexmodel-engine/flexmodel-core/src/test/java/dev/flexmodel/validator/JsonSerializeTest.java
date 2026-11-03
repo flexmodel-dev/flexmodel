@@ -69,6 +69,20 @@ public class JsonSerializeTest {
 
 
   @Test
+  void textFieldSurvivesJsonRoundTrip() {
+    EntityDefinition entity = new EntityDefinition("article");
+    entity.addField(new LongField("id").asIdentity());
+    entity.addField(new TextField("content").setComment("正文"));
+
+    String json = JsonUtils.toJsonString(entity);
+    Assertions.assertTrue(json.contains("\"type\":\"Text\""), json);
+
+    EntityDefinition deserialized = JsonUtils.parseToObject(json, EntityDefinition.class);
+    Assertions.assertInstanceOf(TextField.class, deserialized.getField("content"));
+    Assertions.assertEquals("Text", deserialized.getField("content").getType());
+  }
+
+  @Test
   void enumElementCodesSurviveJsonRoundTrip() {
     EnumDefinition definition = new EnumDefinition("OrderStatus");
     definition.setElements(List.of(

@@ -4352,3 +4352,32 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   后生效——此前用户端反复“模板有问题”的体感很可能部分源于该坏服务。
 - 校验严格度结论（回应“是不是校验太严格了”）：docs/plans/app-templates.md:208 明确 users/organizations
   执行人“实际上无法跨实例移植”，基线目录校验是有意设计；放松只会把失败推迟到导入/启用时刻。真正缺的是入库清洗工序，已由工具补齐。未提交代码。
+
+## 新增 Text 大文本字段类型（2026-11-03，feat-166）
+
+- 现象：MySQL 导入 schema（PLM 应用包 plm_part 等宽表）执行 create table 报
+  `Row size too large. The maximum row size for the table type, not counting BLOBs, is 65535`，failsafe 模式跳过后表不存在。根因：引擎只有
+  String（VARCHAR）字符类型，AppFormService 把 NTEXT/IMAGE/FILE/AVATAR 一律映射为 `StringField(4000)`，utf8mb4 下单个
+  varchar (4000) 占 16000 字节行内空间，三四个即超 65535。
+- 方案：新增一等公民 `Text` 类型（`ScalarType.TEXT` + `TextField`），映射 JDBC `LONGVARCHAR`：MySQL longtext、PostgreSQL
+  text、SQL Server nvarchar (MAX)、Oracle clob、DB2 long varchar、DM/Informix clob。Text
+  不参与行内长度预算，正好解决该报错；不采用「StringField + text 标记」，因为模型侧类型名是 JSON
+  子类型/FML/GraphQL/codegen/TypeHandler/DDL 的统一判别符，标记无法改变类型名，反而制造 String+length 与 Text 并存的非法状态（UI
+  里残留的 String.text 开关已移除）。
+- 引擎改动：ScalarType、model/field/TextField、TypedFieldMixIn/FlexmodelCoreModule 注册 "Text" 子类型、ASTNodeConverter（FML
+  解析与回写）、SqlContext (TextSqlTypeHandler)/MongoContext (TextTypeHandler)
+  、JdbcModelRegistry（LONGVARCHAR→TextField）、codegen JavaType (TEXT→String)、GraphQL type/comparison 映射。
+- 服务端改动：AppFormService.buildField 的 NTEXT/FILE/IMAGE/AVATAR → TextField，inferFieldType (TextField)
+  =NTEXT；SystemFormService 同步。
+- 前端改动：fieldFormConstants 增加 Text 选项与初始值，FieldInput 用 TextArea，FieldList 增加 Text 图标，FmlEditor 关键字/补全与
+  zh/en 文案，移除无效的 String.text 开关。
+- 文档：flexmodel-server/docs/overview.md、flexmodel-website/docs/tutorial/features/modeling.md 类型表与 MCP 建模工具说明补充
+  Text。
+- 验证：新增 `MySQLSqlDialectTest`（Text→longtext、宽表行内字节预算回归）、
+  `ASTNodeConverterTest.textTypeIsParsedAsTextField`、`JsonSerializeTest.textFieldSurvivesJsonRoundTrip`；
+  `mvn test -pl flexmodel-engine/flexmodel-core` 通过；`mvn compile -pl flexmodel-server -am` 通过；`flexmodel-ui`
+  `npx tsc -b` 通过（未跑 UI E2E）。
+- 兼容性说明：既有的 StringField (length=4000) 存量表不会自动迁移；如需收敛，可在导入/重建应用时由新 buildField 生成 Text
+  列（ALTER 为 longtext）。
+- 遗留建议：AppFieldRules 对 NTEXT 仍限制 maxLength≤4000（应用层 UX 规则，与物理列容量解耦），如需放开到 longtext
+  容量，需同步取值上限、前端输入框与文档。

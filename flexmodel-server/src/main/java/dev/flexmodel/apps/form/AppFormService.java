@@ -1161,8 +1161,8 @@ public class AppFormService {
     boolean required
   ) {
     TypedField<?, ?> field = switch (type) {
-      case "NTEXT" -> new StringField(fieldName).setLength(4000);
-      case "FILE", "IMAGE", "AVATAR" -> new StringField(fieldName).setLength(4000);
+      // 大文本/附件字段使用 Text，避免 MySQL 下多个 varchar(4000) 触发 65535 行长度限制
+      case "NTEXT", "FILE", "IMAGE", "AVATAR" -> new TextField(fieldName);
       case "PHONE", "EMAIL", "URL", "TAG", "BARCODE", "LOCATION", "SIGN", "STATE" ->
         new StringField(fieldName).setLength(512);
       case "SERIES" -> new StringField(fieldName).setLength(64);
@@ -1334,6 +1334,7 @@ public class AppFormService {
 
   private String inferFieldType(TypedField<?, ?> field) {
     if (field instanceof ModelRefField) return "REFERENCE";
+    if (field instanceof TextField) return "NTEXT";
     if (field instanceof JSONField) return "MULTISELECT";
     if (field instanceof IntField) return "NUMBER";
     if (field instanceof FloatField) return "DECIMAL";

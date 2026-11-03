@@ -90,6 +90,7 @@ public class ASTNodeConverter {
 
         yield field;
       }
+      case ScalarType.TEXT_TYPE -> new TextField(idlField.name);
       case ScalarType.FLOAT_TYPE -> {
         field = new FloatField(idlField.name);
         for (ModelParser.Annotation annotation : idlField.annotations) {
@@ -358,6 +359,7 @@ public class ASTNodeConverter {
         }
         addDefaultAnnotation(idlField, stringField.getDefaultValue());
       }
+      case TextField textField -> addDefaultAnnotation(idlField, textField.getDefaultValue());
       case FloatField floatField -> {
         addNumericAnnotations(idlField, floatField.getPrecision(), floatField.getScale());
         addDefaultAnnotation(idlField, floatField.getDefaultValue());

@@ -62,7 +62,8 @@ public class ModelingTools {
   @Tool(description = """
     Create a new entity model (maps to a database table) in a project. \
     The entityJson must be a JSON object with type='Entity', name, and fields array. \
-    Supported field types: String (with length, default 255), Int, Long, Float (with precision/scale), \
+    Supported field types: String (with length, default 255), Text (unbounded long text, no length, not indexable), \
+    Int, Long, Float (with precision/scale), \
     Boolean, DateTime, Date, Time, JSON, Enum (EnumRef, with 'from' pointing to an enum name, 'multiple' for array), \
     Relation (with 'from', 'localField', 'foreignField', 'cascadeDelete'). \
     Common field properties: name, type, modelName (must match entity name), nullable (default true), \

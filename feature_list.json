@@ -1530,6 +1530,14 @@
       "dependencies": [],
       "status": "done",
       "evidence": "2026-11-03 修复（flexmodel-server，未提交）。新增 AppFormService.builtinFieldRecords() 静态目录（id=TEXT、owner_id/created_by/updated_by=REFERENCE→f_user、created_at/updated_at=DATETIME，全部 builtin=true），三条链路复用：createFormWithFields 的字段记录种子改用该目录（替代 systemFieldRecords()，已删除）；normalizeViews 的 fields map 先以内置目录打底再覆盖记录字段（存量记录缺内置条目时保存视图仍可引用 created_at 等），normalizeViewSort 去除 VIEW_BUILTIN_SORT_FIELDS 豁免（常量已删，目录已覆盖）；findViewCapabilities 的字段清单与筛选操作符目录同样打底，AI 在存量表单上也能看到并使用内置字段。AppPackageValidator.FormInfo 构造时用该目录预填 builtinFields 与 allFields，resolveField 永远可解析六个内置字段（视图 config/sort/displayFields 引用内置字段通过，displayFields 对 id 的显式拒绝与保存侧一致），validateViewTabSort 的 Set.of(\"id\",\"created_at\",\"updated_at\") 豁免简化为 allFields 判断；授权校验 fieldControls 引用内置字段从「权限字段不存在」warning 变为命中「内置字段不能授权修改」分支（语义更正确）。新增 AppPackageValidatorTest.acceptsViewTabsReferencingBuiltinFields：表单 fields 不含内置条目时日历 startField=created_at、endField=updated_at、排序 created_at、显示字段 created_at 全部通过，displayFields 引用 id 仍拒绝。验证：mvn compile -pl flexmodel-server -am 通过；AppPackageValidatorTest 21/21、AppToolsTest 5/5；mvn test -pl flexmodel-engine BUILD SUCCESS。未执行 git commit/push。"
+    },
+    {
+      "id": "feat-166",
+      "name": "引擎 - 新增 Text 大文本字段类型",
+      "description": "建模/引擎此前只有 String（VARCHAR）一种字符类型，应用层把 NTEXT/IMAGE/FILE/AVATAR 映射为 varchar(4000)，导入 PLM 模板这类宽表时 MySQL 报 Row size too large（65535）导致建表失败。新增 Text 字段类型（ScalarType.TEXT + TextField），DDL 映射 LONGVARCHAR（MySQL longtext、PostgreSQL text、SQL Server nvarchar(MAX)、Oracle clob、DB2 long varchar），FML/JSON/GraphQL/codegen/Mongo/SQL 全链路支持；AppFormService/SystemFormService 的 NTEXT/FILE/IMAGE/AVATAR 改为 TextField。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-engine + flexmodel-server + flexmodel-ui，未提交）。引擎：ScalarType.TEXT(\"Text\")、TextField、Jackson 子类型注册、FML 解析与回写、SqlContext(LONGVARCHAR)/MongoContext 类型处理器、JdbcModelRegistry 反向映射 LONGVARCHAR→Text；codegen JavaType TEXT→String；GraphQL type/comparison 映射 String/StringComparisonExp。服务端：AppFormService.buildField 的 NTEXT/FILE/IMAGE/AVATAR → TextField，inferFieldType(TextField)→NTEXT，SystemFormService 同步。前端：建模字段类型下拉新增 Text、字段输入用 TextArea、FML 补全与高亮、移除无效的 String.text 开关。文档：overview/modeling 类型表与 MCP 说明补充 Text。测试：新增 MySQLSqlDialectTest（longtext 生成 + 行内字节预算回归）、ASTNodeConverterTest.textTypeIsParsedAsTextField、JsonSerializeTest.textFieldSurvivesJsonRoundTrip；mvn test -pl flexmodel-engine/flexmodel-core 通过；mvn compile -pl flexmodel-server -am 通过；flexmodel-ui npx tsc -b 通过。"
     }
   ]
 }

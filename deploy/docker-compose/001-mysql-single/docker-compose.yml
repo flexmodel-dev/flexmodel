@@ -35,6 +35,19 @@ services:
         condition: service_started
     networks:
       - flexmodel
+  flexmodel-apps-ui:
+    container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-apps-ui
+    image: cjbi/flexmodel-apps-ui:latest
+    restart: always
+    ports:
+      - ${APPS_UI_HTTP_PORT:-180}:80
+    environment:
+      - TZ=GMT+08
+    depends_on:
+      flexmodel-server:
+        condition: service_started
+    networks:
+      - flexmodel
   nginx:
     container_name: ${CONTAINER_NAME_PREFIX}-flexmodel-nginx
     image: nginx:1.25.3

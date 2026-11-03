@@ -32,14 +32,32 @@ public class AppRecordHistoryRepository extends AbstractRepository {
     }
   }
 
+  /**
+   * 批量写事件：导入一次写入上千条历史时，逐条开关会话会成为主要耗时。
+   */
+  public void insertEvents(String appId, List<Map<String, Object>> events) {
+    if (events.isEmpty()) return;
+    List<Map<String, Object>> rows = new ArrayList<>(events.size());
+    for (Map<String, Object> event : events) {
+      Map<String, Object> row = new LinkedHashMap<>(event);
+      row.put("app_id", appId);
+      rows.add(row);
+    }
+    try (Session session = openSession()) {
+      session.data().insertAll(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class), rows);
+    }
+  }
+
   public void insertTargets(String appId, List<Map<String, Object>> targets) {
     if (targets.isEmpty()) return;
+    List<Map<String, Object>> rows = new ArrayList<>(targets.size());
+    for (Map<String, Object> target : targets) {
+      Map<String, Object> row = new LinkedHashMap<>(target);
+      row.put("app_id", appId);
+      rows.add(row);
+    }
     try (Session session = openSession()) {
-      for (Map<String, Object> target : targets) {
-        Map<String, Object> row = new LinkedHashMap<>(target);
-        row.put("app_id", appId);
-        session.data().insert(ReflectionUtils.getModelNameFromClass(AppRecordHistoryTarget.class), row);
-      }
+      session.data().insertAll(ReflectionUtils.getModelNameFromClass(AppRecordHistoryTarget.class), rows);
     }
   }
 

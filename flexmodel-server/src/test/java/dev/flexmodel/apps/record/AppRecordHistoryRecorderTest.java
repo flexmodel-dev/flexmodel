@@ -58,6 +58,12 @@ class AppRecordHistoryRecorderTest {
     }
 
     @Override
+    public void insertEvents(String appId, List<Map<String, Object>> eventRows) {
+      if (failure != null) throw failure;
+      eventRows.forEach(row -> events.add(new HashMap<>(row)));
+    }
+
+    @Override
     public void insertTargets(String appId, List<Map<String, Object>> targetRows) {
       if (failure != null) throw failure;
       targetRows.forEach(row -> targets.add(new HashMap<>(row)));
@@ -182,10 +188,12 @@ class AppRecordHistoryRecorderTest {
     RecordingRepository repository = new RecordingRepository();
     AppRecordHistoryRecorder recorder = recorder(repository, childForm(), parentForm());
     AppFormResponse child = childForm();
-    AppRecordHistoryEvent first = recorder.importCreated("app-1", "import-1", child,
-      record("id", "order-1", "name", "订单A", "customer_id", "customer-9"), "user-2");
-    AppRecordHistoryEvent second = recorder.importCreated("app-1", "import-1", child,
-      record("id", "order-2", "name", "订单B", "customer_id", "customer-9"), "user-2");
+    AppRecordHistoryRecorder.ImportContext context =
+      recorder.prepareImportContext("app-1", "user-2", List.of(child, parentForm()));
+    AppRecordHistoryEvent first = recorder.importCreated(context, "import-1", child,
+      record("id", "order-1", "name", "订单A", "customer_id", "customer-9"));
+    AppRecordHistoryEvent second = recorder.importCreated(context, "import-1", child,
+      record("id", "order-2", "name", "订单B", "customer_id", "customer-9"));
     assertEquals(first.eventKey(), AppRecordHistoryRecorder.digest("import-1", "orders", "order-1", "RECORD_CREATED"));
     assertEquals(AppRecordHistoryRecorder.digest("import-1", "orders", "order-2", "RECORD_CREATED"), second.eventKey());
     assertEquals("IMPORT", first.source());

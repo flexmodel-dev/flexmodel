@@ -153,10 +153,13 @@ public class AppPackageImport {
   // ---------------------------------------------------------------- 重建
 
   private TaskResult rebuild(StagedPlan plan, TaskState initial) {
+    // readContent 已按 planHash 确认包字节与预览时完全一致：预览通过校验后无需在提交时重复整包校验。
     Content content = readContent(plan);
-    Result validation = validator.validate(content);
-    if (!validation.valid())
-      throw new ValidationException(AppPackageService.formatIssues("包校验失败", validation.issues()));
+    if (!previewValidated(plan)) {
+      Result validation = validator.validate(content);
+      if (!validation.valid())
+        throw new ValidationException(AppPackageService.formatIssues("包校验失败", validation.issues()));
+    }
     String appId = initial.targetProjectId();
     AppService.IMPORT_BYPASS.set(true);
     try {
@@ -169,14 +172,12 @@ public class AppPackageImport {
       run.state = run.state.withApp(appId);
       tasks.save(run.state);
 
+      // 表单与引用字段一次建表、一次写配置：不再需要「先建骨架再逐字段 ALTER」的引用阶段。
       run.phase("forms");
-      createSkeletonForms(appId, content.forms());
-
-      run.phase("references");
-      createReferenceFields(appId, content.forms());
+      forms.createFormsForImport(appId, content.forms());
 
       run.phase("layouts");
-      applyLayouts(appId, content.forms());
+      forms.applyFormLayoutsForImport(appId, content.forms());
 
       run.phase("navigation");
       Map<String, String> workbenchNavRefs = new LinkedHashMap<>();
@@ -213,6 +214,14 @@ public class AppPackageImport {
     }
   }
 
+  /**
+   * 预览已通过校验，且提交时包字节未变（readContent 已核对 planHash），因此无需重复校验。
+   * <p>预览未通过时仍需校验一次，以返回具体问题。</p>
+   */
+  private boolean previewValidated(StagedPlan plan) {
+    return plan.preview() != null && "READY".equals(plan.preview().status());
+  }
+
   private Content readContent(StagedPlan plan) {
     try {
       Content content = packages.read(store.readZip(plan.uploadId()));
@@ -238,61 +247,8 @@ public class AppPackageImport {
   }
 
   // ---------------------------------------------------------------- 表单
-
-  private void createSkeletonForms(String appId, List<AppFormRecord> records) {
-    for (AppFormRecord record : records) {
-      AppFormFieldRecord nameField = record.fields() == null ? null : record.fields().stream()
-        .filter(field -> !field.builtin() && "name".equals(field.name())).findFirst().orElse(null);
-      if (nameField != null && !"TEXT".equals(nameField.type()))
-        throw new ValidationException("表单 " + record.name() + " 的 name 字段类型必须为 TEXT");
-      List<AppFormFieldCreateRequest> fields = record.fields() == null ? List.of() : record.fields().stream()
-        .filter(field -> !field.builtin() && !"name".equals(field.name()) && !"REFERENCE".equals(field.type()))
-        .map(field -> new AppFormFieldCreateRequest(field.label(), field.name(), field.type(), field.required(),
-          field.options(), field.referenceForm(), field.config()))
-        .toList();
-      forms.createFormWithFields(appId, new AppFormCreateRequest(record.label(), record.name(),
-        record.description(), nameField != null), fields);
-      if (nameField != null && requiresNameRestore(nameField)) {
-        forms.updateField(appId, record.name(), "name", new AppFormFieldUpdateRequest(
-          nameField.label(), nameField.required(), null, null, nameField.config()));
-      }
-    }
-  }
-
-  private boolean requiresNameRestore(AppFormFieldRecord nameField) {
-    // 骨架字段为「名称」且必填，只能恢复与骨架不同的元数据；required=true 本身不需要变更。
-    return !"名称".equals(nameField.label()) || !nameField.required() || nameField.config() != null;
-  }
-
-  private void createReferenceFields(String appId, List<AppFormRecord> records) {
-    for (AppFormRecord record : records) {
-      for (AppFormFieldRecord field : record.fields() == null ? List.<AppFormFieldRecord>of() : record.fields()) {
-        if (field.builtin() || "name".equals(field.name()) || !"REFERENCE".equals(field.type())) continue;
-        forms.createField(appId, record.name(), new AppFormFieldCreateRequest(field.label(), field.name(),
-          field.type(), field.required(), null, field.referenceForm(), field.config()));
-      }
-    }
-  }
-
-  private void applyLayouts(String appId, List<AppFormRecord> records) {
-    for (AppFormRecord record : records) {
-      if (record.layout() != null && record.layout().items() != null && !record.layout().items().isEmpty())
-        forms.saveFormLayout(appId, record.name(), new AppFormLayoutRequest(record.layout().items()));
-      if (record.viewTabs() != null && !record.viewTabs().isEmpty())
-        forms.patchForm(appId, record.name(), new AppFormPatchRequest(record.viewTabs()));
-      String display = record.displayField() == null || record.displayField().isBlank()
-        ? null : record.displayField().trim();
-      String created = hasNameField(record) ? "name" : null;
-      if (!Objects.equals(created, display))
-        forms.updateForm(appId, record.name(), new AppFormUpdateRequest(record.label(), record.description(),
-          display == null ? "" : display));
-    }
-  }
-
-  private boolean hasNameField(AppFormRecord record) {
-    return record.fields() != null && record.fields().stream()
-      .anyMatch(field -> !field.builtin() && "name".equals(field.name()));
-  }
+  // 表单、引用字段、布局与视图均由 AppFormService 的导入批量接口一次写入，
+  // 不再在此逐表单/逐字段调用单对象接口。
 
   // ---------------------------------------------------------------- 导航与工作台
 
@@ -505,6 +461,9 @@ public class AppPackageImport {
     List<ImportedForm> imported = new ArrayList<>();
     long[] total = {0};
     boolean historyEnabled = history.captureSupported(appId);
+    // 导入上下文一次性解析成员显示名与主子关系，行循环内不再查元数据。
+    AppRecordHistoryRecorder.ImportContext historyContext = historyEnabled
+      ? history.prepareImportContext(appId, plan.userId(), resolved.values()) : null;
     transactions.execute(appId, () -> {
       List<AppRecordHistoryEvent> events = historyEnabled ? new ArrayList<>() : null;
       try (Session session = sessions.open(schema)) {
@@ -532,7 +491,7 @@ public class AppPackageImport {
             }
             if (events != null)
               for (Map<String, Object> values : batch)
-                events.add(history.importCreated(appId, plan.uploadId(), form, values, plan.userId()));
+                events.add(history.importCreated(historyContext, plan.uploadId(), form, values));
           }
           total[0] += rows.size();
           imported.add(new ImportedForm(form.name(), form.label(), rows.size()));
@@ -633,15 +592,16 @@ public class AppPackageImport {
   }
 
   private void compensate(TaskState snapshot, String error) {
-    TaskState state = snapshot.with("COMPENSATING", snapshot.phase(), error);
+    // 补偿会删除目标应用，激活前预写的 COMMITTED 回执必须一并丢弃。
+    TaskState state = snapshot.failed("COMPENSATING", snapshot.phase(), error);
     tasks.save(state);
     try {
       cleanupProject(state.targetProjectId());
-      tasks.save(state.with("FAILED", "compensated", error));
+      tasks.save(state.failed("FAILED", "compensated", error));
       log.info("App package import {} compensated", state.uploadId());
     } catch (RuntimeException | Error cleanupError) {
       log.warn("App package import {} cleanup failed: {}", state.uploadId(), cleanupError.getMessage(), cleanupError);
-      tasks.save(state.with("CLEANUP_REQUIRED", state.phase(),
+      tasks.save(state.failed("CLEANUP_REQUIRED", state.phase(),
         error + " | 清理失败: " + errorMessage(cleanupError)));
     }
   }

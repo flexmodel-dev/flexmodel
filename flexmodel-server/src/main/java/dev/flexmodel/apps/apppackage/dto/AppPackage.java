@@ -158,5 +158,14 @@ public final class AppPackage {
       return new TaskState(uploadId, userId, status, phase, name, planHash, requestDigest,
         targetProjectId, appId, error, result, System.currentTimeMillis());
     }
+
+    /**
+     * 补偿态：目标应用已被删除，必须丢弃激活前预写的 COMMITTED 回执，
+     * 否则 {@link TaskResult#resultOf} 会把已回滚的导入报成成功。
+     */
+    public TaskState failed(String status, String phase, String failure) {
+      return new TaskState(uploadId, userId, status, phase, name, planHash, requestDigest,
+        targetProjectId, appId, failure, null, System.currentTimeMillis());
+    }
   }
 }

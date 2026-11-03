@@ -87,6 +87,8 @@ public class AppTransferExecutor {
       });
       Map<String, Set<String>> localIds = new HashMap<>();
       for (var row : plan.rows()) localIds.computeIfAbsent(row.formName(), ignored -> new HashSet<>()).add(row.id());
+      AppRecordHistoryRecorder.ImportContext historyContext = historyEnabled
+        ? history.prepareImportContext(plan.appId(), plan.userId(), available.values()) : null;
       Set<String> checkedReferences = new HashSet<>();
       for (int index = 0; index < plan.rows().size(); ) {
         PlannedRow first = plan.rows().get(index);
@@ -118,7 +120,7 @@ public class AppTransferExecutor {
         }
         if (historyEnabled) {
           for (Map<String, Object> values : batch) {
-            historyEvents.add(history.importCreated(plan.appId(), plan.id(), form, values, plan.userId()));
+            historyEvents.add(history.importCreated(historyContext, plan.id(), form, values));
           }
         }
       }

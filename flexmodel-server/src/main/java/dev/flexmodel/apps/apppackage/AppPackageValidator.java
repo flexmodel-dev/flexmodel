@@ -12,6 +12,7 @@ import dev.flexmodel.apps.navigation.dto.NavVisibilityRule;
 import dev.flexmodel.apps.workbench.dto.*;
 import dev.flexmodel.common.persistence.ServerSessions;
 import dev.flexmodel.directory.DirectoryService;
+import dev.flexmodel.query.FilterExpression;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -71,6 +72,18 @@ public class AppPackageValidator {
    */
   public interface SystemRecordLookup {
     boolean exists(String formName, String id);
+
+    /**
+     * 批量存在性检查：返回目标环境中缺失的 ID。
+     * <p>默认逐条回退；服务端实现应改为单次 IN 查询，避免按行开关会话。</p>
+     */
+    default Set<String> missing(String formName, Collection<String> ids) {
+      Set<String> missing = new LinkedHashSet<>();
+      for (String id : ids) {
+        if (!exists(formName, id)) missing.add(id);
+      }
+      return missing;
+    }
   }
 
   public record Result(List<ValidationIssue> issues, List<String> warnings) {
@@ -85,6 +98,30 @@ public class AppPackageValidator {
     } catch (RuntimeException error) {
       return false;
     }
+  }
+
+  /**
+   * 批量核验系统目录引用：同一表单的引用 ID 合并为一次 IN 查询（每批 500 个）。
+   */
+  Set<String> missingSystemRecords(String formName, Collection<String> ids) {
+    List<String> pending = new ArrayList<>(new LinkedHashSet<>(ids));
+    if (pending.isEmpty()) return Set.of();
+    Set<String> found = new HashSet<>();
+    try (var session = sessions.open("system")) {
+      for (int start = 0; start < pending.size(); start += 500) {
+        List<String> chunk = pending.subList(start, Math.min(start + 500, pending.size()));
+        session.data().findAll(formName, new FilterExpression<String>("id").in(chunk))
+          .forEach(row -> found.add(String.valueOf(row.get("id"))));
+      }
+    } catch (RuntimeException error) {
+      // 与逐条实现保持一致：查询失败视为缺失，仅产生警告不阻断导入。
+      return new LinkedHashSet<>(pending);
+    }
+    Set<String> missing = new LinkedHashSet<>();
+    for (String id : pending) {
+      if (!found.contains(id)) missing.add(id);
+    }
+    return missing;
   }
 
   private static final class Issues {
@@ -123,7 +160,17 @@ public class AppPackageValidator {
   }
 
   public Result validate(Content content) {
-    return validate(content, directoryService.directory(), this::systemRecordExists);
+    return validate(content, directoryService.directory(), new SystemRecordLookup() {
+      @Override
+      public boolean exists(String formName, String id) {
+        return systemRecordExists(formName, id);
+      }
+
+      @Override
+      public Set<String> missing(String formName, Collection<String> ids) {
+        return missingSystemRecords(formName, ids);
+      }
+    });
   }
 
   /**
@@ -1351,8 +1398,15 @@ public class AppPackageValidator {
     validateDataReferences(content, forms, system, warnings);
   }
 
+  /**
+   * 记录引用完整性：包内引用查集合索引，系统目录引用合并为批量查询。
+   * <p>逐行线性扫描会把 5000 行 × 5000 行放大成两千多万次比较，导入预览直接卡住。</p>
+   */
   private void validateDataReferences(Content content, Map<String, FormInfo> forms,
                                       SystemRecordLookup system, List<String> warnings) {
+    Map<String, Set<String>> packageIds = indexPackageIds(content.data());
+    // 系统目录引用按表单聚合，避免每行开关一次会话。
+    Map<String, Set<String>> systemRefs = new LinkedHashMap<>();
     for (var entry : content.data().entrySet()) {
       FormInfo info = forms.get(entry.getKey());
       if (info == null) continue;
@@ -1365,24 +1419,53 @@ public class AppPackageValidator {
           Object value = row.get(field.name());
           if (AppFieldRules.isEmpty(value)) continue;
           String referenceId = String.valueOf(value);
-          String fieldPath = rowPath + "." + field.name();
           if (SYSTEM_FORMS.contains(field.referenceForm())) {
-            if (!system.exists(field.referenceForm(), referenceId)) {
-              warn(warnings, "引用的系统目录记录在目标环境不存在 " + fieldPath + ": "
-                + field.referenceForm() + "/" + referenceId);
-            }
-          } else {
-            List<Map<String, Object>> targetRows = content.data().get(field.referenceForm());
-            boolean present = targetRows != null && targetRows.stream()
-              .anyMatch(target -> referenceId.equals(String.valueOf(target.get("id"))));
-            if (!present) {
-              warn(warnings, "业务引用记录不在包内 " + fieldPath + ": "
-                + field.referenceForm() + "/" + referenceId);
-            }
+            systemRefs.computeIfAbsent(field.referenceForm(), ignored -> new LinkedHashSet<>()).add(referenceId);
+          } else if (!packageIds.getOrDefault(field.referenceForm(), Set.of()).contains(referenceId)) {
+            warn(warnings, "业务引用记录不在包内 " + rowPath + "." + field.name() + ": "
+              + field.referenceForm() + "/" + referenceId);
           }
         }
       }
     }
+    if (systemRefs.isEmpty()) return;
+    Map<String, Set<String>> missingByForm = new LinkedHashMap<>();
+    systemRefs.forEach((formName, ids) -> {
+      Set<String> missing = system.missing(formName, ids);
+      if (!missing.isEmpty()) missingByForm.put(formName, missing);
+    });
+    if (missingByForm.isEmpty()) return;
+    for (var entry : content.data().entrySet()) {
+      FormInfo info = forms.get(entry.getKey());
+      if (info == null) continue;
+      for (int rowIndex = 0; rowIndex < entry.getValue().size(); rowIndex++) {
+        Map<String, Object> row = entry.getValue().get(rowIndex);
+        if (row == null) continue;
+        String rowPath = "data/" + entry.getKey() + "[" + rowIndex + "]";
+        for (var field : info.businessFields.values()) {
+          if (!"REFERENCE".equals(field.type())) continue;
+          Set<String> missing = missingByForm.get(field.referenceForm());
+          if (missing == null) continue;
+          Object value = row.get(field.name());
+          if (AppFieldRules.isEmpty(value) || !missing.contains(String.valueOf(value))) continue;
+          warn(warnings, "引用的系统目录记录在目标环境不存在 " + rowPath + "." + field.name() + ": "
+            + field.referenceForm() + "/" + value);
+        }
+      }
+    }
+  }
+
+  private Map<String, Set<String>> indexPackageIds(Map<String, List<Map<String, Object>>> data) {
+    Map<String, Set<String>> ids = new LinkedHashMap<>();
+    data.forEach((formName, rows) -> {
+      Set<String> formIds = new LinkedHashSet<>();
+      for (Map<String, Object> row : rows) {
+        if (row == null || row.get("id") == null) continue;
+        formIds.add(String.valueOf(row.get("id")));
+      }
+      ids.put(formName, formIds);
+    });
+    return ids;
   }
 
   private AppFormFieldResponse fieldResponse(AppFormFieldRecord field) {

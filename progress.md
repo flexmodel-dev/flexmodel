@@ -1,5 +1,63 @@
 # Session Progress Log
 
+## Apps - 整包导入结构重建批量化（2026-11-03，perf，不修改 engine）
+
+- 需求：在不改 `flexmodel-engine` 的前提下，尽量把表单与引用字段一次建好，消除结构重建的 O (F²) 写入。
+- 原实现的三处放大：① `createSkeletonForms` 先建骨架表单（每表单一次 createModel + 一次整份配置重写），再
+  `createReferenceFields` 逐引用字段 `createField`（每次 session + register 2 连接 + ALTER + **整份表单配置重写**）；②
+  主显字段元数据还要额外 `updateField`（又一次 register + 整份重写）；③ `applyLayouts` 每表单最多 3 次 `saveFormRecord`（每次
+  delete+insert 全部 f_app_form 行）。F=15、引用字段数十个时就是数百次整表重写。
+- 改动（仅 server）：
+  - `AppFormService.createFormsForImport`：按包内定义构建完整 `EntityDefinition`（系统字段 + 索引 + 主显字段
+    label/required + 全部业务字段含 REFERENCE）→ 每表单一次 `createModel` → 最后 `persistFormRecords` 一次写全部
+    `f_app_form`。引用字段与普通字段一起进 CREATE TABLE，不再逐字段 ALTER。
+  - `AppFormService.applyFormLayoutsForImport`：一次读实体与现有配置，批量 normalize 布局/视图后只写一次。
+  - 导入期 ThreadLocal 快照 `IMPORT_FORM_NAMES` / `IMPORT_ENTITIES`：`normalizeReferenceForm` 不再 `findForms` 查库、
+    `validateSubformItem` 不再逐布局项 `requireForm`，包内互相引用/自引用可一次建表；快照为空时（普通 CRUD）走原逻辑，行为不变。
+  - `AppPackageImport` 删除 references 阶段与三个逐对象方法，改为 forms 阶段一次建表 + layouts 阶段一次写配置。
+  - 缺陷修复：activating 失败时 `compensate` 保留了预写的 COMMITTED 回执，`TaskResult.resultOf` 会把已回滚的导入报成
+    COMMITTED（基线同样存在，被端到端测试暴露）；新增 `TaskState.failed(...)` 在补偿态清空回执。
+- 实测（本地 SQLite 测试库，同一端到端用例）：
+  - 回退到 HEAD 基线：wms（13 表单/52 行）20.5s、plm（15 表单/145 行）30.4s，且均在激活步骤因测试库写锁失败回滚，属上界。
+  - 优化后：wms 2.1–2.6s、plm 1.9–2.5s，字段/引用/布局/视图/记录数断言全部通过。测试库为单写 SQLite 且后台定时任务写平台表，偶发
+    5s 锁超时，测试会重试一次，仍失败则 skip 并注明原因（真实 MySQL 环境无此限制）。
+- 验证：`mvn -o compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` BUILD SUCCESS；新增 `AppFormImportBatchTest` 5 项、
+  `AppPackageImportTest` 端到端 2 项；回归 AppPackageValidatorTest 21、AppRecordHistoryRecorderTest
+  8、AppRecordHistoryDiffTest 8、AppPackageZipTest 10、AppTransferPlannerTest 11、AppRecordServiceTest 6、AppRecordQueryTest
+  16 全绿；AppTemplateCatalogTest 2 项仍为基线既有失败。
+- 仍可继续（需改 engine 或更大重构）：`ModelRegistry.register` 逐模型持久化（可提供批量 register，一次事务写多模型）、导航逐节点读写全树（N
+  节点 O (N²)）、commit 真正异步化。
+- 清理：删除本轮测试产生的 `flexmodel-server/database/app_*.db`（按测试日志中的 appId 精确删除 20 个）；仓库内其余 app_*.db
+  为既有测试遗留，未处理。未执行 git commit/push。
+
+## Apps - 应用整包导入性能优化（2026-11-03，perf）
+
+- 现象：带记录数据的整包导入耗时数分钟到数十分钟。根因不是单点算法，而是「单对象 CRUD 接口被放进行/节点循环」+「每次调用都新建会话读整份元数据」+
+  dev 环境项目库在远程 MySQL（单次查询 RTT≈20ms）的乘法放大。
+- 数据路径热点：`AppPackageImport.writeRecords` 逐行 `history.importCreated`，其中 `memberName` 每行调两次
+  `DirectoryService.directory()`（每次 5 张表全量），`parentRelations` 每行按引用字段 `findForm`（findApp+findProject+整表
+  f_app_form+f_model 反序列化）；历史事件在 `Session.close()` flush 时逐条触发 `TriggerDataChangedEventListener`（每事件 2
+  次查询）；历史落库逐事件开关平台会话、targets 逐条 insert。
+- 本次改动（仅服务端，未动结构重建与库配置）：
+  - `AppRecordHistoryRecorder`：新增 `ImportContext`/`prepareImportContext(appId, userId, forms)`，目录显示名只查一次，主子关系按表单快照预建
+    `ParentLink` 索引；`importCreated(context, importId, form, values)` 行循环内不再查元数据。包导入与 Excel 转移各建一次上下文。
+  - `AppRecordHistoryRepository`：新增 `insertEvents`，`insertTargets` 改 `insertAll`；`persistBatch` 改「一批一事务 +
+    两条批量插入」。
+  - `AppPackageValidator`：`SystemRecordLookup` 增加批量 `missing(form, ids)`（默认逐条回退），服务端实现按 500 个 ID 一次
+    IN 查询；`validateDataReferences` 改为先建 `Map<form, Set<id>>` 索引，业务引用从 O (行²) 降到 O (行)
+    ，系统目录引用再批量核验后按行补警告（文案保持不变）。
+  - `AppPackageImport.rebuild`：预览已 READY 且 `readContent` 已核对 planHash 时跳过重复整包校验。
+  - `TriggerDataChangedEventListener`：项目与触发器查询加 1 秒 TTL 缓存（上限 1024，超出清空），逐事件 2 次查询压到每秒级；仅影响触发配置变更后
+    1 秒内的首批事件。
+- 验证：`mvn -o compile -pl flexmodel-server -am` BUILD SUCCESS；定向测试 AppPackageValidatorTest
+  21、AppRecordHistoryRecorderTest 8、AppRecordHistoryDiffTest 8、AppPackageZipTest 10、AppTransferPlannerTest
+  11、AppToolsTest 5 全部通过。AppTemplateCatalogTest 2 项失败已用 git stash 基线复跑确认与本次无关（模板数 6≠测试期望
+  4、qms 示例数据校验，与 feat-167 记录一致）。
+- 未做（后续可选）：结构重建的 O (F²) 写放大（每表单多次全量重写 f_app/f_app_form、导航逐节点读写全树、每个字段一次 model
+  register）、commit 改为真正异步（当前同步占 worker 线程，dev 热重载会打断导入并触发补偿）、`AppApprovalRecordGuard` 每批
+  insert 全项目扫描、dev 库换本地并把 MySQL 连接加 rewriteBatchedStatements。
+- 未执行 git commit/push；未修改 `application-dev.properties`（其改动为会话外既有状态）。
+
 ## Apps - f_app.forms 拆分独立 f_app_form 表（2026-11-03，feat-167）
 
 - 需求：f_app 的 forms JSON 列拆为独立平台表 f_app_form，一表单一行；外层列按需精简，

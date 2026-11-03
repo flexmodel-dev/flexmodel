@@ -89,7 +89,8 @@ public class AppRecordHistoryRecorder {
     try {
       if (form.builtin() || values == null) return;
       String recordId = String.valueOf(values.get("id"));
-      List<Map<String, Object>> parents = parentRelations(appId, form, values);
+      List<ParentLink> links = parentLinks(appId, form);
+      List<Map<String, Object>> parents = parentRelations(form, values, links);
       record(baseEvent(appId, form, recordId, values, EVENT_CREATED)
         .changes(AppRecordHistoryDiff.initialValues(form, values))
         .context(mergeContexts(approvalContext(), parentContext(List.of(), parents)))
@@ -111,8 +112,9 @@ public class AppRecordHistoryRecorder {
       if (form.builtin()) return;
       List<Map<String, Object>> changes = AppRecordHistoryDiff.changes(form, before, after);
       if (changes.isEmpty()) return;
-      List<Map<String, Object>> parentsBefore = parentRelations(appId, form, before);
-      List<Map<String, Object>> parentsAfter = parentRelations(appId, form, after);
+      List<ParentLink> links = parentLinks(appId, form);
+      List<Map<String, Object>> parentsBefore = parentRelations(form, before, links);
+      List<Map<String, Object>> parentsAfter = parentRelations(form, after, links);
       record(baseEvent(appId, form, recordId, after, EVENT_UPDATED)
         .changes(changes)
         .context(mergeContexts(approvalContext(), parentContext(parentsBefore, parentsAfter)))
@@ -126,7 +128,7 @@ public class AppRecordHistoryRecorder {
   public void deleted(String appId, AppFormResponse form, String recordId, Map<String, Object> before) {
     try {
       if (form.builtin()) return;
-      List<Map<String, Object>> parents = parentRelations(appId, form, before);
+      List<Map<String, Object>> parents = parentRelations(form, before, parentLinks(appId, form));
       record(baseEvent(appId, form, recordId, before, EVENT_DELETED)
         .context(mergeContexts(approvalContext(), parentContext(parents, List.of())))
         .targets(parentTargets(form.name(), recordId, parents, List.of()))
@@ -137,30 +139,119 @@ public class AppRecordHistoryRecorder {
   }
 
   /**
-   * Excel 导入：同一次导入共用 operationId 与稳定去重键，事件在导入事务成功后分批写入。
+   * 已声明的主子关系：父表单布局中存在指向本表单的 SUBFORM 项。
+   */
+  record ParentLink(String fieldName, String formName, String label) {
+  }
+
+  /**
+   * 批量导入共享上下文：目录显示名、表单快照与主子关系只在导入开始时解析一次。
+   * <p>
+   * 逐行调用 {@code findForm} / {@code directory} 会让一次 5000 行的导入产生数万次数据库往返，
+   * 因此导入路径必须复用本上下文，不得在行循环内查询元数据。
+   */
+  public static final class ImportContext {
+    private final String appId;
+    private final String userId;
+    private final String actorName;
+    private final Map<String, List<ParentLink>> parents;
+
+    private ImportContext(String appId, String userId, String actorName, Map<String, List<ParentLink>> parents) {
+      this.appId = appId;
+      this.userId = userId;
+      this.actorName = actorName;
+      this.parents = parents;
+    }
+
+    public String appId() {
+      return appId;
+    }
+
+    public String userId() {
+      return userId;
+    }
+
+    String actorName() {
+      return actorName;
+    }
+
+    List<ParentLink> parents(String formName) {
+      return parents.getOrDefault(formName, List.of());
+    }
+  }
+
+  /**
+   * 导入前一次性解析：成员显示名查一次目录，主子关系按表单快照建索引。
+   */
+  public ImportContext prepareImportContext(String appId, String userId, Collection<AppFormResponse> forms) {
+    Map<String, AppFormResponse> byName = new LinkedHashMap<>();
+    for (AppFormResponse form : forms == null ? List.<AppFormResponse>of() : forms) {
+      if (form != null && !form.builtin()) byName.put(form.name(), form);
+    }
+    return new ImportContext(appId, userId, memberName(userId), indexParentLinks(byName));
+  }
+
+  private Map<String, List<ParentLink>> indexParentLinks(Map<String, AppFormResponse> forms) {
+    Map<String, List<ParentLink>> result = new LinkedHashMap<>();
+    for (AppFormResponse child : forms.values()) {
+      List<ParentLink> links = new ArrayList<>();
+      for (AppFormFieldResponse field : child.fields()) {
+        if (!isBusinessReference(field)) continue;
+        AppFormResponse parent = forms.get(field.referenceForm());
+        if (parent == null || !declaresSubform(parent, child, field)) continue;
+        links.add(new ParentLink(field.name(), parent.name(),
+          parent.label() == null ? parent.name() : parent.label()));
+      }
+      if (!links.isEmpty()) result.put(child.name(), List.copyOf(links));
+    }
+    return result;
+  }
+
+  private boolean isBusinessReference(AppFormFieldResponse field) {
+    return "REFERENCE".equals(field.type()) && !field.builtin()
+      && !REFERENCE_SYSTEM_FIELDS.contains(field.name());
+  }
+
+  private boolean declaresSubform(AppFormResponse parent, AppFormResponse child, AppFormFieldResponse field) {
+    if (parent.layout() == null || parent.layout().items() == null) return false;
+    return parent.layout().items().stream().anyMatch(item -> item != null
+      && "SUBFORM".equals(item.type())
+      && child.name().equals(item.formName())
+      && field.name().equals(item.referenceField()));
+  }
+
+  /**
+   * 整包导入：同一次导入共用 operationId 与稳定去重键，元数据取自导入上下文。
    */
   public AppRecordHistoryEvent importCreated(
-    String appId,
+    ImportContext context,
     String importId,
     AppFormResponse form,
-    Map<String, Object> values,
-    String userId
+    Map<String, Object> values
   ) {
+    if (form.builtin() || values == null) return null;
     try {
-      if (form.builtin() || values == null) return null;
       String recordId = String.valueOf(values.get("id"));
-      List<Map<String, Object>> parents = parentRelations(appId, form, values);
-      return baseEvent(appId, form, recordId, values, EVENT_CREATED)
+      List<Map<String, Object>> parents = parentRelations(form, values, context.parents(form.name()));
+      return new EventBuilder()
+        .appId(context.appId())
+        .formName(form.name())
+        .formLabel(form.label())
+        .recordId(recordId)
+        .recordLabel(recordLabel(form, values))
+        .eventType(EVENT_CREATED)
+        .occurredAt(LocalDateTime.now(ZoneOffset.UTC))
         .source(SOURCE_IMPORT)
         .operationId(importId)
-        .actor(ACTOR_USER, userId, memberName(userId))
+        .actor(ACTOR_USER, context.userId(), context.actorName())
         .eventKey(digest(importId, form.name(), recordId, EVENT_CREATED))
         .changes(AppRecordHistoryDiff.initialValues(form, values))
         .context(mergeContexts(approvalContext(), parentContext(List.of(), parents)))
         .targets(parentTargets(form.name(), recordId, List.of(), parents))
         .build();
     } catch (RuntimeException error) {
-      log.warn("Failed to build import history for {}/{}/{}: {}", appId, form.name(), importId, error.getMessage());
+      log.warn("Failed to build import history for {}/{}/{}: {}", context.appId(), form.name(), importId,
+        error.getMessage());
       return null;
     }
   }
@@ -283,14 +374,22 @@ public class AppRecordHistoryRecorder {
     }
   }
 
+  /**
+   * 批量写历史：一批只开一个平台事务、两条批量插入，避免逐事件开关会话。
+   */
   private void persistBatch(List<AppRecordHistoryEvent> events) {
     try {
-      transactions.executePlatform(events.getFirst().appId(), () -> {
+      String appId = events.getFirst().appId();
+      transactions.executePlatform(appId, () -> {
+        List<Map<String, Object>> eventRows = new ArrayList<>(events.size());
+        List<Map<String, Object>> pendingTargets = new ArrayList<>(events.size() * 2);
         for (AppRecordHistoryEvent event : events) {
           String eventId = UUID.randomUUID().toString();
-          repository.insertEvent(event.appId(), eventRow(event, eventId));
-          repository.insertTargets(event.appId(), targetRows(event, eventId));
+          eventRows.add(eventRow(event, eventId));
+          pendingTargets.addAll(targetRows(event, eventId));
         }
+        repository.insertEvents(appId, eventRows);
+        repository.insertTargets(appId, pendingTargets);
         return null;
       });
     } catch (RuntimeException error) {
@@ -421,13 +520,30 @@ public class AppRecordHistoryRecorder {
   /**
    * 只汇总表单布局中明确声明的主子表关系：子表单引用字段指向的主表单在布局中声明了 SUBFORM 项。
    */
-  private List<Map<String, Object>> parentRelations(String appId, AppFormResponse form, Map<String, Object> record) {
+  private List<Map<String, Object>> parentRelations(AppFormResponse form, Map<String, Object> record,
+                                                    List<ParentLink> links) {
     List<Map<String, Object>> result = new ArrayList<>();
-    if (record == null) return result;
+    if (record == null || links.isEmpty()) return result;
+    for (ParentLink link : links) {
+      String parentRecordId = referenceRecordId(record.get(link.fieldName()));
+      if (parentRecordId == null || parentRecordId.isBlank()) continue;
+      Map<String, Object> relation = new LinkedHashMap<>();
+      relation.put("form", link.formName());
+      relation.put("label", link.label());
+      relation.put("field", link.fieldName());
+      relation.put("recordId", parentRecordId);
+      result.add(relation);
+    }
+    return result;
+  }
+
+  /**
+   * 单条 CRUD 路径：按需解析主子关系（每次操作至多一次 findForm，不进入批量导入循环）。
+   */
+  private List<ParentLink> parentLinks(String appId, AppFormResponse form) {
+    List<ParentLink> links = new ArrayList<>();
     for (AppFormFieldResponse field : form.fields()) {
-      if (!"REFERENCE".equals(field.type()) || field.builtin() || REFERENCE_SYSTEM_FIELDS.contains(field.name())) {
-        continue;
-      }
+      if (!isBusinessReference(field)) continue;
       String parentFormName = field.referenceForm();
       if (parentFormName == null || parentFormName.isBlank()) continue;
       AppFormResponse parentForm;
@@ -436,22 +552,11 @@ public class AppRecordHistoryRecorder {
       } catch (RuntimeException error) {
         continue;
       }
-      if (parentForm.builtin() || parentForm.layout() == null || parentForm.layout().items() == null) continue;
-      boolean declared = parentForm.layout().items().stream().anyMatch(item -> item != null
-        && "SUBFORM".equals(item.type())
-        && form.name().equals(item.formName())
-        && field.name().equals(item.referenceField()));
-      if (!declared) continue;
-      String parentRecordId = referenceRecordId(record.get(field.name()));
-      if (parentRecordId == null || parentRecordId.isBlank()) continue;
-      Map<String, Object> relation = new LinkedHashMap<>();
-      relation.put("form", parentForm.name());
-      relation.put("label", parentForm.label() == null ? parentForm.name() : parentForm.label());
-      relation.put("field", field.name());
-      relation.put("recordId", parentRecordId);
-      result.add(relation);
+      if (parentForm.builtin() || !declaresSubform(parentForm, form, field)) continue;
+      links.add(new ParentLink(field.name(), parentForm.name(),
+        parentForm.label() == null ? parentForm.name() : parentForm.label()));
     }
-    return result;
+    return links;
   }
 
   private String referenceRecordId(Object value) {

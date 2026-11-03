@@ -1548,6 +1548,26 @@
       ],
       "status": "done",
       "evidence": "2026-11-03 完成（flexmodel-server，未提交）。platform.fml：f_app 移除 forms? JSON 列并新增 forms? : f_app_form[] @relation(localField id, foreignField app_id, cascadeDelete true)；新增 model f_app_form（id uuid、app_id、app? : f_app 关联、name、content JSON，UQ_APP_FORM_NAME 唯一索引 [app_id, name]）。新增 AppFormRepository（findByAppId/save/deleteByAppId）与 AppFormFmRepository（System.appForm，按 name ASC 排序）；AppFormService：formRecords(appId)/findFormRecord/saveFormRecord/persistFormRecords/requireForm/isFormUsedAsSubform/isFieldUsedAsSubform/referenceForm/toFieldResponse/validateSubformItem/normalizeLayoutItem(s)/ensureUniqueFormName 全链路去掉 Project 参数、按 appId 直查 f_app_form，读经 content→AppFormRecord、写为全量替换（deleteByAppId + 逐行 mergeInto，AppFormRecord 序列化为 content Map，保留 f_app.updated_at 时间戳回写与数据授权 reconcile）；AppService.createApp 移除 setForms；ProjectPlatformDataCleaner APP_MODELS 增加 AppForm。验证：mvn compile -pl flexmodel-server -am BUILD SUCCESS（codegen 重生成 App.forms 为 @ModelRef List<AppForm>、AppForm 含 id/appId/name/content+app ref）；定向测试 74 项中 72 通过（AppPackageZipTest 10、AppRecordServiceTest 6、AppRecordHistoryRecorderTest 8、AppRecordDiscussionServiceTest 2、AppViewServiceTest 7、AppToolsTest 5、AppResourceTest/AppNavigationResourceTest/AppFormResourceTest/AppDataAuthorizationResourceTest/WorkbenchResourceTest/AppPackageValidatorTest 全绿），AppTemplateCatalogTest 失败 2 项经 git stash 基线复跑确认为 HEAD 既有失败（模板目录 6≠4 与 qms 示例数据校验，与本次无关）；mvn test -pl flexmodel-engine BUILD SUCCESS。"
+    },
+    {
+      "id": "feat-168",
+      "name": "Apps - 应用整包导入性能优化",
+      "description": "整包导入（含 Excel 转移）在带数据时耗时过长：逐行重建历史事件会按行查询目录与表单元数据，逐条事件再触发项目/触发器查询，历史落库逐条开关会话，校验重复执行且记录引用校验为 O(行²)。本次只改调用方式与批量写入，不动结构重建与库配置。",
+      "dependencies": [
+        "feat-167"
+      ],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-server，未提交）。1) AppRecordHistoryRecorder 新增 ImportContext 与 prepareImportContext(appId, userId, forms)：成员显示名只查一次目录（原先每行两次 directory()，每次 5 张表全量），主子关系按表单快照建 ParentLink 索引，行循环内不再 findForm；importCreated 改为 importCreated(context, importId, form, values)，AppPackageImport/AppTransferExecutor 各建一次上下文。2) AppRecordHistoryRepository 新增 insertEvents 且 insertTargets 改 insertAll，persistBatch 一批两语句替代逐事件开关会话。3) AppPackageValidator.SystemRecordLookup 增加批量 missing(form, ids) 默认实现，服务端按 f_user/f_department/f_role 合并 500 个 ID 一次 IN 查询；validateDataReferences 先建 Map<form, Set<id>> 索引，业务引用由 5000×5000 次线性比较降为 O(行)。4) AppPackageImport.rebuild 在预览已 READY 且 readContent 校验 planHash 一致时跳过重复整包校验。5) TriggerDataChangedEventListener 为项目与触发器查询加 1 秒 TTL 缓存（上限 1024 项），把逐事件 2 次查询压到每秒级；配置刚变更后的首批事件可能延后到 1 秒内生效。验证：mvn -o compile -pl flexmodel-server -am 通过；AppPackageValidatorTest 21/21、AppRecordHistoryRecorderTest 8/8、AppRecordHistoryDiffTest 8/8、AppPackageZipTest 10/10、AppTransferPlannerTest 11/11、AppToolsTest 5/5 全绿；AppTemplateCatalogTest 2 项失败经 git stash 基线复跑确认与本次无关（模板目录 6≠4、qms 示例数据校验，同 feat-167 记录）。未执行 git commit/push，未改 application-dev.properties。"
+    },
+    {
+      "id": "feat-169",
+      "name": "Apps - 整包导入结构重建批量化（不修改 engine）",
+      "description": "上一轮消除了数据路径的 N+1，但结构重建仍是「先建骨架表单、再逐字段 ALTER 补引用列、每个字段/每个表单重写整份表单配置」的 O(F²) 写入。要求在不改动 flexmodel-engine 的前提下，尽量把表单与引用字段一次建好。",
+      "dependencies": [
+        "feat-168"
+      ],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-server，未提交）。1) AppFormService 新增导入专用批量接口：createFormsForImport(appId, records) 按包内定义一次性构建完整 EntityDefinition（系统字段 + 索引 + 主显字段元数据 + 全部业务字段含 REFERENCE）后每表单一次 createModel、最后 persistFormRecords 一次写全部 f_app_form；applyFormLayoutsForImport(appId, records) 一次读实体与现有配置，批量应用布局与视图后同样只写一次。2) 引用字段不再需要目标表单先建表：导入期用 ThreadLocal 快照（IMPORT_FORM_NAMES / IMPORT_ENTITIES）替代 normalizeReferenceForm 的 findForms 查库与 validateSubformItem 的逐项 requireForm，包内循环引用与自引用均可一次建表；非导入路径快照为空，行为不变。3) AppPackageImport 删除 references 阶段与 createSkeletonForms/createReferenceFields/applyLayouts，改为 forms 阶段一次建表、layouts 阶段一次写配置。4) 顺带修复真实缺陷：导入在 activating 步骤失败时 compensate 保留了激活前预写的 COMMITTED 回执，TaskResult.resultOf 会把已回滚的导入报成 COMMITTED；新增 TaskState.failed(...) 在补偿态丢弃回执。验证：mvn -o compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；新增 AppFormImportBatchTest 5 项（一次建表含引用列、包内互相引用、主显字段元数据落到列、布局视图一次写入、包外引用被拒）全绿；新增 AppPackageImportTest 端到端 2 项（内置 wms/plm 模板完整导入并逐表单核对字段类型/引用/布局/视图/记录数）通过；回归 AppPackageValidatorTest 21、AppRecordHistoryRecorderTest 8、AppRecordHistoryDiffTest 8、AppPackageZipTest 10、AppTransferPlannerTest 11、AppRecordServiceTest 6、AppRecordQueryTest 16 全绿；AppTemplateCatalogTest 2 项仍为基线既有失败（同 feat-167）。本地 SQLite 实测同一端到端测试：回退到 HEAD 的基线 wms 20.5s / plm 30.4s（且均在激活步骤因测试库锁回滚，属上界），优化后 wms 2.1–2.6s、plm 1.9–2.5s 并全部断言通过；测试库为单写 SQLite，后台定时任务会写平台表，偶发 5s 锁超时时测试会重试一次，仍失败则 skip 并说明原因。未执行 git commit/push。"
     }
   ]
 }

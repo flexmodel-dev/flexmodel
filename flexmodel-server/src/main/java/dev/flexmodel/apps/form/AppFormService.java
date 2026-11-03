@@ -246,6 +246,127 @@ public class AppFormService {
     return toResponse(project, entity, record);
   }
 
+  // ---------------------------------------------------------------- 整包导入
+
+  /**
+   * 导入期包内表单名快照：允许引用尚未建表的表单（包校验已保证引用存在）。
+   */
+  private static final ThreadLocal<Set<String>> IMPORT_FORM_NAMES = new ThreadLocal<>();
+  /**
+   * 导入期实体快照：布局子表单校验复用同一份实体，避免逐布局项查库。
+   */
+  private static final ThreadLocal<Map<String, EntityDefinition>> IMPORT_ENTITIES = new ThreadLocal<>();
+
+  /**
+   * 整包导入：一次建好全部表单（引用字段与主显字段元数据一并建列），最后统一写一次表单配置。
+   * <p>原流程「骨架表单 → 逐字段 ALTER → 每个字段重写整份表单配置」会让 F 个表单产生 O(F²) 次写入，
+   * 且引用字段必须等目标表单建好才能补列。包校验已保证引用完整，因此这里可以一次建表。</p>
+   */
+  public void createFormsForImport(String appId, List<AppFormRecord> records) {
+    requireAppProject(appId);
+    List<AppFormRecord> source = records == null ? List.of() : records;
+    Set<String> names = source.stream().map(AppFormRecord::name)
+      .collect(Collectors.toCollection(LinkedHashSet::new));
+    IMPORT_FORM_NAMES.set(names);
+    try {
+      List<ImportForm> prepared = new ArrayList<>(source.size());
+      for (AppFormRecord record : source) prepared.add(prepareImportForm(appId, record));
+      for (ImportForm form : prepared) modelingService.createModel(appId, form.entity());
+      persistFormRecords(appId, prepared.stream().map(ImportForm::record).toList());
+    } finally {
+      IMPORT_FORM_NAMES.remove();
+    }
+  }
+
+  /**
+   * 整包导入：一次性写出全部表单的布局与视图配置（实体与现有配置各读一次）。
+   */
+  public void applyFormLayoutsForImport(String appId, List<AppFormRecord> records) {
+    requireAppProject(appId);
+    List<AppFormRecord> current = new ArrayList<>(formRecords(appId));
+    Map<String, Integer> indexes = new LinkedHashMap<>();
+    for (int index = 0; index < current.size(); index++) indexes.put(current.get(index).name(), index);
+    Map<String, EntityDefinition> entities = new LinkedHashMap<>();
+    for (EntityDefinition entity : entities(appId)) entities.put(entity.getName(), entity);
+    IMPORT_ENTITIES.set(entities);
+    try {
+      for (AppFormRecord source : records == null ? List.<AppFormRecord>of() : records) {
+        Integer index = indexes.get(source.name());
+        EntityDefinition entity = entities.get(source.name());
+        if (index == null || entity == null) throw new NotFoundException("表单不存在: " + source.name());
+        AppFormRecord record = current.get(index);
+        if (source.layout() != null && source.layout().items() != null && !source.layout().items().isEmpty()) {
+          Set<String> builtinFieldNames = new HashSet<>(BUILTIN_FIELDS);
+          record.fields().stream().filter(AppFormFieldRecord::builtin)
+            .map(AppFormFieldRecord::name).forEach(builtinFieldNames::add);
+          record = withLayout(record, normalizeLayoutItems(appId, entity,
+            new AppFormLayoutRequest(source.layout().items()), builtinFieldNames));
+        }
+        if (source.viewTabs() != null && !source.viewTabs().isEmpty()) {
+          record = withViewTabs(record, normalizeViews(record, source.viewTabs()));
+        }
+        current.set(index, record);
+      }
+      persistFormRecords(appId, List.copyOf(current));
+    } finally {
+      IMPORT_ENTITIES.remove();
+    }
+  }
+
+  private record ImportForm(EntityDefinition entity, AppFormRecord record) {
+  }
+
+  /**
+   * 按包内表单定义构建完整实体：主显字段元数据直接落到列上，引用字段与普通字段一起建列。
+   */
+  private ImportForm prepareImportForm(String appId, AppFormRecord source) {
+    String formName = validateFormName(source.name());
+    String label = validateFormLabel(source.label());
+    List<AppFormFieldRecord> packageFields = source.fields() == null ? List.of() : source.fields();
+    AppFormFieldRecord nameField = packageFields.stream()
+      .filter(field -> field != null && !field.builtin() && NAME_FIELD.equals(field.name()))
+      .findFirst().orElse(null);
+    if (nameField != null && !"TEXT".equals(nameField.type())) {
+      throw new ValidationException("表单 " + formName + " 的 name 字段类型必须为 TEXT");
+    }
+    List<AppFormFieldCreateRequest> requests = packageFields.stream()
+      .filter(field -> field != null && !field.builtin() && !NAME_FIELD.equals(field.name()))
+      .map(field -> new AppFormFieldCreateRequest(field.label(), field.name(), field.type(), field.required(),
+        field.options(), field.referenceForm(), field.config()))
+      .toList();
+    List<PreparedField> preparedFields = prepareFields(appId, requests);
+
+    EntityDefinition entity = buildFormEntity(formName, label, nameField != null);
+    Map<String, AppFormFieldRecord> fieldRecords = builtinFieldRecords();
+    if (nameField != null) {
+      TypedField<?, ?> nameEntityField = entity.getField(NAME_FIELD);
+      nameEntityField.setComment(nameField.label().trim());
+      nameEntityField.setNullable(!nameField.required());
+      fieldRecords.put(NAME_FIELD, new AppFormFieldRecord(NAME_FIELD, nameField.label().trim(), "TEXT",
+        nameField.required(), false, null, null, AppFieldRules.validateConfig("TEXT", nameField.config())));
+    }
+    fieldRecords.putAll(addPreparedFields(formName, entity, preparedFields));
+
+    String displayField = isBlank(source.displayField()) ? null : source.displayField().trim();
+    if (displayField != null) {
+      AppFormFieldRecord display = fieldRecords.get(displayField);
+      if (display == null || display.builtin())
+        throw new ValidationException("主显字段不合法: " + displayField);
+    }
+    AppFormRecord record = new AppFormRecord(
+      formName,
+      label,
+      source.description() == null ? "" : source.description(),
+      displayField,
+      displayField,
+      LocalDateTime.now(),
+      LocalDateTime.now(),
+      entity.getFields().stream().map(field -> toFieldRecord(field, fieldRecords.get(field.getName()))).toList(),
+      new AppFormLayoutRecord(List.of()),
+      List.of(allView()));
+    return new ImportForm(entity, record);
+  }
+
   private EntityDefinition buildFormEntity(String formName, String label, boolean createDisplayField) {
     EntityDefinition entity = new EntityDefinition(formName);
     entity.setComment(label);
@@ -1236,6 +1357,15 @@ public class AppFormService {
       throw new ValidationException("引用字段必须选择关联表单");
     }
     String normalizedReferenceForm = referenceForm.trim();
+    Set<String> importNames = IMPORT_FORM_NAMES.get();
+    if (importNames != null) {
+      // 导入期以包内表单名快照为准：目标表单可能尚未建表（互相引用），存在性已由包校验保证。
+      if (!importNames.contains(normalizedReferenceForm)
+        && !BUILTIN_SYSTEM_FORM_NAMES.contains(normalizedReferenceForm)) {
+        throw new ValidationException("引用表单不存在: " + referenceForm);
+      }
+      return normalizedReferenceForm;
+    }
     if (findForms(appId).stream().noneMatch(form -> form.name().equals(normalizedReferenceForm))) {
       throw new ValidationException("引用表单不存在: " + referenceForm);
     }
@@ -1621,9 +1751,11 @@ public class AppFormService {
     String formName,
     String referenceField
   ) {
+    Map<String, EntityDefinition> snapshot = IMPORT_ENTITIES.get();
+    EntityDefinition snapshotEntity = snapshot == null ? null : snapshot.get(formName);
     ResolvedForm child;
     try {
-      child = requireForm(appId, formName);
+      child = snapshotEntity != null ? new ResolvedForm(snapshotEntity, null) : requireForm(appId, formName);
     } catch (NotFoundException caught) {
       throw new ValidationException("子表单不存在: " + formName);
     }
@@ -1709,6 +1841,20 @@ public class AppFormService {
       record.fields(),
       layout,
       record.viewTabs());
+  }
+
+  private AppFormRecord withViewTabs(AppFormRecord record, List<AppFormViewTabRecord> viewTabs) {
+    return new AppFormRecord(
+      record.name(),
+      record.label(),
+      record.description(),
+      record.displayField(),
+      record.searchField(),
+      record.createdAt(),
+      LocalDateTime.now(),
+      record.fields(),
+      record.layout(),
+      viewTabs);
   }
 
   private java.util.Optional<AppFormItemRecord> findLayoutFieldItem(

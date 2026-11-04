@@ -1,5 +1,6 @@
 package dev.flexmodel.apps;
 
+import dev.flexmodel.apps.ai.AppAiRepository;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationService;
 import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.dto.AppResponse;
@@ -64,6 +65,9 @@ public class AppService {
 
   @Inject
   AppWorkbenchRepository appWorkbenchRepository;
+
+  @Inject
+  AppAiRepository aiRepository;
 
   @Inject
   SessionContext sessionContext;
@@ -160,6 +164,7 @@ public class AppService {
 
   public void deleteApp(String appId) {
     Project project = requireAppProject(appId);
+    aiRepository.deleteApp(appId);
     appWorkbenchRepository.deleteByAppId(project.getId());
     appDataAuthorizationService.deleteAppRules(appId);
     projectService.deleteProject(project.getId());

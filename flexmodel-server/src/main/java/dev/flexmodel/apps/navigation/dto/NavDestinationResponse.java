@@ -12,9 +12,13 @@ public record NavDestinationResponse(
   String type,
   String id,
   String label,
-  String workbenchId
+  String workbenchId,
+  String robotId
 ) {
+  public NavDestinationResponse(String type, String id, String label, String workbenchId) {
+    this(type, id, label, workbenchId, null);
+  }
   public NavDestinationResponse(String type, String id, String label) {
-    this(type, id, label, null);
+    this(type, id, label, null, null);
   }
 }

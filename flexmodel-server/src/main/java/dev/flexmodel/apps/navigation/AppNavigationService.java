@@ -1,6 +1,7 @@
 package dev.flexmodel.apps.navigation;
 
 import dev.flexmodel.JsonUtils;
+import dev.flexmodel.apps.ai.AppAiRepository;
 import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.apps.form.dto.AppFormResponse;
 import dev.flexmodel.apps.navigation.dto.*;
@@ -47,6 +48,9 @@ public class AppNavigationService {
 
   @Inject
   AppWorkbenchRepository appWorkbenchRepository;
+
+  @Inject
+  AppAiRepository aiRepository;
 
   @Inject
   SessionContext sessionContext;
@@ -309,11 +313,18 @@ public class AppNavigationService {
       if (!BUILTIN_DESTINATION_TYPE.equals(destinationRequest.type()) && !isBlank(destinationRequest.workbenchId())) {
         throw new ValidationException("仅工作台内置页面支持配置具体工作台");
       }
+      String robotId = destinationRequest.robotId();
+      boolean chatbot = BUILTIN_DESTINATION_TYPE.equals(destinationRequest.type()) && "chatbot".equals(destinationRequest.id());
+      // 与工作台一致：机器人可选，未配置时页面默认使用第一个启用的机器人。
+      if (chatbot && !isBlank(robotId) && aiRepository.robot(appId, robotId) == null) {
+        throw new ValidationException("机器人不存在或不属于当前应用");
+      }
+      if (!chatbot && !isBlank(robotId)) throw new ValidationException("仅 AI 对话页面可以绑定机器人");
       if (BUILTIN_DESTINATION_TYPE.equals(destinationRequest.type())) {
         destination = new NavDestinationRecord(
           BUILTIN_DESTINATION_TYPE,
           destinationRequest.id(),
-          validatedWorkbenchId(appId, destinationRequest));
+          validatedWorkbenchId(appId, destinationRequest), robotId);
       }
       if (FORM_DESTINATION_TYPE.equals(destinationRequest.type())) {
         requireFormName(appId, destinationRequest.id());
@@ -459,7 +470,7 @@ public class AppNavigationService {
       destination.type(),
       destination.id(),
       destinationLabel(destination, labels),
-      destination.workbenchId());
+      destination.workbenchId(), destination.robotId());
     return new AppNavResponse(
       nav.id(),
       nav.type(),
@@ -659,6 +670,7 @@ public class AppNavigationService {
     result.put("workbench", "工作台");
     result.put("files", "文件");
     result.put("approval", "审批中心");
+    result.put("chatbot", "AI 对话");
     return result;
   }
 }

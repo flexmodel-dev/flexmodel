@@ -4,6 +4,8 @@ import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.AppRepository;
 import dev.flexmodel.apps.AppService;
 import dev.flexmodel.apps.apppackage.AppPackageValidator.Result;
+import dev.flexmodel.apps.ai.AppAiService;
+import dev.flexmodel.apps.ai.dto.AiDtos.RobotInput;
 import dev.flexmodel.apps.apppackage.AppPackageZip.Content;
 import dev.flexmodel.apps.approval.AppApprovalFlowService;
 import dev.flexmodel.apps.approval.AppApprovalJson;
@@ -24,6 +26,7 @@ import dev.flexmodel.apps.record.AppRecordService;
 import dev.flexmodel.apps.workbench.AppWorkbenchRepository;
 import dev.flexmodel.apps.workbench.AppWorkbenchService;
 import dev.flexmodel.apps.workbench.dto.WorkbenchComponentRecord;
+import dev.flexmodel.apps.workbench.dto.WorkbenchAiConfig;
 import dev.flexmodel.apps.workbench.dto.WorkbenchCreateRequest;
 import dev.flexmodel.apps.workbench.dto.WorkbenchLayoutRecord;
 import dev.flexmodel.apps.workbench.dto.WorkbenchResponse;
@@ -80,6 +83,8 @@ public class AppPackageImport {
   AppNavigationService navigation;
   @Inject
   AppWorkbenchService appWorkbenchService;
+  @Inject
+  AppAiService ai;
   @Inject
   AppApprovalFlowService approvalService;
   @Inject
@@ -181,7 +186,9 @@ public class AppPackageImport {
 
       run.phase("navigation");
       Map<String, String> workbenchNavRefs = new LinkedHashMap<>();
-      Map<String, String> navIds = rebuildNavigation(appId, content.navigation(), workbenchNavRefs);
+      // 机器人不随包导出：AI 对话导航绑定导入时自动补建的默认机器人。
+      String[] importRobotRef = new String[1];
+      Map<String, String> navIds = rebuildNavigation(appId, content.navigation(), workbenchNavRefs, importRobotRef);
 
       run.phase("workbenches");
       Map<String, String> workbenchIds = rebuildWorkbenches(appId, content.workbenches(), navIds);
@@ -253,26 +260,42 @@ public class AppPackageImport {
   // ---------------------------------------------------------------- 导航与工作台
 
   private Map<String, String> rebuildNavigation(String appId, List<AppNavRecord> navs,
-                                                Map<String, String> workbenchNavRefs) {
+                                                Map<String, String> workbenchNavRefs,
+                                                String[] importRobotRef) {
     Map<String, String> ids = new LinkedHashMap<>();
     for (AppNavRecord nav : navs == null ? List.<AppNavRecord>of() : navs)
-      createNavNode(appId, nav, null, ids, workbenchNavRefs);
+      createNavNode(appId, nav, null, ids, workbenchNavRefs, importRobotRef);
     return ids;
   }
 
   private void createNavNode(String appId, AppNavRecord nav, String newParentId, Map<String, String> ids,
-                             Map<String, String> workbenchNavRefs) {
+                             Map<String, String> workbenchNavRefs, String[] importRobotRef) {
     NavDestinationRecord destinationRecord = nav.destination();
     if (destinationRecord != null && destinationRecord.workbenchId() != null && !destinationRecord.workbenchId().isBlank()) {
       workbenchNavRefs.put(nav.id(), destinationRecord.workbenchId());
     }
     NavDestinationRequest destination = destinationRecord == null ? null
-      : new NavDestinationRequest(destinationRecord.type(), destinationRecord.id());
+      : new NavDestinationRequest(destinationRecord.type(), destinationRecord.id(),
+      null, chatbotRobotId(appId, destinationRecord, importRobotRef));
     AppNavResponse created = navigation.createNav(appId, new AppNavSaveRequest(nav.type(), nav.name(), nav.iconName(),
       newParentId, destination, nav.visibility()));
     ids.put(nav.id(), created.id());
     for (AppNavRecord child : nav.children() == null ? List.<AppNavRecord>of() : nav.children())
-      createNavNode(appId, child, created.id(), ids, workbenchNavRefs);
+      createNavNode(appId, child, created.id(), ids, workbenchNavRefs, importRobotRef);
+  }
+
+  /**
+   * 导入包内 AI 对话导航时按需补建一次默认机器人并返回其ID；其他导航返回 null。
+   */
+  private String chatbotRobotId(String appId, NavDestinationRecord destination, String[] importRobotRef) {
+    if (!"BUILTIN".equals(destination.type()) || !"chatbot".equals(destination.id())) return null;
+    if (importRobotRef[0] == null) {
+      importRobotRef[0] = ai.saveRobot(appId, null, new RobotInput("数据查询助手",
+        "查询与分析当前应用中的业务信息", "你好，我可以帮你查询记录、整理信息，或分析业务情况。",
+        List.of("最近有哪些新增记录？", "帮我汇总当前业务情况", "有哪些需要优先处理的事项？"),
+        "围绕当前应用回答业务问题。", true)).id();
+    }
+    return importRobotRef[0];
   }
 
   private Map<String, String> rebuildWorkbenches(String appId, List<WorkbenchExport> exports, Map<String, String> navIds) {
@@ -302,7 +325,10 @@ public class AppPackageImport {
 
   private WorkbenchLayoutRecord rewriteShortcuts(WorkbenchLayoutRecord layout, Map<String, String> navIds) {
     if (layout == null || layout.components() == null || layout.components().isEmpty()) return layout;
-    List<WorkbenchComponentRecord> components = layout.components().stream().map(component -> {
+    // 机器人不随包导出，AI 对话组件在导入时丢弃，避免引用不存在的机器人。
+    List<WorkbenchComponentRecord> components = layout.components().stream()
+      .filter(component -> !(component.config() instanceof WorkbenchAiConfig))
+      .map(component -> {
       if (!(component.config() instanceof WorkbenchShortcutsConfig shortcuts)) return component;
       List<String> mapped = (shortcuts.shortcuts() == null ? List.<String>of() : shortcuts.shortcuts()).stream()
         .map(navId -> {

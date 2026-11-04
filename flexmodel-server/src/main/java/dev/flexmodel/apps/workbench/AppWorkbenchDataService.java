@@ -49,6 +49,7 @@ public class AppWorkbenchDataService {
         appId, config, normalizedPage(page), normalizedSize(size), search);
       case dev.flexmodel.apps.workbench.dto.WorkbenchShortcutsConfig ignored -> throw unsupportedComponent("shortcuts");
       case dev.flexmodel.apps.workbench.dto.WorkbenchTasksConfig ignored -> throw unsupportedComponent("tasks");
+      case dev.flexmodel.apps.workbench.dto.WorkbenchAiConfig ignored -> throw unsupportedComponent("ai");
     };
     return new WorkbenchComponentDataResponse(componentId, data);
   }

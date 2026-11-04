@@ -2,8 +2,9 @@ package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.directory.DirectoryService;
-import io.quarkiverse.mcp.server.Tool;
-import io.quarkiverse.mcp.server.ToolArg;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
@@ -12,15 +13,17 @@ import java.util.Map;
 
 /**
  * General directory tools shared by application design and member selection.
+ * 与 {@link AppTools} 相同，注解使用 langchain4j 定义，MCP Server 自动注册复用。
  */
 @Slf4j
+@ApplicationScoped
 public class DirectoryTools {
   @Inject
   DirectoryService directoryService;
   @Inject
   McpToolAccess access;
 
-  @Tool(description = """
+  @Tool(name = "get_directory", value = """
     Get the shared system directory: active members, roles, organizations and their hierarchy, \
     member roleIds, organizationIds and managerId. No appId is required. Only selection \
     metadata is returned, never credentials. Use the returned IDs when configuring approval \
@@ -44,16 +47,16 @@ public class DirectoryTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "resolve_members", value = """
     Preview member rules using the real system directory. Returns ordered, deduplicated \
     active user IDs (at most 1000). Call get_directory for source and scope enums. \
     initiatorId and variablesJson are preview context only; this does not submit or approve \
     any record. Empty results must be fixed before running an approval.\
     """)
   public String resolve_members(
-    @ToolArg(description = "JSON array of member rules: id, source, values (string array), scope, includeChildren") String rulesJson,
-    @ToolArg(description = "Initiator user ID for relative rules, optional", required = false) String initiatorId,
-    @ToolArg(description = "JSON object of preview variables, optional; node rules use nodeMembers", required = false) String variablesJson
+    @P("JSON array of member rules: id, source, values (string array), scope, includeChildren") String rulesJson,
+    @P(value = "Initiator user ID for relative rules, optional", required = false) String initiatorId,
+    @P(value = "JSON object of preview variables, optional; node rules use nodeMembers", required = false) String variablesJson
   ) {
     try {
       access.requireDirectory();

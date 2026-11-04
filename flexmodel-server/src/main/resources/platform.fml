@@ -178,6 +178,31 @@ model f_branch {
   @comment("项目分支")
 }
 
+model f_app_ai_robot {
+  id : String @id @default(uuid()),
+  app_id : String @length("64"),
+  config : JSON,
+  created_at? : DateTime @default(now()),
+  updated_at? : DateTime @default(now()),
+  @index(name: "IDX_AI_ROBOT_APP", fields: [app_id]),
+  @system,
+  @comment("应用 AI 对话机器人")
+}
+
+model f_app_ai_conversation {
+  id : String @id @default(uuid()),
+  app_id : String @length("64"),
+  robot_id : String,
+  user_id : String,
+  title : String @length("100"),
+  messages : JSON,
+  created_at? : DateTime @default(now()),
+  updated_at? : DateTime @default(now()),
+  @index(name: "IDX_AI_CHAT_OWNER", fields: [app_id, robot_id, user_id]),
+  @system,
+  @comment("AI 个人会话，当前回复由模拟器生成")
+}
+
 model f_app_workbench {
   id : String @id @default(uuid()),
   app_id : String @comment("所属应用ID"),

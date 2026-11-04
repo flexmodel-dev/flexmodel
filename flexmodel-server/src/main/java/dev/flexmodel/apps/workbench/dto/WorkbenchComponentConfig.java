@@ -12,12 +12,14 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
   @JsonSubTypes.Type(value = WorkbenchChartConfig.class, name = "chart"),
   @JsonSubTypes.Type(value = WorkbenchDataLoaderConfig.class, name = "dataloader"),
   @JsonSubTypes.Type(value = WorkbenchShortcutsConfig.class, name = "shortcuts"),
-  @JsonSubTypes.Type(value = WorkbenchTasksConfig.class, name = "tasks")
+  @JsonSubTypes.Type(value = WorkbenchTasksConfig.class, name = "tasks"),
+  @JsonSubTypes.Type(value = WorkbenchAiConfig.class, name = "ai")
 })
 public sealed interface WorkbenchComponentConfig permits
   WorkbenchMetricConfig,
   WorkbenchChartConfig,
   WorkbenchDataLoaderConfig,
   WorkbenchShortcutsConfig,
-  WorkbenchTasksConfig {
+  WorkbenchTasksConfig,
+  WorkbenchAiConfig {
 }

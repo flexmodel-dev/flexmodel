@@ -1,5 +1,220 @@
 # Session Progress Log
 
+## Apps - AI 会话统一（去除系统级/应用级两套对话，2026-11-04，feat-170 续）
+
+- 需求：系统级（全局助手）与应用级会话是两套，统一为一套；appId 默认作为隐藏参数随消息传递
+  （用户点击进入应用后，下次对话自动携带当前应用）；用户可用 `@应用名` 显式选择应用，且支持多个。
+- 后端（flexmodel-server）：
+  - 新增统一会话资源 `AiConversationResource`（`/api/ai/conversations`：GET ?robotId= 列表、POST {robotId?} 创建、
+    POST /{id}/messages SSE 发送、DELETE /{id} 删除）；删除 `AiGlobalResource` 与 AppAiResource 的会话端点
+    （机器人 CRUD 保留在 `/apps/{appId}/ai/robots`）。
+  - 会话语义：仅按机器人 + 用户隔离；`SendRequest` 改为 `{content, appId?}`（appId=隐藏应用上下文），
+    新增 `ConversationRequest {robotId?}`（省略为内置助手 assistant）。
+  - 上下文解析（AppAiService.resolveContextApps）：应用机器人固定用其所属应用；内置助手按
+    `@应用名`（精确→前缀→appId 匹配，多个提及按顺序去重，正则 `@([^\s@，。,\.]{1,50})`）→
+    隐藏 appId → 无（跨应用模式）的优先级；隐藏 appId 走 requireAppProject 校验存在。
+  - `AssistantAgent.stream(List<String> contextAppIds, ...)`：系统提示支持 0/1/N 个应用上下文
+    （单个=「当前应用ID」，多个=「可用应用ID：…按问题选择」，逐个注入 appContext 表单字段清单）；
+    conversationKey 改为 `robotId:conversationId`（AppAiChatMemory 同步两段解析）。
+  - `AppAiRepository`：会话查询去掉 appId 维度（robotId+userId / userId+id），新增 `robot(id)` 全局反查机器人；
+    会话实体 app_id 列仅存机器人所属应用（助手为 global）供删除应用级联；deleteRobot 会话按 robotId 清理。
+  - usableRobot (robotId) 不再依赖路径 appId：助手→内置；机器人→反查所属应用后校验可用性（enabled/导航可见）。
+- 前端（flexmodel-apps-ui）：
+  - `services/ai.ts`：统一会话 API（getAiConversations/createAiConversation/streamAiMessage/deleteAiConversation，
+    robotId 参数默认 assistant）；删除 GLOBAL_APP_ID 与全局会话专用函数；AI_ASSISTANT_ROBOT/AI_BUILDER_ROBOT
+    同 id（assistant），欢迎语提示 @用法。
+  - `AiProvider`：房间按机器人区分（`userId:robot`），助手全站一个房间；send 自动注入隐藏上下文
+    （robot===assistant 且当前路由在应用内时传 appId）。
+  - `AiChat` 去掉 appId prop；`AiAssistantPanel` 管理区/应用区共用助手会话（仅文案不同），
+    面板机器人为 request.robotId 或内置助手；WorkbenchAiCard/AiChatPage 打开面板改传 robotId。
+  - `AiComposer` 应用提及交互：输入框下方「@选择应用」按钮在光标处插入 @ 并弹出应用下拉；
+    输入 @ 时实时下拉过滤（getApps 缓存列表），支持 ↑↓ 导航、Enter 选中、Esc 关闭、点击选择，
+    选中后回填 `@应用名 `；光标前正在输入的 @ 词用于过滤（正则 `(?:^|\s)@([^\s@]*)$`）。
+- 测试（重写后验证）：`AppAiModelFlowTest` 2/2——@提及解析端到端（"@AI 模型链路测试 请查询订单表…"
+  触发工具调用与流式回答）+ 隐藏 appId 二次发送；无上下文跨应用模式。`AppAiResourceTest` 6/6
+  （统一端点生命周期、助手无机器人可用、应用删除级联）。`LiveAiModelTest` 改统一端点+隐藏 appId。
+- 文档：ai-assistant.md 新增「统一会话与应用上下文」章节，API 表与数据表说明更新。
+
+## Apps - AI 聊天 SSE 流式返回（2026-11-04，feat-170 续）
+
+- 需求：聊天发送改为 SSE 流式返回（token 增量实时下发、工具执行提示、完成事件携带落库会话）。
+- 后端（flexmodel-server）：
+  - `AssistantChat` 由阻塞 `String chat(...)` 改为 `Multi<ChatEvent> stream(...)`（quarkus-langchain4j
+    声明式方法支持 Multi<ChatEvent> 返回，流式下工具执行与 ChatMemory 均生效，与扩展 1.7.4
+    AiServiceMethodImplementationSupport/TokenStreamMulti 源码核实）。
+  - `AssistantAgent.stream(...)` 返回原始 `Multi<ChatEvent>`（未配置模型同步抛 InternalServerException，
+    流开始前 500）；`AssistantChat` 仅流式方法，无阻塞路径。
+  - `AppAiService.streamSend/streamSendGlobal`：校验（空消息/100 条上限/会话归属）在流开始前同步执行，
+    事件映射 `emitOn(Infrastructure.getDefaultWorkerPool())` 切 worker 线程执行映射与落库（模型回调在
+    事件循环线程）；token→`StreamEvent("token")`、`ToolExecutedEvent`→`("tool", 工具名)`、
+    `ChatCompletedEvent`→落库（AtomicBoolean 防重复完成）+`("done", 完整会话)`；模型失败转 `("error")`
+    事件且不落库。删除阻塞 send/doSend（无兼容包袱），`completeReply` synchronized 保持串行落库。
+  - REST：`AppAiResource`/`AiGlobalResource` 消息端点改为
+    `@Produces(MediaType.SERVER_SENT_EVENTS) + @RestSseElementType(APPLICATION_JSON)`（注解包名
+    org.jboss.resteasy.reactive.RestSseElementType，经 jar 实证）；事件 DTO 为 `AiDtos.StreamEvent`
+    （type/token 内容/完整会话三字段）。
+  - 关键坑1： **Mutiny `map/transform` 不允许返回 null**（"The mapper returned `null`" NPE）——
+    先 `select().where(事件类型过滤)` 再 transform，绝不返回 null。
+  - 关键坑2：langchain4j OpenAI 请求体为 **pretty JSON**（`"stream" : true` 带空格），
+    桩服务用正则 `"stream"\s*:\s*true` 判流式。
+  - 关键坑3：桩按"全局调用计数"决定工具轮次会受 JUnit 方法执行顺序影响——改为按请求内容判定
+    （已含 `"role" : "tool"` 为工具结果轮；含"请查询订单表里的记录"且非工具轮则发起工具调用）。
+  - `OpenAiStubTestResource` 支持流式 SSE chunk（tool_calls 增量 + content 增量 + [DONE]，
+    Content-Type text/event-stream）；保留非流式 JSON 分支。
+- 前端（flexmodel-apps-ui）：
+  - `http.ts` 新增 `requestSse`（fetch POST + ReadableStream 解析 `data:` 行，带 Authorization）。
+  - `services/ai.ts`：`sendAiMessage/sendAssistantMessage` 替换为 `streamAiMessage/streamAssistantMessage`
+    （AiStreamHandlers：onToken/onTool/onDone/onError；token/tool/done/error 事件分发）。
+  - `AiProvider`：Room 增加 `streaming`（本地草稿：user 文本 + 增量 text + 执行中工具名），
+    send () 乐观更新——token 增量拼接、done 用服务端完整会话替换、error/异常复位 busy。
+  - `AiChat`：渲染流式草稿（用户气泡 + 助手增量 Markdown + “正在调用工具 xxx…”提示 + 思考中动画），
+    滚动依赖 room.streaming.text；busy 且无 streaming 时保留“正在整理回复…”兜底。
+- 测试（最终一轮验证）：`AppAiModelFlowTest` 2/2（SSE 断言：tool/token/done 事件 + 落库后 GET 校验）、
+  `AppAiResourceTest` 6/6（未配置模型 500、空消息 400 语义不变）、`McpToolsRegistrationTest` 2/2、
+  `AppToolsTest` 5/5、`LiveAiModelTest` 1/1（真实 deepseek-flash SSE 流式 + 工具调用端到端）。
+- 文档：`ai-assistant.md` 增加“流式返回（SSE）”章节（事件表与示例），API 表标注 SSE，
+  限制清单移除“暂不支持流式输出”。
+- 已知限制：数据权限过滤待授权引擎接入后统一生效；native 镜像未验证；未执行 git commit/push。
+
+## Apps - AI 助手复用 MCP 工具与 mock 移除（2026-11-04，feat-170 续）
+
+- 需求：移除全部 mock 数据（MockAiResponder、/ai/app-plans、消息 mock/records 字段），页面 AI 与 MCP 全量对齐；
+  经用户确认后改为 **复用 MCP 工具类**——quarkus-mcp-server 原生支持 langchain4j `@Tool`/`@P` 注解
+  （`quarkus.mcp.server.support-langchain4j-annotations` 默认 true），一套注解同时服务页面助手与 MCP。
+- 后端（flexmodel-server）：
+  - `AppTools`/`DirectoryTools` 由 MCP `@Tool/@ToolArg` 全量改为 langchain4j `@Tool(name)/@P`
+    （工具名保持 snake_case 不变，`required=false` 语义等价迁移），类加 `@ApplicationScoped`；
+    MCP 端由 support-langchain4j-annotations 自动注册，与页面助手完全共用同一批方法。
+  - `AppTools` 移植记录查询：新增 `query_app_records`/`count_app_records`/`get_app_record`
+    （原 AppAiTools 私有实现改为显式 appId 参数），并为全部工具补 `McpToolAccess` 守卫——
+    MCP 侧顺带收紧了 Key 的 projectIds 范围（此前仅审批工具校验）。
+  - `McpToolAccess` 统一身份：MCP 请求必带 API Key（McpAuthHandler 注入）→ 服务身份
+    （projectIds 范围 + readOnly）；页面 AI 请求无 Key → 登录用户，写操作要求
+    `AppNavigationService.isOwnerOrAdmin`。`requireDirectory` 同理（有 Key 服务身份 / 无 Key 登录）。
+  - `AssistantChat` 改挂 `{AppTools, DirectoryTools}`（全部机器人统一全量工具），去掉 InvocationParameters；
+    `AssistantAgent` 纯编排：系统提示注入当前 appId（全局会话则说明可用 list_apps/create_app 流程）、
+    应用名与表单字段清单（原 AppAiTools.context 迁入），未配置模型直接抛 InternalServerException（不再降级 mock）。
+  - 删除：`MockAiResponder`、`AiBuilderResource`（/ai/app-plans 与 /create）、`AppAiTools`、`AppAiBuilderTools`、
+    `AppAiToolsTest`；`AiDtos.Message` 精简为 4 字段（id/role/content/createdAt）。
+  - 全局助手会话：`AppAiService` 增加 `GLOBAL_APP_ID="global"` 与 globalConversations/createGlobalConversation/
+    sendGlobal/deleteGlobalConversation（requireUser 即可，无应用归属校验），新增 `AiGlobalResource`
+    （/api/ai/assistant/conversations CRUD+send）；`AppAiChatMemory` 的 conversationKey 对 global 同样生效
+    （Agent 内 "global:robotId:conversationId"）。
+- 前端（flexmodel-apps-ui）：
+  - `services/ai.ts`：AiMessage 去 mock/records；删 generateAiPlan/createAiApp/AiAppPlan；新增全局会话 API 与
+    `GLOBAL_APP_ID`、`AI_ASSISTANT_ROBOT`、`AI_BUILDER_ROBOT`（自 mock.ts 迁出，mock.ts 相应删除
+    aiAssistantProfile/aiBuilderSuggestions）。
+  - `AiProvider`：删除 builder/plan 状态（requestPlan/resetBuilder/setBuilderName），ensureRoom/send/removeConversation
+    按 `app===GLOBAL_APP_ID` 分流到全局会话端点。
+  - `AiAssistantPanel`：删除 BuilderChat/BuilderPlanCard，管理区直接渲染全局 `AiChat`（appId=global，
+    receivePrompt 时消费无 appId 的 openAssistant ({prompt})）；`AiChat` 移除 mock 徽章与 records 表格，
+    receivePrompt 条件兼容全局会话；`AppCreateDialog`/`AppManagement` 改为 openAssistant ({prompt}) 直接对话创建。
+- 测试：
+  - `OpenAiStubTestResource`：首调工具调用改为 `query_app_records`（appId 从请求系统提示正则提取，参数显式传递）。
+  - `AppAiModelFlowTest` 2/2：应用会话端到端（工具调用→真实数据→最终回答落库）+ 新增全局会话链路。
+  - `AppAiResourceTest` 6/6：去 mock/plan 断言；未配置模型发送返回 500；新增全局会话生命周期；
+    删除 aiBuilder 端到端用例。
+  - 新增 `McpToolsRegistrationTest` 2/2：streamable HTTP initialize/tools/list 断言全部共享工具名
+    （list_apps/create_app_form/query_app_records/get_directory 等），tools/call 走 API Key 身份，缺 Key 401。
+    注意 MCP 实际端点为 `/api/mcp`（quarkus 根路径），测试相对路径自动拼接。
+  - `AppToolsTest` 5/5、`mvn test -pl flexmodel-engine` 全绿。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` BUILD SUCCESS；
+  定向测试 15/15；apps-ui `tsc -b + vite build`、`npm test` 65/65 通过
+  （vite build 需将 TEMP/TMP 指向项目内目录规避 esbuild 临时文件 Access denied，环境问题）。
+- 文档：`ai-assistant.md` 重写（共享工具与统一权限模型、全局会话 API、未配置模型行为、限制清单）。
+- 配置键修复（用户实测暴露）：`model-name`/`temperature` 实际键名为
+  `quarkus.langchain4j.openai.chat-model.model-name` / `chat-model.temperature`
+  （`api-key`/`base-url`/`timeout` 无前缀、原本就正确）；此前错误键导致模型名落到扩展默认值
+  `gpt-4o-mini`，DeepSeek 返回 invalid_request_error。修复后 `LiveAiModelTest` 1/1 通过
+  （真实 deepseek-flash 端到端：工具查询记录「订单A」并落库；配置键已核对扩展 1.7.4 的
+  quarkus-config-model.json）。
+- 已知限制：暂不支持流式输出；数据权限过滤待授权引擎接入后统一生效；native 镜像未验证。
+- 未执行 git commit/push。
+
+## Apps - AI 模型与只读数据工具接入（2026-11-04，feat-170 续）
+
+- 需求：把 AI 对话从服务端 `MockAiResponder` 模拟回复接入真实后端——OpenAI 兼容模型 +
+  当前应用真实数据的只读查询。
+- 配置：`application.properties` 增加 `flexmodel.ai.base-url`、`api-key`、`model`、`timeout-seconds`、
+  `max-tool-rounds`，并支持 `FLEXMODEL_AI_BASE_URL` / `FLEXMODEL_AI_API_KEY` / `FLEXMODEL_AI_MODEL`
+  环境变量；base-url/api-key 未配置时保持模拟回复，本地开发无外部依赖。
+- 新增：`AiModelProperties`（`@ConfigMapping`，Optional 处理空值，避免 SmallRye 空字符串校验失败）、
+  `AiModelConfig`（Settings + 是否已配置）、`OpenAiCompatibleClient`（JDK HttpClient 调
+  `/chat/completions`，解析 content 与 tool_calls，非 2xx 抛 `InternalServerException`）、
+  `AssistantAgent`（应用名称/用户/表单字段系统提示 + 最近 20 条历史 + 工具循环，最多 4 轮；
+  未配置时回退模拟回复；空回复兜底；失败不写入会话）、`AppAiTools`（`list_forms`、`query_records`、
+  `count_records`、`get_record`，只读、仅业务表单、字段/结果截断并限制 20 条）。
+- 关键修正：`query_records` 最初用 `findRecords`，布局为空时只投影出 id；改为
+  `records.buildFilter(form, search, null, null, filter)` + `queryViewRecords(..., extraFields)`，
+  用非内置字段补齐投影，返回包含主显字段等业务字段。
+- `AppAiService.send` 改走 `AssistantAgent`；顶部助手与机器人共用同一套模型与工具。
+- 前端：`AiChat` 底部文案由“当前为模拟回复”改为“AI 生成内容仅供参考，当前仅支持只读查询，
+  不会修改业务数据”；模拟回复仍按消息显示“模拟回复”徽标。
+- 验证：`OpenAiCompatibleClientTest` 3/3（tool_calls 解析、请求头/模型参数、401 错误）、
+  `AssistantAgentTest` 2/2（工具循环与未配置回退）、`AppAiToolsTest` 1/1（真实表单/记录查询、
+  统计、错误与内置表单排除）、`AppAiResourceTest` 6/6；apps-ui `npm run build` 与 `npm test` 65/65
+  通过；mock API + Playwright 流程复验无 console/page 错误。
+- 真实联调：使用用户提供的 DeepSeek Key，`LiveAiModelTest` 1/1 通过——真实模型经 `query_records`
+  工具查询到 SQLite 测试应用中的记录「订单A」并返回答案，证明配置映射、模型调用、工具循环与会话落库
+  全链路可用。服务端可用模型为 `deepseek-flash` / `deepseek-v4-pro`（用户原先写的 `deepseek-v4-flash`
+  不存在，已改用 `deepseek-flash`）；base-url 使用 `https://api.deepseek.com`（客户端追加
+  `/chat/completions`）。默认模型改为 `deepseek-flash`。
+- 本地配置：根目录与 `flexmodel-server/.env` 写入 `FLEXMODEL_AI_BASE_URL`、`FLEXMODEL_AI_API_KEY`、
+  `FLEXMODEL_AI_MODEL`（`.env` 已加入根 `.gitignore`，不入库）；Quarkus 启动自动加载。
+  `AppAiResourceTest` 增加 `NoModelProfile`（base-url/api-key 置空）保证模拟回复断言不受本地 .env 影响。
+- 待办：暂不支持流式输出与写操作工具；工具沿用现有记录服务权限，数据权限过滤待授权引擎接入后统一生效；
+  native 镜像下的 `java.net.http` + HTTPS 尚未构建验证。
+- 未执行 git commit/push。
+
+## Apps - AI 助手入口与对话形态实现（2026-11-04，feat-170）
+
+- 需求：顶部常驻 AI 助手并展开右侧面板；新建应用支持 AI 创建；导航绑定 AI 对话内置页面；
+  工作台新增 AI 对话组件；首期回复使用模拟数据，不读写业务记录。
+- 按反馈调整（同日）：
+  - 移除独立的 `/admin/apps/ai-create` 页面与入口，改为「新建应用」对话框内新增「AI 创建应用」方式：
+    对话框内展示应用搭建助手消息区与推荐提示词，输入需求后关闭对话框并把内容带入右侧面板，
+    方案预览与「创建应用」都在面板内完成；该方式排在创建方式首位并默认选中。
+  - 顶部助手与机器人解耦（按反馈）：点击右上角不再要求创建机器人。`AppAiService` 增加保留ID
+    `assistant`，`usableRobot` 对内置助手直接返回内置资料、不查机器人表，会话仍按 app+user 落库；
+    面板固定使用内置「应用助手」，仅在当前页传入 robotId（工作台快捷提问）时才解析真实机器人。
+    机器人配置只保留在内置 AI 对话页面与工作台 AI 组件：二者缺失机器人时像工作台空状态一样提示，
+    并由 `AiRobotDialog` 就地创建/管理；面板不再出现创建提示与机器人设置入口。
+  - 导航绑定与工作台一致：`BUILTIN:chatbot` 的 `robotId` 改为可选，未选择时默认第一个启用的机器人；
+    菜单编辑器机器人下拉使用占位「未选择时默认第一个机器人」，不再强制选择。
+- 后端（新增 `flexmodel-server/.../apps/ai/`）：`AppAiResource`（`/apps/{appId}/ai/robots` 机器人 CRUD 与
+  个人会话），`AppAiService` 负责所有者/管理员权限、机器人上限 20、消息 100 条/4000 字校验、
+  导航可见性过滤与删除引用保护；`AiBuilderResource`（`/ai/app-plans`、`/ai/app-plans/create`）生成
+  客户/库存/报销三类起步方案并创建表单、导航、工作台与默认机器人，失败时删除已建应用补偿。
+  `MockAiResponder` 是唯一模拟边界。平台模型新增 `f_app_ai_robot`、`f_app_ai_conversation`，
+  `AppService.deleteApp` 一并清理；JSON 列在 SQLite/String 驱动下先解析再转换（`readJson`）。
+- 导航与工作台：`NavDestinationRecord/Request/Response` 增加 `robotId`；`AppNavigationService` 允许
+  chatbot 不带机器人、提供时校验属于当前应用，非 chatbot 携带 robotId 拒绝，内置页面文案补 AI 对话。
+  `WorkbenchAiConfig`（`robotId`/`displayMode` shortcut|embedded/`showSuggestions`）纳入 sealed
+  `WorkbenchComponentConfig`；`AppWorkbenchService` 校验机器人存在与展示方式并在能力目录登记 ai 组件，
+  `AppWorkbenchDataService` 对 ai 组件返回不支持数据接口。
+- 整包：`AppPackageValidator` 接受 chatbot 内置页；`AppPackageImport` 在重建导航时为 AI 对话导航补建
+  默认机器人、导入布局移除 AI 组件（机器人不随包导出）。
+- 前端（`flexmodel-apps-ui`）：`components/ai/` 新增 `AiProvider`（全局会话状态、面板开关与方案状态）、
+  `AiAssistantPanel`（桌面 420px 推入式面板、移动端 Drawer、面板内方案卡片与创建应用；业务页使用内置
+  应用助手资料，不请求机器人列表）、`AiChat`、`AiRobotDialog`、`WorkbenchAiCard`、`AiHeaderButton`；
+  `AppCreateDialog` 增加 AI 创建方式，`AppManagement` 接管 `onAiCreate`；`AiChatPage` 完整对话页
+  （机器人缺失/失效回退第一个启用机器人，页面内可打开机器人设置）；`ComponentDesigner` 增加 AI 类型、
+  机器人/展示方式/推荐问题配置；`NavDestinationPicker` 与 `MenuEditorDialog` 的机器人改为可选；
+  `AppLayout`/`AdminLayout` 在面板展开时 `lg:pr-[420px]` 让出空间，`AppManagement` 同步由 4 列降为 3 列。
+- 验证：`mvn -o compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` BUILD SUCCESS；
+  `mvn -o test -pl flexmodel-engine` BUILD SUCCESS（聚合模块）；`AppAiResourceTest` 6/6（含未绑定机器人
+  导航创建成功、无机器人时内置助手可对话）；回归 `AppPackageValidatorTest` 21、`AppPackageZipTest` 10、
+  `AppPackageImportTest` 2（1 跳过）、`AppWorkbenchDataServiceTest` 4、`AppToolsTest` 5 全部通过；
+  apps-ui `npm run build` 通过，`npm test` 65/65 通过。另用 mock API + Playwright 检查新建应用 AI 模式、
+  推荐提示词带入面板生成方案并创建、无机器人应用顶部助手直接对话、工作台无机器人就地创建、
+  工作台快捷提问与内嵌对话、完整对话页发送、390px 移动端抽屉，无 console/page error，
+  截图 `flexmodel-apps-ui/artifacts/feat170-*.png`（artifacts 已 gitignore）。
+- 已知限制：回复/方案为模拟，未接模型与流式输出；机器人不参与整包导出（导入补默认机器人、
+  工作台 AI 组件丢弃）；MCP 暂无机器人列表与 AI 组件写入工具说明；普通成员按导航可见性过滤机器人。
+- 注意：IntelliJ 中运行中的 `quarkus:dev` 因增量编译不执行 Lombok，编辑 `@Slf4j` 类后热重载报
+  `找不到符号 log`，需重启该调试会话才能加载本次后端改动（新表也需要重启后迁移创建）。
+  未执行 git commit/push。
+
 ## Native 镜像编译失败：zstd-jni FFM linkToNative（2026-11-03，build fix）
 
 - 现象：`mvn clean package -Pnative -pl flexmodel-server -am` 在 analysis 阶段失败：
@@ -4490,3 +4705,15 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   列（ALTER 为 longtext）。
 - 遗留建议：AppFieldRules 对 NTEXT 仍限制 maxLength≤4000（应用层 UX 规则，与物理列容量解耦），如需放开到 longtext
   容量，需同步取值上限、前端输入框与文档。
+
+## AI 入口与对话形态讨论（2026-11-04，feat-170）
+
+- 用户需求：AI 创建应用并展开侧栏；机器人内置页面且导航绑定具体机器人；工作台 AI 对话组件。用户补充确认：同时支持应用搭建者和业务使用者。
+- 当前仅产品与交互咨询。已阅读根目录和 Apps UI 的 AGENTS.md、README、feature_list.json 与近期提交，检查现有 Apps UI
+  顶部工具区、应用创建、导航内置页面与工作台组件机制；未修改产品代码，也未运行 init.sh、Maven 或 UI 构建。
+- 待用户反馈的建议：顶部右侧常驻 AI
+  助手，展开右侧面板；管理区明确为应用搭建助手，业务页明确为当前应用助手；导航绑定具体机器人后进入完整对话页；工作台首期用输入框和推荐问题，发送后进入绑定机器人的对话。多入口访问同一机器人时应能延续选定会话，切换机器人/应用则明确切换上下文。
+- 会话内示意保存在本聊天专属 visualization 目录，包含随页助手、机器人完整页、AI 创建应用、工作台内嵌对话四种形态。已通过
+  Playwright 验证 320/736/1024px 下四场景无横向溢出，并验证面板收放、快捷提问、完整页发送与方案确认；已检查浅色/深色截图。原型仅演示交互，没有接入模型或业务操作。
+- 尚未确认：常驻业务助手与自定义机器人之间的选择方式、机器人管理位置及具体授权能力；本轮建议尚未被用户采纳，不能直接视为已定需求。未执行
+  git commit/push，已有部署与开发配置修改保持原样。

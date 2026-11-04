@@ -47,6 +47,9 @@ public class AppWorkbenchService {
   @Inject
   SessionContext sessionContext;
 
+  @Inject
+  dev.flexmodel.apps.ai.AppAiRepository aiRepository;
+
   public List<WorkbenchSummaryResponse> findWorkbenches(String appId) {
     Project project = appNavRecordStore.requireAppProject(appId);
     List<AppWorkbench> workbenches = appWorkbenchRepository.findByAppId(project.getId());
@@ -269,6 +272,13 @@ public class AppWorkbenchService {
     if (config instanceof WorkbenchTasksConfig) {
       return;
     }
+    if (config instanceof WorkbenchAiConfig ai) {
+      if (isBlank(ai.robotId()) || aiRepository.robot(appId, ai.robotId()) == null)
+        throw new ValidationException("请选择当前应用中的 AI 对话机器人");
+      if (!Set.of("shortcut", "embedded").contains(Objects.requireNonNullElse(ai.displayMode(), "")))
+        throw new ValidationException("AI 组件展示方式不合法");
+      return;
+    }
     if (config instanceof WorkbenchMetricConfig metricConfig) {
       requireForm(appId, metricConfig.formName());
       if (isBlank(metricConfig.aggregation()) || !AGGREGATIONS.contains(metricConfig.aggregation())) {
@@ -450,7 +460,10 @@ public class AppWorkbenchService {
         "type", "shortcuts", "shortcuts", List.of("<nav.id>"), "columnsPerRow", 2),
         null),
       new WorkbenchComponentSpecRecord("tasks", null, "我的任务", "查看流程待办", 4, 4,
-        List.of("type"), Map.of("type", "tasks"), null));
+        List.of("type"), Map.of("type", "tasks"), null),
+      new WorkbenchComponentSpecRecord("ai", null, "AI 对话", "通过机器人查询与分析业务信息", 6, 3,
+        List.of("type", "robotId", "displayMode"), Map.of("type", "ai", "robotId", "<robot.id>",
+        "displayMode", "shortcut", "showSuggestions", true), null));
   }
 
   private WorkbenchFormOptionRecord toFormOption(AppFormResponse form) {

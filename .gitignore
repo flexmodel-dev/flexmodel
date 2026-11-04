@@ -51,3 +51,6 @@ build/
 
 ### Codex ###
 .codex/
+### Local secrets ###
+.env
+

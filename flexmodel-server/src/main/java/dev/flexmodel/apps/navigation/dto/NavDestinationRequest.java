@@ -14,9 +14,13 @@ public record NavDestinationRequest(
   String type,
   @NotBlank(message = "关联项不能为空")
   String id,
-  String workbenchId
+  String workbenchId,
+  String robotId
 ) {
+  public NavDestinationRequest(String type, String id, String workbenchId) {
+    this(type, id, workbenchId, null);
+  }
   public NavDestinationRequest(String type, String id) {
-    this(type, id, null);
+    this(type, id, null, null);
   }
 }

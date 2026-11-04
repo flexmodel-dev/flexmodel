@@ -131,6 +131,11 @@
       <groupId>io.quarkiverse.mcp</groupId>
       <artifactId>quarkus-mcp-server-http</artifactId>
     </dependency>
+    <!-- AI 对话模型：OpenAI 兼容模型接入（版本由 quarkus-langchain4j-bom 管理） -->
+    <dependency>
+      <groupId>io.quarkiverse.langchain4j</groupId>
+      <artifactId>quarkus-langchain4j-openai</artifactId>
+    </dependency>
     <!-- quickjs4j JSR-223 ScriptEngine (javax.script integration) -->
     <dependency>
       <groupId>io.roastedroot</groupId>

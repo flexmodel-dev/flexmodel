@@ -43,7 +43,10 @@ public class AppPackageValidator {
   private static final Pattern FLOW_KEY = Pattern.compile("^[A-Za-z0-9_-]{1,120}$");
   private static final Pattern NODE_ID = Pattern.compile("^[A-Za-z0-9_-]{1,100}$");
   private static final Set<String> NAV_TYPES = Set.of("GROUP", "ENTRY");
-  private static final Set<String> BUILTIN_DESTINATIONS = Set.of("workbench", "files", "approval");
+  /**
+   * AI 对话页依赖应用内机器人，机器人不随包导出，导入时自动补建默认机器人。
+   */
+  private static final Set<String> BUILTIN_DESTINATIONS = Set.of("workbench", "files", "approval", "chatbot");
   private static final Set<String> ITEM_TYPES = Set.of("FIELD", "SECTION", "SUBFORM");
   private static final Set<String> ITEM_WIDTHS = Set.of("QUARTER", "THIRD", "HALF", "TWO_THIRDS", "THREE_QUARTERS", "FULL");
   private static final Set<String> SYSTEM_FORMS = Set.of("f_user", "f_department", "f_role");

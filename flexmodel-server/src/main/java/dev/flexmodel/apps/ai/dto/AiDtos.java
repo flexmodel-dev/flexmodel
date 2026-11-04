@@ -24,7 +24,15 @@ public final class AiDtos {
                       List<String> suggestions, String prompt, boolean enabled) {
   }
 
-  public record Message(String id, String role, String content, LocalDateTime createdAt) {
+  /**
+   * 消息内容块：reasoning 为供应商原生返回的推理文本，前端折叠展示；
+   * 按出现顺序排列，一个块为一段连续的同类输出（工具调用后新一段推理是新块）。
+   */
+  public record MessagePart(String type, String content) {
+  }
+
+  public record Message(String id, String role, String content, LocalDateTime createdAt,
+                        List<MessagePart> parts) {
   }
 
   public record Conversation(String id, String robotId, String title, List<Message> messages,
@@ -46,9 +54,15 @@ public final class AiDtos {
   }
 
   /**
-   * SSE 流式事件：type=token（content 为增量文本）、tool（content 为工具名）、
+   * SSE 流式事件：type=token（content 为增量文本）、reasoning（content 为推理增量文本）、
+   * tool（content 为工具名）、change（成功写入的资源范围）、
    * done（conversation 为完成后的完整会话）、error（content 为错误信息）。
+   * reasoning 块边界由事件类型切换隐式表达：token/tool 事件结束当前推理块，
+   * 其后的 reasoning 增量属于新块。
    */
-  public record StreamEvent(String type, String content, Conversation conversation) {
+  public record StreamEvent(String type, String content, Conversation conversation, AppChange change) {
+  }
+
+  public record AppChange(String appId, String resource, String formName, String entityId) {
   }
 }

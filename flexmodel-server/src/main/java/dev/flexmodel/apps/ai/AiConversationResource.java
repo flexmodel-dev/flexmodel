@@ -37,7 +37,7 @@ public class AiConversationResource {
   }
 
   /**
-   * SSE 流式返回：token/tool/done/error 事件，done 携带完成后的完整会话。
+   * SSE 流式返回：token/reasoning/tool/done/error 事件，done 携带完成后的完整会话。
    */
   @POST
   @Path("/{id}/messages")

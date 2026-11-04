@@ -1,6 +1,7 @@
 package dev.flexmodel.apps.ai;
 
 import com.sun.net.httpserver.HttpServer;
+import dev.flexmodel.JsonUtils;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
 import java.io.IOException;
@@ -51,8 +52,18 @@ public class OpenAiStubTestResource implements QuarkusTestResourceLifecycleManag
       // 已包含工具结果的是第二轮；查询订单意图且尚未携带工具结果的首轮发起工具调用。
       boolean toolResultRound = body.contains("\"role\" : \"tool\"");
       boolean toolCall = !toolResultRound && body.contains("请查询订单表里的记录");
+      Matcher creation = Pattern.compile("自动刷新测试应用：([a-z0-9_]+)").matcher(body);
+      boolean createApp = !toolResultRound && creation.find();
+      if (toolResultRound && body.contains("创建后模拟失败")) {
+        byte[] error = "{\"error\":{\"message\":\"simulated failure\",\"type\":\"server_error\"}}".getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(500, error.length);
+        exchange.getResponseBody().write(error);
+        exchange.close();
+        return;
+      }
       if (STREAMING.matcher(body).find()) {
-        respondSse(exchange, toolCall ? toolCallChunks(appId) : contentChunks());
+        respondSse(exchange, createApp ? createAppChunks(creation.group(1))
+          : toolCall ? toolCallChunks(appId) : contentChunks());
       } else {
         respondJson(exchange, toolCall ? toolCallJson(appId) : contentJson());
       }
@@ -61,6 +72,18 @@ public class OpenAiStubTestResource implements QuarkusTestResourceLifecycleManag
     return Map.of(
       "quarkus.langchain4j.openai.base-url", "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",
       "quarkus.langchain4j.openai.api-key", "test-key");
+  }
+
+  private static String createAppChunks(String appId) {
+    String args = JsonUtils.toJsonString(Map.of("name", "自动刷新测试", "projectId", appId));
+    return """
+      data: {"id":"create-1","object":"chat.completion.chunk","created":1700000000,"model":"stub-model","choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"create_call","type":"function","function":{"name":"create_app","arguments":%s}}]},"finish_reason":null}]}
+
+      data: {"id":"create-1","object":"chat.completion.chunk","created":1700000000,"model":"stub-model","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}
+
+      data: [DONE]
+
+      """.formatted(JsonUtils.toJsonString(args));
   }
 
   @Override

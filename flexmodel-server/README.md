@@ -77,6 +77,11 @@ java -jar target/flexmodel-server-dev.jar
 
 Apps 的个人收件箱、SSE 实时通知与浏览器提醒见 [实时站内通知](docs/notifications.md)。
 
+AI 创建或修改应用后的缓存失效、页面同步与编辑保护见 [AI 写操作后的页面同步](docs/ai-refresh.md)。
+
+AI 会话的原生推理与摘要接入、流式协议和折叠展示设计见 [AI 推理内容展示技术方案](../docs/plans/ai-reasoning-display.md)
+（技术设计，尚未实施）。
+
 应用表单字段的默认值、输入校验与显示格式见 [字段类型属性](docs/field-properties.md)。
 
 应用表单的授权配置与所有者字段见 [数据权限技术方案](docs/data-permissions.md)（当前仅保留配置，运行时授权未接入）。

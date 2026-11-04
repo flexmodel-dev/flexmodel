@@ -7,8 +7,9 @@ import dev.flexmodel.functions.FunctionService;
 import dev.flexmodel.functions.dto.FunctionDeployRequest;
 import dev.flexmodel.functions.dto.FunctionPageRequest;
 import dev.flexmodel.functions.dto.FunctionResponse;
-import io.quarkiverse.mcp.server.Tool;
-import io.quarkiverse.mcp.server.ToolArg;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -19,14 +20,21 @@ import java.util.Map;
 /**
  * MCP 工具：边缘函数
  * 提供函数模板列表、函数 CRUD、部署和调用能力
+ * <p>
+ * 与 {@link AppTools} 相同，注解使用 langchain4j 定义，MCP Server 自动注册复用。
+ * 访问控制由 {@link McpToolAccess} 统一处理。
  */
 @Slf4j
+@ApplicationScoped
 public class FunctionTools {
 
   @Inject
   FunctionService functionService;
 
-  @Tool(description = """
+  @Inject
+  McpToolAccess access;
+
+  @Tool(name = "list_function_templates", value = """
     List all available function templates (platform-level). \
     Each template provides a pre-built code pattern for common use cases like \
     Hello World, Database Query, Database CRUD, Webhook Handler, Data Aggregation, etc. \
@@ -37,6 +45,7 @@ public class FunctionTools {
   public String list_function_templates() {
     log.info("list_function_templates called");
     try {
+      access.requireDirectory();
       List<FunctionTemplate> templates = functionService.list();
       return JsonUtils.toJsonString(templates);
     } catch (Exception e) {
@@ -45,19 +54,20 @@ public class FunctionTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "list_functions", value = """
     List Edge Functions in a project with pagination. \
     Returns a paginated result with total count and function list. \
     Each function includes: id, name, sourceFiles, timeout, createdAt, updatedAt.\
     """)
   public String list_functions(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "Optional function name filter. Pass empty string for no filter.") String name,
-    @ToolArg(description = "Page number, starting from 1") int page,
-    @ToolArg(description = "Number of functions per page, e.g. 10, 20") int size
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P(value = "Optional function name filter. Pass empty string for no filter.", required = false) String name,
+    @P("Page number, starting from 1") int page,
+    @P("Number of functions per page, e.g. 10, 20") int size
   ) {
     log.info("list_functions called, projectId={}, name={}, page={}, size={}", projectId, name, page, size);
     try {
+      access.requireDirectory();
       FunctionPageRequest request = new FunctionPageRequest();
       request.setName((name == null || name.isBlank()) ? null : name);
       request.setPage(page);
@@ -70,17 +80,18 @@ public class FunctionTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "get_function", value = """
     Get detailed information of a specific Edge Function, \
     including its source code files (sourceFiles: filename→content map), timeout, and metadata. \
     Use this to inspect a function's code before modifying or invoking it.\
     """)
   public String get_function(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "The function name, e.g. 'hello-world', 'my-query-fn'") String name
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("The function name, e.g. 'hello-world', 'my-query-fn'") String name
   ) {
     log.info("get_function called, projectId={}, name={}", projectId, name);
     try {
+      access.requireDirectory();
       FunctionResponse fn = functionService.findByName(projectId, name);
       return JsonUtils.toJsonString(fn);
     } catch (Exception e) {
@@ -89,7 +100,7 @@ public class FunctionTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "deploy_function", value = """
     Deploy (create or update) a Edge Function to a project and deploy it to the Deno Functions Runtime. \
     If a function with the given name already exists, it will be updated (upsert behavior). \
     \
@@ -107,17 +118,18 @@ public class FunctionTools {
     Example sourceFiles: {"index.ts": "import { flexmodelClient } from '@flexmodel/sdk';\\n\\nexport default async function(req: Request) {\\n  const result = await flexmodelClient.data.from('Student').findMany({ page: 1, size: 10 });\\n  return new Response(JSON.stringify(result), { headers: { 'content-type': 'application/json' } });\\n}"}\
     """)
   public String deploy_function(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "The function name, e.g. 'hello-world', 'my-query-fn'") String name,
-    @ToolArg(description = """
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("The function name, e.g. 'hello-world', 'my-query-fn'") String name,
+    @P("""
       Source files as JSON object string: filename→content map. \
       The main entry must be 'index.ts' exporting a default async function(req: Request). \
       Example: {"index.ts": "export default async function(req: Request) { return new Response('OK'); }"}\
       """) String sourceFilesJson,
-    @ToolArg(description = "Function timeout in seconds (default 30). Max recommended: 300.") int timeout
+    @P("Function timeout in seconds (default 30). Max recommended: 300.") int timeout
   ) {
     log.info("deploy_function called, projectId={}, name={}, timeout={}", projectId, name, timeout);
     try {
+      access.requireDirectory();
       Map<String, String> sourceFiles = JsonUtils.parseToObject(sourceFilesJson, Map.class);
       FunctionDeployRequest request = new FunctionDeployRequest();
       request.setName(name);
@@ -131,7 +143,7 @@ public class FunctionTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "invoke_function", value = """
     Invoke (execute) a deployed Edge Function and return its output. \
     The function receives the input data as a standard Request object, \
     processes it in an isolated Deno Worker, and returns the result. \
@@ -148,16 +160,17 @@ public class FunctionTools {
     Execution metadata (time, logs) may be available.\
     """)
   public String invoke_function(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "The function name to invoke, e.g. 'hello-world', 'my-query-fn'") String name,
-    @ToolArg(description = """
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("The function name to invoke, e.g. 'hello-world', 'my-query-fn'") String name,
+    @P(value = """
       Input data to pass to the function as JSON string. \
       This becomes the request body that the function receives via req.json() or req.text(). \
       Pass empty string or null for no input.\
-      """) String inputJson
+      """, required = false) String inputJson
   ) {
     log.info("invoke_function called, projectId={}, name={}", projectId, name);
     try {
+      access.requireDirectory();
       Object input = null;
       if (inputJson != null && !inputJson.isBlank()) {
         input = JsonUtils.parseToObject(inputJson, Object.class);
@@ -179,17 +192,18 @@ public class FunctionTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "delete_function", value = """
     Delete a Edge Function from a project. \
     This removes the function definition from the database AND deletes it from the Deno Functions Runtime. \
     Use with caution as this operation is irreversible.\
     """)
   public String delete_function(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "The function name to delete, e.g. 'hello-world', 'my-query-fn'") String name
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("The function name to delete, e.g. 'hello-world', 'my-query-fn'") String name
   ) {
     log.info("delete_function called, projectId={}, name={}", projectId, name);
     try {
+      access.requireDirectory();
       functionService.delete(projectId, name);
       return "Function deleted: " + name;
     } catch (Exception e) {

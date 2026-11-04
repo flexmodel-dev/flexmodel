@@ -67,24 +67,21 @@ public class AssistantAgent {
     StringBuilder prompt = new StringBuilder();
     if (appIds.isEmpty()) {
       prompt.append("你是 Flexmodel 平台的 AI 助手，可以帮助用户创建应用、设计表单与工作台。\n")
-        .append("当前没有绑定具体应用：用 list_apps 查看现有应用，或用 create_app 创建新应用；")
-        .append("创建应用后按 create_app → create_app_form → save_app_form_layout → ")
-        .append("create_app_workbench → create_app_navigation 的流程推进。\n")
-        .append("写操作仅限应用所有者或管理员，工具返回权限错误时请向用户说明。\n");
+        .append("当前没有绑定具体应用：用 list_apps 查看现有应用，或用 create_app 创建新应用。\n");
     } else if (appIds.size() == 1) {
       prompt.append("你是 Flexmodel 应用中的 AI 助手。\n")
         .append("当前应用ID：").append(appIds.getFirst())
         .append("，工具调用的 appId 参数必须使用该值。\n")
-        .append("你可以查询应用数据，也可以设计表单、布局、视图、工作台、导航与审批流；")
-        .append("写操作仅限应用所有者或管理员，工具返回权限错误时请向用户说明。\n");
+        .append("你可以查询应用数据，也可以设计表单、布局、视图、工作台、导航与审批流。\n");
     } else {
       prompt.append("你是 Flexmodel 平台的 AI 助手，本轮对话用户指定了多个应用上下文。\n")
         .append("可用应用ID：").append(String.join("、", appIds))
-        .append("。工具调用的 appId 参数必须按问题涉及的应用从中选择。\n")
-        .append("写操作仅限应用所有者或管理员，工具返回权限错误时请向用户说明。\n");
+        .append("。工具调用的 appId 参数必须按问题涉及的应用从中选择。\n");
     }
-    prompt.append("回答使用简体中文，必须基于工具返回的真实数据，不要编造记录、字段或统计结果；")
-      .append("查询后说明数据范围，例如“共 N 条，展示前 M 条”。需要数据时先调用工具。\n");
+    prompt.append("写操作仅限应用所有者或管理员，工具返回权限错误时请向用户说明。\n")
+      .append("回答使用简体中文，必须基于工具返回的真实数据，不要编造记录、字段或统计结果；")
+      .append("查询后说明数据范围，例如“共 N 条，展示前 M 条”。需要数据时先调用工具。\n")
+      .append('\n').append(appCreationFlow());
     for (String appId : appIds) {
       prompt.append('\n').append(appContext(appId));
     }
@@ -92,6 +89,29 @@ public class AssistantAgent {
       prompt.append("\n角色设定：\n").append(robot.prompt()).append('\n');
     }
     return prompt.toString();
+  }
+
+  /**
+   * 应用创建流程 SOP：所有上下文分支共享，步骤编号与 AppTools 工具描述保持一致。
+   * 目标是让模型按固定顺序一次性完整执行，而不是创建应用后就停下。
+   */
+  private String appCreationFlow() {
+    return """
+      【应用创建流程】当用户要求创建新应用、搭建或完善应用结构时，必须按以下主流程顺序调用工具完整执行，禁止跳过步骤：
+      1. create_app：创建应用；appId 冲突或应用已存在时先用 list_apps / get_app 确认再继续。
+      2. create_app_form：为每个业务对象创建表单与字段。
+      3. save_app_form_layout：为每个新建表单保存布局。
+      4. create_app_navigation：为工作台和各表单页面创建导航入口，否则页面无法访问。
+      5. create_app_mock_records：为每个业务表单创建 3~5 条示例记录，便于用户预览。
+      增强步骤（在第 3 步与第 4 步之间按需执行）：
+      - 视图：先 get_app_form_view_capabilities 获取视图契约，再用 save_app_form_views 保存完整视图列表（必须至少保留一个全部/表格视图）。
+      - 工作台：先 list_app_workbenches 获取工作台，再 get_app_workbench_capabilities 获取组件契约，最后 save_app_workbench_layout 保存布局。
+      执行要求：
+      - 用户意图明确时必须一次性连续执行完所有步骤，不要执行一两步就停下来询问或等待确认；只有需求存在歧义时才先提问。
+      - 某一步失败时根据工具返回的错误修正参数并重试；仍失败再向用户说明，然后继续后续步骤。
+      - 用户只要求其中某一步时可单独执行该步，但完成后必须提示应用还缺哪些步骤。
+      - 全部完成后输出创建结果摘要：应用、表单与布局、视图、工作台、导航、示例记录。
+      """;
   }
 
   /**

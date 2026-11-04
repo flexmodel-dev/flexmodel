@@ -1,5 +1,48 @@
 # Session Progress Log
 
+## Apps - AI 原生推理展示最小成本实现（2026-11-04，feat-174）
+
+- 用户要求按 docs/plans/ai-reasoning-display.md 以最小成本实现推理折叠展示（含前端），并明确不跑测试用例。
+- 后端（flexmodel-server）：
+  - 新增 `apps/ai/AiStreamingModelProducer`：@Produces StreamingChatModel，读同一套 `quarkus.langchain4j.openai.*` 配置并开启
+    `returnThinking(true)`，sendThinking 保持默认关闭（推理不回传供应商）。依据：quarkus-langchain4j 1.7.4 的
+    OpenAiRecorder.streamingChatModel 合成 bean 为 defaultBean 且 ChatModelConfig 无 returnThinking 配置项，应用 bean
+    覆盖是唯一开启路径；同时注入 ChatModelListener 保留指标/追踪，未配置 api-key（含扩展默认 "dummy"）回退
+    DisabledStreamingChatModel。
+  - `AiDtos`：新增 `MessagePart(type, content)`；`Message` 增加 `parts`（Jackson 按名映射，旧消息缺失即 null，无需迁移）；
+    `StreamEvent` 复用现有字段新增 `type=reasoning`，块边界由 token/tool 事件隐式切换，不新增协议字段。
+  - `AppAiService.doStream`：select 过滤加入 `PartialThinkingEvent`，请求级局部累积器按事件顺序收集推理块（token/tool/完成时封闭当前块），完成后随
+    assistant 消息持久化 parts；无推理时 parts=null，存储结构与旧行为一致。`AppAiChatMemory` 不变（仍按 content 重建，不携带
+    thinking）。
+- 前端（flexmodel-apps-ui）：
+  - `services/ai.ts`：AiMessagePart 类型、Message.parts、onReasoning 回调。
+  - `AiProvider`：草稿增加 reasoning（当前块）/reasoningParts（已封闭块），token/tool
+    事件与后端相同规则切换块；主动停止时已流出推理片段随本地消息保存（parts），刷新后以服务端成功历史为准。
+  - `AiChat`：新增 AiReasoningBlock（原生 details/summary，无新 UI
+    依赖；流式中默认展开、块封闭后收起，用户手动操作不被覆盖）；历史消息在正文前渲染推理块（默认收起，纯文本展示）；复制仍默认复制最终回答。
+- 验证：`mvn compile -pl flexmodel-server -am` BUILD SUCCESS；apps-ui `tsc -b` 通过。`vite build` 在本机一致失败（esbuild
+  临时目录清理 Access is denied，残留 esbuild.exe 进程锁目录），已用本次改动前的代码对照复现同样失败，确认是环境预存问题、与本次改动无关；如需跑
+  build，先 `Stop-Process -Name esbuild` 并清理 `%TEMP%\esbuild-*` 后重试。
+- 未做（按用户最小成本要求裁剪）：OpenAI Responses 摘要适配、part.start/part.end
+  结构化协议、seq/重复检查、模型状态单独存储（model_state）、会话级并发准入锁、推理长度截断上限、`start` 事件与 reasoningMode
+  声明、诊断日志；后续按方案文档实施步骤扩展。
+- 未运行测试与 init.sh；未执行 git commit。
+
+## Apps - AI 创建后的全局刷新方案讨论（2026-11-04，feat-170 续）
+
+- 用户希望 AI 创建应用后，应用管理及应用内相关页面自动刷新；本轮仅咨询方案，未授权实施具体设计。
+- 已确认：AppManagement/AppLauncher 仅挂载时读取 getApps；services 的 Promise 缓存没有订阅通知，清空缓存不会触发现有组件取数。AI
+  经共享 AppTools 直接调用服务端 Service，绕过前端 CRUD 的缓存维护；当前 AI SSE 只传 token/tool/done/error，tool 仅携带工具名。
+- 建议：统一应用变更事件，业务写入成功且提交后产生 appId/resource/entityId
+  等范围信息，前端按范围失效缓存并通知已挂载页面后台取数；覆盖应用列表、应用资料、导航、表单/视图、工作台与记录，保留 AI
+  面板、路由和未保存输入。
+- 分阶段选择：先复用当前 AI SSE 增加结构化 change 事件及完成/失败/中止后的变更核对，解决当前页面；需要外部
+  MCP、多标签页及其他用户的变更同步时，再接独立的应用变更 SSE。复用通知连接的鉴权、重连和跨页分发机制，但不把刷新事件写成收件箱通知。
+- 关键约束：只读工具不刷新；连续写入合并触发；工具可能返回 Error 字符串，ToolExecuted
+  不等于业务成功；部分写入后对话失败或取消仍需同步；过期请求不能覆盖新数据或重新污染已失效缓存；推送按用户应用访问权限过滤，重连后核对当前数据。
+- 状态：建议尚未被采纳，未修改业务代码；仅记录讨论，未运行 init.sh、Maven 或前端构建。已有工作区修改保持原样，未执行 git
+  commit/push。
+
 ## Apps - AI 会话统一（去除系统级/应用级两套对话，2026-11-04，feat-170 续）
 
 - 需求：系统级（全局助手）与应用级会话是两套，统一为一套；appId 默认作为隐藏参数随消息传递
@@ -4717,3 +4760,32 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   Playwright 验证 320/736/1024px 下四场景无横向溢出，并验证面板收放、快捷提问、完整页发送与方案确认；已检查浅色/深色截图。原型仅演示交互，没有接入模型或业务操作。
 - 尚未确认：常驻业务助手与自定义机器人之间的选择方式、机器人管理位置及具体授权能力；本轮建议尚未被用户采纳，不能直接视为已定需求。未执行
   git commit/push，已有部署与开发配置修改保持原样。
+
+## 应用列表描述与元信息对齐（2026-11-04，feat-172）
+
+- AppManagement 应用描述改为单行 truncate，复用 Tooltip 展示完整描述，保留空描述占位。
+- 所有者与更新时间整行增加 ml-14，按 44px 图标与 12px 间距对齐上方名称、描述的左边缘。
+- 根据用户截图补充单行展示：所有者与更新时间禁止换行，超宽省略并提供
+  title；分隔线禁止压缩，将更多按钮的右侧避让限制在顶部信息区域，为元信息释放宽度。沿用用户要求，本次未运行验证。
+- 更多按钮默认透明隐藏，悬停卡片时显示；卡片内键盘聚焦或菜单展开时保持可见，使用现有 Tailwind 样式完成，无新增状态。沿用用户要求，未运行验证。
+- 用户补充明确要求「不用验证直接修改」，因此未继续验证最终改动。此前启动检查的全模块 clean compile 与引擎测试通过；完整
+  init.sh 和 Apps UI 构建的最终结果未核对；临时 Playwright 检查已显示长描述完整提示，但移出后的提示收起断言未通过，未继续排查。
+- 现有其他未提交改动保留；本轮未执行 git commit/push。
+
+## AI 推理内容展示技术方案（2026-11-04，feat-173）
+
+- 用户要求按最佳实践生成技术方案文档，本轮只交付文档，推理展示功能尚未实施。
+- 新增 `docs/plans/ai-reasoning-display.md`，在 `flexmodel-server/README.md` 增加入口；覆盖当前链路、供应商能力、原生推理/摘要语义、SSE
+  消息块及轮次、存储、私有模型状态回传、前端折叠、取消/失败/断流、写入刷新、实施顺序与验收矩阵。
+- 已检查根与 Apps UI AGENTS.md、README、近期提交、功能状态、现有 apps/ai 与 Apps UI 服务和组件。核对 BOM 对应的 Quarkus
+  LangChain4j 1.7.4、LangChain4j 1.11.0 本地源码；`PartialThinkingEvent#getText()` 已存在，`returnThinking/sendThinking`
+  默认关闭。结合 OpenAI、DeepSeek、Quarkus 和 LangChain4j 官方文档，确定首期复用现有 DeepSeek 兼容链路，Responses
+  摘要后续独立适配，不强制模型输出完整思维链或解析 `<thought>`。
+- 标准启动检查使用 Git Bash 执行 `./init.sh`：Java 25.0.3，全模块 clean compile 与引擎测试通过；脚本附带 `flexmodel-ui` E2E
+  32 通过、3 失败，GraphQL API、接口日志及项目列表页均在 `page.goto` 等待 load 时超过 20 秒。完整基线未通过；日志为
+  `.codex-reasoning-plan-init.log`。本轮未扩展到修复这些无关页面，也未改产品代码。
+- 文档验证使用一次性 Node 脚本核对代码围栏、本地链接、4 条 SSE JSON 示例、序号和块关联、新增 feat-173 唯一且状态正确；
+  `git diff --check` 通过。首次附加全局 ID 唯一性检查发现原有 feat-108、feat-162
+  各自重复，已保持原有记录不变，最终检查限制为本次新增项并单独报告原有重复；不影响文档交付。
+- 后续实施风险：实验推理事件的版本稳定性、工具模式必须回传的供应商状态、上下文裁剪边界、模型状态大小、同会话多实例准入控制。方案明确失败/取消草稿只保留当前浏览器内存，不承诺断点继续。
+- 工作区原有业务、配置、部署和子模块修改均保留；未执行 git commit/push。feat-173 的 done 仅代表技术方案完成。

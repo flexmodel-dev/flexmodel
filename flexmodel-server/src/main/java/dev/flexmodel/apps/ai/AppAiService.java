@@ -158,35 +158,59 @@ public class AppAiService {
     if (messages.size() >= 100) throw new ValidationException("当前会话已达100条消息，请开启新对话");
     String content = input.content().trim();
     if (messages.isEmpty()) entity.setTitle(content.substring(0, Math.min(content.length(), 40)));
-    Message userMessage = new Message(UUID.randomUUID().toString(), "user", content, LocalDateTime.now());
+    Message userMessage = new Message(UUID.randomUUID().toString(), "user", content, LocalDateTime.now(), null);
     AtomicBoolean completed = new AtomicBoolean();
     AtomicReference<Conversation> saved = new AtomicReference<>();
+    // 请求级推理块累积：事件经 emitOn 后在同一线程串行处理，闭包内局部可变对象按请求隔离。
+    List<MessagePart> reasoningParts = new ArrayList<>();
+    StringBuilder currentReasoning = new StringBuilder();
+    Runnable closeReasoning = () -> {
+      if (!currentReasoning.isEmpty()) {
+        reasoningParts.add(new MessagePart("reasoning", currentReasoning.toString()));
+        currentReasoning.setLength(0);
+      }
+    };
     // 历史消息由 AppAiChatMemory 从会话实体装载，模型输出完成后统一持久化。
     // 事件回调发生在事件循环线程，切换到 worker 线程池执行映射与落库。
     return agent.stream(contextApps, robotId, id, robot, content)
       .emitOn(Infrastructure.getDefaultWorkerPool())
       .select().where(event -> event instanceof ChatEvent.PartialResponseEvent
+        || event instanceof ChatEvent.PartialThinkingEvent
         || event instanceof ChatEvent.ToolExecutedEvent
         || event instanceof ChatEvent.ChatCompletedEvent)
-      .onItem().transform(event -> {
+      .onItem().transformToMultiAndConcatenate(event -> {
+        if (event instanceof ChatEvent.PartialThinkingEvent thinking) {
+          currentReasoning.append(thinking.getText());
+          return Multi.createFrom().item(new StreamEvent("reasoning", thinking.getText(), null, null));
+        }
         if (event instanceof ChatEvent.PartialResponseEvent partial) {
-          return new StreamEvent("token", partial.getChunk(), null);
+          closeReasoning.run();
+          return Multi.createFrom().item(new StreamEvent("token", partial.getChunk(), null, null));
         }
         if (event instanceof ChatEvent.ToolExecutedEvent tool) {
-          return new StreamEvent("tool", tool.getExecution().request().name(), null);
+          closeReasoning.run();
+          var execution = tool.getExecution();
+          var request = execution.request();
+          var progress = new StreamEvent("tool", request.name(), null, null);
+          // result() 是模型侧 JSON 序列化文本；共享工具本身返回的 JSON 字符串在 resultObject() 中。
+          String result = execution.resultObject() instanceof String value ? value : execution.result();
+          var change = AiToolChanges.from(request.name(), request.arguments(), result, execution.hasFailed());
+          return change == null ? Multi.createFrom().item(progress)
+            : Multi.createFrom().items(progress, new StreamEvent("change", null, null, change));
         }
         if (completed.compareAndSet(false, true)) {
+          closeReasoning.run();
           var aiMessage = ((ChatEvent.ChatCompletedEvent) event).getChatResponse() == null
             ? null : ((ChatEvent.ChatCompletedEvent) event).getChatResponse().aiMessage();
           String answer = aiMessage == null || aiMessage.text() == null || aiMessage.text().isBlank()
             ? EMPTY_ANSWER : aiMessage.text();
-          saved.set(completeReply(entity, messages, userMessage, answer));
+          saved.set(completeReply(entity, messages, userMessage, answer, reasoningParts));
         }
-        return new StreamEvent("done", null, saved.get());
+        return Multi.createFrom().item(new StreamEvent("done", null, saved.get(), null));
       })
       .onFailure().recoverWithItem(error -> {
         log.warn("AI model call failed for conversation {}: {}", id, error.getMessage());
-        return new StreamEvent("error", "AI 模型调用失败：" + error.getMessage(), null);
+        return new StreamEvent("error", "AI 模型调用失败：" + error.getMessage(), null, null);
       });
   }
 
@@ -236,9 +260,11 @@ public class AppAiService {
 
   // 同步落库在单实例内串行，防止同一会话并发发送时覆盖消息。
   private synchronized Conversation completeReply(AppAiConversation entity, List<Message> messages,
-                                                  Message userMessage, String answer) {
+                                                  Message userMessage, String answer, List<MessagePart> parts) {
     messages.add(userMessage);
-    messages.add(new Message(UUID.randomUUID().toString(), "assistant", answer, LocalDateTime.now()));
+    // parts 只保存推理块；无推理输出时保持旧结构（parts 为 null）。
+    messages.add(new Message(UUID.randomUUID().toString(), "assistant", answer, LocalDateTime.now(),
+      parts.isEmpty() ? null : parts));
     entity.setMessages(JsonUtils.convertValue(messages, List.class));
     entity.setUpdatedAt(LocalDateTime.now());
     aiRepository.save(entity);

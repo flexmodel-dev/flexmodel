@@ -14,59 +14,60 @@ public class FlowInstanceFmRepository extends AbstractRepository implements Flow
 
   @Override
   public FlowInstance selectByFlowInstanceId(String projectId, String flowInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(FlowInstance.class)
-        .where(System.flowInstance.flowInstanceId.eq(flowInstanceId))
+        .where(System.flowInstance.projectId.eq(projectId).and(System.flowInstance.flowInstanceId.eq(flowInstanceId)))
         .executeOne();
     }
   }
 
   @Override
   public int insert(String projectId, FlowInstance flowInstance) {
-    try (Session session = getProjectSession(projectId)) {
+    flowInstance.setProjectId(projectId);
+    try (Session session = openSession()) {
       return session.dsl().insertInto(FlowInstance.class).values(flowInstance).execute();
     }
   }
 
   @Override
   public void updateStatus(String projectId, String flowInstanceId, int status) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(FlowInstance.class)
         .set(System.flowInstance.status, status)
-        .where(System.flowInstance.flowInstanceId.eq(flowInstanceId))
+        .where(System.flowInstance.projectId.eq(projectId).and(System.flowInstance.flowInstanceId.eq(flowInstanceId)))
         .execute();
     }
   }
 
   @Override
   public void updateStatus(String projectId, FlowInstance flowInstance, int status) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(FlowInstance.class)
         .set(System.flowInstance.status, status)
-        .where(System.flowInstance.flowInstanceId.eq(flowInstance.getFlowInstanceId()))
+        .where(System.flowInstance.projectId.eq(projectId).and(System.flowInstance.flowInstanceId.eq(flowInstance.getFlowInstanceId())))
         .execute();
     }
   }
 
   @Override
   public long count(String projectId, Predicate predicate) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(FlowInstance.class)
-        .where(predicate)
+        .where(System.flowInstance.projectId.eq(projectId).and(predicate))
         .count();
     }
   }
 
   @Override
   public List<FlowInstance> find(String projectId, Predicate predicate, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(FlowInstance.class)
-        .where(predicate)
+        .where(System.flowInstance.projectId.eq(projectId).and(predicate))
         .page(page, size)
         .orderByDesc(System.flowInstance.createdAt)
         .execute();

@@ -1,7 +1,6 @@
 package dev.flexmodel.sql.dialect;
 
 import dev.flexmodel.sql.*;
-import dev.flexmodel.sql.*;
 
 import java.sql.SQLException;
 import java.sql.Types;
@@ -495,6 +494,13 @@ public abstract class SqlDialect {
 
   public String getModifyColumnString() {
     return "modify";
+  }
+
+  /**
+   * 是否支持通过 ALTER TABLE 修改列定义。SQLite 等数据库需重建表，返回 false 时仅更新元数据。
+   */
+  public boolean supportsModifyColumn() {
+    return true;
   }
 
   public String getSqlAlterTableModifyColumnString(SqlColumn sqlColumn) {

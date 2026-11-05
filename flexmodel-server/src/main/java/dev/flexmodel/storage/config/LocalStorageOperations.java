@@ -141,6 +141,26 @@ public class LocalStorageOperations implements StorageOperations {
   }
 
   @Override
+  public void moveFile(String source, String target) {
+    Path from = resolvePath(source);
+    Path to = resolvePath(target);
+
+    if (!Files.exists(from)) {
+      throw new NotFoundException("File not found: " + source);
+    }
+
+    try {
+      Path parent = to.getParent();
+      if (parent != null) {
+        Files.createDirectories(parent);
+      }
+      Files.move(from, to, StandardCopyOption.REPLACE_EXISTING);
+    } catch (IOException e) {
+      throw new InternalServerException("Failed to move file: " + source + " -> " + target, e);
+    }
+  }
+
+  @Override
   public InputStream getInputStream(String path) {
     Path targetPath = resolvePath(path);
     try {

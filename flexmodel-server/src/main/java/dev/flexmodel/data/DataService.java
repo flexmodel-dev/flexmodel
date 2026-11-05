@@ -36,6 +36,51 @@ public class DataService {
     return dataRepository.countRecords(projectId, datasourceName, modelName, filter);
   }
 
+  public long countRecords(String projectId, String modelName, String filter) {
+    return dataRepository.countRecords(
+      projectId, projectService.resolveDatabaseName(projectId), modelName, filter);
+  }
+
+  public List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String datasourceName,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    String filter,
+    int limit
+  ) {
+    return dataRepository.aggregateRecords(
+      projectId, datasourceName, modelName, dimensionField, measureField, aggregation, filter, limit);
+  }
+
+  public List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String datasourceName,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    int limit
+  ) {
+    return dataRepository.aggregateRecords(
+      projectId, datasourceName, modelName, dimensionField, measureField, aggregation, limit);
+  }
+
+  public List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    int limit
+  ) {
+    String datasourceName = projectService.resolveDatabaseName(projectId);
+    return aggregateRecords(
+      projectId, datasourceName, modelName, dimensionField, measureField, aggregation, limit);
+  }
+
   public Map<String, Object> findOneRecord(String projectId, String datasourceName, String modelName, Object id, List<String> expand) {
     return dataRepository.findOneRecord(projectId, datasourceName, modelName, id, expand);
   }
@@ -60,6 +105,17 @@ public class DataService {
                                                         String sort,
                                                         List<String> expand) {
     String datasourceName = projectService.resolveDatabaseName(projectId);
+    return findPagingRecords(projectId, datasourceName, modelName, page, size, filter, sort, expand);
+  }
+
+  public PageDTO<Map<String, Object>> findPagingRecords(String projectId,
+                                                        String datasourceName,
+                                                        String modelName,
+                                                        int page,
+                                                        int size,
+                                                        String filter,
+                                                        String sort,
+                                                        List<String> expand) {
     List<Map<String, Object>> list = dataRepository.findRecords(projectId, datasourceName, modelName, page, size, filter, sort, expand);
     long total = dataRepository.countRecords(projectId, datasourceName, modelName, filter);
     return new PageDTO<>(list, total);

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 验证 {@link FlowEventPublisher} 将强类型事件经 Vert.x EventBus 广播，
- * 且事件字段完整保留。本地事件为机制本身，不依赖 RabbitMQ。
+ * 且事件字段完整保留。
  *
  * @author cjbi
  */
@@ -34,7 +34,7 @@ public class FlowEventPublisherTest {
   void publishFlowInstanceStartedEventFieldsPreserved() {
     capturingConsumer.captured().set(null);
 
-    String projectId = "proj-test";
+    String projectId = "dev_test";
     String initiator = "caller-test";
     String flowDeployId = "deploy-test";
     String flowInstanceId = "instance-test";

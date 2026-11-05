@@ -36,8 +36,13 @@ public class ModelingService {
   EventBus eventBus;
 
   private String resolveDatabaseName(String projectId) {
-    String databaseName = sessionContext.getProjectDatabaseName();
-    return databaseName != null ? databaseName : projectService.resolveDatabaseName(projectId);
+    if (projectId != null && projectId.equals(sessionContext.getProjectId())) {
+      String databaseName = sessionContext.getProjectDatabaseName();
+      if (databaseName != null) {
+        return databaseName;
+      }
+    }
+    return projectService.resolveDatabaseName(projectId);
   }
 
   public List<SchemaObject> findModels(String projectId) {
@@ -77,6 +82,12 @@ public class ModelingService {
     SchemaObject created = modelService.createModel(projectId, resolveDatabaseName(projectId), model);
     eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
     return created;
+  }
+
+  public SchemaObject saveModel(String projectId, SchemaObject model) {
+    SchemaObject saved = modelService.saveModel(projectId, resolveDatabaseName(projectId), model);
+    eventBus.publish("graphql.refresh", new GraphQLRefreshEvent());
+    return saved;
   }
 
   public void dropModel(String projectId, String modelName) {

@@ -18,7 +18,7 @@ public class UserinfoResponse {
   private UserResponse user;
   private List<String> permissions;
 
-  public record UserResponse(String id, String name, String email) {
+  public record UserResponse(String id, String name, String email, String avatar) {
   }
 
 }

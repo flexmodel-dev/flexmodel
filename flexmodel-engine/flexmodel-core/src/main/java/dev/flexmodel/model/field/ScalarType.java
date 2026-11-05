@@ -5,6 +5,7 @@ package dev.flexmodel.model.field;
  */
 public enum ScalarType {
   STRING(ScalarType.STRING_TYPE),
+  TEXT(ScalarType.TEXT_TYPE),
   FLOAT(ScalarType.FLOAT_TYPE),
   INT(ScalarType.INT_TYPE),
   LONG(ScalarType.LONG_TYPE),
@@ -19,6 +20,7 @@ public enum ScalarType {
   private final String type;
 
   public static final String STRING_TYPE = "String";
+  public static final String TEXT_TYPE = "Text";
   public static final String FLOAT_TYPE = "Float";
   public static final String INT_TYPE = "Int";
   public static final String LONG_TYPE = "Long";

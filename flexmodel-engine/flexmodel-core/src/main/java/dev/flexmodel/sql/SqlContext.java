@@ -45,6 +45,7 @@ public class SqlContext extends AbstractSessionContext {
     this.conditionCalculator = new DefaultSqlExpressionCalculator(sqlDialect);
 
     this.typeHandlerMap.put(ScalarType.STRING.getType(), new StringSqlTypeHandler());
+    this.typeHandlerMap.put(ScalarType.TEXT.getType(), new TextSqlTypeHandler());
     this.typeHandlerMap.put(ScalarType.FLOAT.getType(), new DecimalSqlTypeHandler());
     this.typeHandlerMap.put(ScalarType.INT.getType(), new IntSqlTypeHandler());
     this.typeHandlerMap.put(ScalarType.LONG.getType(), new LongSqlTypeHandler());
@@ -59,7 +60,7 @@ public class SqlContext extends AbstractSessionContext {
       this.typeHandlerMap.put(ScalarType.TIME.getType(), new LegacyTimeSqlTypeHandler());
     }
     this.typeHandlerMap.put(ScalarType.JSON.getType(), new JsonSqlTypeHandler());
-    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumSqlTypeHandler());
+    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumSqlTypeHandler(mappedModels, schemaName));
   }
 
   @Override

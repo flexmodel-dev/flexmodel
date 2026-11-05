@@ -8,7 +8,6 @@ import dev.flexmodel.query.DSLQueryBuilder;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
-import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -23,9 +22,13 @@ import java.util.Optional;
 @Slf4j
 @ApplicationScoped
 public class DataFmRepository implements DataRepository {
+  private Session open(String schema) {
+    return serverSessions.open(schema);
+  }
+
 
   @Inject
-  SessionFactory sessionFactory;
+  dev.flexmodel.common.persistence.ServerSessions serverSessions;
 
   @Override
   public List<Map<String, Object>> findRecords(String projectId,
@@ -38,7 +41,7 @@ public class DataFmRepository implements DataRepository {
                                                List<String> expand) {
 
 
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = open(datasourceName)) {
 
       DSLQueryBuilder queryBuilder = session.dsl()
         .selectFrom(modelName);
@@ -70,7 +73,7 @@ public class DataFmRepository implements DataRepository {
 
   @Override
   public long countRecords(String projectId, String datasourceName, String modelName, String filter) {
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = open(datasourceName)) {
 
       DSLQueryBuilder queryBuilder = session.dsl()
         .selectFrom(modelName);
@@ -84,8 +87,62 @@ public class DataFmRepository implements DataRepository {
   }
 
   @Override
+  public List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String datasourceName,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    int limit
+  ) {
+    return aggregateRecords(
+      projectId, datasourceName, modelName, dimensionField, measureField, aggregation, null, limit);
+  }
+
+  @Override
+  public List<Map<String, Object>> aggregateRecords(
+    String projectId,
+    String datasourceName,
+    String modelName,
+    String dimensionField,
+    String measureField,
+    String aggregation,
+    String filter,
+    int limit
+  ) {
+    try (Session session = open(datasourceName)) {
+      boolean grouped = !StringUtils.isBlank(dimensionField);
+      Query.Builder builder = Query.Builder.create()
+        .select(select -> {
+          if (grouped) {
+            select.field("dimension", dimensionField);
+          }
+          switch (aggregation) {
+            case "count" -> select.field("value", Query.count(Query.field("id")));
+            case "sum" -> select.field("value", Query.sum(Query.field(measureField)));
+            case "avg" -> select.field("value", Query.avg(Query.field(measureField)));
+            default -> throw new IllegalArgumentException("不支持的聚合方式: " + aggregation);
+          }
+        });
+      if (!StringUtils.isBlank(filter)) {
+        builder.where(filter);
+      }
+      if (grouped) {
+        builder
+          .groupBy(groupBy -> groupBy.field(dimensionField))
+          .orderBy(orderBy -> orderBy.asc("dimension"))
+          .page(1, limit);
+      } else {
+        builder.page(1, 1);
+      }
+      return session.data().findAll(modelName, builder.build());
+    }
+  }
+
+  @Override
   public Map<String, Object> findOneRecord(String projectId, String datasourceName, String modelName, Object id, List<String> expand) {
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = open(datasourceName)) {
 
       DSLQueryBuilder queryBuilder = session.dsl()
         .selectFrom(modelName);
@@ -103,7 +160,7 @@ public class DataFmRepository implements DataRepository {
 
   @Override
   public Map<String, Object> createRecord(String projectId, String datasourceName, String modelName, Map<String, Object> data) {
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = open(datasourceName)) {
       session.dsl()
         .insertInto(modelName)
         .values(data)
@@ -114,7 +171,7 @@ public class DataFmRepository implements DataRepository {
 
   @Override
   public Map<String, Object> updateRecord(String projectId, String datasourceName, String modelName, Object id, Map<String, Object> data) {
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = open(datasourceName)) {
       session.dsl()
         .update(modelName)
         .values(data)
@@ -127,7 +184,7 @@ public class DataFmRepository implements DataRepository {
 
   @Override
   public void deleteRecord(String projectId, String datasourceName, String modelName, Object id) {
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = open(datasourceName)) {
 
       EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
       Optional<TypedField<?, ?>> idField = entity.findIdField();
@@ -141,7 +198,7 @@ public class DataFmRepository implements DataRepository {
 
   @Override
   public List<Map<String, Object>> createRecords(String projectId, String datasourceName, String modelName, List<Map<String, Object>> data) {
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = open(datasourceName)) {
       session.data().insertAll(modelName, data);
       return data;
     }
@@ -149,23 +206,30 @@ public class DataFmRepository implements DataRepository {
 
   @Override
   public List<Map<String, Object>> updateRecords(String projectId, String datasourceName, String modelName, List<Map<String, Object>> data) {
-    try (Session session = sessionFactory.createSession(datasourceName)) {
-      EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
-      String idFieldName = entity.findIdField().orElseThrow().getName();
-      for (Map<String, Object> record : data) {
-        Object id = record.get(idFieldName);
-        if (id == null) {
-          throw new IllegalArgumentException("批量更新记录缺少 id 字段: " + modelName);
+    try (Session session = open(datasourceName)) {
+      session.startTransaction();
+      try {
+        EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
+        String idFieldName = entity.findIdField().orElseThrow().getName();
+        for (Map<String, Object> record : data) {
+          Object id = record.get(idFieldName);
+          if (id == null) {
+            throw new IllegalArgumentException("批量更新记录缺少 id 字段: " + modelName);
+          }
+          session.data().updateById(modelName, record, id);
         }
-        session.data().updateById(modelName, record, id);
+        session.commit();
+        return data;
+      } catch (RuntimeException | Error error) {
+        session.rollback();
+        throw error;
       }
-      return data;
     }
   }
 
   @Override
   public long deleteRecords(String projectId, String datasourceName, String modelName, List<Object> ids) {
-    try (Session session = sessionFactory.createSession(datasourceName)) {
+    try (Session session = open(datasourceName)) {
       return session.dsl().deleteFrom(modelName).where(Expressions.field("id").in(ids)).execute();
     }
   }

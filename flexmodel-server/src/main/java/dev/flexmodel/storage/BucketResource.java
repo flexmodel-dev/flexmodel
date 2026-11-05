@@ -5,8 +5,10 @@ import dev.flexmodel.common.NotFoundException;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
+import jakarta.ws.rs.core.UriInfo;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -35,6 +37,39 @@ public class BucketResource {
 
   @Inject
   BucketService bucketService;
+
+  @Inject
+  FolderPermissions folderPermissions;
+
+  public record FolderSettings(String name, List<FolderPermissions.Member> members) {
+  }
+
+  @GET
+  @Path("/{bucketName}/folder")
+  public Object folderSettings(@PathParam("projectId") String projectId,
+                               @PathParam("bucketName") String bucketName, @QueryParam("path") String path) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    return folderPermissions.members(bucket, path);
+  }
+
+  @PUT
+  @Path("/{bucketName}/folder")
+  public Response updateFolder(@PathParam("projectId") String projectId,
+                               @PathParam("bucketName") String bucketName, @QueryParam("path") String path,
+                               FolderSettings settings) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    if (settings == null) throw new dev.flexmodel.common.ValidationException("目录设置不能为空");
+    bucketService.updateFolder(bucket, path, settings.name(), settings.members());
+    return Response.noContent().build();
+  }
+
+  @Context
+  UriInfo uriInfo;
+
+  public record UploadedObject(String url, String path, String name) {}
+
+  public record MoveObjectRequest(String source, String target) {
+  }
 
   // ==================== Bucket CRUD ====================
 
@@ -110,7 +145,9 @@ public class BucketResource {
     return bucketService.listFiles(bucket, prefix != null ? prefix : "");
   }
 
-  @APIResponse(name = "200", responseCode = "200", description = "上传成功")
+  @APIResponse(name = "200", responseCode = "200", description = "上传成功，返回文件地址",
+    content = @Content(mediaType = MediaType.APPLICATION_JSON,
+      schema = @Schema(implementation = UploadedObject.class)))
   @Operation(summary = "上传对象")
   @PUT
   @Path("/{bucketName}/objects/{path: .*}")
@@ -126,7 +163,10 @@ public class BucketResource {
     // When folder=true, append trailing slash to mark as directory
     String objectPath = folder && !path.endsWith("/") ? path + "/" : path;
     bucketService.uploadFile(bucket, objectPath, body, contentLength);
-    return Response.ok().build();
+    String fileName = objectPath.substring(objectPath.lastIndexOf('/') + 1);
+    // 使用同源相对地址，适用于前端代理与不同部署域名；保留编码以支持文件名中的逗号。
+    String url = uriInfo.getAbsolutePath().getRawPath().replace(",", "%2C");
+    return Response.ok(new UploadedObject(url, objectPath, fileName)).build();
   }
 
   @APIResponse(name = "200", responseCode = "200", description = "文件内容",
@@ -153,6 +193,19 @@ public class BucketResource {
     return Response.ok(stream)
       .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
       .build();
+  }
+
+  @APIResponse(name = "204", responseCode = "204", description = "移动成功")
+  @Operation(summary = "移动对象")
+  @POST
+  @Path("/{bucketName}/move")
+  public Response moveObject(
+    @PathParam("projectId") String projectId,
+    @PathParam("bucketName") String bucketName,
+    MoveObjectRequest request) {
+    Bucket bucket = resolveBucket(projectId, bucketName);
+    bucketService.moveFile(bucket, request.source(), request.target());
+    return Response.noContent().build();
   }
 
   @APIResponse(name = "200", responseCode = "200", description = "删除成功")

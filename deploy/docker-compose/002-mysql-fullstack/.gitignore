@@ -1,5 +1,6 @@
 /mysql/data/
 /rustfs/data/
+# 历史 RabbitMQ 数据目录（服务已移除，保留忽略避免误提交）
 /rabbitmq/data/
 /flexmodel/storage/
 /flexmodel/pages/

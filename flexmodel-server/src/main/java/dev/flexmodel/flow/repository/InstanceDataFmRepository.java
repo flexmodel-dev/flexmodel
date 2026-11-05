@@ -11,9 +11,10 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
 
   @Override
   public InstanceData select(String projectId, String flowInstanceId, String instanceDataId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(InstanceData.class)
-        .where(System.instanceData.flowInstanceId.eq(flowInstanceId)
+        .where(System.instanceData.projectId.eq(projectId)
+          .and(System.instanceData.flowInstanceId.eq(flowInstanceId))
           .and(System.instanceData.instanceDataId.eq(instanceDataId)))
         .executeOne();
     }
@@ -21,9 +22,10 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
 
   @Override
   public InstanceData selectRecentOne(String projectId, String flowInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(InstanceData.class)
-        .where(System.instanceData.flowInstanceId.eq(flowInstanceId))
+        .where(System.instanceData.projectId.eq(projectId)
+          .and(System.instanceData.flowInstanceId.eq(flowInstanceId)))
         .orderByDesc(System.instanceData.id)
         .limit(1)
         .executeOne();
@@ -32,17 +34,18 @@ public class InstanceDataFmRepository extends AbstractRepository implements Inst
 
   @Override
   public int insert(String projectId, InstanceData instanceData) {
-    try (Session session = getProjectSession(projectId)) {
+    instanceData.setProjectId(projectId);
+    try (Session session = openSession()) {
       return session.dsl().insertInto(InstanceData.class).values(instanceData).execute();
     }
   }
 
   @Override
   public int updateData(String projectId, InstanceData instanceData) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().update(InstanceData.class)
         .values(instanceData)
-        .where(System.instanceData.id.eq(instanceData.getId()))
+        .where(System.instanceData.projectId.eq(projectId).and(System.instanceData.id.eq(instanceData.getId())))
         .execute();
     }
   }

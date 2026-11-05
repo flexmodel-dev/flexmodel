@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.flexmodel.codegen.System.trigger;
 
@@ -57,16 +58,53 @@ public class TriggerDataChangedEventListener implements EventListener {
     "create", "INSERTED"
   );
 
+  /**
+   * 批量写入会为每条记录发布变更事件，逐事件查询项目与触发器会把一次导入放大成上万次查询。
+   * 1 秒的短缓存只影响「触发配置刚变更后的首批事件」，对正常业务无感知。
+   */
+  private static final long LOOKUP_TTL_MILLIS = 1000L;
+  private static final int LOOKUP_CACHE_LIMIT = 1024;
+  private final Map<String, CachedProject> projectCache = new ConcurrentHashMap<>();
+  private final Map<String, CachedTriggers> triggerCache = new ConcurrentHashMap<>();
+
+  private record CachedProject(Project project, long expiresAt) {
+  }
+
+  private record CachedTriggers(List<Trigger> triggers, long expiresAt) {
+  }
+
+  private Project projectBySchema(String schemaName) {
+    long now = System.currentTimeMillis();
+    CachedProject cached = projectCache.get(schemaName);
+    if (cached != null && cached.expiresAt() > now) return cached.project();
+    Project project = projectRepository.findProjectByDatabaseName(schemaName);
+    if (projectCache.size() >= LOOKUP_CACHE_LIMIT) projectCache.clear();
+    projectCache.put(schemaName, new CachedProject(project, now + LOOKUP_TTL_MILLIS));
+    return project;
+  }
+
+  private List<Trigger> activeTriggers(String projectId, String groupName) {
+    String key = projectId + "\u0000" + groupName;
+    long now = System.currentTimeMillis();
+    CachedTriggers cached = triggerCache.get(key);
+    if (cached != null && cached.expiresAt() > now) return cached.triggers();
+    List<Trigger> triggers = triggerRepository.find(projectId,
+      trigger.jobGroup.eq(groupName)
+        .and(trigger.state.eq(true)), 1, 100);
+    if (triggerCache.size() >= LOOKUP_CACHE_LIMIT) triggerCache.clear();
+    triggerCache.put(key, new CachedTriggers(triggers, now + LOOKUP_TTL_MILLIS));
+    return triggers;
+  }
+
   @Override
   public void onPreChange(PreChangeEvent event) {
     try {
       String groupName = event.getSchemaName() + "_" + event.getModelName();
-      Project project = projectRepository.findProjectByDatabaseName(event.getSchemaName());
+      Project project = projectBySchema(event.getSchemaName());
+      if (project == null) return;
       String projectId = project.getId();
       // 最多支持触发100个事件
-      List<Trigger> triggers = triggerRepository.find(projectId,
-        trigger.jobGroup.eq(groupName)
-          .and(trigger.state.eq(true)), 1, 100);
+      List<Trigger> triggers = activeTriggers(projectId, groupName);
 
       for (Trigger trigger : triggers) {
         @SuppressWarnings("unchecked")
@@ -98,12 +136,11 @@ public class TriggerDataChangedEventListener implements EventListener {
   public void onChanged(ChangedEvent event) {
     try {
       String groupName = event.getSchemaName() + "_" + event.getModelName();
-      Project project = projectRepository.findProjectByDatabaseName(event.getSchemaName());
+      Project project = projectBySchema(event.getSchemaName());
+      if (project == null) return;
       String projectId = project.getId();
       // 最多支持触发100个事件
-      List<Trigger> triggers = triggerRepository.find(projectId,
-        trigger.jobGroup.eq(groupName)
-          .and(trigger.state.eq(true)), 1, 100);
+      List<Trigger> triggers = activeTriggers(projectId, groupName);
 
       for (Trigger trigger : triggers) {
         @SuppressWarnings("unchecked")

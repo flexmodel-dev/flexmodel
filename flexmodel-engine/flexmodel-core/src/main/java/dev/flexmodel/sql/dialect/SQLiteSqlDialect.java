@@ -100,6 +100,11 @@ public class SQLiteSqlDialect extends SqlDialect {
   }
 
   @Override
+  public boolean supportsModifyColumn() {
+    return false;
+  }
+
+  @Override
   public boolean supportsNotNullWithoutDefaultValue() {
     return false;
   }

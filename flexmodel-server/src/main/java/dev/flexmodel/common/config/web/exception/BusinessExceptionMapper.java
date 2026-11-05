@@ -6,6 +6,7 @@ import dev.flexmodel.common.InternalServerException;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.common.ValidationException;
 import dev.flexmodel.flow.exception.TurboException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -63,7 +64,7 @@ public class BusinessExceptionMapper implements ExceptionMapper<BusinessExceptio
     body.put("code", code);
     body.put("message", message);
     body.put("success", false);
-    return Response.status(status).entity(body).build();
+    return Response.status(status).type(MediaType.APPLICATION_JSON).entity(body).build();
   }
 
   public static Response getDefaultResponse(BusinessException e) {
@@ -71,7 +72,7 @@ public class BusinessExceptionMapper implements ExceptionMapper<BusinessExceptio
     body.put("code", 400);
     body.put("message", e.getMessage());
     body.put("success", false);
-    return Response.status(Response.Status.BAD_REQUEST).entity(body).build();
+    return Response.status(Response.Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(body).build();
   }
 
 }

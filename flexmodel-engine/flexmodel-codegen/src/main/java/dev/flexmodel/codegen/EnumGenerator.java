@@ -1,10 +1,13 @@
 package dev.flexmodel.codegen;
 
+import dev.flexmodel.model.EnumElement;
+
 import java.io.PrintWriter;
 import java.nio.file.Path;
 
 /**
  * Generates Java enum classes based on the provided enum definitions.
+ * Element-level @comment annotations are written as Javadoc on the constants.
  *
  * @author cjbi
  */
@@ -19,7 +22,7 @@ public class EnumGenerator extends AbstractGenerator {
     public void writeEnum(PrintWriter out, GenerationContext context) {
         EnumClass enumClass = context.getEnumClass();
         String className = enumClass.getShortClassName();
-        var elements = enumClass.getElements();
+        var elements = enumClass.getElementDefinitions();
 
         // Write package statement
         out.println("package " + enumClass.getPackageName() + ";");
@@ -35,17 +38,38 @@ public class EnumGenerator extends AbstractGenerator {
 
         // Write class declaration
         out.println("public enum " + className + " {");
-        out.print("    ");
 
-        // Write enum elements
-        for (int i = 0; i < elements.size(); i++) {
-            out.print(elements.get(i));
-            if (i < elements.size() - 1) {
-                out.print(", ");
+        boolean hasComments = elements.stream()
+            .anyMatch(element -> element.getComment() != null && !element.getComment().isEmpty());
+
+        if (!hasComments) {
+            // 无注释时保持既有紧凑格式，保证已生成代码零变更
+            out.print("    ");
+            for (int i = 0; i < elements.size(); i++) {
+                out.print(elements.get(i).getName());
+                if (i < elements.size() - 1) {
+                    out.print(", ");
+                }
+            }
+            out.println();
+        } else {
+            for (int i = 0; i < elements.size(); i++) {
+                EnumElement element = elements.get(i);
+                String comment = element.getComment();
+                if (comment != null && !comment.isEmpty()) {
+                    out.println("    /**");
+                    out.println("     * " + comment.replace("*/", "* /"));
+                    out.println("     */");
+                }
+                out.print("    " + element.getName());
+                if (i < elements.size() - 1) {
+                    out.println(",");
+                } else {
+                    out.println();
+                }
             }
         }
 
-        out.println();
         // Close class
         out.println("}");
     }

@@ -4768,6 +4768,9 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 根据用户截图补充单行展示：所有者与更新时间禁止换行，超宽省略并提供
   title；分隔线禁止压缩，将更多按钮的右侧避让限制在顶部信息区域，为元信息释放宽度。沿用用户要求，本次未运行验证。
 - 更多按钮默认透明隐藏，悬停卡片时显示；卡片内键盘聚焦或菜单展开时保持可见，使用现有 Tailwind 样式完成，无新增状态。沿用用户要求，未运行验证。
+- 2026-11-05：所有者和更新时间以局部 AppMetadataText 复用现有 Tooltip/TooltipTrigger/TooltipContent，在提示请求打开时比较
+  scrollWidth 与 clientWidth，仅在实际截断时显示完整文本；移除原生 title，保持单行与左对齐。沿用用户要求，未运行构建、测试或
+  UI 验证。
 - 用户补充明确要求「不用验证直接修改」，因此未继续验证最终改动。此前启动检查的全模块 clean compile 与引擎测试通过；完整
   init.sh 和 Apps UI 构建的最终结果未核对；临时 Playwright 检查已显示长描述完整提示，但移出后的提示收起断言未通过，未继续排查。
 - 现有其他未提交改动保留；本轮未执行 git commit/push。
@@ -4789,3 +4792,17 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   各自重复，已保持原有记录不变，最终检查限制为本次新增项并单独报告原有重复；不影响文档交付。
 - 后续实施风险：实验推理事件的版本稳定性、工具模式必须回传的供应商状态、上下文裁剪边界、模型状态大小、同会话多实例准入控制。方案明确失败/取消草稿只保留当前浏览器内存，不承诺断点继续。
 - 工作区原有业务、配置、部署和子模块修改均保留；未执行 git commit/push。feat-173 的 done 仅代表技术方案完成。
+
+## Apps 登录页重写与 SVG 动效（2026-11-05，feat-175）
+
+- 用户确认修改 Apps 平台登录页。复用 Button/Input/Checkbox/Label、useDarkMode 与 auth
+  服务，保留真实登录、记住登录及回跳；去掉未接入的旧版注册、第三方登录、语言和二维码入口，取消预填演示账号密码。
+- 首版后用户要求改善视觉并添加 SVG 动效，最终采用更紧凑的双栏构图、主题色业务应用 SVG
+  插画、分层悬浮、虚线流动、进度变化、入场动画及按钮箭头反馈；prefers-reduced-motion 下关闭动画。登录页局部样式修正深色输入背景，未修改全局组件。
+- 最终修改范围：flexmodel-apps-ui/src/pages/Login.tsx、LoginIllustration.tsx、Login.css 与状态文档。
+- 用户明确要求「不用验证，我想快速看效果」，因此最终视觉与动画修改未运行构建、测试或截图检查。首版此前的 Playwright 临时检查通过
+  6 种视口尺寸、主题持久化、密码显示、必填、请求禁用、错误恢复、local/session 存储和受保护路由回跳；使用 mock 登录响应，未验证真实服务。
+- 启动 init.sh 的全模块 clean compile、引擎测试通过，附带旧管理端 E2E 33 通过、2 项概述/接口日志导航超时失败；不属于本次
+  Apps 页面范围。首版 TypeScript 编译通过，Vite 构建遇到既有 esbuild 临时文件 Access is denied，已尝试单独
+  TEMP/TMP，用户要求停止验证后未继续排查或核对重试结果。
+- 用户已有部署、服务配置、AI 与 flexmodel-ui 子模块改动保留。未执行 git commit/push。

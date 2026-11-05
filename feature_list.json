@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-175",
+      "name": "Apps UI - 登录页风格统一与 SVG 动效",
+      "description": "按当前 shadcn/ui 风格重写 Apps 登录页，主题色 SVG 业务插画加入分层悬浮、流动连线、进度和入场动效；支持减少动态效果、浅深色、响应式布局、密码显示切换、真实登录与记住登录，移除未接入的旧版入口。",
+      "status": "done",
+      "evidence": "2026-11-05 代码完成，未提交。用户看过首版后要求改善视觉、增加 SVG 动效，并明确不用验证、快速看效果；最终 SVG/CSS 与版式调整未运行验证。此前首版 Playwright 临时脚本通过 6 种尺寸、主题切换与持久化、密码显示、表单必填、请求中禁用、错误恢复、两类会话存储与受保护路由回跳（登录 API mock，无真实后端联调）。首版 tsc 通过，vite build 遇到已知 esbuild 临时目录 Access is denied；尝试隔离 TEMP/TMP。启动 init.sh 全模块 clean compile 与引擎测试通过，旧管理端 E2E 33 通过、2 项概述/接口日志导航超时失败；与 Apps 登录页无关，保留记录，未扩大修改范围。最终版用户要求跳过检查。"
+    },
+    {
       "id": "feat-174",
       "name": "Apps - AI 原生推理展示（最小成本实现）",
       "description": "按 docs/plans/ai-reasoning-display.md 的最小成本路径落地原生推理折叠展示：自定义 StreamingChatModel bean（defaultBean 覆盖扩展默认装配，开启 returnThinking，sendThinking 保持关闭不回传推理）；PartialThinkingEvent 映射为 reasoning SSE 事件，块边界由 token/tool 事件隐式切换；assistant 消息新增 parts 保存推理块（无推理保持旧结构）；前端流式草稿维护推理块并以 details 折叠（生成中展开、结束收起），历史消息渲染推理块，停止/断流保留本地推理片段。不包含：推理摘要适配（OpenAI Responses）、结构化 part.start/part.end 协议、模型状态单独存储、会话级并发准入、推理截断上限与诊断。",
@@ -17,9 +24,9 @@
     {
       "id": "feat-172",
       "name": "Apps UI - 应用列表描述单行省略与悬停提示",
-      "description": "应用管理的应用卡片描述仅展示一行，超出宽度显示省略号；鼠标悬停描述时使用已有 Tooltip 展示完整文本，空描述继续显示暂无描述。所有者与更新时间整行与应用名称、描述左对齐，保持单行、超宽省略并通过 title 提示完整内容；更多按钮避让仅作用于顶部信息，默认隐藏，悬停卡片、卡片内键盘聚焦或菜单展开时显示。",
+      "description": "应用管理的应用卡片描述仅展示一行，超出宽度显示省略号；鼠标悬停描述时使用已有 Tooltip 展示完整文本，空描述继续显示暂无描述。所有者与更新时间整行与应用名称、描述左对齐，保持单行、超宽省略，仅在实际截断时使用 Tooltip 组件提示完整内容；更多按钮避让仅作用于顶部信息，默认隐藏，悬停卡片、卡片内键盘聚焦或菜单展开时显示。",
       "status": "done",
-      "evidence": "2026-11-04 代码已完成（未提交）：AppManagement 描述使用 truncate 与现有 Tooltip，元信息增加 ml-14，与 44px 图标加 12px 间距后的文本起点对齐。根据用户截图补充单行修复：元信息使用 whitespace-nowrap，两段文字 min-w-0 truncate，分隔线 shrink-0；右侧按钮避让移至顶部，释放元信息宽度。更多按钮使用 opacity-0、group-hover、group-focus-within 和 data-[state=open]，仅在悬停、聚焦或菜单展开时显示。用户明确要求不用验证直接修改，跳过最终验证；此前启动检查全模块 clean compile 与引擎测试通过，前端构建与完整 init.sh 结果未核对，Playwright 悬停收起断言未通过，未继续排查。"
+      "evidence": "2026-11-04 代码已完成（未提交）：AppManagement 描述使用 truncate 与现有 Tooltip，元信息增加 ml-14，与 44px 图标加 12px 间距后的文本起点对齐。根据用户截图补充单行修复：元信息使用 whitespace-nowrap，两段文字 min-w-0 truncate，分隔线 shrink-0；右侧按钮避让移至顶部，释放元信息宽度。更多按钮使用 opacity-0、group-hover、group-focus-within 和 data-[state=open]，仅在悬停、聚焦或菜单展开时显示。用户明确要求不用验证直接修改，跳过最终验证；此前启动检查全模块 clean compile 与引擎测试通过，前端构建与完整 init.sh 结果未核对，Playwright 悬停收起断言未通过，未继续排查。2026-11-05 所有者和更新时间改用现有 Tooltip，复用局部 AppMetadataText，通过打开时比较 scrollWidth/clientWidth 仅为被截断的文本展示完整内容，移除原生 title；沿用用户要求未运行验证。"
     },
     {
       "id": "feat-171",

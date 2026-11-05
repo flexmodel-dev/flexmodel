@@ -36,7 +36,7 @@ public class AiStreamingModelProducer {
     String apiKey = config.getOptionalValue("quarkus.langchain4j.openai.api-key", String.class).orElse("");
     // 扩展在未设置 api-key 时默认填充 "dummy"，同样视为未配置。
     if (apiKey.isBlank() || "dummy".equals(apiKey)) return new DisabledStreamingChatModel();
-    return OpenAiStreamingChatModel.builder()
+    var builder = OpenAiStreamingChatModel.builder()
       .baseUrl(config.getOptionalValue("quarkus.langchain4j.openai.base-url", String.class).orElse(DEFAULT_BASE_URL))
       .apiKey(apiKey)
       .modelName(config.getOptionalValue("quarkus.langchain4j.openai.chat-model.model-name", String.class)
@@ -48,7 +48,14 @@ public class AiStreamingModelProducer {
       .logRequests(config.getOptionalValue("quarkus.langchain4j.log-requests", Boolean.class).orElse(false))
       .logResponses(config.getOptionalValue("quarkus.langchain4j.log-responses", Boolean.class).orElse(false))
       .listeners(listeners.stream().toList())
-      .returnThinking(true)
-      .build();
+      .returnThinking(true);
+    // 可选输出上限与思考投入度，与扩展 recorder 的装配行为一致；未配置不发送该字段。
+    config.getOptionalValue("quarkus.langchain4j.openai.chat-model.max-tokens", Integer.class)
+      .ifPresent(builder::maxTokens);
+    config.getOptionalValue("quarkus.langchain4j.openai.chat-model.max-completion-tokens", Integer.class)
+      .ifPresent(builder::maxCompletionTokens);
+    config.getOptionalValue("quarkus.langchain4j.openai.chat-model.reasoning-effort", String.class)
+      .ifPresent(builder::reasoningEffort);
+    return builder.build();
   }
 }

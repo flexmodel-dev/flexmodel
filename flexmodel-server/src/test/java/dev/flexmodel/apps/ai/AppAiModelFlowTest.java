@@ -68,7 +68,6 @@ class AppAiModelFlowTest {
       assertTrue(sse.contains("\"type\":\"tool\"") && sse.contains("query_app_records"), sse);
       assertTrue(sse.contains("\"type\":\"token\"") && sse.contains("订单A"), sse);
       assertTrue(sse.contains("\"type\":\"done\""), sse);
-      assertTrue(!sse.contains("\"type\":\"change\""), "只读工具不应发送变更：" + sse);
 
       // 桩服务收到两轮请求：第一轮按提及应用的系统提示发起工具调用，第二轮回传工具结果。
       List<String> bodies = OpenAiStubTestResource.requestBodies();
@@ -94,57 +93,6 @@ class AppAiModelFlowTest {
         .anyMatch(body -> body.contains("谢谢，还有别的吗") && body.contains(appId)));
     } finally {
       call(Method.DELETE, "/apps/" + appId, null, 204);
-    }
-  }
-
-  @Test
-  void successfulWriteStreamsActualChangeBeforeCompletion() {
-    String appId = "airefresh_" + Long.toHexString(System.nanoTime());
-    String conversationId = call(Method.POST, "/ai/conversations", Map.of(), 200).path("id");
-    try {
-      String sse = call(Method.POST, "/ai/conversations/" + conversationId + "/messages",
-        Map.of("content", "自动刷新测试应用：" + appId), 200).asString();
-      assertTrue(sse.contains("\"type\":\"change\"") && sse.contains("\"appId\":\"" + appId + "\""), sse);
-      assertTrue(sse.contains("\"resource\":\"app\""), sse);
-      assertTrue(sse.indexOf("\"type\":\"change\"") < sse.indexOf("\"type\":\"done\""), sse);
-      call(Method.GET, "/apps/" + appId, null, 200);
-    } finally {
-      call(Method.DELETE, "/apps/" + appId, null, 204);
-      call(Method.DELETE, "/ai/conversations/" + conversationId, null, 204);
-    }
-  }
-
-  @Test
-  void failedWriteDoesNotStreamChange() {
-    String appId = "airefresh_" + Long.toHexString(System.nanoTime());
-    call(Method.POST, "/apps", Map.of("projectId", appId, "name", "已有应用"), 201);
-    String conversationId = call(Method.POST, "/ai/conversations", Map.of(), 200).path("id");
-    try {
-      String sse = call(Method.POST, "/ai/conversations/" + conversationId + "/messages",
-        Map.of("content", "自动刷新测试应用：" + appId), 200).asString();
-      assertTrue(sse.contains("\"type\":\"tool\""), sse);
-      assertTrue(!sse.contains("\"type\":\"change\""), sse);
-      assertTrue(sse.contains("\"type\":\"done\""), sse);
-    } finally {
-      call(Method.DELETE, "/apps/" + appId, null, 204);
-      call(Method.DELETE, "/ai/conversations/" + conversationId, null, 204);
-    }
-  }
-
-  @Test
-  void committedChangeSurvivesLaterModelFailure() {
-    String appId = "airefresh_" + Long.toHexString(System.nanoTime());
-    String conversationId = call(Method.POST, "/ai/conversations", Map.of(), 200).path("id");
-    try {
-      String sse = call(Method.POST, "/ai/conversations/" + conversationId + "/messages",
-        Map.of("content", "自动刷新测试应用：" + appId + " 创建后模拟失败"), 200).asString();
-      assertTrue(sse.contains("\"type\":\"change\""), sse);
-      assertTrue(sse.contains("\"type\":\"error\""), sse);
-      assertTrue(!sse.contains("\"type\":\"done\""), sse);
-      call(Method.GET, "/apps/" + appId, null, 200);
-    } finally {
-      call(Method.DELETE, "/apps/" + appId, null, 204);
-      call(Method.DELETE, "/ai/conversations/" + conversationId, null, 204);
     }
   }
 

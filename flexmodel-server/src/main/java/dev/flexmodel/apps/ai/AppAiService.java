@@ -178,25 +178,18 @@ public class AppAiService {
         || event instanceof ChatEvent.PartialThinkingEvent
         || event instanceof ChatEvent.ToolExecutedEvent
         || event instanceof ChatEvent.ChatCompletedEvent)
-      .onItem().transformToMultiAndConcatenate(event -> {
+      .onItem().transform(event -> {
         if (event instanceof ChatEvent.PartialThinkingEvent thinking) {
           currentReasoning.append(thinking.getText());
-          return Multi.createFrom().item(new StreamEvent("reasoning", thinking.getText(), null, null));
+          return new StreamEvent("reasoning", thinking.getText(), null);
         }
         if (event instanceof ChatEvent.PartialResponseEvent partial) {
           closeReasoning.run();
-          return Multi.createFrom().item(new StreamEvent("token", partial.getChunk(), null, null));
+          return new StreamEvent("token", partial.getChunk(), null);
         }
         if (event instanceof ChatEvent.ToolExecutedEvent tool) {
           closeReasoning.run();
-          var execution = tool.getExecution();
-          var request = execution.request();
-          var progress = new StreamEvent("tool", request.name(), null, null);
-          // result() 是模型侧 JSON 序列化文本；共享工具本身返回的 JSON 字符串在 resultObject() 中。
-          String result = execution.resultObject() instanceof String value ? value : execution.result();
-          var change = AiToolChanges.from(request.name(), request.arguments(), result, execution.hasFailed());
-          return change == null ? Multi.createFrom().item(progress)
-            : Multi.createFrom().items(progress, new StreamEvent("change", null, null, change));
+          return new StreamEvent("tool", tool.getExecution().request().name(), null);
         }
         if (completed.compareAndSet(false, true)) {
           closeReasoning.run();
@@ -206,11 +199,11 @@ public class AppAiService {
             ? EMPTY_ANSWER : aiMessage.text();
           saved.set(completeReply(entity, messages, userMessage, answer, reasoningParts));
         }
-        return Multi.createFrom().item(new StreamEvent("done", null, saved.get(), null));
+        return new StreamEvent("done", null, saved.get());
       })
       .onFailure().recoverWithItem(error -> {
         log.warn("AI model call failed for conversation {}: {}", id, error.getMessage());
-        return new StreamEvent("error", "AI 模型调用失败：" + error.getMessage(), null, null);
+        return new StreamEvent("error", "AI 模型调用失败：" + error.getMessage(), null);
       });
   }
 

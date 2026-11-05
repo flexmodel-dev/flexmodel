@@ -55,14 +55,11 @@ public final class AiDtos {
 
   /**
    * SSE 流式事件：type=token（content 为增量文本）、reasoning（content 为推理增量文本）、
-   * tool（content 为工具名）、change（成功写入的资源范围）、
+   * tool（content 为工具名）、
    * done（conversation 为完成后的完整会话）、error（content 为错误信息）。
    * reasoning 块边界由事件类型切换隐式表达：token/tool 事件结束当前推理块，
    * 其后的 reasoning 增量属于新块。
    */
-  public record StreamEvent(String type, String content, Conversation conversation, AppChange change) {
-  }
-
-  public record AppChange(String appId, String resource, String formName, String entityId) {
+  public record StreamEvent(String type, String content, Conversation conversation) {
   }
 }

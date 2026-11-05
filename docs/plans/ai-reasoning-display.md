@@ -27,7 +27,7 @@ OpenAI，应使用支持模型提供的推理摘要；官方不提供原始推�
 2. 完成后重新进入会话，可恢复推理内容、回答和块顺序。
 3. 无推理输出、仅推理后失败、用户停止、异常断流均有明确状态。
 4. 工具调用前后保留供应商要求的模型状态，第二轮对话仍可正常使用工具。
-5. 继续按真实工具结果产生 `change`，成功写入不因模型后续失败或取消而撤回。
+5. 工具调用后由前端在本轮结束时统一刷新业务页面，已完成的业务写入不因模型后续失败或取消而撤回。
 
 ### 2.2 本期不包含
 
@@ -39,18 +39,18 @@ OpenAI，应使用支持模型提供的推理摘要；官方不提供原始推�
 
 下表路径以仓库根目录为基准，服务端路径中的 `...` 表示 `src/main/java/dev/flexmodel`。
 
-| 位置                                                 | 当前行为                                                  | 建议改动                                   |
-|------------------------------------------------------|-----------------------------------------------------------|--------------------------------------------|
-| `flexmodel-server/.../apps/ai/AssistantChat.java`    | 已返回 `Multi<ChatEvent>`，共用 MCP 工具                  | 保留声明式接口                             |
-| `flexmodel-server/.../apps/ai/AssistantAgent.java`   | 组装应用上下文、机器人提示词并调用模型                    | 选择模型能力配置；保持现有业务 SOP         |
-| `flexmodel-server/.../apps/ai/AppAiService.java`     | 筛选回答、工具完成及最终完成事件；成功后保存              | 处理推理、中间响应、块边界及终态           |
-| `flexmodel-server/.../apps/ai/dto/AiDtos.java`       | 消息只有 `content`；SSE 为 `token/tool/change/done/error` | 增加消息块与结构化生命周期事件             |
-| `flexmodel-server/.../apps/ai/AppAiChatMemory.java`  | 最近 20 条展示消息转换成用户/助手文本                     | 根据供应商恢复模型状态，按完整交互单元裁剪 |
-| `flexmodel-server/.../apps/ai/AiMessages.java`       | 展示消息 JSON 转换                                        | 支持新增块数据和校验                       |
-| `flexmodel-server/src/main/resources/platform.fml`   | `f_app_ai_conversation.messages` 为 JSON                  | 增加仅服务端使用的模型状态字段             |
-| `flexmodel-apps-ui/src/services/ai.ts`               | 解析 SSE，处理写入范围与完成事件                          | 扩展事件类型和回调，继续复用 `requestSse`  |
-| `flexmodel-apps-ui/src/components/ai/AiProvider.tsx` | 草稿只有回答文本、当前工具名                              | 维护响应 ID、消息块和生成状态              |
-| `flexmodel-apps-ui/src/components/ai/AiChat.tsx`     | Markdown 回答，支持停止及复制                             | 复用消息块渲染，增加折叠区域               |
+| 位置                                                 | 当前行为                                           | 建议改动                                   |
+|------------------------------------------------------|----------------------------------------------------|--------------------------------------------|
+| `flexmodel-server/.../apps/ai/AssistantChat.java`    | 已返回 `Multi<ChatEvent>`，共用 MCP 工具           | 保留声明式接口                             |
+| `flexmodel-server/.../apps/ai/AssistantAgent.java`   | 组装应用上下文、机器人提示词并调用模型             | 选择模型能力配置；保持现有业务 SOP         |
+| `flexmodel-server/.../apps/ai/AppAiService.java`     | 筛选回答、工具完成及最终完成事件；成功后保存       | 处理推理、中间响应、块边界及终态           |
+| `flexmodel-server/.../apps/ai/dto/AiDtos.java`       | 消息只有 `content`；SSE 为 `token/tool/done/error` | 增加消息块与结构化生命周期事件             |
+| `flexmodel-server/.../apps/ai/AppAiChatMemory.java`  | 最近 20 条展示消息转换成用户/助手文本              | 根据供应商恢复模型状态，按完整交互单元裁剪 |
+| `flexmodel-server/.../apps/ai/AiMessages.java`       | 展示消息 JSON 转换                                 | 支持新增块数据和校验                       |
+| `flexmodel-server/src/main/resources/platform.fml`   | `f_app_ai_conversation.messages` 为 JSON           | 增加仅服务端使用的模型状态字段             |
+| `flexmodel-apps-ui/src/services/ai.ts`               | 解析 SSE，处理写入范围与完成事件                   | 扩展事件类型和回调，继续复用 `requestSse`  |
+| `flexmodel-apps-ui/src/components/ai/AiProvider.tsx` | 草稿只有回答文本、当前工具名                       | 维护响应 ID、消息块和生成状态              |
+| `flexmodel-apps-ui/src/components/ai/AiChat.tsx`     | Markdown 回答，支持停止及复制                      | 复用消息块渲染，增加折叠区域               |
 
 当前实际会话入口为 `POST /api/ai/conversations/{id}/messages`；不是旧的按应用划分的端点。前端采用 React
 18、Tailwind、shadcn/ui 风格基础组件，方案不引入 Ant Design 组件。
@@ -85,7 +85,7 @@ sequenceDiagram
   S -->> UI: part.start / reasoning / part.end
   M ->> T: 工具调用
   T -->> S: 真实执行结果
-  S -->> UI: tool / change（写入成功时）
+  S -->> UI: tool（工具执行结束）
   M -->> S: 后续推理与回答增量
   S -->> UI: 消息块事件
   M -->> S: ChatCompletedEvent
@@ -203,7 +203,6 @@ SSE `data` 是完整 JSON；JSON 的 `type` 是唯一业务事件分类依据。
 | `token`      | `partId`, `content`              | 向指定正文块追加文本，沿用现有事件名称                           |
 | `part.end`   | `part`                           | 该块权威完整快照，**替换而非追加**                               |
 | `tool`       | `toolCallId`, `content`, `stage` | 工具名与 `started/completed/failed` 阶段，不含完整参数和结果     |
-| `change`     | `change`                         | 沿用现有真实成功写入的资源范围                                   |
 | `done`       | `conversation`                   | 展示消息与模型状态保存成功，携带权威会话快照                     |
 | `error`      | `code`, `content`                | 失败终态，返回可公开错误文案                                     |
 
@@ -220,7 +219,7 @@ data: {"type":"part.end","responseId":"resp1","messageId":"msg1","seq":4,"part":
 
 ```
 
-后续可以是工具事件、新一轮推理及文本块，最终以 `done` 或 `error` 结束。保留 `token/tool/change/done/error`
+后续可以是工具事件、新一轮推理及文本块，最终以 `done` 或 `error` 结束。保留 `token/tool/done/error`
 是复用现有语义，不增加新旧协议双轨兼容层。
 
 ### 7.3 必须满足的协议规则
@@ -243,16 +242,16 @@ data: {"type":"part.end","responseId":"resp1","messageId":"msg1","seq":4,"part":
 在 `apps/ai` 特性包增加请求级累积器，例如 `AiResponseAccumulator`，集中负责块 ID、轮次、长度限制及快照，避免让 Resource
 或提示词承担协议解析。
 
-| LangChain4j 输入            | 后端动作                                                         |
-|-----------------------------|------------------------------------------------------------------|
-| `PartialThinkingEvent`      | 创建或追加当前轮次推理块，生成 `reasoning`                       |
-| `PartialResponseEvent`      | 结束当前活跃推理块，创建或追加正文块，生成 `token`               |
-| `IntermediateResponseEvent` | 用完整响应校准本轮内容；封闭本轮块，保存供应商中间状态           |
-| `BeforeToolExecutionEvent`  | 确保活跃文本块已封闭，发 `tool(stage=started)`                   |
-| `ToolExecutedEvent`         | 发工具结果阶段；复用 `AiToolChanges.from(...)` 产生真实 `change` |
-| 下一次模型调用的文本或推理  | 新建下一轮块，工具事件本身不重复递增轮次                         |
-| `ChatCompletedEvent`        | 校准末轮，封闭全部块，保存展示消息与供应商状态，再发 `done`      |
-| 异常                        | 封闭活跃块为失败状态，再发一次 `error`，释放本次资源             |
+| LangChain4j 输入            | 后端动作                                                    |
+|-----------------------------|-------------------------------------------------------------|
+| `PartialThinkingEvent`      | 创建或追加当前轮次推理块，生成 `reasoning`                  |
+| `PartialResponseEvent`      | 结束当前活跃推理块，创建或追加正文块，生成 `token`          |
+| `IntermediateResponseEvent` | 用完整响应校准本轮内容；封闭本轮块，保存供应商中间状态      |
+| `BeforeToolExecutionEvent`  | 确保活跃文本块已封闭，发 `tool(stage=started)`              |
+| `ToolExecutedEvent`         | 发送 `tool`；前端标记本轮结束后统一刷新业务页               |
+| 下一次模型调用的文本或推理  | 新建下一轮块，工具事件本身不重复递增轮次                    |
+| `ChatCompletedEvent`        | 校准末轮，封闭全部块，保存展示消息与供应商状态，再发 `done` |
+| 异常                        | 封闭活跃块为失败状态，再发一次 `error`，释放本次资源        |
 
 初始轮次为 1；每个 `IntermediateResponseEvent`
 结束一次模型响应，随后轮次递增一次。一个响应可以请求多个工具，因此不能按工具数量递增。若供应商以其他顺序或并行方式回调，适配层应先规范化；本期不新增并行工具执行能力。
@@ -298,8 +297,8 @@ chunk 只含一种内容。
 
 ### 10.1 状态管理
 
-`AiProvider` 的流式草稿增加 `responseId/messageId/parts/lastSeq`；保持按用户和机器人隔离的房间模型。服务层只解析协议、核对
-`change` 并调度缓存失效；组件不直接拼接接口地址。
+`AiProvider` 的流式草稿增加 `responseId/messageId/parts/lastSeq`；保持按用户和机器人隔离的房间模型。服务层只解析协议；工具调用后的统一刷新由
+Provider 处理，组件不直接拼接接口地址。
 
 收到 `start` 后绑定本次响应；只接收匹配响应的事件，重复序号忽略，序号跳跃或未知必需事件视为协议错误，停止追加并保留已显示内容。请求结束后的过期回调不得写入新的生成状态。后端同一会话同一时刻应只准入一次生成，冲突返回
 409；多实例部署前必须落实共享准入控制，单靠浏览器 `busy` 不能保证这一点。
@@ -327,8 +326,8 @@ chunk 只含一种内容。
 | 无终态断流           | 保留草稿，标“连接中断”，允许用户核对后再次发送               | 不推断生成或保存成功                           |
 | 已保存但 `done` 丢失 | 连接中断后重新拉取当前会话快照核对                           | 成功存储的消息以服务器为准，不重复发送用户请求 |
 
-本期失败/停止片段只保留在当前浏览器内存，刷新后以服务端成功历史为准；不承诺断点继续。重新发送可能重复业务动作，不能自动重试。已收到的
-`change` 在所有结束路径仍须触发缓存核对，遵循 [AI 写操作后的页面同步](../../flexmodel-server/docs/ai-refresh.md)。
+本期失败/停止片段只保留在当前浏览器内存，刷新后以服务端成功历史为准；不承诺断点继续。重新发送可能重复业务动作，不能自动重试。已收到
+`tool` 的对话在结束时统一刷新，遵循 [AI 对话后的全局刷新](../../flexmodel-server/docs/ai-refresh.md)。
 
 ## 11. 长度、日志与运行限制
 
@@ -357,7 +356,7 @@ chunk 只含一种内容。
 
 ## 13. 验证与验收
 
-优先扩展已有 `OpenAiStubTestResource`、`AppAiModelFlowTest`、`AppAiResourceTest`、`AiToolChangesTest`、前端服务测试及
+优先扩展已有 `OpenAiStubTestResource`、`AppAiModelFlowTest`、`AppAiResourceTest`、前端服务测试及
 `playwright.ai.config.ts`，不要求真实付费 API 才能完成自动验收。
 
 | 场景                          | 必须验证的结果                                       |
@@ -370,7 +369,7 @@ chunk 只含一种内容。
 | 仅推理后报错 / 预算耗尽       | 显示失败，无正常 `done`，不把推理充当答案            |
 | 取消、异常 EOF、`done` 丢失   | 动画结束，保留草稿，拉取快照核对且不自动 POST        |
 | 重复终态、重复/过期事件       | 至多一次完成，不污染下一次响应                       |
-| 成功写入后模型失败或停止      | `change` 仍生效，已完成业务写入不被假定回滚          |
+| 成功写入后模型失败或停止      | 本轮结束时统一刷新，已完成业务写入不被假定回滚       |
 | 推理超限                      | 标记展示截断，原生回传字段完整或明确失败             |
 | 正文含 `<thought>` / 代码示例 | 原文正常显示，不被识别为推理块                       |
 | 重载历史、切换入口            | 同一消息内容和块顺序一致，历史块默认收起             |
@@ -382,7 +381,7 @@ chunk 只含一种内容。
 ./init.sh
 
 mvn test -pl 'flexmodel-server,!flexmodel-engine/flexmodel-maven-plugin' -am \
-  -Dtest=AppAiModelFlowTest,AppAiResourceTest,AiToolChangesTest \
+  -Dtest=AppAiModelFlowTest,AppAiResourceTest \
   -Dsurefire.failIfNoSpecifiedTests=false -Dquarkus.scheduler.enabled=false
 
 cd flexmodel-apps-ui

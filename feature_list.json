@@ -30,10 +30,10 @@
     },
     {
       "id": "feat-171",
-      "name": "Apps - AI 写操作联动刷新",
-      "description": "复用 AI SSE 下发成功写操作的结构化应用变更，统一按应用和资源范围失效缓存并通知已挂载页面后台取数；覆盖应用管理、启动器、导航、表单、工作台和记录，合并连续变更，保留对话及编辑草稿；处理只读/失败工具、部分成功和已知变更后的失败或中止。不包含独立常驻应用变更流与外部 MCP/其他用户的实时同步。",
-      "status": "in_progress",
-      "evidence": "2026-11-04 用户确认实施推荐方案。启动检查：全模块 clean compile 与引擎测试通过；旧管理端两项页面设置 E2E 断言过期，已对齐当前界面。实现与最终验证进行中。"
+      "name": "Apps - AI 工具调用后全局刷新",
+      "description": "2026-11-06 按用户维护性优先要求收敛为全局刷新：AiProvider 收到现有 tool 事件后，本轮结束时清空已有缓存并递增 refreshVersion；根页面容器用 key 重新挂载业务页面，AI 会话与侧栏保留。不区分资源或读写工具，不维护工具映射、局部订阅及页面级刷新逻辑。全局刷新会重置业务页筛选和未保存编辑。",
+      "status": "done",
+      "evidence": "2026-11-06 已按用户要求收敛（未提交）：撤回资源分类、缓存订阅/版本及逐页刷新接入，删除 useAppDataRevision、AiToolChanges 与 AppChange/change 协议及其专属测试。新增逻辑集中于 AiProvider 和 main.tsx：本轮收到过 tool 时，在 finally 清空原有缓存并递增 refreshVersion，以 React key 重建业务页；AiComposer 仅跟随同一版本清理提及列表。保留独立的推理、登录页、卡片及工作台样式。验证统一在代码完成后执行：apps-ui npm run build 通过；浏览器 2/2 通过（多个工具仅触发一次取数、正常完成/后续模型失败都刷新、AI 面板/会话/消息草稿保留）；init.sh 的全模块 clean compile 与引擎测试通过，脚本附带的旧管理端 E2E 35/35 通过，init.sh 整体通过。业务页筛选和未保存编辑会随全局重建重置；不区分只读工具，不覆盖外部 MCP 或其他客户端。详见 progress.md。"
     },
     {
       "id": "feat-170",

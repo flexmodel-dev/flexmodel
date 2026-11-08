@@ -1,3 +1,20 @@
+## Apps - 通知浏览器验收迁移到 /flows 契约（2026-11-08，feat-176 续）
+
+- 应用户要求修复遗留的 `e2e/notifications-backend.mjs`（此前基于已下线的 /approval-flows、/approval-instances、
+  /approval-tasks 旧契约，且依赖 a0360e2 之后不再注册为 App 的 dev_test）。
+- `notifications-backend.mjs` 全量迁移：流程创建改 `POST /apps/{app}/flows`（开始节点 config 携带 MANUAL 触发）、
+  发布改无请求体 publish、发起改 `POST /flows/{id}/instances`、详情/签核改 `/flow-instances`、`/flow-tasks/{id}/decisions`
+  （userId、状态 SUCCEEDED）；完成通知断言文案从「审批已通过」修正为服务端实际的「流程已完成：…」
+  （NotificationService.result）。
+- `NotificationResourceTest.browserRoundTripAgainstRealBackend`：测试内经 AppService 创建独立应用并经
+  `NOTIFICATION_TEST_APP` 传给脚本，轮询 drain 改为该应用（含 drainBusiness）；离线段断言由脆弱的
+  `streams.size` 计数改为 UI 连接状态（「实时连接已建立」消失/重现），重连等待放宽到 40s 以覆盖前端重连退避。
+- 中途教训：PS5.1 `Get-Content -Raw` 按 ANSI 读 UTF-8 会损坏中文，notifications-backend.mjs 曾被写坏一次，
+  已从 git 基线还原后改用 Edit 工具重做；后续中文文件一律使用 Edit 工具。
+- 验证：`NotificationResourceTest#browserRoundTripAgainstRealBackend` 单跑通过；整类 6/7，唯一失败
+  `sourceRollbackCannotDeliverAndRetryPreservesReadState` 为基线既有失败（stash 本次改动后单跑仍失败，
+  与流程/通知契约无关，需单独排查）。
+
 ## Apps - 移除流程 revision 乐观锁（2026-11-08，feat-176 续）
 
 - 按用户决定删除 `f_em_flow_definition.revision` 字段：SQLite 只用于测试，并发控制统一走既有
@@ -14,9 +31,8 @@
     `AppPackageImport.rebuildFlows` 不再回传 revision。
 - 前端：`ApprovalFlow/ApprovalFlowRecord` 类型、`approvals.ts` publish/enabled 请求体、
   `approval-model.ts` 编解码、单测与 e2e mock（approvals.spec.ts、flows-backend.mjs）全部去 revision。
-- 遗留：`e2e/notifications-backend.mjs` 仍基于已下线的 /approval-flows、/approval-instances 旧契约
-  （feat-176 迁移 /flows 时遗留，早于本次 revision 变更），对应 NotificationResourceTest 浏览器用例
-  需要单独迁移，未纳入本次范围。
+- 遗留（本轮稍后已修复）：`e2e/notifications-backend.mjs` 曾基于已下线的 /approval-flows、/approval-instances 旧契约，
+  已在同一会话迁移到 /flows 契约，见上方独立记录。
 - 验证：全模块 `mvn -o clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过；定向 45/45
   （AppFlowModelTest/AppFlowForecastTest/ApprovalPolicyTest/AppToolsTest/AppPackageValidatorTest/AppTemplateCatalogTest）；
   AppFlowIntegrationTest 8/8（含 flows-backend.mjs 真实浏览器闭环，覆盖新 publish/enabled 无 revision 契约）；

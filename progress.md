@@ -4931,3 +4931,17 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   unitOfWork.execute + UnitOfWork.afterCommit，wake 时机保持提交后。
 - 三处合计 51 增/151 删（净约 -100 行）；`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。未执行 git
   commit/push。
+
+## Engine A 类死代码清理（2026-11-08）
+
+- 删除 flexmodel-engine 全仓零引用的 6 个类，合计 337 删/0 增：session/SessionManager（155，已被引擎层 UnitOfWork
+  取代）、codegen/ConnectionWrapper（70）、sql/SqlConnectionHolder（61）、sql/JdbcDataSourceProvider（21）、
+  mongodb/MongoDataSourceProvider（20，@Deprecated）、DataSourceProvider 接口（10，仅有的两个实现即上述两个死 Provider）。
+- 删除前做两轮全仓 grep 复核（覆盖 engine/server 的 main、test 与 integration-tests，排除 target），确认 6 个类在自身
+  文件之外 0 引用；6 个文件均无未提交改动。
+- 验证：`mvn compile -pl flexmodel-engine/flexmodel-core,flexmodel-engine/flexmodel-codegen -am` 通过。
+- 后续候选（分析已核实、未实施）：mongodb 整链约 1,203 行（产品不可达，需产品决策；连带 BaseService 可并入
+  SqlDataService）、Query.java record 化（782 行手写 POJO，可省约 300 行）、EventPublisher/Cache 单实现接口合并（约 100 行）。
+- 已排除误删嫌疑：TypedDSLQueryBuilder（server 经 session.dsl ().selectFrom (Class) 重度使用）、codegen 模块（183 个 server
+  文件 import 生成实体）、SchemaCopier（BranchService 分支复制调用）。
+- 未执行 git commit/push。

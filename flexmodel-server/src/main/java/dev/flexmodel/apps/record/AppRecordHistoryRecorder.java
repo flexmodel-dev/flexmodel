@@ -44,12 +44,12 @@ public class AppRecordHistoryRecorder {
   static final String EVENT_CREATED = "RECORD_CREATED";
   static final String EVENT_UPDATED = "RECORD_UPDATED";
   static final String EVENT_DELETED = "RECORD_DELETED";
-  static final String EVENT_SUBMITTED = "APPROVAL_SUBMITTED";
+  static final String EVENT_SUBMITTED = "FLOW_STARTED";
   static final String EVENT_TASK_APPROVED = "APPROVAL_TASK_APPROVED";
   static final String EVENT_TASK_REJECTED = "APPROVAL_TASK_REJECTED";
-  static final String EVENT_APPROVED = "APPROVAL_APPROVED";
-  static final String EVENT_REJECTED = "APPROVAL_REJECTED";
-  static final String EVENT_TERMINATED = "APPROVAL_TERMINATED";
+  static final String EVENT_APPROVED = "FLOW_SUCCEEDED";
+  static final String EVENT_REJECTED = "FLOW_REJECTED";
+  static final String EVENT_TERMINATED = "FLOW_TERMINATED";
 
   private static final Set<String> REFERENCE_SYSTEM_FIELDS = Set.of("created_by", "updated_by", "owner_id");
   private static final int RECORD_LABEL_MAX = 255;
@@ -266,7 +266,7 @@ public class AppRecordHistoryRecorder {
     });
   }
 
-  public void approvalSubmitted(
+  public void flowStarted(
     String appId,
     String formName,
     String recordId,
@@ -320,7 +320,7 @@ public class AppRecordHistoryRecorder {
     }
   }
 
-  public void approvalFinished(
+  public void flowFinished(
     String appId,
     String formName,
     String recordId,
@@ -331,7 +331,7 @@ public class AppRecordHistoryRecorder {
   ) {
     try {
       String eventType = switch (status) {
-        case "APPROVED" -> EVENT_APPROVED;
+        case "SUCCEEDED" -> EVENT_APPROVED;
         case "REJECTED" -> EVENT_REJECTED;
         default -> EVENT_TERMINATED;
       };

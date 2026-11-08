@@ -1,6 +1,6 @@
 package dev.flexmodel.common.persistence;
 
-import dev.flexmodel.apps.approval.AppApprovalRecordGuard;
+import dev.flexmodel.apps.flow.AppFlowRecordGuard;
 import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
@@ -21,7 +21,7 @@ public class ServerSessions {
   @Inject
   SessionFactory factory;
   @Inject
-  AppApprovalRecordGuard guard;
+  AppFlowRecordGuard guard;
 
   public Session open(String schema) {
     Session borrowed = ProjectUnitOfWork.borrowSchema(schema);

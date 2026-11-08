@@ -77,7 +77,7 @@ class AppTemplateCatalogTest {
     catalog.load(this::classpath);
     assertFalse(catalog.summaries().isEmpty(), "应至少内置一个应用模板");
     // 目录里的 index 条目必须全部可加载，防止坏包被静默跳过后前端少模板。
-    assertEquals(4, catalog.summaries().size());
+    assertEquals(6, catalog.summaries().size());
     AppTemplate.Summary erp = catalog.summaries().stream()
       .filter(summary -> "erp".equals(summary.id())).findFirst().orElseThrow();
     assertEquals("ERP 企业资源计划", erp.name());
@@ -88,7 +88,7 @@ class AppTemplateCatalogTest {
     AppTemplate.Summary scm = catalog.summaries().stream()
       .filter(summary -> "scm".equals(summary.id())).findFirst().orElseThrow();
     assertEquals("SCM 供应链管理", scm.name());
-    assertEquals(11, scm.formCount());
+    assertEquals(12, scm.formCount());
     assertEquals("scm", catalog.require("scm").summary().id());
     AppTemplate.Summary wms = catalog.summaries().stream()
       .filter(summary -> "wms".equals(summary.id())).findFirst().orElseThrow();
@@ -179,7 +179,7 @@ class AppTemplateCatalogTest {
         summary.id() + " 存在不可移植的示例数据警告: " + result.warnings());
       assertTrue(content.authorizations().isEmpty(), summary.id() + " 不应携带数据权限规则");
       assertPublicNavigation(content.navigation(), summary.id());
-      assertPortableApprovals(content.approvals(), summary.id());
+      assertPortableApprovals(content.flows(), summary.id());
       assertPortableData(content, summary.id());
     }
   }

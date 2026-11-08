@@ -1,3 +1,45 @@
+## Apps - 通用工作流升级（2026-11-08，feat-176 续）
+
+- 本轮聚焦「创建流程时指定触发方式」，并按用户授权清理不合理/难维护代码；不提交代码。
+- 前端（flexmodel-apps-ui）：
+  - `services/approvals.ts` `createApprovalFlow` 签名改为 `(appId, name, trigger)`：创建时把 FlowTrigger 写入开始节点
+    config，
+    flow.form 由 trigger.formName 派生。按用户要求移除「创建方式」模板选择及模板分支（createApprovalTemplates 仅保留给测试/mock
+    数据使用）。
+  - `ApprovalList` 新建流程对话框接入 `FlowTriggerEditor`（cards 模式）：触发方式与卡片样式一致，
+    支持手动/表单事件/定时三种触发方式；表单设置入口（boundFormName）锁定表单且不允许定时（定时流程在应用设置管理）；
+    非定时且未选表单时禁用创建按钮。修复该文件遗留的半成品状态（template/formName 未声明、Choice 未导入）。
+  - `FlowTriggerEditor` 新增 cards 可选模式（触发方式渲染为三张卡片）；设计器侧栏保持原 select 形态，
+    flows-backend.mjs 的 `getByLabel('触发方式').selectOption` 选择器不受影响。
+  - `ApprovalList` 列表列调整：去掉「节点」数量列，新增「触发方式」列（triggerLabels + flowTrigger 助手，load 的 boundFormName
+    过滤复用同一助手）；关联表单列无绑定时的兜底文案由「定时触发 · 无绑定表单」简化为「—」。e2e 增加触发方式列头与单元格断言。
+  - `approvals.test.ts` 更新创建用例并新增定时/表单事件创建断言（5/5）。
+  - e2e `approvals.spec.ts` 修复为 /flows 契约（此前仍 mock 旧 /approval-flows 路由，5 项全部失败）：
+    mock 根路径改 `/flows`、目录端点改 `/directory`、publish/enabled 独立分支、新建对话框选择器改 `流程关联表单`（选项值为裸表单名）、
+    拖拽用例读取字段改 `id`/`model.flowElementList`；为 demo 流程补充 app 表单 expense（触发绑定与 /validate
+    表单解析），模拟前填写报销金额 8600。
+    5/5 通过。
+- 后端（flexmodel-server）：
+  - `AppFlowService.save` 新增 `FlowTrigger.validate(FlowTrigger.of(body))`：创建/更新草稿即要求有效的触发方式
+    （MANUAL/DATA_EVENT 须绑表单、DATA_EVENT 须有合法事件类型、SCHEDULE 须合法 cron/时区/起止时间），不再等到发布才报错。
+  - `AppPackageValidator.validateFlows`：包内流程改为复用 `FlowTrigger.validate`（结构非法记 issue），表单绑定校验从冗余的顶层
+    `flow.form` 字段改为以触发配置里的 formName 为准（导入端 save 只读触发，不再读顶层 form）；与保存侧新规则一致。
+  - `AppFlowCapabilities`：nodeConfigs.start 示例带上 trigger、删除已失真的 elementContract.properties.form 说明、
+    规则改为「保存要求开始节点携带唯一有效触发，其余可保持草稿」；`AppTools.save_app_flow` 描述同步。
+  - 已核对内置模板 zip（erp 等）flows.json 均携带合法 MANUAL 触发，导入/模板校验兼容。
+- 验证：全模块 `mvn -o compile` 通过；`mvn -o test -pl flexmodel-engine` BUILD SUCCESS；定向 45/45
+  （AppFlowModelTest 3、AppFlowForecastTest 5、ApprovalPolicyTest 4、AppToolsTest 5、AppPackageValidatorTest
+  21、AppTemplateCatalogTest 7）；
+  AppFlowIntegrationTest 7/8，唯一失败 eventOutbox… 为已知 SQLite 单写锁竞争（“开发数据库正忙”），单独复跑通过；
+  apps-ui `npm run build`（TEMP/TMP 指向项目内）通过、vitest 66/66、approvals Playwright 5/5。
+- 未执行 git commit/push；会话外既有修改保持原样。
+
+## Apps - 通用工作流升级（2026-11-08，feat-176）
+
+- 按确认方案实施 /flows 与三类触发；不提交代码。
+- 保留会话开始时已有的用户修改。
+- 基线编译、引擎测试通过；附带管理端 E2E 结果待核对。
+
 # Session Progress Log
 
 ## Apps - AI 刷新收敛为全局信号（2026-11-06，feat-171）

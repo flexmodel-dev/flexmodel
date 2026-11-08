@@ -186,7 +186,7 @@ public class AppPackageValidator {
     Map<String, FormInfo> forms = validateForms(content, issues);
     Set<String> navFormEntryIds = validateNavigation(content, forms, directory, issues);
     validateWorkbenches(content, forms, navFormEntryIds, issues);
-    Map<String, Map<String, Object>> approvals = validateApprovals(content, forms, directory, issues);
+    Map<String, Map<String, Object>> flows = validateFlows(content, forms, directory, issues);
     validateAuthorizations(content, forms, directory, issues, warnings);
     validateData(content, forms, system, issues, warnings);
     return new Result(issues.list, warnings);
@@ -1033,17 +1033,17 @@ public class AppPackageValidator {
     }
   }
 
-  private Map<String, Map<String, Object>> validateApprovals(Content content, Map<String, FormInfo> forms,
+  private Map<String, Map<String, Object>> validateFlows(Content content, Map<String, FormInfo> forms,
                                                              Map<String, Object> directory, Issues issues) {
-    List<Map<String, Object>> approvals = content.approvals() == null ? List.of() : content.approvals();
+    List<Map<String, Object>> flows = content.flows() == null ? List.of() : content.flows();
     Map<String, Map<String, Object>> byId = new LinkedHashMap<>();
-    if (approvals.size() > MAX_APPROVAL_FLOWS) {
-      issues.add("APPROVAL_LIMIT", "approvals", "审批流程数量超过 " + MAX_APPROVAL_FLOWS + " 个上限");
+    if (flows.size() > MAX_APPROVAL_FLOWS) {
+      issues.add("APPROVAL_LIMIT", "flows", "审批流程数量超过 " + MAX_APPROVAL_FLOWS + " 个上限");
     }
     Set<String> flowKeys = new LinkedHashSet<>();
-    for (int index = 0; index < approvals.size(); index++) {
-      Map<String, Object> flow = approvals.get(index);
-      String path = "approvals[" + index + "]";
+    for (int index = 0; index < flows.size(); index++) {
+      Map<String, Object> flow = flows.get(index);
+      String path = "flows[" + index + "]";
       if (flow == null) {
         issues.add("APPROVAL_INVALID", path, "审批流程定义为空");
         continue;
@@ -1071,9 +1071,18 @@ public class AppPackageValidator {
       if (!Set.of("draft", "disabled", "enabled").contains(status)) {
         issues.add("APPROVAL_INVALID", path + ".status", "流程状态无效: " + status);
       }
-      Map<String, Object> form = object(flow.get("form"));
-      if (!"app".equals(text(form, "kind")) || !forms.containsKey(text(form, "name"))) {
-        issues.add("APPROVAL_INVALID", path + ".form", "流程必须绑定包内业务表单");
+      Map<String, Object> triggerConfig = dev.flexmodel.apps.flow.FlowTrigger.of(flow);
+      String triggerType;
+      try {
+        dev.flexmodel.apps.flow.FlowTrigger.validate(triggerConfig);
+        triggerType = text(triggerConfig, "type");
+      } catch (RuntimeException error) {
+        triggerType = "";
+        issues.add("APPROVAL_INVALID", path + ".definition.start.trigger", error.getMessage());
+      }
+      if (!triggerType.isEmpty() && !"SCHEDULE".equals(triggerType)
+        && !forms.containsKey(text(triggerConfig, "formName"))) {
+        issues.add("APPROVAL_INVALID", path + ".definition.start.trigger", "流程必须绑定包内业务表单");
       }
       List<Map<String, Object>> nodes = objects(object(flow.get("definition")).get("nodes"));
       if (nodes.isEmpty() || !"start".equals(text(nodes.getFirst(), "type"))
@@ -1160,26 +1169,26 @@ public class AppPackageValidator {
         issues.add("APPROVAL_INVALID", path + ".definition.nodes", "流程必须恰好包含一个开始和结束节点");
       }
     }
-    validateSubflows(approvals, byId, issues);
+    validateSubflows(flows, byId, issues);
     return byId;
   }
 
-  private void validateSubflows(List<Map<String, Object>> approvals, Map<String, Map<String, Object>> byId,
+  private void validateSubflows(List<Map<String, Object>> flows, Map<String, Map<String, Object>> byId,
                                 Issues issues) {
     Map<String, Set<String>> graph = new LinkedHashMap<>();
-    for (int index = 0; index < approvals.size(); index++) {
-      Map<String, Object> flow = approvals.get(index);
+    for (int index = 0; index < flows.size(); index++) {
+      Map<String, Object> flow = flows.get(index);
       String id = text(flow, "id");
       Set<String> children = new LinkedHashSet<>();
       for (Map<String, Object> node : flattenNodes(objects(object(flow.get("definition")).get("nodes")))) {
         if ("subflow".equals(text(node, "type"))) {
           String child = text(object(object(node.get("data")).get("config")), "flowId");
           if (!byId.containsKey(child)) {
-            issues.add("APPROVAL_INVALID", "approvals[" + index + "].definition",
+            issues.add("APPROVAL_INVALID", "flows[" + index + "].definition",
               "子流程不在包内: " + child);
           } else if (children.add(child) && "enabled".equals(text(flow, "status"))
             && !"enabled".equals(text(byId.get(child), "status"))) {
-            issues.add("APPROVAL_DEPENDENCY", "approvals[" + index + "].definition",
+            issues.add("APPROVAL_DEPENDENCY", "flows[" + index + "].definition",
               "启用流程依赖未启用的子流程: " + child);
           }
         }
@@ -1188,7 +1197,7 @@ public class AppPackageValidator {
     }
     for (String id : graph.keySet()) {
       if (cyclic(id, graph, new HashSet<>(), new HashSet<>())) {
-        issues.add("APPROVAL_SUBFLOW_CYCLE", "approvals", "子流程存在直接或间接循环引用: " + id);
+        issues.add("APPROVAL_SUBFLOW_CYCLE", "flows", "子流程存在直接或间接循环引用: " + id);
       }
     }
   }

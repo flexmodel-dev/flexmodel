@@ -26,6 +26,8 @@ import java.util.*;
 @ApplicationScoped
 @Slf4j
 public class AppRecordService {
+  @Inject
+  dev.flexmodel.apps.flow.AppFlowRecordEvents flowEvents;
 
   private static final Set<String> BUILTIN_FIELDS = Set.of(
     "id", "created_by", "updated_by", "created_at", "updated_at");
@@ -227,6 +229,7 @@ public class AppRecordService {
       writableValues.put("updated_at", LocalDateTime.now());
       updateRecord(appId, form, recordId, writableValues);
       Map<String, Object> after = requireRecord(appId, resolved, recordId);
+      flowEvents.capture(appId, form.name(), before, after);
       if (historyCaptureEnabled(appId, form)) {
         appRecordHistoryRecorder.updated(appId, form, recordId, before, after);
       }
@@ -284,10 +287,14 @@ public class AppRecordService {
       appId, form, mainFormName, mainRecordId, referenceField);
     Map<String, Object> values = sanitizeInput(form.response(), input, true, context);
     assignCreationFields(form.response(), values, currentUserId());
-    createRecord(appId, form.response(), values);
-    if (historyCaptureEnabled(appId, form.response())) {
-      appRecordHistoryRecorder.created(appId, form.response(), values);
-    }
+    if (form.response().builtin()) createRecord(appId, form.response(), values);
+    else transactions.execute(appId, () -> {
+      createRecord(appId, form.response(), values);
+      if (historyCaptureEnabled(appId, form.response()))
+        appRecordHistoryRecorder.created(appId, form.response(), values);
+      flowEvents.capture(appId, formName, null, requireRecord(appId, form, String.valueOf(values.get("id"))));
+      return null;
+    });
     return projectRecord(form.response(), renderReferenceRecord(
       appId, form.response(), requireRecord(
         appId, form, String.valueOf(values.get("id")), referenceFields(form.response()))));
@@ -313,7 +320,7 @@ public class AppRecordService {
     Map<String, Object> values = sanitizeInput(form.response(), input, false, context);
     values.put("updated_by", currentUserId());
     values.put("updated_at", LocalDateTime.now());
-    if (historyCaptureEnabled(appId, form.response())) {
+    if (!form.response().builtin()) {
       // 行锁 + 事务内前后值读取，保证并发修改的历史前值不被污染
       transactions.execute(appId, () -> {
         ProjectUnitOfWork.lock(appId, form.entityName(), "id", recordId);
@@ -322,7 +329,9 @@ public class AppRecordService {
           : requireSubformRecord(appId, form, recordId, context, null);
         updateRecord(appId, form.response(), recordId, values);
         Map<String, Object> after = requireRecord(appId, form, recordId);
-        appRecordHistoryRecorder.updated(appId, form.response(), recordId, before, after);
+        if (historyCaptureEnabled(appId, form.response()))
+          appRecordHistoryRecorder.updated(appId, form.response(), recordId, before, after);
+        flowEvents.capture(appId, formName, before, after);
         return null;
       });
     } else {
@@ -349,14 +358,16 @@ public class AppRecordService {
     } else {
       requireSubformRecord(appId, form, recordId, context, null);
     }
-    if (historyCaptureEnabled(appId, form.response())) {
+    if (!form.response().builtin()) {
       transactions.execute(appId, () -> {
         ProjectUnitOfWork.lock(appId, form.entityName(), "id", recordId);
         Map<String, Object> before = context == null
           ? requireRecord(appId, form, recordId)
           : requireSubformRecord(appId, form, recordId, context, null);
         deleteRecord(appId, form.response(), recordId);
-        appRecordHistoryRecorder.deleted(appId, form.response(), recordId, before);
+        if (historyCaptureEnabled(appId, form.response()))
+          appRecordHistoryRecorder.deleted(appId, form.response(), recordId, before);
+        flowEvents.capture(appId, formName, before, null);
         return null;
       });
     } else {

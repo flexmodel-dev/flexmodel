@@ -1,6 +1,7 @@
 package dev.flexmodel.flow.service;
 
 import dev.flexmodel.common.messaging.ReliableMessageHandler;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.flow.common.ErrorEnum;
 import dev.flexmodel.flow.dto.param.*;
 import dev.flexmodel.flow.dto.result.CommonResult;
@@ -16,6 +17,8 @@ import java.util.Map;
 public class FlowCommandHandler implements ReliableMessageHandler {
   @Inject
   ProcessService processService;
+  @Inject
+  SessionContext sessionContext;
 
   public String type() {
     return "flow.command";
@@ -23,6 +26,11 @@ public class FlowCommandHandler implements ReliableMessageHandler {
 
   @SuppressWarnings("unchecked")
   public void handle(String projectId, String messageId, Map<String, Object> command) {
+    String previousPrincipal = sessionContext.getUserId();
+    boolean previousAuthenticatedUser = sessionContext.isAuthenticatedUser();
+    sessionContext.setUserId(java.util.Objects.toString(command.get("principal"), ""));
+    sessionContext.setAuthenticatedUser(false);
+    try {
     ExternalTaskAccess.as(String.valueOf(command.get("handler")), () -> {
       String action = String.valueOf(command.get("action"));
       CommonResult result;
@@ -30,7 +38,7 @@ public class FlowCommandHandler implements ReliableMessageHandler {
         StartProcessParam param = new StartProcessParam();
         param.setProjectId(projectId);
         param.setFlowDeployId(String.valueOf(command.get("deploymentId")));
-        param.setInitiator(String.valueOf(command.get("initiator")));
+        param.setInitiator(java.util.Objects.toString(command.get("initiator"), ""));
         param.setVariables((Map<String, Object>) command.getOrDefault("variables", Map.of()));
         result = processService.startProcess(param);
       } else if (action.equals("complete")) {
@@ -47,5 +55,9 @@ public class FlowCommandHandler implements ReliableMessageHandler {
         throw new IllegalStateException(result == null ? "流程执行未返回结果" : result.getErrMsg());
       return null;
     });
+    } finally {
+      sessionContext.setUserId(previousPrincipal);
+      sessionContext.setAuthenticatedUser(previousAuthenticatedUser);
+    }
   }
 }

@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-176",
+      "name": "Apps - 通用工作流与三类触发",
+      "description": "统一 /flows；手动和数据事件绑定表单，Quartz 定时无业务输入，复用 Flow、可靠消息和审批节点，含前端/MCP/应用包及跨库幂等。",
+      "status": "in_progress",
+      "evidence": "2026-11-08 开始实施。基线 init.sh 全模块编译与引擎测试通过，附带管理端 E2E 运行中。同日续做创建期触发方式：前端 createApprovalFlow 携带 FlowTrigger（按用户要求移除创建方式模板选择）、新建对话框触发方式以卡片样式选择（FlowTriggerEditor 新增 cards 模式；表单设置入口锁表单禁定时、未选表单禁创建）；后端 save 草稿即校验触发（AppFlowService.save），AppPackageValidator 复用 FlowTrigger.validate 并以触发 formName 为准，AppFlowCapabilities/save_app_flow 契约同步。验证：全模块编译、引擎测试、定向 45/45、AppFlowIntegrationTest 8（1 项 SQLite 锁竞争单独复跑通过）、apps-ui build/vitest 66/66、approvals Playwright 由 5 失败修复为 5/5（spec 迁移到 /flows 契约并补 expense 表单 mock）。"
+    },
+    {
       "id": "feat-175",
       "name": "Apps UI - 登录页风格统一与 SVG 动效",
       "description": "按当前 shadcn/ui 风格重写 Apps 登录页，主题色 SVG 业务插画加入分层悬浮、流动连线、进度和入场动效；支持减少动态效果、浅深色、响应式布局、密码显示切换、真实登录与记住登录，移除未接入的旧版入口。",
@@ -179,7 +186,7 @@
       "id": "feat-143",
       "name": "Apps - 从模板创建应用",
       "description": "服务端内置应用包目录、模板列表与实例化入口，复用现有应用包导入预览和提交管道。方案见 docs/plans/app-templates.md。",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "2026-10-31 实现完成。后端（dev.flexmodel.apps）：AppTemplateCatalog 启动读取 app-templates/index.json（显式索引，包名固定 <id>.flexmodel.zip，索引/请求均不能提供路径），id 白名单，启动时先 AppPackageZip 解析再以 AppPackageValidator + 平台基线目录（admin 用户、admin/developer 角色、无组织）语义校验，坏模板 WARN 跳过不阻断启动，目录只读；AppTemplateResource 提供 GET /app-packages/templates 与 POST /app-packages/templates/{id}/imports（401/404）；AppPackageService.instantiateTemplate 复制 classpath 包到 AppPackageStore 暂存并复用既有预览/planHash/commit/补偿管道，PreviewResponse 增加 templateId，模板默认名不追加「-副本」；AppPackageZip.read(InputStream) 支持流式解析；application.properties 增加 quarkus.native.resources.includes=app-templates/**；maven-resources-plugin 增加 nonFilteredFileExtensions=zip（此前 ZIP 被文本过滤报 MalformedInputException）。内置 erp-system（来自用户提供的 ERP管理系统.flexmodel.zip）：4 个业务表单、2 条启用审批、采购工作台、636 条示例记录；入库前将审批执行人改为平台角色 admin/developer、移除引用源实例用户的 data-authorizations、清理示例数据中 56 行已不存在字段。前端（flexmodel-apps-ui）：services/appTemplates.ts；AppManagement 新建应用改为空白/从模板下拉并新增模板画廊；AppPackageImportDialog 支持 initialPreview 直达预览（步骤条首步改为选择模板、隐藏重新选择、模板文案）。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' EXIT=0；mvn test -pl flexmodel-engine EXIT=0；AppTemplateCatalogTest 7/7（index 未知字段/重复/非法 id/缺失包/损坏包/语义无效包跳过，内置模板基线目录零 issue 零 warning，审批来源/导航可见性/数据权限/示例数据字段与附件值可移植断言）、AppPackageValidatorTest 18/18、AppPackageZipTest 10/10；apps-ui npm run build 通过（TEMP/TMP 指向项目内规避 esbuild Access denied）；vitest 43/43；Playwright packages 7/7（新增从模板创建：入口→画廊→预览直达→提交完成，以及空目录隐藏入口，浅色截图检查）。2026-10-31 真实后端冒烟（quarkus:dev + 本地 SQLite）：admin 登录 → GET /app-packages/templates 返回 erp-system → POST 实例化 READY（templateId=erp-system、默认名 ERP 管理系统、4 表单、636 记录、issues=0）→ commit COMMITTED（materials 96 / purchase_order_items 288 / purchase_orders 196 / suppliers 56）→ 应用列表可见、表单为 3 系统表单 + 4 业务表单、suppliers 记录 56、导航 首页(3)/采购管理(1)/基础数据(2) 均重建 → DELETE 应用 204 清理。打包形态验证：mvn -pl flexmodel-server -am package 成功，target/quarkus-app/app/flexmodel-server-0.0.1-SNAPSHOT.jar 内含 app-templates/index.json 与 erp-system.flexmodel.zip；用 quarkus-run.jar 在隔离临时 SQLite（18080 端口）启动，日志 Loaded 1 built-in app template(s)，GET templates / POST 实例化 READY（4 表单/636 记录）/ commit COMMITTED（materials 96）/ DELETE 204，证明 jar 内 ZIP 经 ClassLoader.getResourceAsStream 读取可用。2026-10-31 交互调整（对齐「新建审批流程」）：新建应用改为单一弹窗，首项输入应用名称，再以卡片选择空白应用/从模板创建；空白方式保留原有应用图标/应用描述/应用主色表单并直接创建；模板方式内联之前的模板卡片画廊（图标、分类、描述、表单数、含示例数据），选中后「预览并创建」进入导入预览并沿用创建弹窗名称；移除新建下拉菜单与独立模板画廊弹窗（删除 AppTemplateGalleryDialog），AppPackageImportDialog 新增 initialName 并去掉「选择模板」步骤。验证：apps-ui npm run build 通过（tsc + vite）；vitest 43/43；Playwright packages 8/8（模板选择→预览直达→提交、空白应用含图标/描述/主色创建、空目录隐藏模板方式）。2026-10-31 SQLite 导入报错修复：AppPackageImport 恢复 name 字段时因 requiresNameRestore 条件反向（required=true 触发）且 SqlSchemaService.modifyField 无条件 ALTER，SQLite 不支持 MODIFY 导致 ERROR。改为仅列定义（类型/长度/精度/可空/默认值/唯一/注释）实际变化时执行 DDL；新增 SqlDialect.supportsModifyColumn（SQLite=false，跳过 DDL 并 WARN，仍更新元数据）；requiresNameRestore 改为 !required 才恢复。验证：非 clean 全模块 compile 通过、mvn package -pl flexmodel-server -am 成功、flexmodel-core 测试通过；隔离 SQLite quarkus-run.jar 冒烟模板实例化 READY → commit COMMITTED（636 条记录、suppliers 56 条）→ DELETE 204，日志无 MODIFY/SQLITE_ERROR。遗留：native image 未构建验证；未提交代码。 2026-11-03 修复内置模板替换为 plm/erp 后目录不可用问题：erp.flexmodel.zip 的审批执行人引用源实例用户（cca11013/7d291816）与组织（0a3933a1 等），启动校验产生 DIRECTORY_MEMBER_MISSING/DIRECTORY_ORGANIZATION_MISSING 硬性 issue 被跳过（前端模板列表只见 plm）；且 plm/erp 示例数据共 377 处 f_user/f_department 引用触发不可移植 warning。处理：erp 19 条 users/organizations 审批规则改为 roles（总经理/主管→admin、其余环节→developer，scope=self，通知节点 organizations→initiator）；两包示例数据中 f_user/f_department 引用值全部置空（erp 232 处、plm 145 处），5 个必填的系统引用字段（erp_expense.claimant、plm_product.owner_user、plm_ecr.initiator、plm_ecn.initiator、plm_ecn_task.assignee）required 改为 false 以免空值触发必填 warning；业务 REFERENCE 引用均验证包内可解析。测试同步：AppTemplateCatalogTest 中 erp-system 过期引用改为 erp（名称「ERP 企业资源计划」、formCount 34）。验证：mvn test -pl flexmodel-server -Dtest=AppPackage*Test,AppTemplate*Test 全绿（AppTemplateCatalogTest 7/7、AppPackageValidatorTest 21/21、AppPackageZipTest 10/10），模板目录启动加载 2 个内置模板。未提交代码。 2026-11-03 WMS 模板入库修复：同 erp/scm 病灶（审批执行人引用源实例用户/组织、示例数据 f_user 引用、displayField 误当 id、必填 name 空值），并将四轮手工清洗固化为 flexmodel-server/tools/app-template-sanitize.mjs（零依赖，check/--fix，含 zip 重打包）；AppTemplateCatalogTest 目录完整性断言扩至 4 模板并新增 wms 断言，AppPackage*Test+AppTemplate*Test 全绿。另发现中断构建致 target/classes 残缺、本机 dev 服务全接口 500，已重建恢复、待重启 dev。校验严格度维持：基线目录校验系方案文档明确设计，users/organizations 无法跨实例移植。未提交代码。"
     },
     {
@@ -193,7 +200,7 @@
       "id": "feat-141",
       "name": "Apps - 应用结构级整包导入导出",
       "description": "按 docs/plans/app-import-export.md 实现应用定义与可选记录数据的整包导出、预览及创建新应用导入。前后端均已实现并通过验证，待真实后端端到端冒烟。",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "2026-10-30 前后端全量实现完成。后端（dev.flexmodel.apps）：协议 DTO AppPackage（含 TaskState.result 回执与恢复语义，@RegisterForReflection 全部移除，改由 FlexmodelNativeProcessor registerAppsDtos 以构造器/方法/字段注册 dev.flexmodel.apps.dto.**）；AppPackageZip 受限读写（路径穿越/重复 entry/未知文件/entry≤128/单文件≤50MiB/累计≤100MiB/JSON 深度≤64/planHash）；AppPackageValidator（模型漂移+结构校验、manifest 统计核对、目录成员存在性、业务引用闭包、必填缺失检查）；AppPackageStore+AppPackageTaskRepository（原子暂存、5 分钟清理、任务回执与恢复扫描）；AppPackageService（只读采集+前后结构摘要防并发 409、行数限额、上传预览 INVALID、状态查询、幂等 commit 分发 requestDigest 409）；AppPackageImport（provision→forms→references→layouts→navigation→workbenches→approvals→authorizations→records→activating 分阶段持久重建、provisioning 元数据隔离、启动/定时恢复、补偿核验 deleteApp、CLEANUP_REQUIRED 后台重试）；REST POST /apps/{appId}/package-exports 流式下载、POST/GET /app-packages/imports（multipart 413 限额、状态、commit）。前端：appPackages.ts 改真实 HTTP（上传/状态轮询/commit/导出下载 Content-Disposition 文件名），导入弹窗支持 FAILED/CLEANUP_REQUIRED 区分展示（不宣称回滚成功）与响应丢失轮询找回。验证：全模块 mvn clean compile EXIT=0；mvn test -pl flexmodel-engine EXIT=0；新增 AppPackageZipTest 10/10、AppPackageValidatorTest 17/17；apps-ui npm run build 通过、vitest 43/43、Playwright packages 5/5（API 拦截层改为真实协议 fixture）。剩余：真实后端 dev 起服务端到端冒烟导出→导入全链路。2026-10-30 排障修复：AppPackageStore.stageZip 先创建暂存目录（此前目录不存在必然 NoSuchFileException）；导出资源改为类级 JSON + 方法级 ZIP 并增加 ServerExceptionMapper，全局异常映射器显式 application/json 且移除堆栈数组，前端非 JSON 错误回显 HTTP 状态与 HTML 标题；仅结构导出将模型漂移降级为 manifest warnings、带数据导出仍阻断，修复 validation warnings 未写入 manifest；审批 branch 不再强制 blocks；validator 注入 AppFormService。实测 plm_system 结构导出 200/7323B（manifest 9 条漂移 warning）、includeData=true 仍 400 JSON 带原因、新建应用含记录导出 200 且 dataRows=1；mvn test AppPackageValidatorTest 17/17 + AppPackageZipTest 10/10 BUILD SUCCESS；apps-ui tsc -b EXIT=0（vite build 因沙箱 Node spawn EPERM 未执行）。未提交代码。"
     },
     {
@@ -207,7 +214,7 @@
       "id": "feat-139",
       "name": "Apps - 文件排序与移除分享列表",
       "description": "文件页移除分享列表，按参考图提供最近上传、最早上传、较大文件和名称升降序；目录保持在前。",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "FilesDocs移除分享列表及Share图标，默认排序接入既有DropdownMenu：最近上传、最早上传、较大文件、文件名称(A-Z)/(Z-A)，按钮显示当前项并标记选中。基于既有lastModified/size在前端复制列表排序，不修改树缓存、不增加请求；保留目录在前、文件在后，名称忽略大小写并自然排序数字，时间/大小缺失或无效排末尾，同值按名称/路径稳定排序。沿用搜索与附件只读，切换目录/附件保留当前排序。验证：Apps npm run build、files浅色/夜间共4项Playwright通过（含五种实际顺序、零字节/未知值、自然名称顺序、搜索叠加、附件、无额外请求及既有编辑删除回归），截图检查通过；全模块非clean编译与规定引擎测试通过。init.sh clean仍受运行中dev.jar文件锁阻塞，保留原服务。"
     },
     {
@@ -366,7 +373,7 @@
         "feat-104",
         "feat-105"
       ],
-      "status": "in_progress",
+      "status": "done",
       "evidence": "已检查现有面板及共享抽屉布局，原生全模块编译通过；标准init.sh clean仍受现有dev.jar锁阻塞。"
     },
     {

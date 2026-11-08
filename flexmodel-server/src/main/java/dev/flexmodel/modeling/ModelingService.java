@@ -49,6 +49,7 @@ public class ModelingService {
     boolean showSystemModels = isShowSystemModels(projectId);
     return modelService.findAll(projectId, resolveDatabaseName(projectId))
       .stream()
+      .filter(s -> !s.getName().equals("f_runtime_message"))
       .filter(s -> showSystemModels || !ModelService.isSystemModel(s))
       .toList();
   }

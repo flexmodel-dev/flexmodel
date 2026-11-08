@@ -101,7 +101,7 @@ public class AssistantAgent {
       1. create_app：创建应用；appId 冲突或应用已存在时先用 list_apps / get_app 确认再继续。
       2. create_app_form：为每个业务对象创建表单与字段。
       3. save_app_form_layout：为每个新建表单保存布局。
-      4. create_app_navigation：为工作台和各表单页面创建导航入口，否则页面无法访问。
+      4. create_app_navigation：为工作台和各表单页面创建导航入口，否则页面无法访问。导航结构固定两级：一级必须先创建 GROUP 分组，二级 ENTRY 必须挂在 GROUP 下；禁止一级直接建 ENTRY、禁止 ENTRY 下再挂子菜单。
       5. create_app_mock_records：为每个业务表单创建 3~5 条示例记录，便于用户预览。
       增强步骤（在第 3 步与第 4 步之间按需执行）：
       - 视图：先 get_app_form_view_capabilities 获取视图契约，再用 save_app_form_views 保存完整视图列表（必须至少保留一个全部/表格视图）。

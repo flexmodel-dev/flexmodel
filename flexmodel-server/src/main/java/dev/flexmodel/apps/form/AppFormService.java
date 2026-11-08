@@ -2,7 +2,7 @@ package dev.flexmodel.apps.form;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.AppRepository;
-import dev.flexmodel.apps.approval.AppApprovalLifecycle;
+import dev.flexmodel.apps.flow.AppFlowLifecycle;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationService;
 import dev.flexmodel.apps.form.dto.*;
 import dev.flexmodel.apps.navigation.AppNavigationRepository;
@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AppFormService {
   @Inject
-  AppApprovalLifecycle appApprovalLifecycle;
+  AppFlowLifecycle appFlowLifecycle;
 
   private static final Pattern FORM_NAME_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{0,63}$");
   // 字段标识不限命名风格，仅排除会破坏 SQL 标识符转义的字符。
@@ -1003,7 +1003,7 @@ public class AppFormService {
 
   public void deleteForm(String appId, String formName) {
     requireNotBuiltinForm(formName);
-    appApprovalLifecycle.beforeDeleteForm(appId, formName);
+    appFlowLifecycle.beforeDeleteForm(appId, formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(appId, formName);
     EntityDefinition entity = resolved.entity();
@@ -1150,6 +1150,7 @@ public class AppFormService {
   }
 
   public void deleteField(String appId, String formName, String fieldName) {
+    appFlowLifecycle.beforeDeleteField(appId, formName, fieldName);
     requireNotBuiltinForm(formName);
     Project project = requireAppProject(appId);
     ResolvedForm resolved = requireForm(appId, formName);
@@ -1238,6 +1239,7 @@ public class AppFormService {
 
   private List<EntityDefinition> entities(String appId) {
     return modelingService.findModels(appId).stream()
+      .filter(model -> !model.getName().equals("f_runtime_message"))
       .filter(EntityDefinition.class::isInstance)
       .map(EntityDefinition.class::cast)
       .toList();

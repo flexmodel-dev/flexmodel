@@ -1,6 +1,6 @@
 package dev.flexmodel.notification;
 
-import dev.flexmodel.apps.approval.AppApprovalService;
+import dev.flexmodel.apps.flow.AppApprovalService;
 import dev.flexmodel.common.SessionContext;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;

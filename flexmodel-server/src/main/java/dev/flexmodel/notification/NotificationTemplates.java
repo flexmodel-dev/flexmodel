@@ -12,7 +12,7 @@ public final class NotificationTemplates {
   private NotificationTemplates() {
   }
 
-  private static final Pattern SLOT = Pattern.compile("\\{\\{\\s*([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)*)\\s*}}");
+  private static final Pattern SLOT = Pattern.compile("\\{\\{\\s*([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_-]+)*)\\s*}}");
 
   public static List<String> paths(String template) {
     var matcher = SLOT.matcher(template);

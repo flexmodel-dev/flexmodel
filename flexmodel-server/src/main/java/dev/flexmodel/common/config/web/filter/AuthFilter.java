@@ -314,7 +314,10 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       sessionContext.setProjectId(projectId);
       sessionContext.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
     }
-    sessionContext.setUserId(apiKey.getName());
+    if (Boolean.TRUE.equals(apiKey.getReadOnly()) && !Set.of("GET", "HEAD", "OPTIONS").contains(requestContext.getMethod()))
+      throw new jakarta.ws.rs.ForbiddenException("只读 API Key 不可执行写操作");
+    sessionContext.setUserId("api_key:" + apiKey.getId());
+    sessionContext.setAuthenticatedUser(false);
     requestContext.setProperty("projectId", projectId);
   }
 

@@ -18,6 +18,32 @@ import static dev.flexmodel.query.Expressions.field;
 
 @ApplicationScoped
 public class RuntimeMessageRepository extends AbstractRepository {
+  private static final ThreadLocal<String> STORE = new ThreadLocal<>();
+
+  public String schema() {
+    return STORE.get();
+  }
+
+  public <T> T inSchema(String schema, java.util.function.Supplier<T> action) {
+    String old = STORE.get();
+    if (schema == null) STORE.remove();
+    else STORE.set(schema);
+    try {
+      return action.get();
+    } finally {
+      if (old == null) STORE.remove();
+      else STORE.set(old);
+    }
+  }
+
+  @Override
+  protected Session openSession() {
+    String schema = STORE.get();
+    if (schema == null) return super.openSession();
+    Session borrowed = ProjectUnitOfWork.borrowSchema(schema);
+    return borrowed == null ? sessionFactory.createSession(schema) : borrowed;
+  }
+
 
   public List<Map<String, Object>> findByMessageId(String appId, String messageId) {
     return findAll(appId, runtimeMessage.messageId.eq(messageId));
@@ -83,7 +109,7 @@ public class RuntimeMessageRepository extends AbstractRepository {
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<Map<String, Object>> findPendingOrdered(String appId, String orderingKey) {
-    Predicate filter = runtimeMessage.projectId.eq(appId).and(runtimeMessage.state.eq("PENDING"));
+    Predicate filter = runtimeMessage.projectId.eq(appId).and(runtimeMessage.state.in(List.of("PENDING", "FAILED")));
     if (orderingKey != null) filter = filter.and(runtimeMessage.orderingKey.eq(orderingKey));
     try (Session session = openSession()) {
       List<Map> rows = session.dsl().selectFrom(RuntimeMessage.class).where(filter).orderBy("id", Direction.ASC).execute(Map.class);
@@ -96,7 +122,7 @@ public class RuntimeMessageRepository extends AbstractRepository {
     try (Session session = openSession()) {
       List<Map> rows = session.dsl().selectFrom(RuntimeMessage.class)
         .where(runtimeMessage.projectId.eq(appId).and(runtimeMessage.orderingKey.eq(orderingKey))
-          .and(runtimeMessage.state.eq("PENDING")).and(field("id").lt(id))).execute(Map.class);
+          .and(runtimeMessage.state.in(java.util.List.of("PENDING", "FAILED"))).and(field("id").lt(id))).execute(Map.class);
       return (List<Map<String, Object>>) (List<?>) rows;
     }
   }

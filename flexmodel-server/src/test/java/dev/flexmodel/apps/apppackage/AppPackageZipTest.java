@@ -200,7 +200,7 @@ class AppPackageZipTest {
     Path file = directory.resolve("partial.zip");
     try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(file), StandardCharsets.UTF_8)) {
       for (String name : List.of(MANIFEST_FILE, APP_FILE, FORMS_FILE, NAVIGATION_FILE,
-        WORKBENCHES_FILE, APPROVALS_FILE)) {
+        WORKBENCHES_FILE)) {
         out.putNextEntry(new ZipEntry(name));
         out.write("null".getBytes(StandardCharsets.UTF_8));
         out.closeEntry();
@@ -218,7 +218,7 @@ class AppPackageZipTest {
     Path file = directory.resolve("deep.zip");
     try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(file), StandardCharsets.UTF_8)) {
       for (String name : List.of(MANIFEST_FILE, APP_FILE, FORMS_FILE, NAVIGATION_FILE,
-        WORKBENCHES_FILE, APPROVALS_FILE, AUTHORIZATIONS_FILE)) {
+        WORKBENCHES_FILE, AUTHORIZATIONS_FILE)) {
         out.putNextEntry(new ZipEntry(name));
         out.write("null".getBytes(StandardCharsets.UTF_8));
         out.closeEntry();

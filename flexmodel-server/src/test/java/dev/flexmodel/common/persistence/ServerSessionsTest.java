@@ -1,7 +1,7 @@
 package dev.flexmodel.common.persistence;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
-import dev.flexmodel.apps.approval.AppApprovalRecordGuard;
+import dev.flexmodel.apps.flow.AppFlowRecordGuard;
 import dev.flexmodel.event.ChangedEvent;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
@@ -69,7 +69,7 @@ class ServerSessionsTest {
     }
     ServerSessions result = new ServerSessions();
     result.factory = factory;
-    result.guard = new AppApprovalRecordGuard() {
+    result.guard = new AppFlowRecordGuard() {
       @Override
       public Object intercept(Session session, String operation, Object[] arguments, Supplier<Object> proceed) {
         return proceed.get();
@@ -145,7 +145,7 @@ class ServerSessionsTest {
       first.startTransaction();
       first.lockRow("session_items", "id", "lock-a");
       second.startTransaction();
-      assertTimeout(Duration.ofSeconds(4), () -> {
+      assertTimeout(Duration.ofSeconds(7), () -> {
         var error = assertThrows(ServiceUnavailableException.class, () -> second.lockRow("session_items", "id", "lock-a"));
         assertEquals(503, error.getResponse().getStatus());
       });

@@ -92,9 +92,20 @@ public class SchemaRegistry {
         sessionFactory.registerSchemaProvider(schemaProvider);
         log.info("Registered SchemaProvider '{}' from template URL", actualSchemaName);
       }
+      initializeRuntime(actualSchemaName);
     } catch (Exception e) {
       log.error("Session dataSource create error: {}", e.getMessage(), e);
       return;
+    }
+  }
+
+  private synchronized void initializeRuntime(String schema) {
+    try (var session = sessionFactory.createSession(schema)) {
+      if (sessionFactory.getModels(schema).stream().noneMatch(m -> m.getName().equals("f_runtime_message"))) {
+        var template = sessionFactory.getModels("system").stream().filter(m -> m.getName().equals("f_runtime_message")).findFirst().orElseThrow();
+        var model = (dev.flexmodel.model.EntityDefinition) dev.flexmodel.parser.ASTNodeConverter.toSchemaObject(dev.flexmodel.parser.ASTNodeConverter.fromSchemaObject(template));
+        session.schema().createEntity(model);
+      }
     }
   }
 

@@ -7,8 +7,8 @@ import dev.flexmodel.apps.apppackage.AppPackageValidator.Result;
 import dev.flexmodel.apps.ai.AppAiService;
 import dev.flexmodel.apps.ai.dto.AiDtos.RobotInput;
 import dev.flexmodel.apps.apppackage.AppPackageZip.Content;
-import dev.flexmodel.apps.approval.AppApprovalFlowService;
-import dev.flexmodel.apps.approval.AppApprovalJson;
+import dev.flexmodel.apps.flow.AppFlowService;
+import dev.flexmodel.apps.flow.AppFlowJson;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationRepository;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationService;
 import dev.flexmodel.apps.dto.AppCreateRequest;
@@ -60,7 +60,7 @@ import static dev.flexmodel.common.Values.*;
  * 整包导入执行器：持久任务状态驱动的补偿式重建（非原子事务）。
  *
  * <p>重建顺序按方案 §5.3：provision → forms → references → layouts → navigation →
- * workbenches → approvals → authorizations → records → activating。每阶段先落盘再执行，
+ * workbenches → flows → authorizations → records → activating。每阶段先落盘再执行，
  * 崩溃后由启动扫描依据 phase 与 provisioning 状态决定恢复或补偿，绝不盲目重跑 createApp。</p>
  */
 @ApplicationScoped
@@ -86,7 +86,7 @@ public class AppPackageImport {
   @Inject
   AppAiService ai;
   @Inject
-  AppApprovalFlowService approvalService;
+  AppFlowService approvalService;
   @Inject
   AppDataAuthorizationService authorizationService;
   @Inject
@@ -194,8 +194,8 @@ public class AppPackageImport {
       Map<String, String> workbenchIds = rebuildWorkbenches(appId, content.workbenches(), navIds);
       rewriteWorkbenchDestinations(appId, workbenchNavRefs, navIds, workbenchIds);
 
-      run.phase("approvals");
-      rebuildApprovals(appId, content.approvals());
+      run.phase("flows");
+      rebuildFlows(appId, content.flows());
 
       run.phase("authorizations");
       rebuildAuthorizations(appId, content.authorizations());
@@ -344,9 +344,9 @@ public class AppPackageImport {
 
   // ---------------------------------------------------------------- 审批
 
-  private void rebuildApprovals(String appId, List<Map<String, Object>> approvals) {
+  private void rebuildFlows(String appId, List<Map<String, Object>> flows) {
     Map<String, Map<String, Object>> created = new LinkedHashMap<>();
-    for (Map<String, Object> flow : approvals == null ? List.<Map<String, Object>>of() : approvals) {
+    for (Map<String, Object> flow : flows == null ? List.<Map<String, Object>>of() : flows) {
       Map<String, Object> body = new LinkedHashMap<>();
       body.put("flowKey", flow.get("flowKey"));
       body.put("name", flow.get("name"));
@@ -357,7 +357,7 @@ public class AppPackageImport {
     }
     Map<String, String> ids = new LinkedHashMap<>();
     created.forEach((oldId, response) -> ids.put(oldId, text(response, "id")));
-    for (Map<String, Object> flow : approvals) {
+    for (Map<String, Object> flow : flows) {
       Object rewritten = rewriteSubflows(flow.get("definition"), ids);
       if (rewritten == null) continue;
       Map<String, Object> response = created.get(text(flow, "id"));
@@ -370,32 +370,6 @@ public class AppPackageImport {
       body.put("revision", response.get("revision"));
       created.put(text(flow, "id"), approvalService.save(appId, text(response, "id"), body));
     }
-    // 共享已启用集合：子流程随父流程先行启用后，顶层循环不得用陈旧 revision 重复启用。
-    Set<String> enabled = new HashSet<>();
-    for (Map<String, Object> flow : approvals) {
-      if ("enabled".equals(text(flow, "status")))
-        enableWithChildren(appId, flow, approvals, created, ids, enabled);
-    }
-    for (Map<String, Object> flow : approvals) {
-      if ("disabled".equals(text(flow, "status")))
-        approvalService.status(appId, ids.get(text(flow, "id")), "disabled", revision(created.get(text(flow, "id"))));
-    }
-  }
-
-  /**
-   * 子流程依赖顺序（子先行）发布启用。
-   */
-  private void enableWithChildren(String appId, Map<String, Object> flow, List<Map<String, Object>> approvals,
-                                  Map<String, Map<String, Object>> created, Map<String, String> ids, Set<String> visited) {
-    String oldId = text(flow, "id");
-    if (!visited.add(oldId)) return;
-    for (Map<String, Object> node : AppApprovalJson.flatten(objects(object(flow.get("definition")).get("nodes")))) {
-      if (!"subflow".equals(text(node, "type"))) continue;
-      String childOldId = text(AppApprovalJson.config(node), "flowId");
-      approvals.stream().filter(child -> childOldId.equals(text(child, "id"))).findFirst()
-        .ifPresent(child -> enableWithChildren(appId, child, approvals, created, ids, visited));
-    }
-    created.put(oldId, approvalService.status(appId, ids.get(oldId), "enabled", revision(created.get(oldId))));
   }
 
   private Object rewriteSubflows(Object definition, Map<String, String> ids) {
@@ -411,11 +385,11 @@ public class AppPackageImport {
           changed = true;
         }
         if ("subflow".equals(text(node, "type"))) {
-          String childId = text(AppApprovalJson.config(node), "flowId");
+          String childId = text(AppFlowJson.config(node), "flowId");
           String mapped = childId.isEmpty() ? null : ids.get(childId);
           if (mapped == null) throw new ValidationException("子流程映射缺失: " + childId);
           Map<String, Object> data = new LinkedHashMap<>(object(node.get("data")));
-          Map<String, Object> config = new LinkedHashMap<>(AppApprovalJson.config(node));
+          Map<String, Object> config = new LinkedHashMap<>(AppFlowJson.config(node));
           config.put("flowId", mapped);
           data.put("config", config);
           node.put("data", data);

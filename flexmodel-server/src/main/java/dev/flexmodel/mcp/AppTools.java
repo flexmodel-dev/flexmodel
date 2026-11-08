@@ -2,9 +2,9 @@ package dev.flexmodel.mcp;
 
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.AppService;
-import dev.flexmodel.apps.approval.AppApprovalCapabilities;
-import dev.flexmodel.apps.approval.AppApprovalFlowModel;
-import dev.flexmodel.apps.approval.AppApprovalFlowService;
+import dev.flexmodel.apps.flow.AppFlowCapabilities;
+import dev.flexmodel.apps.flow.AppFlowModel;
+import dev.flexmodel.apps.flow.AppFlowService;
 import dev.flexmodel.apps.dto.AppCreateRequest;
 import dev.flexmodel.apps.dto.AppResponse;
 import dev.flexmodel.apps.form.AppFormService;
@@ -69,10 +69,10 @@ public class AppTools {
   AppWorkbenchDataService appWorkbenchDataService;
 
   @Inject
-  AppApprovalFlowService appApprovalFlowService;
+  AppFlowService appFlowService;
 
   @Inject
-  AppApprovalCapabilities appApprovalCapabilities;
+  AppFlowCapabilities appFlowCapabilities;
 
   @Inject
   McpToolAccess access;
@@ -512,17 +512,17 @@ public class AppTools {
 
   @Tool(name = "create_app_workbench_navigation", value = """
     Create a navigation entry linked to the app workbench. This is the one-call way to \
-    expose an app's workbench in navigation; it creates an ENTRY with BUILTIN \
-    destinationId=workbench. Optionally pass workbenchId (from list_app_workbenches) to \
-    bind one specific workbench; when omitted the entry opens the app's first workbench. \
-    The other built-in pages (files, approval) are exposed the same way via \
-    create_app_navigation with destinationType=BUILTIN.\
+    expose an app's workbench in navigation; it creates a second-level ENTRY with BUILTIN \
+    destinationId=workbench nested under a first-level GROUP. Optionally pass workbenchId \
+    (from list_app_workbenches) to bind one specific workbench; when omitted the entry \
+    opens the app's first workbench. The other built-in pages (files, approval) are \
+    exposed the same way via create_app_navigation with destinationType=BUILTIN.\
     """)
   public String create_app_workbench_navigation(
     @P("The app ID") String appId,
     @P("Navigation entry display name, required") String name,
     @P(value = "Navigation entry icon name, optional", required = false) String iconName,
-    @P(value = "Parent navigation ID, only for a nested entry", required = false) String parentId,
+    @P(value = "Parent navigation ID, the first-level GROUP this ENTRY is nested under", required = false) String parentId,
     @P(value = """
       Specific workbench ID from list_app_workbenches, optional. \
       Omit to open the app's first workbench by default.\
@@ -543,8 +543,11 @@ public class AppTools {
   }
 
   @Tool(name = "create_app_navigation", value = """
-    Create an app navigation entry. This is step 4 of the app creation flow. \
-    navType allows GROUP or ENTRY. GROUP must not bind a destination. ENTRY must bind \
+    Create an app navigation item. This is step 4 of the app creation flow. \
+    The navigation tree has exactly two levels: first-level items must be GROUP, \
+    and second-level items must be ENTRY nested under a GROUP. Never create an \
+    ENTRY at the first level, never nest items under an ENTRY, and never create \
+    a third level. GROUP must not bind a destination. ENTRY must bind \
     destinationType BUILTIN, FORM, or LINK. Use destinationId=formName when binding a form, \
     or destinationId=http/https URL when binding a link. BUILTIN pages (workbench, files, \
     approval) are only accessible inside an app after a navigation ENTRY binds them; \
@@ -555,10 +558,10 @@ public class AppTools {
     """)
   public String create_app_navigation(
     @P("The app ID") String appId,
-    @P("Navigation type: GROUP or ENTRY") String navType,
-    @P("Navigation entry display name") String name,
-    @P(value = "Navigation entry icon name, optional", required = false) String iconName,
-    @P(value = "Parent navigation ID, only for a nested ENTRY", required = false) String parentId,
+    @P("Navigation type: GROUP or ENTRY. First level must be GROUP; a second-level ENTRY must set parentId to a GROUP") String navType,
+    @P("Navigation item display name") String name,
+    @P(value = "Navigation item icon name, optional", required = false) String iconName,
+    @P(value = "Parent navigation ID, required for a second-level ENTRY; must reference a first-level GROUP", required = false) String parentId,
     @P(value = "Destination type: BUILTIN, FORM, or LINK, required for ENTRY", required = false) String destinationType,
     @P(value = """
       BUILTIN page ID (workbench, files, or approval), form name, or http/https URL, \
@@ -706,93 +709,98 @@ public class AppTools {
     }
   }
 
-  @Tool(name = "get_app_approval_capabilities", value = """
+  @Tool(name = "get_app_flow_capabilities", value = """
     Get the approval authoring contract for this app: node configs, Flow element types, \
     conditions, member rules, real forms/fields, subflows, limits and complete simple/gateway \
     examples. Call before generating flowJson. Approval definitions use the native Flow \
-    contract, including flow_model as a JSON string. Use the separate get_directory and \
+    contract, including model as a JSON object. Use the separate get_directory and \
     resolve_members tools to select real people, roles or organizations.\
     """)
-  public String get_app_approval_capabilities(
+  public String get_app_flow_capabilities(
     @P("The app ID") String appId
   ) {
-    return approvalTool("get_app_approval_capabilities", appId, false, () -> appApprovalCapabilities.describe(appId));
+    return approvalTool("get_app_flow_capabilities", appId, false, () -> appFlowCapabilities.describe(appId));
   }
 
-  @Tool(name = "list_app_approval_flows", value = """
-    List approval flows belonging to an app, using flow_module_id, flow_name, flow_key, \
-    flow_model (JSON string), status and revision. status: 1 draft, 2 enabled, 3 disabled. \
+  @Tool(name = "list_app_flows", value = """
+    List approval flows belonging to an app, using id, name, flowKey, \
+    model (JSON object), status and revision. status: draft, enabled, disabled. \
     Use this before creating a flow to avoid duplicates or find existing subflows.\
     """)
-  public String list_app_approval_flows(
+  public String list_app_flows(
     @P("The app ID") String appId
   ) {
-    return approvalTool("list_app_approval_flows", appId, false,
-            () -> appApprovalFlowService.list(appId).stream().map(AppApprovalFlowModel::encode).toList());
+    return approvalTool("list_app_flows", appId, false,
+      () -> appFlowService.list(appId).stream().map(AppFlowModel::api).toList());
   }
 
-  @Tool(name = "get_app_approval_flow", value = "Get an app approval flow and its latest revision before editing or changing status.")
-  public String get_app_approval_flow(
+  @Tool(name = "get_app_flow", value = "Get an app flow flow and its latest revision before editing or changing status.")
+  public String get_app_flow(
     @P("The app ID") String appId,
-    @P("flow_module_id returned by list_app_approval_flows or save_app_approval_flow") String flowId
+    @P("flow_module_id returned by list_app_flows or save_app_flow") String flowId
   ) {
-    return approvalTool("get_app_approval_flow", appId, false,
-            () -> AppApprovalFlowModel.encode(appApprovalFlowService.get(appId, flowId)));
+    return approvalTool("get_app_flow", appId, false,
+      () -> AppFlowModel.api(appFlowService.get(appId, flowId)));
   }
 
-  @Tool(name = "save_app_approval_flow", value = """
-    Create or replace an app approval draft. Call get_app_approval_capabilities first. \
+  @Tool(name = "save_app_flow", value = """
+    Create or replace an app flow draft. Call get_app_flow_capabilities first. \
     For creation omit flowId; for updates pass flowId and the latest revision in flowJson. \
-    flowJson uses the same Flow contract as get_app_approval_flow; preserve unchanged nodes. \
-    Returns the saved flow_module_id and revision. Saving an enabled flow returns it to draft. \
+    flowJson uses the same Flow contract as get_app_flow; preserve unchanged nodes. \
+    The start config must carry exactly one valid trigger (MANUAL, DATA_EVENT or SCHEDULE, see triggers). \
+    Returns the saved flow_module_id and revision. Saving does not change the published version. \
     Incomplete drafts are allowed: validate and explicitly enable before running.\
     """)
-  public String save_app_approval_flow(
+  public String save_app_flow(
     @P("The app ID") String appId,
     @P(value = "Existing flow_module_id for updates; omit to create", required = false) String flowId,
-    @P("JSON object string with flow_name, flow_model (a nested JSON STRING), optional flow_key/remark, and revision for updates") String flowJson
+    @P("JSON object string with name, model (a JSON object), optional flowKey/description, and revision for updates") String flowJson
   ) {
-    return approvalTool("save_app_approval_flow", appId, true, () -> {
+    return approvalTool("save_app_flow", appId, true, () -> {
       var body = JsonUtils.parseToMap(flowJson);
-      String bodyId = java.util.Objects.toString(body.get("flow_module_id"), "");
+      String bodyId = java.util.Objects.toString(body.get("id"), "");
       if (!bodyId.isBlank() && !bodyId.equals(flowId)) {
-        throw new IllegalArgumentException("flow_module_id must match flowId; omit both to create a new flow");
+        throw new IllegalArgumentException("id must match flowId; omit both to create a new flow");
       }
-      return AppApprovalFlowModel.encode(appApprovalFlowService.save(appId, isBlank(flowId) ? null : flowId, AppApprovalFlowModel.decode(body)));
+      return AppFlowModel.api(appFlowService.save(appId, isBlank(flowId) ? null : flowId, AppFlowModel.decode(JsonUtils.convertValue(body, dev.flexmodel.apps.flow.dto.AppFlowRequest.class).toMap())));
     });
   }
 
-  @Tool(name = "validate_app_approval_flow", value = """
+  @Tool(name = "validate_app_flow", value = """
     Validate an approval definition without saving or publishing it. Accepts the full Flow \
-    JSON contract returned by get_app_approval_flow or a generated draft. Returns an array \
+    JSON contract returned by get_app_flow or a generated draft. Returns an array \
     of {nodeId,message} issues; an empty array means the definition passes validation. \
     Fix all issues before enabling. Malformed Flow JSON returns an Error message.\
     """)
-  public String validate_app_approval_flow(
+  public String validate_app_flow(
     @P("The app ID") String appId,
     @P("JSON object string of the complete approval Flow contract, including flow_module_id when validating an existing flow") String flowJson
   ) {
-    return approvalTool("validate_app_approval_flow", appId, false,
-            () -> appApprovalFlowService.validate(appId, AppApprovalFlowModel.decode(JsonUtils.parseToMap(flowJson))));
+    return approvalTool("validate_app_flow", appId, false,
+      () -> appFlowService.validate(appId, AppFlowModel.decode(JsonUtils.parseToObject(flowJson, dev.flexmodel.apps.flow.dto.AppFlowRequest.class).toMap())));
   }
 
-  @Tool(name = "set_app_approval_flow_status", value = """
-    Publish/enable (status=2) or disable (status=3) an app approval flow using its latest \
+  @Tool(name = "set_app_flow_enabled", value = """
+    Publish/enable (status=2) or disable (status=3) an app flow flow using its latest \
     revision. Enabling validates again and creates an immutable Flow deployment; referenced \
     subflows must already be enabled. Returns the updated flow and revision. A version \
     conflict requires re-reading the flow. Existing runs keep their published version. \
     This does not submit records or make approval decisions.\
     """)
-  public String set_app_approval_flow_status(
+  public String set_app_flow_enabled(
     @P("The app ID") String appId,
     @P("The flow_module_id") String flowId,
-    @P("2 = publish and enable; 3 = disable") int status,
+    @P("Whether the published flow is enabled") boolean enabled,
     @P("Latest revision returned by get/save/status") int revision
   ) {
-    return approvalTool("set_app_approval_flow_status", appId, true, () -> {
-      if (status != 2 && status != 3) throw new IllegalArgumentException("status must be 2 (enabled) or 3 (disabled)");
-      return AppApprovalFlowModel.encode(appApprovalFlowService.status(appId, flowId, status == 2 ? "enabled" : "disabled", revision));
+    return approvalTool("set_app_flow_enabled", appId, true, () -> {
+      return AppFlowModel.api(appFlowService.status(appId, flowId, enabled ? "enabled" : "disabled", revision));
     });
+  }
+
+  @Tool(name = "publish_app_flow", value = "Validate and publish a flow draft by its latest revision. Saving a draft does not alter the enabled published version.")
+  public String publish_app_flow(@P("App ID") String appId, @P("Flow ID") String flowId, @P("Latest draft revision") int revision) {
+    return approvalTool("publish_app_flow", appId, true, () -> AppFlowModel.api(appFlowService.publish(appId, flowId, revision)));
   }
 
   private String approvalTool(String tool, String appId, boolean write, Supplier<?> action) {

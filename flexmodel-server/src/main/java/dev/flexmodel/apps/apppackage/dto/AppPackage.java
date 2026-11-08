@@ -17,7 +17,7 @@ public final class AppPackage {
   }
 
   public static final String FORMAT = "flexmodel-app-package";
-  public static final int VERSION = 1;
+  public static final int VERSION = 2;
   public static final String EXTENSION = ".flexmodel.zip";
 
   // 包级安全限额：导出与导入一致执行
@@ -54,7 +54,7 @@ public final class AppPackage {
   public static final String FORMS_FILE = "forms.json";
   public static final String NAVIGATION_FILE = "navigation.json";
   public static final String WORKBENCHES_FILE = "workbenches.json";
-  public static final String APPROVALS_FILE = "approvals.json";
+  public static final String FLOWS_FILE = "flows.json";
   public static final String AUTHORIZATIONS_FILE = "data-authorizations.json";
   public static final String DATA_DIRECTORY = "data/";
 

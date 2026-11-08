@@ -34,8 +34,8 @@ public class ProjectPlatformDataCleaner {
     AppRecordDiscussion.class,
     AppApprovalTask.class,
     AppApprovalWait.class,
-    AppApprovalRecordLock.class,
-    AppApprovalInstance.class,
+    AppFlowRecordLock.class,
+    AppFlowInstance.class,
     AppWorkbench.class,
     AppForm.class,
     AppDataAuthorization.class

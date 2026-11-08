@@ -126,8 +126,8 @@ public class NotificationService implements ReliableMessageHandler {
   }
 
   public void result(String app, String run, String user, String title, String status) {
-    String label = Map.of("APPROVED", "已通过", "REJECTED", "已拒绝", "TERMINATED", "已终止").get(status);
-    enqueue(app, "result:" + run + ":" + status, run, "", "approval", "审批" + label + "：" + title.substring(0, Math.min(185, title.length())), "你发起的审批" + label + "，请查看审批详情。", List.of(user));
+    String label = Map.of("SUCCEEDED", "已完成", "REJECTED", "已拒绝", "TERMINATED", "已终止").get(status);
+    enqueue(app, "result:" + run + ":" + status, run, "", "approval", "流程" + label + "：" + title.substring(0, Math.min(185, title.length())), "你发起的流程" + label + "，请查看审批详情。", List.of(user));
   }
 
   @SuppressWarnings("unchecked")

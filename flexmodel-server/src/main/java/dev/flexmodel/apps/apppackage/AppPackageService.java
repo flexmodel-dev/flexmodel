@@ -5,7 +5,7 @@ import dev.flexmodel.JsonUtils;
 import dev.flexmodel.apps.AppRepository;
 import dev.flexmodel.apps.apppackage.AppPackageValidator.Result;
 import dev.flexmodel.apps.apppackage.AppPackageZip.Content;
-import dev.flexmodel.apps.approval.AppApprovalFlowService;
+import dev.flexmodel.apps.flow.AppFlowService;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationRepository;
 import dev.flexmodel.apps.form.AppFormService;
 import dev.flexmodel.apps.form.dto.AppFormFieldRecord;
@@ -63,7 +63,7 @@ public class AppPackageService {
   @Inject
   AppWorkbenchRepository appWorkbenchRepository;
   @Inject
-  AppApprovalFlowService approvalFlows;
+  AppFlowService approvalFlows;
   @Inject
   AppDataAuthorizationRepository authorizationRepository;
   @Inject
@@ -141,7 +141,7 @@ public class AppPackageService {
   private Content content(Structure structure, Map<String, List<Map<String, Object>>> dataRows,
                           boolean includeData) {
     return new Content(manifest(structure, dataRows, includeData), structure.app(),
-      structure.formRecords(), structure.navigation(), structure.workbenches(), structure.approvals(),
+      structure.formRecords(), structure.navigation(), structure.workbenches(), structure.flows(),
       structure.authorizations(), dataRows, Map.of());
   }
 
@@ -176,14 +176,14 @@ public class AppPackageService {
     List<AppNavRecord> navs = navStore.navRecords(project);
     List<WorkbenchExport> workbenches = appWorkbenchRepository.findByAppId(project.getId()).stream()
       .map(this::workbenchExport).toList();
-    List<Map<String, Object>> approvals = approvalFlows.list(appId).stream()
-      .map(flow -> approvalExport(flow, appId)).toList();
+    List<Map<String, Object>> flows = approvalFlows.list(appId).stream()
+      .map(flow -> flowExport(flow, appId)).toList();
     List<AuthorizationExport> authorizations = authorizationRepository.find(appId, null).stream()
       .map(rule -> new AuthorizationExport(rule.formName(), rule.name(), rule.enabled(),
         rule.subjects(), rule.dataScope(), rule.controls()))
       .toList();
     return new Structure(project, appInfo(project), formRecords, navs, workbenches,
-      approvals, authorizations);
+      flows, authorizations);
   }
 
   private WorkbenchExport workbenchExport(AppWorkbench workbench) {
@@ -193,7 +193,7 @@ public class AppPackageService {
     return new WorkbenchExport(workbench.getId(), workbench.getName(), workbench.getDescription(), layout);
   }
 
-  private Map<String, Object> approvalExport(Map<String, Object> flow, String appId) {
+  private Map<String, Object> flowExport(Map<String, Object> flow, String appId) {
     Map<String, Object> export = new LinkedHashMap<>();
     export.put("id", flow.get("id"));
     export.put("flowKey", flow.get("flowKey"));
@@ -249,7 +249,7 @@ public class AppPackageService {
 
   private record Structure(Project project, AppInfo app, List<AppFormRecord> formRecords,
                            List<AppNavRecord> navigation, List<WorkbenchExport> workbenches,
-                           List<Map<String, Object>> approvals, List<AuthorizationExport> authorizations) {
+                           List<Map<String, Object>> flows, List<AuthorizationExport> authorizations) {
     String digest(ObjectMapper mapper) {
       try {
         Map<String, Object> snapshot = new LinkedHashMap<>();
@@ -259,7 +259,7 @@ public class AppPackageService {
         snapshot.put("forms", formRecords);
         snapshot.put("navigation", navigation);
         snapshot.put("workbenches", workbenches);
-        snapshot.put("approvals", approvals);
+        snapshot.put("flows", flows);
         snapshot.put("authorizations", authorizations);
         return sha256(mapper.writeValueAsBytes(snapshot));
       } catch (IOException error) {
@@ -381,7 +381,7 @@ public class AppPackageService {
     List<ResourceSummary> resources = List.of(
       new ResourceSummary("navigation", "导航", countNav(content.navigation()), "父节点优先重建，节点 ID 重新分配", true),
       new ResourceSummary("workbenches", "工作台", content.workbenches().size(), "工作台 ID 重新生成，快捷入口重写", true),
-      new ResourceSummary("approvals", "审批流程", content.approvals().size(), "仅导入托管流程，部署后恢复启用", true),
+      new ResourceSummary("flows", "审批流程", content.flows().size(), "仅导入托管流程，部署后恢复启用", true),
       new ResourceSummary("authorizations", "数据权限", content.authorizations().size(), "规则 ID 重新生成，校验不通过的规则会跳过", true),
       new ResourceSummary("records", "记录数据", (int) totalRecords, hasData ? "保留业务主键与业务引用" : "包内未包含记录数据", hasData));
     List<String> warnings = new ArrayList<>(validation.warnings());

@@ -35,7 +35,7 @@ import static dev.flexmodel.apps.apppackage.dto.AppPackage.*;
 public class AppPackageZip {
   private static final Pattern FORM_NAME_PATTERN = Pattern.compile("^[a-z][a-z0-9_]{0,63}$");
   private static final Set<String> FIXED_ENTRIES = Set.of(
-    MANIFEST_FILE, APP_FILE, FORMS_FILE, NAVIGATION_FILE, WORKBENCHES_FILE, APPROVALS_FILE, AUTHORIZATIONS_FILE);
+    MANIFEST_FILE, APP_FILE, FORMS_FILE, NAVIGATION_FILE, WORKBENCHES_FILE, FLOWS_FILE, AUTHORIZATIONS_FILE);
 
   @Inject
   public ObjectMapper json;
@@ -51,7 +51,7 @@ public class AppPackageZip {
     List<AppFormRecord> forms,
     List<AppNavRecord> navigation,
     List<WorkbenchExport> workbenches,
-    List<Map<String, Object>> approvals,
+    List<Map<String, Object>> flows,
     List<AuthorizationExport> authorizations,
     Map<String, List<Map<String, Object>>> data,
     Map<String, byte[]> rawFiles
@@ -78,7 +78,7 @@ public class AppPackageZip {
       entries.put(FORMS_FILE, json.writeValueAsBytes(content.forms()));
       entries.put(NAVIGATION_FILE, json.writeValueAsBytes(content.navigation()));
       entries.put(WORKBENCHES_FILE, json.writeValueAsBytes(content.workbenches()));
-      entries.put(APPROVALS_FILE, json.writeValueAsBytes(content.approvals()));
+      entries.put(FLOWS_FILE, json.writeValueAsBytes(content.flows()));
       entries.put(AUTHORIZATIONS_FILE, json.writeValueAsBytes(content.authorizations()));
       for (var entry : new TreeMap<>(content.data()).entrySet()) {
         entries.put(DATA_DIRECTORY + entry.getKey() + ".json", json.writeValueAsBytes(new DataFile(entry.getValue())));
@@ -191,7 +191,7 @@ public class AppPackageZip {
     List<WorkbenchExport> workbenches = parseList(mapper, files.get(WORKBENCHES_FILE), WorkbenchExport.class);
     List<AuthorizationExport> authorizations = parseList(mapper, files.get(AUTHORIZATIONS_FILE), AuthorizationExport.class);
     @SuppressWarnings("unchecked")
-    List<Map<String, Object>> approvals = parseValue(mapper, files.get(APPROVALS_FILE), List.class);
+    List<Map<String, Object>> flows = parseValue(mapper, files.get(FLOWS_FILE), List.class);
     Map<String, List<Map<String, Object>>> data = new LinkedHashMap<>();
     for (var entry : files.entrySet()) {
       if (!entry.getKey().startsWith(DATA_DIRECTORY)) continue;
@@ -200,7 +200,7 @@ public class AppPackageZip {
       data.put(formName, file.rows() == null ? List.of() : file.rows());
     }
     return new Content(manifest, app, forms, navigation, workbenches,
-      approvals == null ? List.of() : approvals, authorizations, data, files);
+      flows == null ? List.of() : flows, authorizations, data, files);
   }
 
   private <T> T parseValue(ObjectMapper mapper, byte[] bytes, Class<T> type) throws IOException {

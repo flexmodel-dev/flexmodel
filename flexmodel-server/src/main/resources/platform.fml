@@ -57,7 +57,7 @@ model f_app_record_discussion {
   record_id : String @length("64"),
   parent_id : String @length("64") @comment("顶层讨论为空串，回复存顶层讨论ID"),
   reply_to_name? : String @length("128") @comment("回复目标作者姓名快照"),
-  content : String @length("2000"),
+  content : Text,
   author_id : String @length("64"),
   author_name : String @length("128"),
   mentioned_user_ids? : JSON,
@@ -114,7 +114,7 @@ model f_notification {
   recipient_id: String,
   category: String,
   title: String @length("200"),
-  content: String @length("5000"),
+  content: Text,
   app_name: String,
   instance_id?: String,
   task_id?: String,
@@ -713,7 +713,7 @@ model f_runtime_message {
   attempts: Int @default(0),
   available_at: DateTime,
   created_at: DateTime,
-  error?: String @length(10000),
+  error?: Text,
   @index(name: "UQ_RUNTIME_MESSAGE", unique: true, fields: [project_id, message_id]),
   @index(name: "IDX_RUNTIME_DELIVERY", fields: [project_id, state, available_at]),
   @index(name: "IDX_RUNTIME_ORDER", fields: [project_id, ordering_key, id]),
@@ -721,7 +721,11 @@ model f_runtime_message {
   @comment("可靠事件与命令 Outbox")
 }
 
-model f_app_approval_instance {
+model f_app_flow_instance {
+  trigger_type: String,
+  principal: String,
+  source_id: String,
+  request_hash: String,
   id: String @id,
   app_id: String @comment("所属应用ID"),
   request_key: String,
@@ -734,10 +738,10 @@ model f_app_approval_instance {
   snapshot: JSON,
   flow_instance_id?: String,
   parent_task_id?: String,
-  error?: String @length(10000),
+  error?: Text,
   created_at: DateTime,
   updated_at: DateTime,
-  @index(name: "UQ_APPROVAL_INSTANCE_REQUEST", unique: true, fields: [app_id, request_key]),
+  @index(name: "UQ_FLOW_INSTANCE_REQUEST", unique: true, fields: [app_id, request_key]),
   @index(name: "IDX_FORM_RUN_RECORD", fields: [app_id, form_name, record_id]),
   @index(name: "IDX_FORM_RUN_ENGINE", fields: [app_id, flow_instance_id]),
   @system,
@@ -766,7 +770,7 @@ model f_app_approval_task {
   status: String,
   decision?: String,
   request_key?: String,
-  comment?: String @length(2000),
+  comment?: Text,
   decided_at?: DateTime,
   created_at: DateTime,
   @index(name: "IDX_APPROVAL_PERSONAL", fields: [app_id, user_id, status]),
@@ -775,14 +779,14 @@ model f_app_approval_task {
   @comment("个人签核任务与决策记录")
 }
 
-model f_app_approval_record_lock {
+model f_app_flow_record_lock {
   id: String @id,
   app_id: String @comment("所属应用ID"),
   run_id: String,
   schema_name: String,
   model_name: String,
   record_id: String,
-  @index(name: "UQ_APPROVAL_RECORD_LOCK", unique: true, fields: [app_id, schema_name, model_name, record_id]),
+  @index(name: "UQ_FLOW_RECORD_LOCK", unique: true, fields: [app_id, schema_name, model_name, record_id]),
   @system,
   @comment("审批中的业务记录锁")
 }
@@ -823,7 +827,7 @@ model f_auth_provider_config {
 model f_api_request_log {
   id : String @id @default(uuid()),
   project_id : String @comment("所属项目ID"),
-  url : String @length("2000") @comment("请求地址"),
+  url : Text @comment("请求地址"),
   http_method: String @length("255") @comment("请求方法"),
   path: String @length("1000") @comment("请求路径"),
   request_body : JSON @comment("请求参数"),
@@ -846,12 +850,13 @@ model f_api_request_log {
 }
 
 model f_em_flow_definition {
+  revision: Int @default(0),
   id: Long @id @default(autoIncrement()),
   project_id: String @comment("所属项目ID"),
   flow_module_id: String @comment("流程模型id"),
   flow_name: String @comment("流程名称"),
   flow_key: String @comment("流程业务标识"),
-  flow_model?: String @length(1000000) @comment("表单定义"),
+  flow_model?: Text @comment("流程定义"),
   status: Int @default(0) @comment("状态(1.初始态 2.编辑中 3.已下线)"),
   remark: String @length(512) @comment("备注"),
   archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
@@ -872,7 +877,7 @@ model f_em_flow_deployment {
   flow_module_id: String @comment("流程模型id"),
   flow_name: String @comment("流程名称"),
   flow_key: String @comment("流程业务标识"),
-  flow_model: String @length(1000000) @comment("表单定义"),
+  flow_model: Text @comment("流程定义"),
   status: Int @default(0) @comment("状态(1.已部署 3.已下线)"),
   remark: String @length(512) @comment("备注"),
   archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
@@ -930,7 +935,7 @@ model f_ei_node_instance {
   node_instance_id: String @comment("节点执行实例id"),
   flow_instance_id: String @comment("流程执行实例id"),
   source_node_instance_id: String @comment("上一个节点执行实例id"),
-  instance_data_id: String @length(5000) @comment("实例数据id"),
+  instance_data_id: Text @comment("实例数据id"),
   flow_deploy_id: String @comment("流程模型部署id"),
   node_key: String @comment("节点唯一标识"),
   node_type: Int @default(0) @comment("流程类型"),
@@ -980,7 +985,7 @@ model f_ei_instance_data {
   flow_deploy_id: String @comment("流程模型部署id"),
   flow_module_id: String @comment("流程模型id"),
   node_key: String @comment("节点唯一标识"),
-  instance_data: String @length(1000000) @comment("数据列表json"),
+  instance_data: Text @comment("数据列表json"),
   type: Int @default(0) @comment("操作类型(1.实例初始化 2.系统执行 3.系统主动获取 4.上游更新 5.任务提交 6.任务撤回)"),
   archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
   created_by?: String @comment("创建人"),
@@ -994,6 +999,10 @@ model f_ei_instance_data {
 }
 
 model f_trigger {
+  managed_key?: String,
+  deployment_id?: String,
+  generation: Int @default(0),
+  @index(name: "UQ_FLOW_TRIGGER_BINDING", unique: true, fields: [project_id, managed_key]),
   id : String @id @default(uuid()),
   project_id : String @comment("所属项目ID"),
   name : String @comment("描述"),
@@ -1001,7 +1010,7 @@ model f_trigger {
   type: TriggerType @comment("触发器类型"),
   config: JSON @comment("触发器配置"),
   job_type: String @length("50") @default("FLOW") @comment("任务的类型"),
-  job_group: String @length("50") @comment("任务的分组"),
+  job_group: String @length("190") @comment("任务的分组"),
   job_id: String @length("50") @comment("任务的ID"),
   state: Boolean @default(true) @comment("状态"),
   created_at? : DateTime @default(now()),
@@ -1019,7 +1028,7 @@ model f_job_execution_log {
   project_id : String @comment("所属项目ID"),
   trigger_id : String @length("50") @comment("触发器ID"),
   job_id : String @length("50") @comment("作业ID"),
-  job_group : String @length("50") @comment("作业分组"),
+  job_group : String @length("190") @comment("作业分组"),
   job_type : String @length("50") @comment("作业类型"),
   job_name : String @length("255") @comment("作业名称"),
   execution_status : String @length("20") @comment("执行状态(SUCCESS/FAILED/RUNNING)"),
@@ -1027,7 +1036,7 @@ model f_job_execution_log {
   end_time? : DateTime @comment("结束执行时间"),
   execution_duration? : Long @comment("执行时长(毫秒)"),
   is_success : Boolean @default(false) @comment("是否执行成功"),
-  error_message? : String @length("2000") @comment("错误信息"),
+  error_message? : Text @comment("错误信息"),
   error_stack_trace? : JSON @comment("错误堆栈信息"),
   input_data? : JSON @comment("输入数据"),
   output_data? : JSON @comment("输出数据"),
@@ -1100,6 +1109,7 @@ model f_login_log {
 }
 
 enum TriggerType {
+  MANUAL,
   EVENT,
   SCHEDULE,
   @system
@@ -1180,4 +1190,17 @@ seed f_function {
   {project_id: "dev_test",  "id": "hello", "name": "hello", "source_files": { "index.ts": "export default async function(req: Request, ctx: Context) {\n  return new Response(JSON.stringify({ message: \"Hello, World!\" }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}" }},
   {project_id: "dev_test",  "id": "student_query", "name": "student_query", "source_files": { "index.ts": "import { flexmodelClient } from '@flexmodel/sdk';\nimport { Student } from './type.ts';\n\nexport default async (input) => {\n  // runtime 已在调用前 setAuthToken + setProjectId\n  console.log(\"请求参数: \"+JSON.stringify(input));\n  console.warn(\"这是一个警告信息\"); // 黄色惊叹号图标\n  console.error(\"这是一个错误信息\"); // 红色错误图标，并自带错误堆栈\n  const { list } = await flexmodelClient.data.Student.findMany({ where: { age: { _eq: 10 } } });\n  return { list };\n}", "type.ts": "// Add your code here\nexport interface Student {\n    studentName: string;\n}" } },
   {project_id: "dev_test",  "id": "health-check", "name": "health-check", "source_files": { "index.ts": "export default async function(req: Request) {\n  const url = \"http://localhost:9999/health\";\n\n  try {\n    const response = await fetch(url);\n\n    if (!response.ok) {\n      return new Response(JSON.stringify({ error: \"Health check failed\", status: response.status }), {\n        status: 401,\n        headers: { \"content-type\": \"application/json\" }\n      });\n    }\n    console.log(\"Health check succeeded\");\n\n    return new Response(JSON.stringify({\n       success: true\n    }), {\n      headers: { \"content-type\": \"application/json\" }\n    });\n  } catch (err) {\n    console.error(\"Health check failed\", err);\n    return new Response(JSON.stringify({ error: \"Health check failed\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" }\n    });\n  }\n}" }, "timeout": 30, "created_at": "2026-07-15T10:49:31.493042100", "updated_at": "2026-07-15T10:49:31.493042100" }
+}
+
+model f_app_flow_trigger_log {
+ id: String @id,
+ app_id: String,
+ flow_id: String,
+ source_id: String,
+ state: String,
+ instance_id: String,
+  reason: Text,
+ created_at: DateTime,
+ @index(name: "IDX_FLOW_TRIGGER_LOG", fields: [app_id, flow_id, created_at]),
+ @system
 }

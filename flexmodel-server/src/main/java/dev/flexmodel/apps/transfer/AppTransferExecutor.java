@@ -29,6 +29,8 @@ import static java.util.List.of;
 @ApplicationScoped
 public class AppTransferExecutor {
   @Inject
+  dev.flexmodel.apps.flow.AppFlowRecordEvents flowEvents;
+  @Inject
   ServerSessions sessions;
   @Inject
   ProjectUnitOfWork transactions;
@@ -118,6 +120,7 @@ public class AppTransferExecutor {
         } catch (RuntimeException error) {
           throw new ValidationException(first.sheet() + " 第 " + first.row() + " 行起的批次写入失败，整包已回滚，请检查唯一键及字段约束", error);
         }
+        for (var values : batch) flowEvents.capture(plan.appId(), form.name(), null, values);
         if (historyEnabled) {
           for (Map<String, Object> values : batch) {
             historyEvents.add(history.importCreated(historyContext, plan.id(), form, values));

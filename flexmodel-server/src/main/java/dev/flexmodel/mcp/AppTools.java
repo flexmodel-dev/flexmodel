@@ -724,7 +724,7 @@ public class AppTools {
 
   @Tool(name = "list_app_flows", value = """
     List approval flows belonging to an app, using id, name, flowKey, \
-    model (JSON object), status and revision. status: draft, enabled, disabled. \
+    model (JSON object) and status. status: draft, enabled, disabled. \
     Use this before creating a flow to avoid duplicates or find existing subflows.\
     """)
   public String list_app_flows(
@@ -734,7 +734,7 @@ public class AppTools {
       () -> appFlowService.list(appId).stream().map(AppFlowModel::api).toList());
   }
 
-  @Tool(name = "get_app_flow", value = "Get an app flow flow and its latest revision before editing or changing status.")
+  @Tool(name = "get_app_flow", value = "Get an app flow before editing or changing status.")
   public String get_app_flow(
     @P("The app ID") String appId,
     @P("flow_module_id returned by list_app_flows or save_app_flow") String flowId
@@ -745,16 +745,16 @@ public class AppTools {
 
   @Tool(name = "save_app_flow", value = """
     Create or replace an app flow draft. Call get_app_flow_capabilities first. \
-    For creation omit flowId; for updates pass flowId and the latest revision in flowJson. \
+    For creation omit flowId; for updates pass flowId. \
     flowJson uses the same Flow contract as get_app_flow; preserve unchanged nodes. \
     The start config must carry exactly one valid trigger (MANUAL, DATA_EVENT or SCHEDULE, see triggers). \
-    Returns the saved flow_module_id and revision. Saving does not change the published version. \
+    Returns the saved flow_module_id. Saving does not change the published version. \
     Incomplete drafts are allowed: validate and explicitly enable before running.\
     """)
   public String save_app_flow(
     @P("The app ID") String appId,
     @P(value = "Existing flow_module_id for updates; omit to create", required = false) String flowId,
-    @P("JSON object string with name, model (a JSON object), optional flowKey/description, and revision for updates") String flowJson
+    @P("JSON object string with name, model (a JSON object) and optional flowKey/description") String flowJson
   ) {
     return approvalTool("save_app_flow", appId, true, () -> {
       var body = JsonUtils.parseToMap(flowJson);
@@ -781,26 +781,24 @@ public class AppTools {
   }
 
   @Tool(name = "set_app_flow_enabled", value = """
-    Publish/enable (status=2) or disable (status=3) an app flow flow using its latest \
-    revision. Enabling validates again and creates an immutable Flow deployment; referenced \
-    subflows must already be enabled. Returns the updated flow and revision. A version \
-    conflict requires re-reading the flow. Existing runs keep their published version. \
+    Publish/enable (status=2) or disable (status=3) an app flow. Enabling validates \
+    again and creates an immutable Flow deployment; referenced subflows must already be \
+    enabled. Existing runs keep their published version. \
     This does not submit records or make approval decisions.\
     """)
   public String set_app_flow_enabled(
     @P("The app ID") String appId,
     @P("The flow_module_id") String flowId,
-    @P("Whether the published flow is enabled") boolean enabled,
-    @P("Latest revision returned by get/save/status") int revision
+    @P("Whether the published flow is enabled") boolean enabled
   ) {
     return approvalTool("set_app_flow_enabled", appId, true, () -> {
-      return AppFlowModel.api(appFlowService.status(appId, flowId, enabled ? "enabled" : "disabled", revision));
+      return AppFlowModel.api(appFlowService.status(appId, flowId, enabled ? "enabled" : "disabled"));
     });
   }
 
-  @Tool(name = "publish_app_flow", value = "Validate and publish a flow draft by its latest revision. Saving a draft does not alter the enabled published version.")
-  public String publish_app_flow(@P("App ID") String appId, @P("Flow ID") String flowId, @P("Latest draft revision") int revision) {
-    return approvalTool("publish_app_flow", appId, true, () -> AppFlowModel.api(appFlowService.publish(appId, flowId, revision)));
+  @Tool(name = "publish_app_flow", value = "Validate and publish a flow draft. Saving a draft does not alter the enabled published version.")
+  public String publish_app_flow(@P("App ID") String appId, @P("Flow ID") String flowId) {
+    return approvalTool("publish_app_flow", appId, true, () -> AppFlowModel.api(appFlowService.publish(appId, flowId)));
   }
 
   private String approvalTool(String tool, String appId, boolean write, Supplier<?> action) {

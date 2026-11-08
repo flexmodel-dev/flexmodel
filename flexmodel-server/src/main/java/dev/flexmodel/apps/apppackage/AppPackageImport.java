@@ -367,7 +367,6 @@ public class AppPackageImport {
       body.put("description", response.get("description"));
       body.put("form", response.get("form"));
       body.put("definition", rewritten);
-      body.put("revision", response.get("revision"));
       created.put(text(flow, "id"), approvalService.save(appId, text(response, "id"), body));
     }
   }
@@ -421,10 +420,6 @@ public class AppPackageImport {
       }
     }
     return changed ? result : null;
-  }
-
-  private int revision(Map<String, Object> response) {
-    return ((Number) response.getOrDefault("revision", 1)).intValue();
   }
 
   // ---------------------------------------------------------------- 数据权限

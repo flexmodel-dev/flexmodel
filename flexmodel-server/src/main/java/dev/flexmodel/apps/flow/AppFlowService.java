@@ -16,7 +16,6 @@ import dev.flexmodel.flow.service.ExternalTaskAccess;
 import dev.flexmodel.flow.service.ProcessService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.ClientErrorException;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -67,9 +66,6 @@ public class AppFlowService {
     return transactions.executePlatform(appId, () -> {
       if (id != null) appFlowDefinitionRepository.lock(appId, id);
       var old = id == null ? null : managedDefinition(appId, id);
-      int revision = old == null ? 0 : revision(old);
-      if (old != null && revision != ((Number) body.getOrDefault("revision", -1)).intValue())
-        throw new ClientErrorException("流程已被其他人修改，请刷新后重试", 409);
       if (text(body, "name").isBlank() || text(body, "name").length() > 120)
         throw new ValidationException("流程名称不能为空且不超过 120 字符");
       if (text(body, "description").length() > 512) throw new ValidationException("流程备注不能超过 512 字符");
@@ -100,7 +96,6 @@ public class AppFlowService {
         }
         draft.put("id", moduleId);
         update(appId, moduleId, draft, old == null ? Map.of() : AppFlowModel.metadata(old));
-        appFlowDefinitionRepository.update(appId, moduleId, Map.of("revision", revision + 1));
         if (old != null) preserveCreated(appId, moduleId, old);
         return get(appId, moduleId);
       });
@@ -114,20 +109,19 @@ public class AppFlowService {
     return compiler.validate(appId, flow, all);
   }
 
-  public Map<String, Object> publish(String appId, String id, int revision) {
-    return change(appId, id, "publish", revision);
+  public Map<String, Object> publish(String appId, String id) {
+    return change(appId, id, "publish");
   }
 
-  public Map<String, Object> status(String appId, String id, String state, int revision) {
-    return change(appId, id, state, revision);
+  public Map<String, Object> status(String appId, String id, String state) {
+    return change(appId, id, state);
   }
 
-  private Map<String, Object> change(String appId, String id, String state, int revision) {
+  private Map<String, Object> change(String appId, String id, String state) {
     return transactions.executePlatform(appId, () -> {
       appFlowDefinitionRepository.lock(appId, id);
       var row = managedDefinition(appId, id);
       var flow = response(appId, row);
-      if (revision(row) != revision) throw new ClientErrorException("流程版本已变化，请刷新", 409);
       if (!Set.of("publish", "enabled", "disabled").contains(state)) throw new ValidationException("流程状态无效");
       Map<String, Object> metadata = new LinkedHashMap<>(AppFlowModel.metadata(row));
 
@@ -150,7 +144,7 @@ public class AppFlowService {
           success(deployed);
           return deployed.getFlowDeployId();
         });
-        metadata = new LinkedHashMap<>(Map.of("deploymentId", deploymentId, "publishedRevision", revision));
+        metadata = new LinkedHashMap<>(Map.of("deploymentId", deploymentId, "publishedModelHash", AppFlowModel.contentHash(flow)));
       }
       String deployedId = text(metadata, "deploymentId");
       if (deployedId.isBlank()) throw new ValidationException("请先发布流程");
@@ -194,10 +188,6 @@ public class AppFlowService {
     if (!created.isEmpty()) appFlowDefinitionRepository.update(appId, id, created);
   }
 
-  private int revision(Map<String, Object> row) {
-    return ((Number) row.getOrDefault("revision", 0)).intValue();
-  }
-
   private int status(Map<String, Object> row) {
     var binding = bindings.find(text(row, "project_id"), text(row, "flow_module_id"));
     if (binding != null) return Boolean.TRUE.equals(binding.getState()) ? 2 : 3;
@@ -208,7 +198,6 @@ public class AppFlowService {
   private Map<String, Object> response(String appId, Map<String, Object> row) {
     var view = new LinkedHashMap<>(row);
     view.put("status", status(row));
-    view.put("revision", revision(row));
     var flow = AppFlowModel.decode(view);
     flow.put("appId", appId);
     var binding = bindings.find(appId, text(row, "flow_module_id"));
@@ -216,7 +205,7 @@ public class AppFlowService {
       flow.put("publishedTrigger", binding.getConfig());
       flow.put("deploymentId", binding.getDeploymentId());
     }
-    flow.put("hasDraftChanges", revision(row) > ((Number) AppFlowModel.metadata(row).getOrDefault("publishedRevision", -1)).intValue());
+    flow.put("hasDraftChanges", !AppFlowModel.contentHash(flow).equals(text(AppFlowModel.metadata(row), "publishedModelHash")));
     flow.put("is_deleted", Boolean.TRUE.equals(row.get("is_deleted")) ? 1 : 0);
     return flow;
   }

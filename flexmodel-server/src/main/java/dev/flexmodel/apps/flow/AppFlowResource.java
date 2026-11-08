@@ -32,10 +32,7 @@ public class AppFlowResource {
     return AppFlowResponse.from(AppFlowModel.encode(flow));
   }
 
-  public record Publication(Integer revision) {
-  }
-
-  public record Enablement(boolean enabled, Integer revision) {
+  public record Enablement(boolean enabled) {
   }
 
   @GET
@@ -106,15 +103,15 @@ public class AppFlowResource {
   @POST
   @Path("/flows/{id}/publish")
   @RequiresPermissions("flow:deploy")
-  public AppFlowResponse publish(@PathParam("appId") String app, @PathParam("id") String id, Publication body) {
-    return response(flows.publish(app, id, body.revision() == null ? -1 : body.revision()));
+  public AppFlowResponse publish(@PathParam("appId") String app, @PathParam("id") String id) {
+    return response(flows.publish(app, id));
   }
 
   @PUT
   @Path("/flows/{id}/enabled")
   @RequiresPermissions("flow:deploy")
   public AppFlowResponse enabled(@PathParam("appId") String app, @PathParam("id") String id, Enablement body) {
-    return response(flows.status(app, id, body.enabled() ? "enabled" : "disabled", body.revision() == null ? -1 : body.revision()));
+    return response(flows.status(app, id, body.enabled() ? "enabled" : "disabled"));
   }
 
   @DELETE

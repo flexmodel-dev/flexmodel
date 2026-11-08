@@ -40,7 +40,7 @@ class AppFlowModelTest {
     assertEquals(source.get("definition"), restored.get("definition"));
     assertFalse(record.containsKey("definition"));
     assertInstanceOf(String.class, record.get("flow_model"));
-    var model = new AppFlowCompiler().compile(restored, Map.of("revision", 1));
+    var model = new AppFlowCompiler().compile(restored, Map.of());
     var gateway = model.getFlowElementList().stream().filter(e -> e.getKey().equals("gateway")).findFirst().orElseThrow();
     assertEquals(6, gateway.getType());
     assertFalse(gateway.getProperties().containsKey("handler"));

@@ -39,7 +39,7 @@ public class AppFlowCapabilities {
     result.put("flowContract", Map.of(
       "required", List.of("name", "model"),
       "optional", List.of("flowKey", "description"),
-      "update", "Pass flowId and the latest revision returned by get_app_flow; flowKey stays stable",
+      "update", "Pass flowId to update an existing flow; flowKey stays stable",
       "model", "JSON object containing flowElementList; start config includes exactly one trigger",
       "statuses", List.of("draft", "enabled", "disabled"),
       "serverManaged", List.of("handler", "handlerOwner", "nodeId", "workflow"),

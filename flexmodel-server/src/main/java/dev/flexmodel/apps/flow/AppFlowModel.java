@@ -3,6 +3,9 @@ package dev.flexmodel.apps.flow;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.common.ValidationException;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import static dev.flexmodel.apps.flow.AppFlowJson.*;
@@ -38,6 +41,23 @@ public final class AppFlowModel {
     }
   }
 
+  /**
+   * Content fingerprint of the editable flow fields, used to detect draft changes since publish.
+   */
+  public static String contentHash(Map<String, Object> flow) {
+    Map<String, Object> content = new LinkedHashMap<>();
+    content.put("name", text(flow, "name"));
+    content.put("flowKey", text(flow, "flowKey"));
+    content.put("description", text(flow, "description"));
+    content.put("definition", object(flow.get("definition")));
+    try {
+      return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+        .digest(JsonUtils.toJsonString(content).getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException error) {
+      throw new IllegalStateException("SHA-256 不可用", error);
+    }
+  }
+
   public static Map<String, Object> encode(Map<String, Object> flow) {
     Map<String, Map<String, Object>> graph = new LinkedHashMap<>();
     List<Map<String, Object>> nodes = objects(object(flow.get("definition")).get("nodes"));
@@ -54,7 +74,7 @@ public final class AppFlowModel {
       default -> 1;
     });
     result.put("remark", text(flow, "description"));
-    for (String key : List.of("revision", "archive", "is_deleted", "created_by", "updated_by", "created_at", "updated_at", "publishedTrigger", "deploymentId", "hasDraftChanges"))
+    for (String key : List.of("archive", "is_deleted", "created_by", "updated_by", "created_at", "updated_at", "publishedTrigger", "deploymentId", "hasDraftChanges"))
       if (flow.containsKey(key)) result.put(key, flow.get(key));
     return result;
   }
@@ -186,7 +206,7 @@ public final class AppFlowModel {
       });
       flow.put("form", form);
       flow.put("definition", Map.of("nodes", roots));
-      for (String key : List.of("revision", "archive", "is_deleted", "created_by", "updated_by", "created_at", "updated_at"))
+      for (String key : List.of("archive", "is_deleted", "created_by", "updated_by", "created_at", "updated_at"))
         if (row.containsKey(key)) flow.put(key, row.get(key));
       flow.put("updatedAt", row.getOrDefault("updated_at", ""));
       // Reject conflicting graph/tree metadata, rather than silently executing a different graph.

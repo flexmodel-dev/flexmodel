@@ -1,3 +1,27 @@
+## Apps - 移除流程 revision 乐观锁（2026-11-08，feat-176 续）
+
+- 按用户决定删除 `f_em_flow_definition.revision` 字段：SQLite 只用于测试，并发控制统一走既有
+  `lock()`（SELECT … FOR UPDATE，save/change/delete 均已加锁），无需乐观锁。
+- 后端：
+  - `platform.fml` 删除 `revision: Int @default(0)`；codegen 生成的 FlowDefinition 实体随 FML 重建。
+  - `AppFlowService`：save/publish/status 去掉 revision 参数与 409 版本冲突检查；`hasDraftChanges` 改为
+    内容哈希对比——发布时在 workflow 元数据写入 `publishedModelHash`（`AppFlowModel.contentHash`：
+    name/flowKey/description/definition 的 SHA-256），列表/详情用它判断草稿是否有未发布修改，
+    未发布过的流程保持 hasDraftChanges=true 语义。
+  - `AppFlowRequest/AppFlowResponse` 删除 revision；`AppFlowResource` publish 不再收请求体、
+    enabled 仅收 `{enabled}`；删除无人引用的 `AppFlowStatusRequest`。
+  - MCP `AppTools`（save/get/list/publish/set_enabled）与 `AppFlowCapabilities` 契约文本同步去 revision；
+    `AppPackageImport.rebuildFlows` 不再回传 revision。
+- 前端：`ApprovalFlow/ApprovalFlowRecord` 类型、`approvals.ts` publish/enabled 请求体、
+  `approval-model.ts` 编解码、单测与 e2e mock（approvals.spec.ts、flows-backend.mjs）全部去 revision。
+- 遗留：`e2e/notifications-backend.mjs` 仍基于已下线的 /approval-flows、/approval-instances 旧契约
+  （feat-176 迁移 /flows 时遗留，早于本次 revision 变更），对应 NotificationResourceTest 浏览器用例
+  需要单独迁移，未纳入本次范围。
+- 验证：全模块 `mvn -o clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过；定向 45/45
+  （AppFlowModelTest/AppFlowForecastTest/ApprovalPolicyTest/AppToolsTest/AppPackageValidatorTest/AppTemplateCatalogTest）；
+  AppFlowIntegrationTest 8/8（含 flows-backend.mjs 真实浏览器闭环，覆盖新 publish/enabled 无 revision 契约）；
+  `mvn -o test -pl flexmodel-engine` BUILD SUCCESS；apps-ui build ✓、vitest 66/66、approvals Playwright 5/5。
+
 ## Apps - 通用工作流升级（2026-11-08，feat-176 续）
 
 - 本轮聚焦「创建流程时指定触发方式」，并按用户授权清理不合理/难维护代码；不提交代码。

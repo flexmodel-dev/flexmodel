@@ -86,7 +86,7 @@ class AppFlowIntegrationTest {
   Map<String, Object> publish(Map<String, Object> body) {
     var flow = flows.save(app, null, body);
     assertTrue(flows.validate(app, flow).isEmpty(), () -> flows.validate(app, flow).toString());
-    return flows.publish(app, text(flow, "id"), ((Number) flow.get("revision")).intValue());
+    return flows.publish(app, text(flow, "id"));
   }
 
   void drain() {
@@ -208,10 +208,9 @@ class AppFlowIntegrationTest {
     var body = AppFlowModel.api(draft(Map.of("type", "MANUAL", "formName", "orders", "lockRecord", false), List.of()));
     var created = api(token).body(body).post("/apps/" + app + "/flows").then().statusCode(201).extract().jsonPath();
     String flow = created.getString("id");
-    int revision = created.getInt("revision");
     assertNotNull(created.getMap("model"));
     assertNull(created.get("flow_model"));
-    api(token).body(Map.of("revision", revision)).post("/apps/" + app + "/flows/" + flow + "/publish").then().statusCode(200);
+    api(token).post("/apps/" + app + "/flows/" + flow + "/publish").then().statusCode(200);
     String record = record("HTTP 订单");
     var request = Map.of("recordId", record, "requestKey", "http-key");
     var first = api(token).body(request).post("/apps/" + app + "/flows/" + flow + "/instances").then().statusCode(202).extract().path("id");

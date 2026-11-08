@@ -8,7 +8,7 @@ import java.util.*;
 /**
  * Public authoring contract; engine storage names remain internal.
  */
-public record AppFlowRequest(String id, String name, String flowKey, String description, Integer revision,
+public record AppFlowRequest(String id, String name, String flowKey, String description,
                              FlowModel model) {
   public Map<String, Object> toMap() {
     var v = new LinkedHashMap<String, Object>();
@@ -16,7 +16,6 @@ public record AppFlowRequest(String id, String name, String flowKey, String desc
     v.put("flow_name", Objects.toString(name, ""));
     v.put("flow_key", Objects.toString(flowKey, ""));
     v.put("remark", Objects.toString(description, ""));
-    v.put("revision", revision == null ? -1 : revision);
     v.put("flow_model", JsonUtils.toJsonString(model));
     return v;
   }

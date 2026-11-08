@@ -25,7 +25,7 @@ public class NotificationRelay {
 
   @Scheduled(every = "1s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
   public void dispatch() {
-    try (var session = sessions.openOwned("system")) {
+    try (var session = sessions.open("system")) {
       var pending = session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(NotificationEvent.class)).where(field("published").eq(false)).limit(200).execute();
       for (var event : pending) {
         streams.wake(text(event, "recipient_id"));

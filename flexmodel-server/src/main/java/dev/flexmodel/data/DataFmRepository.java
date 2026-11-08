@@ -8,6 +8,7 @@ import dev.flexmodel.query.DSLQueryBuilder;
 import dev.flexmodel.query.Expressions;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
+import dev.flexmodel.session.UnitOfWork;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,8 @@ public class DataFmRepository implements DataRepository {
 
   @Inject
   dev.flexmodel.common.persistence.ServerSessions serverSessions;
+  @Inject
+  UnitOfWork unitOfWork;
 
   @Override
   public List<Map<String, Object>> findRecords(String projectId,
@@ -206,25 +209,19 @@ public class DataFmRepository implements DataRepository {
 
   @Override
   public List<Map<String, Object>> updateRecords(String projectId, String datasourceName, String modelName, List<Map<String, Object>> data) {
-    try (Session session = open(datasourceName)) {
-      session.startTransaction();
-      try {
-        EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
-        String idFieldName = entity.findIdField().orElseThrow().getName();
-        for (Map<String, Object> record : data) {
-          Object id = record.get(idFieldName);
-          if (id == null) {
-            throw new IllegalArgumentException("批量更新记录缺少 id 字段: " + modelName);
-          }
-          session.data().updateById(modelName, record, id);
+    return unitOfWork.execute(datasourceName, () -> {
+      Session session = UnitOfWork.borrow(datasourceName);
+      EntityDefinition entity = (EntityDefinition) session.schema().getModel(modelName);
+      String idFieldName = entity.findIdField().orElseThrow().getName();
+      for (Map<String, Object> record : data) {
+        Object id = record.get(idFieldName);
+        if (id == null) {
+          throw new IllegalArgumentException("批量更新记录缺少 id 字段: " + modelName);
         }
-        session.commit();
-        return data;
-      } catch (RuntimeException | Error error) {
-        session.rollback();
-        throw error;
+        session.data().updateById(modelName, record, id);
       }
-    }
+      return data;
+    });
   }
 
   @Override

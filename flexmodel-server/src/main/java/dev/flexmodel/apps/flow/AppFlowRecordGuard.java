@@ -14,10 +14,10 @@ import dev.flexmodel.codegen.entity.NodeInstance;
 import dev.flexmodel.codegen.entity.NodeInstanceLog;
 import dev.flexmodel.codegen.entity.RuntimeMessage;
 import dev.flexmodel.common.ProjectUnitOfWork;
-import dev.flexmodel.common.persistence.ServerSessions;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.project.ProjectRepository;
 import dev.flexmodel.query.Query;
+import dev.flexmodel.service.WriteInterceptor;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -33,7 +33,7 @@ import static dev.flexmodel.query.Expressions.*;
  * Lock the selected business rows before checking approval locks, then mutate only that checked set.
  */
 @ApplicationScoped
-public class AppFlowRecordGuard {
+public class AppFlowRecordGuard implements WriteInterceptor {
   private static final Set<String> INTERNAL = Set.of(
     ReflectionUtils.getModelNameFromClass(RuntimeMessage.class),
     ReflectionUtils.getModelNameFromClass(AppFlowInstance.class),
@@ -68,13 +68,13 @@ public class AppFlowRecordGuard {
       boolean byId = operation.equals("updateById") || operation.equals("deleteById");
       if (byId) {
         Object value = args[operation.equals("updateById") ? 2 : 1];
-        ServerSessions.managed(session).lockRow(model, id, value);
+        session.lockRow(model, id, value);
         query.setFilter(field(id).eq(value).toJsonString());
       } else if (!operation.equals("deleteAll")) {
         Object filter = args[operation.equals("update") ? 2 : 1];
         query.setFilter(filter instanceof dev.flexmodel.query.Predicate predicate ? predicate.toJsonString() : Objects.toString(filter, ""));
       }
-      var rows = ServerSessions.managed(session).lockRows(model, query);
+      var rows = session.lockRows(model, query);
       if (rows.isEmpty()) return 0;
       var ids = rows.stream().map(row -> row.get(id)).toList();
       Set<String> selected = new HashSet<>(ids.stream().map(String::valueOf).toList());

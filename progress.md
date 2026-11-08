@@ -4904,3 +4904,30 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   Apps 页面范围。首版 TypeScript 编译通过，Vite 构建遇到既有 esbuild 临时文件 Access is denied，已尝试单独
   TEMP/TMP，用户要求停止验证后未继续排查或核对重试结果。
 - 用户已有部署、服务配置、AI 与 flexmodel-ui 子模块改动保留。未执行 git commit/push。
+
+## Engine 事务 UnitOfWork 下沉（2026-11-08，按 docs/plans/engine-unit-of-work.md 实施）
+
+- engine（flexmodel-core）新增：`session/UnitOfWork`（REQUIRED+跨schema挂起+adopt+afterCommit/lock/borrow lease）、
+  `session/SessionOptions`（none/readCommitted/serializable）、`service/WriteInterceptor` SPI、`sql/DatabaseBusyException` +
+  `SqlExecutionException.of` 分类工厂、`SqlDialect.prepareConnection` 钩子（SQLite busy_timeout=5000）。
+- engine 改造：Session 接口新增 isTransactionActive/afterCommit/lockRow/lockRows/mergeUpdate 默认方法；SqlSession 承接
+  ServerSqlSession 全部语义（事件边界记录、回滚丢弃、提交后回调在连接归还与事件发布之后执行、行锁、工厂级拦截器包装 data ()
+  ）；EventAwareDataService 新增 markEventBoundary/discardEventsSince，失败操作不再发布后置事件；SessionFactory 支持
+  createSession (schema, options)、unitOfWork ()、Builder.addWriteInterceptor，JDBC 建会话统一应用隔离级别与方言连接准备。
+- server 迁移：ProjectUnitOfWork 瘦身为 projectId→schema 门面（跨项目校验靠 ThreadLocal CURRENT_PROJECT + engine
+  上下文比对）；ServerSessions 收敛为 open ()/openSnapshot ()；删除
+  ServerSqlSession、ManagedSession、SqlErrors.sqliteBusy；AppFlowRecordGuard 改为 engine WriteInterceptor 并由 EngineConfig
+  工厂级注册；NotificationRepository/NotificationRelay 改用 sessions.open；新增
+  DatabaseBusyExceptionMapper（503）；DataFmRepository.updateRecords 保留自管事务段（borrowed 会话上为 no-op、独立调用时保证原子性，与文档
+  5.2 的差异点）。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` BUILD SUCCESS；flexmodel-core
+  单独编译通过。按用户偏好未运行测试与浏览器验证；RealtimeEventListener 确认仅消费成功事件。未执行 git commit/push。
+
+### 兑现简化后续（同日）
+
+- ProjectUnitOfWork 移除 CURRENT_PROJECT ThreadLocal 与跨项目校验，全部静态方法一行转发 engine UnitOfWork，仅保留
+  projectId→schema 解析（136 行减至 75 行）。
+- DataFmRepository.updateRecords 自管事务段改用 unitOfWork.execute 模板；NotificationRepository.mutate 手写事务改用
+  unitOfWork.execute + UnitOfWork.afterCommit，wake 时机保持提交后。
+- 三处合计 51 增/151 删（净约 -100 行）；`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。未执行 git
+  commit/push。

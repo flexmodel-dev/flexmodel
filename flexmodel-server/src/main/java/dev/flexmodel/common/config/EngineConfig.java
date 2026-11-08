@@ -1,5 +1,6 @@
 package dev.flexmodel.common.config;
 
+import dev.flexmodel.apps.flow.AppFlowRecordGuard;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.AuditDataEventListener;
@@ -10,6 +11,7 @@ import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.realtime.RealtimeEventListener;
 import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
 import dev.flexmodel.session.SessionFactory;
+import dev.flexmodel.session.UnitOfWork;
 import dev.flexmodel.sql.JdbcSchemaProvider;
 import dev.flexmodel.system.SystemBuildItem;
 import dev.flexmodel.test.codegen.DevTest;
@@ -59,7 +61,8 @@ public class EngineConfig {
   public SessionFactory sessionFactory(FlexmodelConfig flexmodelConfig,
                                        TriggerDataChangedEventListener triggerDataChangedEventListener,
                                        AuditDataEventListener auditDataEventListener,
-                                       RealtimeEventListener realtimeEventListener) {
+                                       RealtimeEventListener realtimeEventListener,
+                                       AppFlowRecordGuard appFlowRecordGuard) {
     FlexmodelConfig.DatasourceConfig datasourceConfig = flexmodelConfig.datasources().get(SYSTEM_DS_KEY);
     AgroalDataSource defaultDs = AgroalDataSourceFactory.createDataSource(
       datasourceConfig.url(),
@@ -67,7 +70,8 @@ public class EngineConfig {
       datasourceConfig.password().orElse(null));
     SessionFactory.Builder builder = SessionFactory.builder()
       .setDefaultSchemaProvider(new JdbcSchemaProvider(SYSTEM_DS_KEY, defaultDs))
-      .setFailsafe(true);
+      .setFailsafe(true)
+      .addWriteInterceptor(appFlowRecordGuard);
     flexmodelConfig.datasources().forEach((key, value) -> {
       if (key.equals(SYSTEM_DS_KEY)) {
         return;
@@ -89,6 +93,12 @@ public class EngineConfig {
     sf.getEventPublisher().addListener(auditDataEventListener);
     sf.getEventPublisher().addListener(realtimeEventListener);
     return sf;
+  }
+
+  @Produces
+  @ApplicationScoped
+  public UnitOfWork unitOfWork(SessionFactory sessionFactory) {
+    return sessionFactory.unitOfWork();
   }
 
   /**

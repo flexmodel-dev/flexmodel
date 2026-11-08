@@ -57,6 +57,13 @@ public abstract class SqlDialect {
   }
 
 
+  /**
+   * 会话创建后的连接级准备钩子（PRAGMA、会话变量等）。
+   * 默认无操作；需要时由具体方言覆写。
+   */
+  public void prepareConnection(java.sql.Connection connection) throws java.sql.SQLException {
+  }
+
   private String identifierQuoteString = "";
 
   public void setIdentifierQuoteString(String identifierQuoteString) {

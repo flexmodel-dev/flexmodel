@@ -16,11 +16,4 @@ public final class SqlErrors {
         return true;
     return false;
   }
-
-  public static boolean sqliteBusy(Throwable error) {
-    for (Throwable cause = error; cause != null; cause = cause.getCause())
-      if (cause instanceof SQLException sql && ((sql.getErrorCode() & 255) == 5 || (sql.getErrorCode() & 255) == 6))
-        return true;
-    return false;
-  }
 }

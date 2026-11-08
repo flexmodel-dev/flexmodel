@@ -18,13 +18,16 @@ import dev.flexmodel.mongodb.MongoSchemaProvider;
 import dev.flexmodel.mongodb.MongoSession;
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.EventAwareDataService;
+import dev.flexmodel.service.WriteInterceptor;
 import dev.flexmodel.sql.*;
+import dev.flexmodel.sql.dialect.SqlDialect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,8 +44,9 @@ public class SessionFactory {
   private final MemoryScriptManager memoryScriptManager;
   private final boolean failsafe;
   private final EventPublisher eventPublisher;
+  private final List<WriteInterceptor> writeInterceptors;
 
-  SessionFactory(SchemaProvider defaultSchemaProvider, List<SchemaProvider> schemaProviders, Cache cache, boolean failsafe, EventPublisher eventPublisher) {
+  SessionFactory(SchemaProvider defaultSchemaProvider, List<SchemaProvider> schemaProviders, Cache cache, boolean failsafe, EventPublisher eventPublisher, List<WriteInterceptor> writeInterceptors) {
     this.cache = cache;
     this.memoryScriptManager = new MemoryScriptManager();
     this.eventPublisher = eventPublisher != null ? eventPublisher : new SimpleEventPublisher();
@@ -51,6 +55,7 @@ public class SessionFactory {
     schemaProviders.forEach(this::registerSchemaProvider);
     this.modelRegistry = initializeModelRegistry(defaultSchemaProvider);
     this.failsafe = failsafe;
+    this.writeInterceptors = List.copyOf(writeInterceptors);
 //    processBuildItem();
   }
 
@@ -283,84 +288,90 @@ public class SessionFactory {
   }
 
   /**
-   * 宽松模式:
-   * 允许ddl语句的错误
-   *
-   * @param id
-   * @return
+   * 按选项创建会话：隔离级别 + 方言连接准备（PRAGMA 等）。
    */
+  public Session createSession(String schemaName) {
+    return createSession(schemaName, SessionOptions.none());
+  }
+
+  public Session createSession(String schemaName, SessionOptions options) {
+    if (!isSchemaExists(schemaName)) {
+      throw new SchemaNotFoundException("Schema not found: " + schemaName);
+    }
+    if (failsafe) {
+      return createFailsafeSession(schemaName, options);
+    }
+    return switch (schemaProviders.get(schemaName)) {
+      case JdbcSchemaProvider jdbc -> createJdbcSession(schemaName, jdbc, false, options);
+      case MongoSchemaProvider mongodb -> createMongoSession(schemaName, mongodb, false);
+      case null, default -> throw new IllegalStateException("Unexpected schemaName: " + schemaName);
+    };
+  }
+
   public Session createFailsafeSession(String id) {
+    return createFailsafeSession(id, SessionOptions.none());
+  }
+
+  public Session createFailsafeSession(String id, SessionOptions options) {
+    return switch (schemaProviders.get(id)) {
+      case JdbcSchemaProvider jdbc -> createJdbcSession(id, jdbc, true, options);
+      case MongoSchemaProvider mongodb -> createMongoSession(id, mongodb, true);
+      case null, default -> throw new IllegalStateException("Unexpected schemaName: " + id);
+    };
+  }
+
+  private Session createJdbcSession(String schemaName, JdbcSchemaProvider jdbc, boolean failsafeMode, SessionOptions options) {
     try {
-      return switch (schemaProviders.get(id)) {
-        case JdbcSchemaProvider jdbc -> {
-          Connection connection = jdbc.dataSource().getConnection();
-          SqlContext sqlContext = new SqlContext(id, new NamedParameterSqlExecutor(connection), modelRegistry, this);
-          sqlContext.setFailsafe(true);
-
-          DataService originalDataService = new SqlDataService(sqlContext);
-
-          String sessionId = UUID.randomUUID().toString();
-          DataService eventAwareDataService = new EventAwareDataService(
-            originalDataService, eventPublisher, id, sessionId, this
-          );
-
-          yield new SqlSession(sqlContext, eventAwareDataService);
-        }
-        case MongoSchemaProvider mongodb -> {
-          MongoDatabase mongoDatabase = mongodb.mongoDatabase();
-          MongoContext mongoContext = new MongoContext(id, mongoDatabase, modelRegistry, this);
-          mongoContext.setFailsafe(true);
-
-          yield new MongoSession(mongoContext);
-        }
-        case null,
-             default -> throw new IllegalStateException("Unexpected schemaName: " + id);
-      };
-    } catch (Exception e) {
+      Connection connection = jdbc.dataSource().getConnection();
+      SqlContext sqlContext = new SqlContext(schemaName, new NamedParameterSqlExecutor(connection), modelRegistry, this);
+      if (failsafeMode) {
+        sqlContext.setFailsafe(true);
+      }
+      applySessionOptions(connection, sqlContext.getSqlDialect(), options);
+      DataService eventAwareDataService = new EventAwareDataService(
+        new SqlDataService(sqlContext), eventPublisher, schemaName, UUID.randomUUID().toString(), this
+      );
+      return new SqlSession(sqlContext, eventAwareDataService);
+    } catch (SQLException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public Session createSession(String schemaName) {
-    if (!isSchemaExists(schemaName)) {
-      throw new SchemaNotFoundException("Schema not found: " + schemaName);
-    }
+  private void applySessionOptions(Connection connection, SqlDialect dialect, SessionOptions options) {
     try {
-      if (failsafe) {
-        return createFailsafeSession(schemaName);
+      if (options != null && options.applyIsolation()) {
+        if (!connection.getMetaData().supportsTransactionIsolationLevel(options.isolation())) {
+          throw new UnsupportedOperationException("数据源不支持所需的事务隔离级别");
+        }
+        connection.setTransactionIsolation(options.isolation());
       }
-      return switch (schemaProviders.get(schemaName)) {
-        case JdbcSchemaProvider jdbc -> {
-          Connection connection = jdbc.dataSource().getConnection();
-          SqlContext sqlContext = new SqlContext(schemaName, new NamedParameterSqlExecutor(connection), modelRegistry, this);
-
-          DataService originalDataService = new SqlDataService(sqlContext);
-
-          String sessionId = UUID.randomUUID().toString();
-          DataService eventAwareDataService = new EventAwareDataService(
-            originalDataService, eventPublisher, schemaName, sessionId, this
-          );
-
-          yield new SqlSession(sqlContext, eventAwareDataService);
-        }
-        case MongoSchemaProvider mongodb -> {
-          MongoDatabase mongoDatabase = mongodb.mongoDatabase();
-          MongoContext mongoContext = new MongoContext(schemaName, mongoDatabase, modelRegistry, this);
-
-          yield new MongoSession(mongoContext);
-        }
-        case null,
-             default -> throw new IllegalStateException("Unexpected schemaName: " + schemaName);
-      };
-    } catch (Exception e) {
+      dialect.prepareConnection(connection);
+    } catch (SQLException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private Session createMongoSession(String schemaName, MongoSchemaProvider mongodb, boolean failsafeMode) {
+    MongoContext mongoContext = new MongoContext(schemaName, mongodb.mongoDatabase(), modelRegistry, this);
+    if (failsafeMode) {
+      mongoContext.setFailsafe(true);
+    }
+    return new MongoSession(mongoContext);
+  }
+
+  public UnitOfWork unitOfWork() {
+    return new UnitOfWork(this);
+  }
+
+  public List<WriteInterceptor> getWriteInterceptors() {
+    return writeInterceptors;
   }
 
   public static class Builder {
     private Cache cache;
     private SchemaProvider defaultSchemaProvider = null;
     private final List<SchemaProvider> schemaProviders = new ArrayList<>();
+    private final List<WriteInterceptor> writeInterceptors = new ArrayList<>();
     private boolean failsafe = false;
     private EventPublisher eventPublisher = null;
 
@@ -392,6 +403,11 @@ public class SessionFactory {
       return this;
     }
 
+    public Builder addWriteInterceptor(WriteInterceptor interceptor) {
+      this.writeInterceptors.add(interceptor);
+      return this;
+    }
+
     public SessionFactory build() {
       if (defaultSchemaProvider == null) {
         throw new IllegalStateException("Please set defaultSchemaProvider");
@@ -399,7 +415,7 @@ public class SessionFactory {
       if (cache == null) {
         this.cache = new ConcurrentHashMapCache();
       }
-      return new SessionFactory(defaultSchemaProvider, schemaProviders, cache, failsafe, eventPublisher);
+      return new SessionFactory(defaultSchemaProvider, schemaProviders, cache, failsafe, eventPublisher, writeInterceptors);
     }
   }
 

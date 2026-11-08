@@ -55,6 +55,20 @@ public class EventAwareDataService implements DataService {
   }
 
   /**
+   * 记录当前缓冲位置，作为事务边界；供 Session.startTransaction 使用。
+   */
+  public int markEventBoundary() {
+    return pendingEvents.size();
+  }
+
+  /**
+   * 丢弃自边界以来的全部缓冲事件；供 Session.rollback 使用。
+   */
+  public void discardEventsSince(int boundary) {
+    pendingEvents.subList(Math.min(boundary, pendingEvents.size()), pendingEvents.size()).clear();
+  }
+
+  /**
    * 在 Session.close() 后调用，按顺序发布所有缓冲的后置事件。
    * 先快照再清空：避免监听器里经由同一逻辑再 add 时并发修改；
    * 新事件进入空列表，由各自的 Session close 继续处理（嵌套 Session 自带独立 pendingEvents）。
@@ -100,12 +114,14 @@ public class EventAwareDataService implements DataService {
       exception = e;
       throw e;
     } finally {
-      // 发布后置事件
-      InsertedEvent changedEvent = new InsertedEvent(
-        modelName, schemaName, finalRecord, record, extractId(modelName, finalRecord),
-        affectedRows, success, exception, sessionId, source
-      );
-      addPendingChangedEvent(changedEvent);
+      // 仅成功操作发布后置事件；失败操作的变更对监听器不可见
+      if (exception == null) {
+        InsertedEvent changedEvent = new InsertedEvent(
+          modelName, schemaName, finalRecord, record, extractId(modelName, finalRecord),
+          affectedRows, success, exception, sessionId, source
+        );
+        addPendingChangedEvent(changedEvent);
+      }
     }
 
     return affectedRows;
@@ -134,13 +150,15 @@ public class EventAwareDataService implements DataService {
       exception = e;
       throw e;
     } finally {
-      // 批量插入完成后，为每条记录发布 InsertedEvent
-      for (Map<String, Object> record : records) {
-        InsertedEvent changedEvent = new InsertedEvent(
-          modelName, schemaName, record, record, extractId(modelName, record),
-          affectedRows, success, exception, sessionId, source
-        );
-        addPendingChangedEvent(changedEvent);
+      // 仅成功操作发布后置事件
+      if (exception == null) {
+        for (Map<String, Object> record : records) {
+          InsertedEvent changedEvent = new InsertedEvent(
+            modelName, schemaName, record, record, extractId(modelName, record),
+            affectedRows, success, exception, sessionId, source
+          );
+          addPendingChangedEvent(changedEvent);
+        }
       }
     }
 
@@ -174,12 +192,14 @@ public class EventAwareDataService implements DataService {
       exception = e;
       throw e;
     } finally {
-      // 发布后置事件
-      UpdatedEvent changedEvent = new UpdatedEvent(
-        modelName, schemaName, oldData, finalRecord, id,
-        affectedRows, success, exception, sessionId, source
-      );
-      addPendingChangedEvent(changedEvent);
+      // 仅成功操作发布后置事件
+      if (exception == null) {
+        UpdatedEvent changedEvent = new UpdatedEvent(
+          modelName, schemaName, oldData, finalRecord, id,
+          affectedRows, success, exception, sessionId, source
+        );
+        addPendingChangedEvent(changedEvent);
+      }
     }
 
     return affectedRows;
@@ -209,12 +229,14 @@ public class EventAwareDataService implements DataService {
       exception = e;
       throw e;
     } finally {
-      // 发布后置事件
-      DeletedEvent changedEvent = new DeletedEvent(
-        modelName, schemaName, oldData, null, id,
-        affectedRows, success, exception, sessionId, source
-      );
-      addPendingChangedEvent(changedEvent);
+      // 仅成功操作发布后置事件
+      if (exception == null) {
+        DeletedEvent changedEvent = new DeletedEvent(
+          modelName, schemaName, oldData, null, id,
+          affectedRows, success, exception, sessionId, source
+        );
+        addPendingChangedEvent(changedEvent);
+      }
     }
 
     return affectedRows;
@@ -250,12 +272,14 @@ public class EventAwareDataService implements DataService {
       exception = e;
       throw e;
     } finally {
-      // 发布后置事件
-      UpdatedEvent changedEvent = new UpdatedEvent(
-        modelName, schemaName, null, finalRecord, null,
-        affectedRows, success, exception, sessionId, source
-      );
-      addPendingChangedEvent(changedEvent);
+      // 仅成功操作发布后置事件
+      if (exception == null) {
+        UpdatedEvent changedEvent = new UpdatedEvent(
+          modelName, schemaName, null, finalRecord, null,
+          affectedRows, success, exception, sessionId, source
+        );
+        addPendingChangedEvent(changedEvent);
+      }
     }
 
     return affectedRows;
@@ -290,12 +314,14 @@ public class EventAwareDataService implements DataService {
       exception = e;
       throw e;
     } finally {
-      // 发布后置事件
-      DeletedEvent changedEvent = new DeletedEvent(
-        modelName, schemaName, null, null, null,
-        affectedRows, success, exception, sessionId, source
-      );
-      addPendingChangedEvent(changedEvent);
+      // 仅成功操作发布后置事件
+      if (exception == null) {
+        DeletedEvent changedEvent = new DeletedEvent(
+          modelName, schemaName, null, null, null,
+          affectedRows, success, exception, sessionId, source
+        );
+        addPendingChangedEvent(changedEvent);
+      }
     }
 
     return affectedRows;
@@ -319,12 +345,14 @@ public class EventAwareDataService implements DataService {
       exception = e;
       throw e;
     } finally {
-      // 发布后置事件（删除所有没有前置事件）
-      DeletedEvent changedEvent = new DeletedEvent(
-        modelName, schemaName, null, null, null,
-        affectedRows, success, exception, sessionId, source
-      );
-      addPendingChangedEvent(changedEvent);
+      // 仅成功操作发布后置事件（deleteAll 无前置事件）
+      if (exception == null) {
+        DeletedEvent changedEvent = new DeletedEvent(
+          modelName, schemaName, null, null, null,
+          affectedRows, success, exception, sessionId, source
+        );
+        addPendingChangedEvent(changedEvent);
+      }
     }
 
     return affectedRows;

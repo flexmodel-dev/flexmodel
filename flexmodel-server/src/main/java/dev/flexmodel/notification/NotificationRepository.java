@@ -5,9 +5,10 @@ import dev.flexmodel.codegen.entity.Notification;
 import dev.flexmodel.codegen.entity.NotificationEvent;
 import dev.flexmodel.codegen.entity.User;
 import dev.flexmodel.common.ProjectUnitOfWork;
-import dev.flexmodel.common.persistence.*;
+import dev.flexmodel.common.persistence.ServerSessions;
 import dev.flexmodel.query.*;
 import dev.flexmodel.session.Session;
+import dev.flexmodel.session.UnitOfWork;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
@@ -28,6 +29,8 @@ public class NotificationRepository {
   ServerSessions sessions;
   @Inject
   NotificationStream streams;
+  @Inject
+  UnitOfWork unitOfWork;
 
   public boolean activeUser(String user) {
     try (var session = open()) {
@@ -44,32 +47,18 @@ public class NotificationRepository {
    */
   private Session open() {
     Session borrowed = ProjectUnitOfWork.borrowPlatform();
-    return borrowed != null ? borrowed : sessions.openOwned("system");
+    return borrowed != null ? borrowed : sessions.open("system");
   }
 
-  private <T> T mutate(String user, Function<ManagedSession, T> action) {
-    Session borrowed = ProjectUnitOfWork.borrowPlatform();
-    if (borrowed instanceof ManagedSession managed) {
-      T result = apply(managed, user, action);
-      ProjectUnitOfWork.afterCommit(() -> streams.wake(user));
+  private <T> T mutate(String user, Function<Session, T> action) {
+    return unitOfWork.execute("system", () -> {
+      T result = apply(UnitOfWork.borrow("system"), user, action);
+      UnitOfWork.afterCommit(() -> streams.wake(user));
       return result;
-    }
-    T result;
-    try (var session = sessions.openOwned("system")) {
-      session.startTransaction();
-      try {
-        result = apply(session, user, action);
-        session.commit();
-      } catch (RuntimeException error) {
-        session.rollback();
-        throw error;
-      }
-    }
-    streams.wake(user);
-    return result;
+    });
   }
 
-  private <T> T apply(ManagedSession session, String user, Function<ManagedSession, T> action) {
+  private <T> T apply(Session session, String user, Function<Session, T> action) {
     if (session.lockRow(ReflectionUtils.getModelNameFromClass(User.class), "id", user) == 0)
       throw new NotFoundException();
     if (session.data().findById(ReflectionUtils.getModelNameFromClass(dev.flexmodel.codegen.entity.NotificationStream.class), user).isEmpty())
@@ -77,7 +66,7 @@ public class NotificationRepository {
     return action.apply(session);
   }
 
-  private void event(ManagedSession session, String user, String type, long unreadDelta, Map<String, Object> payload) {
+  private void event(Session session, String user, String type, long unreadDelta, Map<String, Object> payload) {
     var state = session.data().findById(ReflectionUtils.getModelNameFromClass(dev.flexmodel.codegen.entity.NotificationStream.class), user).orElseThrow();
     long version = number(state, "version") + 1, unread = number(state, "unread") + unreadDelta;
     session.mergeUpdate(ReflectionUtils.getModelNameFromClass(dev.flexmodel.codegen.entity.NotificationStream.class), user, Map.of("version", version, "unread", unread));

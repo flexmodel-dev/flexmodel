@@ -1,3 +1,17 @@
+## Apps UI - 手机端菜单抽屉入场动画方向修复（2026-11-10）
+
+- 现象：手机端点左上角菜单，左侧抽屉以从右往左的动画入场，期望从左往右滑出。
+- 根因：`ui/drawer.tsx` 的 `DrawerContent` 硬编码 `right-0 border-l slide-in-from-right`，
+  `MobileNavDrawer` 用 `className="right-auto border-r animate-in slide-in-from-left"` 覆盖。
+  实测 twMerge 不识别 tailwindcss-animate 的 `slide-in-from-*` 为冲突组，两个方向类同时保留，
+  生成 CSS 中 right 规则在后胜出（`--tw-enter-translate-x: 100%`），左抽屉遂从右往左入场；
+  同时 `border-l`/`border-r` 叠加、左侧缺 `left-0` 仅靠静态位置定位。
+- 修复：仿 shadcn Sheet 给 `DrawerContent` 增加 `side?: 'left' | 'right'`（默认 right），
+  定位/边框/入场动画按 side 二选一输出，杜绝插件类覆盖冲突；`MobileNavDrawer` 改传 `side="left"`，
+  删除覆盖 className。其余抽屉默认 right，类与原先一致。
+- 验证：apps-ui `tsc -b` 通过；twMerge 行为经 node 实测确认根因。按用户偏好未跑 build/浏览器验证。
+  未执行 git commit/push。
+
 ## Engine/Server - 平台表全面退出业务库（f_runtime_message，2026-11-10）
 
 - 用户架构决策：platform.fml 的表一律不进业务库，业务库只存应用创建的表单。据此移除业务库 outbox 机制：

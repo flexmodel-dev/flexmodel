@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-182",
+      "name": "Apps UI - 手机端菜单抽屉入场动画方向修复",
+      "description": "手机端打开左上角菜单时左侧抽屉应从左往右滑入，修复实际从右往左入场的问题；DrawerContent 增加 side prop 统一定位/边框/入场动画方向，MobileNavDrawer 使用 side=left。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：根因为 DrawerContent 硬编码 slide-in-from-right，MobileNavDrawer 以 slide-in-from-left 覆盖，但 twMerge 不识别 tailwindcss-animate 插件类冲突，两类并存且 CSS 中 right 规则胜出；连带左抽屉缺 left-0、border-l/r 叠加。DrawerContent 新增 side?: left|right（默认 right，left-0 border-r slide-in-from-left / right-0 border-l slide-in-from-right 二选一），MobileNavDrawer 改 side=\"left\" 并删除覆盖 className，其余抽屉行为不变。验证：apps-ui tsc -b 通过；twMerge 根因经 node 实测。按用户偏好未跑 build/浏览器验证。"
+    },
+    {
       "id": "feat-181",
       "name": "Engine/Server - 平台表全面退出业务库",
       "description": "按用户架构决策（业务库只存应用表单），移除业务库 outbox：f_runtime_message 不再写入业务库，record 事件/通知/效果回执统一平台 outbox，业务事务提交后经 afterCommit + publishNew（REQUIRES_NEW，外层同名 schema 事务活动时延迟到其结束）发布。",

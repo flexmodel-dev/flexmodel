@@ -2,6 +2,7 @@ model f_app {
   id : String @id @length("64") @comment("应用ID，与 f_project.id 一对一共享"),
   icon_name : String @length("64") @comment("图标名"),
   primary_color : String @length("32") @comment("主色"),
+  sort_order : Int @default("0") @comment("排序权重，越小越靠前"),
   provisioning? : String @length("32") @comment("导入重建状态，空表示正常"),
   navigation? : JSON @comment("导航配置"),
   forms? : f_app_form[] @comment("应用表单") @relation(localField: "id", foreignField: "app_id", cascadeDelete: "true"),

@@ -109,6 +109,10 @@ class AppFormImportBatchTest {
     }
 
     @Override
+    public void reorder(List<String> appIds) {
+    }
+
+    @Override
     public void delete(String appId) {
     }
   }

@@ -1,6 +1,27 @@
 {
   "features": [
     {
+      "id": "feat-185",
+      "name": "Engine - 重启自动同步表结构（模型新增字段补列）",
+      "description": "修复 platform.fml 等模型新增字段（如 f_app.sort_order）后重启不执行 ALTER TABLE ADD COLUMN、查询报 no such column 的问题；根因是 migrateEntity 先注册新定义导致 createField 早退且 registry 污染后永久跳过。改为建表失败（表已存在）时按 JDBC 物理表元数据 diff 补缺失列，重启即自愈。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：SqlSchemaService.createTable 失败分支与 createEntity 异常路径调用新增 addMissingColumns（getSqlMetadata().getTables 读物理列，缺列 createColumn 补 ALTER），不依赖 f_model_registry 中可能已污染的定义；新增 SQLiteIntegrationTests.testApplyFmlAddsMissingColumn 回归测试（同模型两次 applyFML 模拟改 FML+重启），顺带修复该测试类 Agroal 缺 maxSize 的既有问题。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；core/graphql/common-it/sqlite-it 测试全绿（sqlite 33/33 含新用例）。已知限制：补列要求新列可空或有默认值（SQLite 不支持 NOT NULL 无默认加列），与既有 createField 行为一致。"
+    },
+    {
+      "id": "feat-184",
+      "name": "Apps - 应用管理拖动排序",
+      "description": "应用管理的应用卡片支持拖动调整顺序并持久化：f_app 新增 sort_order 排序权重（默认 0，列表按权重升序+创建时间倒序）；PATCH /apps/order 接收全量有序应用ID列表，须包含且仅包含所有应用；前端 @dnd-kit 整卡拖动（桌面 8px 位移起拖、触屏长按 250ms 起拖、支持键盘排序），乐观更新失败回滚并提示。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）。后端：platform.fml f_app 新增 sort_order Int @default(\"0\")；AppFmRepository.findApps 改 sort_order asc + created_at desc，reorder 单事务按下标 set；AppService.reorderApps 校验全量无重复（对齐导航 reorder 语义）；AppResource 新增 PATCH /order（避开 PUT /{appId} 字面量路径冲突）；新增 AppOrderRequest DTO；AppFormImportBatchTest 桩补 reorder 空实现。前端：services/apps.ts 新增 reorderApps 并同步列表缓存；AppManagement 网格接 DndContext+SortableContext(rectSortingStrategy)，卡片抽 SortableAppCard（PointerSensor distance 8 / TouchSensor delay 250 / KeyboardSensor），拖动结束乐观更新+服务端返回同步，失败回滚并显示错误行。验证：mvn -o compile -pl flexmodel-server -am 通过（codegen 重生成 App 实体）；apps-ui tsc -b 通过。修复用户两次实测的拖动放下误入应用：根因为 dnd-kit 在 document 捕获阶段 stopPropagation 截停合成 click，React onClick 不执行但 <a> 默认导航照常；改为 onDragEnd/onDragCancel 注册一次性 document 捕获 click 监听 preventDefault（200ms 自清除），Link onClick 时间戳守卫兜底 Escape 取消路径。新增 e2e/apps-reorder.spec.ts 回归（Playwright 拖放注入不产生合成 click，用例手动补发等价点击）：无修复复现 URL 误入 #/apps/app-a 且用例失败，带修复 2/2 通过（拖放停留本页、PATCH 顺序落库、普通点击仍进入应用）。追加修复用户反馈的拖动后顺序不对（拖到最前跑到最后）：根因是 DSL 链式 orderBy 每次 setOrderBy 整体替换，findApps 的 sort_order 排序被 created_at desc 静默覆盖，服务端返回把乐观更新弹回创建时间序；改为聚合 new Query.OrderBy().asc(\"sort_order\").desc(\"created_at\")（对齐 NotificationRepository 既有写法），mvn -o compile -pl flexmodel-server -am 通过。追加修复应用启动器顺序不刷新：AppLauncher 常驻侧栏仅挂载拉取一次，改为受控 open、每次打开下拉重新 getApps()（命中会话缓存），tsc -b 通过。限制：应用包不携带 sort_order；未拖动过的应用保持创建时间倒序展示。"
+    },
+    {
+      "id": "feat-183",
+      "name": "Apps UI - 应用管理卡片间距加大与名称换行",
+      "description": "应用管理卡片网格间距加大（gap-x-4 gap-y-6）；应用名称超出时自然换行完整展示，不再 truncate 省略号与 title 提示。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：AppManagement 网格 gap-x-2 gap-y-4 改 gap-x-4 gap-y-6；名称 span 移除 truncate/title 改 break-words。纯 className 调整，按用户偏好未跑验证。"
+    },
+    {
       "id": "feat-182",
       "name": "Apps UI - 手机端菜单抽屉入场动画方向修复",
       "description": "手机端打开左上角菜单时左侧抽屉应从左往右滑入，修复实际从右往左入场的问题；DrawerContent 增加 side prop 统一定位/边框/入场动画方向，MobileNavDrawer 使用 side=left。",

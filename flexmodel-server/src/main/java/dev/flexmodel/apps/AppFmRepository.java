@@ -1,6 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.codegen.entity.App;
+import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -19,8 +20,9 @@ public class AppFmRepository implements AppRepository {
   @Override
   public List<App> findApps() {
     try (Session session = sessionFactory.createSession()) {
+      // 链式 orderBy 每次整体替换排序，多级排序须聚合到同一个 OrderBy
       return session.dsl().selectFrom(App.class)
-        .orderByDesc(app.createdAt)
+        .orderBy(new Query.OrderBy().asc("sort_order").desc("created_at"))
         .execute();
     }
   }
@@ -42,6 +44,20 @@ public class AppFmRepository implements AppRepository {
         .execute();
     }
     return app;
+  }
+
+  @Override
+  public void reorder(List<String> appIds) {
+    try (Session session = sessionFactory.createSession()) {
+      session.startTransaction();
+      for (int i = 0; i < appIds.size(); i++) {
+        session.dsl().update(App.class)
+          .set(app.sortOrder, i)
+          .where(app.id.eq(appIds.get(i)))
+          .execute();
+      }
+      session.commit();
+    }
   }
 
   @Override

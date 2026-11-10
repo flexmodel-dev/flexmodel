@@ -10,8 +10,10 @@ import dev.flexmodel.sql.dialect.SqlDialect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -65,7 +67,13 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     // 保存到ModelRegistry中
     modelRegistry.register(sessionContext.getSchemaName(), entity);
     SqlTable sqlTable = toSqlTable(entity);
-    createTable(sqlTable);
+    try {
+      createTable(sqlTable);
+    } catch (SqlExecutionException e) {
+      // 非 failsafe 模式下表已存在的异常仍需抛出，但先按物理表结构补齐缺失列
+      addMissingColumns(sqlTable);
+      throw e;
+    }
     return entity;
   }
 
@@ -126,6 +134,33 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     if (tableCreated) {
       createUniqueKeys(sqlTable);
       createIndexes(sqlTable);
+    } else {
+      // 建表失败多因表已存在：按物理表结构补齐缺失列，保证重启时模型与表同步
+      addMissingColumns(sqlTable);
+    }
+  }
+
+  /**
+   * 表已存在时对比物理列与模型列，为模型新增字段补执行 ALTER TABLE ADD COLUMN。
+   * 不依赖 f_model_registry 中可能已污染的定义，重启即自愈。
+   */
+  private void addMissingColumns(SqlTable sqlTable) {
+    List<SqlTable> existingTables = sessionContext.getSqlMetadata().getTables(sqlTable.getName(), null);
+    if (existingTables.isEmpty()) {
+      return;
+    }
+    Set<String> physicalColumns = new HashSet<>();
+    Iterator<SqlColumn> existingItr = existingTables.get(0).getColumnIterator();
+    while (existingItr.hasNext()) {
+      physicalColumns.add(existingItr.next().getName().toLowerCase(Locale.ROOT));
+    }
+    Iterator<SqlColumn> columnItr = sqlTable.getColumnIterator();
+    while (columnItr.hasNext()) {
+      SqlColumn column = columnItr.next();
+      if (!physicalColumns.contains(column.getName().toLowerCase(Locale.ROOT))) {
+        log.info("Add missing column: {}.{}", column.getTableName(), column.getName());
+        createColumn(column);
+      }
     }
   }
 

@@ -1,3 +1,68 @@
+## Engine - 重启自动同步表结构修复（f_app.sort_order no such column）（2026-11-10）
+
+- 现象：`platform.fml` f_app 新增 `sort_order` 后重启，查询报
+  `[SQLITE_ERROR] no such column: f_app.sort_order`，表结构未自动更新。
+- 根因：`SchemaService.migrateEntity` 先 `createEntity(newer)`——把含新字段的定义写入
+  `f_model_registry`（缓存+库）后才做字段 diff；`SqlSchemaService.createField` 里
+  `entity.getField(name) != null` 早退判定读的是刚注册的新定义，`ALTER TABLE ADD COLUMN`
+  从未执行；且 registry 已"声称"字段存在，之后每次重启 diff 都跳过，永久失同步。
+- 修复（flexmodel-core `SqlSchemaService`）：建表失败（表已存在）时改走物理表结构自愈——
+  `addMissingColumns` 用 JDBC 元数据读实际列，缺列即 `createColumn` 补 `ALTER TABLE`；
+  `createEntity` 非 failsafe 抛错前也先补列再重抛。不依赖可能污染的 registry，重启即自愈。
+- 回归测试：`SQLiteIntegrationTests.testApplyFmlAddsMissingColumn`（同一模型两次 applyFML
+  模拟改 FML+重启，断言新列可查询）；顺带修复该测试类 Agroal 数据源缺 `maxSize` 的既有问题。
+- 验证：全模块 `mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过；
+  core//graphql/common-it/sqlite-it 测试全绿（sqlite 33/33）。未执行 git commit/push。
+- 限制：补列复用 createColumn，新增"必填且无默认值"的列在不支持 NOT NULL 无默认的库
+  （如 SQLite）仍会失败，与既有 createField 行为一致。
+
+## Apps - 应用拖动排序（2026-11-10）
+
+- 平台模型：`platform.fml` f_app 新增 `sort_order : Int @default("0") @comment("排序权重，越小越靠前")`，
+  启动 schema 同步自动加列，存量行默认 0。
+- 后端（apps 特性）：
+    - `AppFmRepository.findApps` 排序由 `created_at desc` 改为 `sort_order asc, created_at desc`——
+      未拖动过的应用（全 0）展示顺序与现状完全一致；新建/导入应用默认 0 仍排最前。
+    - `AppRepository` 新增 `reorder(appIds)`：单事务内按列表下标 0..N-1 逐个 `set(sort_order)`；
+      异常未提交时由 `SqlSession.close()` 回滚。
+    - `AppService.reorderApps`：校验 ids 必须包含且仅包含全部非导入中应用、无重复（对齐导航 reorder 语义）。
+    - `AppResource` 新增 `PATCH /apps/order`（用 PATCH 避开 `PUT /{appId}` 的字面量路径优先冲突——
+      项目 ID 模式允许 "order" 一词），返回排序后的应用列表。
+- 前端（flexmodel-apps-ui）：
+    - `services/apps.ts` 新增 `reorderApps(ids)`：PATCH /api/apps/order，成功后同步列表缓存。
+    - `AppManagement` 网格接入 @dnd-kit：`DndContext + SortableContext(rectSortingStrategy)`，卡片抽出
+      `SortableAppCard`（useSortable 整卡可拖，cursor-grab 提示）。传感器：PointerSensor 8px 起拖
+      （点击/长按菜单不受影响）、TouchSensor 长按 250ms 起拖（不劫持移动端滚动）、KeyboardSensor 键盘排序。
+      拖动结束乐观更新 + 服务端返回二次同步；失败回滚原顺序并在网格上方显示错误行。
+- 用户两次实测反馈"拖动后放下仍误入应用"。第一轮修复（Link onClick + 拖拽结束时间戳 200ms 窗口）无效；读
+  @dnd-kit/core 源码确认真实根因：拖拽激活时 dnd-kit 在 document 捕获阶段注册 `stopPropagation` 截停合成 click
+  （detach 后 50ms 才移除），React 根容器根本收不到该 click，React 层任何 onClick 拦截都不会执行；但
+  `stopPropagation` 不阻止默认行为，`<a href="#/apps/...">` 的浏览器默认导航照常发生。最终修复：onDragEnd/
+  onDragCancel 时向 document 注册一次性捕获 click 监听（同节点监听不受 stopPropagation 影响），命中即
+  preventDefault 并自清除，200ms 超时兜底；Link onClick 时间戳守卫保留，覆盖 Escape 取消等 React 仍可见的路径。
+- 回归验证：新增 e2e/apps-reorder.spec.ts + playwright.apps-reorder.config.ts（mock API + 无头 Chromium，沿用
+  theme.spec 模式）。注意 Playwright 注入的拖放输入序列不会产生放下后的合成 click（事件探针证实仅
+  pointerup/mouseup），用例需在落点手动补发等价 click 还原真实浏览器行为。无修复时 URL 变为 #/apps/app-a
+  （精确复现用户现象，用例失败）；带修复 2/2 通过：拖放补发 click 后停留在 /admin/apps、PATCH /api/apps/order
+  收到 [app-b, app-c, app-a]、网格顺序同步；普通点击仍正常进入应用。调试探针脚本已删除。
+- 用户三次实测反馈"拖到第一个位置，卡片却跑到最后"：根因在 DSL 排序构造——`DSLQueryBuilder.orderBy`
+  每次 new 只含单字段的 `Query.OrderBy` 再 `setOrderBy` 整体替换，链式 `.orderBy(sortOrder).orderByDesc(createdAt)`
+  实际只剩 `created_at desc`，sort_order 被静默丢弃；服务端返回后 setApps 把乐观更新的新顺序"弹回"创建时间序，
+  拖动到最前的卡片又回到原位（最老的应用本就排最后）。修复：`AppFmRepository.findApps` 改聚合
+  `new Query.OrderBy().asc("sort_order").desc("created_at")`（对齐 NotificationRepository 等多级排序既有写法）。
+  注：`FmJobRepository` 262-263 行存在同类链式多级排序潜在失效，未越界处理。
+- 用户反馈"应用启动器的位置没有刷新"：AppLauncher 常驻左侧栏、仅挂载时拉取一次，排序后不重新拉取；
+  改为受控 open + 每次打开下拉时 getApps()（命中服务层会话缓存，近零开销），顺带覆盖删除/导入后启动器不刷新。
+- 验证：`mvn -o compile -pl flexmodel-server -am` 通过（codegen 重新生成含 sortOrder 的 App 实体与元模型）；
+  apps-ui `tsc -b` 通过；e2e 2/2。未执行 git commit/push。
+- 限制：应用包导出/导入不携带 sort_order（平台元数据）；移动端需长按起拖。
+
+## Apps UI - 应用管理卡片间距与名称换行（2026-11-10）
+
+- 用户反馈应用之间间距太小、名称超出不需要省略号。`AppManagement` 网格 `gap-x-2 gap-y-4` 调整为
+  `gap-x-4 gap-y-6`；应用名称移除 `truncate` 与 `title`，改 `break-words` 自然换行完整展示。
+- 纯 className 调整，无类型风险；按用户偏好未跑验证，用户刷新查看。未执行 git commit/push。
+
 ## Apps UI - 手机端菜单抽屉入场动画方向修复（2026-11-10）
 
 - 现象：手机端点左上角菜单，左侧抽屉以从右往左的动画入场，期望从左往右滑出。

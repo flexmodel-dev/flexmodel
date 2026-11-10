@@ -3,6 +3,7 @@ package dev.flexmodel.apps;
 import dev.flexmodel.apps.ai.AppAiRepository;
 import dev.flexmodel.apps.dataauthorization.AppDataAuthorizationService;
 import dev.flexmodel.apps.dto.AppCreateRequest;
+import dev.flexmodel.apps.dto.AppOrderRequest;
 import dev.flexmodel.apps.dto.AppResponse;
 import dev.flexmodel.apps.dto.AppUpdateRequest;
 import dev.flexmodel.apps.workbench.AppWorkbenchRepository;
@@ -92,6 +93,22 @@ public class AppService {
       })
       .filter(Objects::nonNull)
       .toList();
+  }
+
+  public List<AppResponse> reorderApps(AppOrderRequest request) {
+    List<String> ids = request.ids();
+    Set<String> expectedIds = appRepository.findApps().stream()
+      .filter(app -> !isImporting(app))
+      .map(App::getId)
+      .collect(Collectors.toSet());
+    if (ids.size() != expectedIds.size() || !expectedIds.containsAll(ids)) {
+      throw new ValidationException("应用排序必须包含且仅包含所有应用");
+    }
+    if (ids.stream().distinct().count() != ids.size()) {
+      throw new ValidationException("应用排序存在重复");
+    }
+    appRepository.reorder(ids);
+    return findApps();
   }
 
   public AppResponse findApp(String appId) {

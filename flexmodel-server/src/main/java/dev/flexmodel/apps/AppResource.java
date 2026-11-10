@@ -1,6 +1,7 @@
 package dev.flexmodel.apps;
 
 import dev.flexmodel.apps.dto.AppCreateRequest;
+import dev.flexmodel.apps.dto.AppOrderRequest;
 import dev.flexmodel.apps.dto.AppResponse;
 import dev.flexmodel.apps.dto.AppUpdateRequest;
 import jakarta.inject.Inject;
@@ -47,6 +48,13 @@ public class AppResource {
   public Response create(@Valid AppCreateRequest request) {
     AppResponse response = appService.createApp(request);
     return Response.status(Response.Status.CREATED).entity(response).build();
+  }
+
+  @Operation(summary = "调整应用顺序")
+  @PATCH
+  @Path("/order")
+  public List<AppResponse> reorder(@Valid AppOrderRequest request) {
+    return appService.reorderApps(request);
   }
 
   @Parameter(name = "appId", description = "应用ID", in = ParameterIn.PATH, required = true)

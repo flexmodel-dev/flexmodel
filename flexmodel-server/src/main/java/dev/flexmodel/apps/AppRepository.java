@@ -17,5 +17,7 @@ public interface AppRepository {
 
   App save(App app);
 
+  void reorder(List<String> appIds);
+
   void delete(String appId);
 }

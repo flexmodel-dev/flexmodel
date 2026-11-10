@@ -1,6 +1,27 @@
 {
   "features": [
     {
+      "id": "feat-181",
+      "name": "Engine/Server - 平台表全面退出业务库",
+      "description": "按用户架构决策（业务库只存应用表单），移除业务库 outbox：f_runtime_message 不再写入业务库，record 事件/通知/效果回执统一平台 outbox，业务事务提交后经 afterCommit + publishNew（REQUIRES_NEW，外层同名 schema 事务活动时延迟到其结束）发布。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：删除 SchemaRegistry.initializeRuntime、ReliableMessages.enqueueBusiness/drainBusiness、RuntimeMessageRepository 的 ThreadLocal 路由；businessEffect 回执独立落平台库；引擎 UnitOfWork 新增 publishNew + 延迟队列（首版 executeNew 立即执行撞 SQLITE_BUSY，测试 businessReceiptSurvivesPlatformRollback 暴露后改为延迟到最外层事务结束）。已知限制：业务提交到发布动作之间崩溃会丢通知/事件、效果重执行一次（exactly-once→effectively-once）。验证：全模块 compile、引擎测试通过；server 定向 41/41（AppFlowIntegrationTest 8 含回执/回滚语义、Notification 7、Approval 4、AppRecord* 22）。AppFlowIntegrationTest 加 @TestProfile 关闭 quarkus 调度器消除 SQLite 并发写 BUSY。"
+    },
+    {
+      "id": "feat-180",
+      "name": "Server - 通知与源事务回滚解耦（afterCommit 入队）",
+      "description": "修复 sourceRollbackCannotDeliverAndRetryPreservesReadState：业务事务回滚后通知仍被投递。按用户架构决策（platform.fml 表不入业务库），enqueue 包进 afterCommit，提交后才写平台 outbox，回滚丢弃。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：NotificationService.enqueue 改为 ProjectUnitOfWork.afterCommit(() -> messages.enqueue(...))，类注释同步更新；改动单文件。验证：全模块 compile、引擎测试通过；NotificationResourceTest 7/7（含该用例，此前为已知基线失败）；ApprovalPolicyTest/AppRecordServiceTest/AppRecordHistoryRecorderTest/AppRecordHistoryDiffTest/AppFlowIntegrationTest 共 34/34 通过。已知限制：提交成功但进程在 afterCommit 前崩溃则通知丢失（尽力投递可接受）。待决策：flow 的 record-event/businessEffect 仍向业务库写 f_runtime_message，与新规则冲突，建议单独立项。"
+    },
+    {
+      "id": "feat-179",
+      "name": "Engine - 修复启动死循环与 SQLite 隔离级别硬失败",
+      "description": "修复 SessionFactory Bean 创建期间 build-item 引导写经 AppFlowRecordGuard 重入未完成 Bean 导致的无限递归（Quarkus 启动失败）；连带修复 SQLite 不支持 READ_COMMITTED 时 applySessionOptions 硬抛异常的问题，改为保留默认隔离级别并告警。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：SessionOptions 新增 schemaImport()（skipWriteInterceptors），applyBuildItemSchemas 导入会话跳过业务写拦截器，guard 不再参与引导写（根因：Bean 创建期间 guard→findProjects 经 ClientProxy 重入 sessionFactory Bean 创建，b102bb7 引入）；applySessionOptions 对数据源不支持的隔离级别降级为 WARN+保留默认（SQLite 默认 SERIALIZABLE 语义更强，MySQL 行为不变）。验证：全模块 compile、mvn -o test -pl flexmodel-engine 通过；server 定向 33 项 32 通过，NotificationResourceTest 此前因启动死循环整类不可运行的 7 项中 6 项恢复通过，唯一失败 sourceRollbackCannotDeliverAndRetryPreservesReadState 为 11-08 已记录基线既有失败（跨 schema 事务语义与测试断言冲突，需产品决策），与本修复无关。"
+    },
+    {
       "id": "feat-178",
       "name": "Engine/Server - 实体类数据访问收敛到 dsl()",
       "description": "DataService 恢复纯 String modelName + Map 契约（删除 Class 重载）；实体类便利收敛到 session.dsl() 层：typed builder 新增 executeMaps/executeOneMap/orderBy(Query.OrderBy)/values(Map)，server 端 14 个文件约 40 处调用迁移到 selectFrom(Class)/insertInto(Class)/update(Class) 链式写法。",

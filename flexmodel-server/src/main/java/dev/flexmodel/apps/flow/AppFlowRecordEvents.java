@@ -1,9 +1,9 @@
 package dev.flexmodel.apps.flow;
 
 import dev.flexmodel.apps.AppService;
+import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.messaging.*;
-import dev.flexmodel.project.ProjectService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -13,15 +13,13 @@ import java.util.*;
 import static dev.flexmodel.common.Values.*;
 
 /**
- * Apps-only change capture; publishing an event is part of the business transaction.
+ * Apps-only change capture; events publish after the business transaction commits, a rolled-back source never publishes.
  */
 @ApplicationScoped
 public class AppFlowRecordEvents implements ReliableMessageHandler {
   private static final Set<String> AUDIT = Set.of("updated_at", "updated_by", "created_at", "created_by");
   @Inject
   ReliableMessages messages;
-  @Inject
-  ProjectService projects;
   @Inject
   SessionContext current;
   @Inject
@@ -43,7 +41,7 @@ public class AppFlowRecordEvents implements ReliableMessageHandler {
       "principal", Objects.toString(current.getUserId(), ""), "orderingKey", "record:" + form + ":" + record));
     payload.put("before", before == null ? null : old);
     payload.put("after", after == null ? null : next);
-    messages.enqueueBusiness(app, projects.resolveDatabaseName(app), "record-event:" + id, type(), payload);
+    ProjectUnitOfWork.afterCommit(() -> messages.enqueueNew(app, "record-event:" + id, type(), payload));
   }
 
   public String type() {

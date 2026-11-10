@@ -53,7 +53,7 @@ public class SqlSession extends AbstractSession {
    */
   private DataService applyWriteInterceptors() {
     List<WriteInterceptor> interceptors = sqlContext.getFactory().getWriteInterceptors();
-    if (interceptors.isEmpty()) {
+    if (interceptors.isEmpty() || sqlContext.isSkipWriteInterceptors()) {
       return dataService;
     }
     return (DataService) Proxy.newProxyInstance(DataService.class.getClassLoader(), new Class<?>[]{DataService.class},

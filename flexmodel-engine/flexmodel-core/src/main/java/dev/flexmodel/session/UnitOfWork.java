@@ -20,6 +20,7 @@ public class UnitOfWork {
   }
 
   private static final ThreadLocal<Deque<Frame>> STACK = new ThreadLocal<>();
+  private static final ThreadLocal<Deque<Runnable>> DEFERRED = new ThreadLocal<>();
   private static final Set<String> LEASE_BLOCKED = Set.of("close", "commit", "rollback", "startTransaction");
 
   private final SessionFactory factory;
@@ -30,12 +31,38 @@ public class UnitOfWork {
 
   /**
    * schema 级事务模板。自建会话采用 READ_COMMITTED 隔离级别与方言连接准备。
+   * 同名 schema 已有活动事务时加入该事务。
    */
   public <T> T execute(String schema, Supplier<T> action) {
     Frame current = current();
     if (current != null && current.schema().equals(schema)) {
       return action.get();
     }
+    return runNew(schema, action);
+  }
+
+  /**
+   * 独立事务执行发布类动作（REQUIRES_NEW 语义）：不随外层事务回滚。
+   * 外层存在同名 schema 活动事务时（如 SQLite 同库写锁被占用），延迟到最外层事务结束后执行。
+   */
+  public void publishNew(String schema, Runnable action) {
+    Frame current = current();
+    if (current != null && current.schema().equals(schema)) {
+      Deque<Runnable> pending = DEFERRED.get();
+      if (pending == null) {
+        pending = new ArrayDeque<>();
+        DEFERRED.set(pending);
+      }
+      pending.add(action);
+      return;
+    }
+    runNew(schema, () -> {
+      action.run();
+      return null;
+    });
+  }
+
+  private <T> T runNew(String schema, Supplier<T> action) {
     if (!(factory.getSchemaProvider(schema) instanceof JdbcSchemaProvider)) {
       throw new UnsupportedOperationException("事务工作单元需要 SQL 数据源");
     }
@@ -145,6 +172,12 @@ public class UnitOfWork {
       stack.pop();
       if (stack.isEmpty()) {
         STACK.remove();
+        Deque<Runnable> pending = DEFERRED.get();
+        if (pending != null) {
+          DEFERRED.remove();
+          Runnable action;
+          while ((action = pending.pollFirst()) != null) action.run();
+        }
       }
     }
   }

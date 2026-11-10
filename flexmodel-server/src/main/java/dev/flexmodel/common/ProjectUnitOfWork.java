@@ -38,6 +38,14 @@ public class ProjectUnitOfWork {
   }
 
   /**
+   * 在平台库中开启独立事务执行发布类动作（不加入外层平台事务、不随其回滚；
+   * 外层平台事务活动期间延迟到其结束后执行），用于业务事务提交后的发布。
+   */
+  public void publishPlatformNew(String projectId, Runnable action) {
+    unitOfWork.publishNew(PLATFORM_SCHEMA, action);
+  }
+
+  /**
    * 接管既有会话：为其开启事务或加入当前事务，会话生命周期仍由调用方负责。
    */
   public <T> T adopt(String projectId, Session session, Supplier<T> action) {

@@ -20,6 +20,7 @@ public abstract class AbstractSessionContext {
   protected final String schemaName;
   protected final ModelRegistry mappedModels;
   protected boolean failsafe = false;
+  protected boolean skipWriteInterceptors = false;
   protected int nestedQueryMaxDepth = 5;
   protected final SessionFactory factory;
   protected Session session;
@@ -61,6 +62,14 @@ public abstract class AbstractSessionContext {
 
   public void setFailsafe(boolean failsafe) {
     this.failsafe = failsafe;
+  }
+
+  public boolean isSkipWriteInterceptors() {
+    return skipWriteInterceptors;
+  }
+
+  public void setSkipWriteInterceptors(boolean skipWriteInterceptors) {
+    this.skipWriteInterceptors = skipWriteInterceptors;
   }
 
   public int getNestedQueryMaxDepth() {

@@ -11,6 +11,7 @@ import dev.flexmodel.common.messaging.*;
 import dev.flexmodel.project.ProjectService;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.*;
 
@@ -22,7 +23,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 @QuarkusTestResource(FlowDatabaseResource.class)
+@TestProfile(AppFlowIntegrationTest.Profile.class)
 class AppFlowIntegrationTest {
+  public static class Profile implements io.quarkus.test.junit.QuarkusTestProfile {
+    public Map<String, String> getConfigOverrides() {
+      return Map.of("quarkus.scheduler.enabled", "false");
+    }
+  }
   @Inject
   AppService apps;
   @Inject
@@ -41,8 +48,6 @@ class AppFlowIntegrationTest {
   AppFlowInstanceRepository instances;
   @Inject
   ReliableMessages messages;
-  @Inject
-  RuntimeMessageRepository outbox;
   @Inject
   ProjectUnitOfWork transactions;
   @Inject
@@ -137,18 +142,16 @@ class AppFlowIntegrationTest {
   @Test
   void eventOutboxRollsBackWithDataAndDeleteUsesTheBeforeSnapshot() {
     String record = record("订单A");
-    messages.drainBusiness(app, schema, 100);
+    messages.drain(app, 100);
     var flow = publish(draft(Map.of("type", "DATA_EVENT", "formName", "orders", "operations", List.of("UPDATE", "DELETE")), List.of()));
     assertThrows(IllegalStateException.class, () -> transactions.execute(app, () -> {
       records.updateRecord(app, "orders", record, Map.of("name", "回滚"), null, null, null);
       throw new IllegalStateException("rollback");
     }));
-    messages.drainBusiness(app, schema, 100);
     drain();
     assertTrue(instances.findAll(app).isEmpty());
     records.deleteRecord(app, "orders", record, null, null, null);
-    messages.drainBusiness(app, schema, 100);
-    messages.drainBusiness(app, schema, 100);
+    messages.drain(app, 100);
     drain();
     assertEquals(1, instances.findAll(app).size());
     var run = instances.findAll(app).getFirst();
@@ -160,22 +163,22 @@ class AppFlowIntegrationTest {
   void businessReceiptSurvivesPlatformRollbackAndWorkflowWritesDoNotTrigger() {
     var count = new AtomicInteger();
     assertThrows(IllegalStateException.class, () -> transactions.executePlatform(app, () -> {
-      messages.businessEffect(app, schema, "task-1", () -> {
+      messages.businessEffect(app, "task-1", () -> {
         count.incrementAndGet();
         return record("自动创建");
       });
       throw new IllegalStateException("platform rollback");
     }));
-    Object prior = messages.businessEffect(app, schema, "task-1", () -> {
+    Object prior = messages.businessEffect(app, "task-1", () -> {
       fail("必须复用已提交的执行回执");
       return null;
     });
     assertNotNull(prior);
     assertEquals(1, count.get());
-    messages.drainBusiness(app, schema, 100);
+    messages.drain(app, 100);
     publish(draft(Map.of("type", "DATA_EVENT", "formName", "orders", "operations", List.of("CREATE")), List.of()));
     AppFlowRecordContext.as("root", () -> record("流程内部创建"));
-    messages.drainBusiness(app, schema, 100);
+    messages.drain(app, 100);
     drain();
     assertTrue(instances.findAll(app).isEmpty());
   }
@@ -243,7 +246,6 @@ class AppFlowIntegrationTest {
       long deadline = System.nanoTime() + java.time.Duration.ofSeconds(180).toNanos();
       while (System.nanoTime() < deadline && !(finished = process.waitFor(100, java.util.concurrent.TimeUnit.MILLISECONDS))) {
         try {
-          messages.drainBusiness(app, schema, 50);
           messages.drain(app, 100);
         } catch (jakarta.ws.rs.ServiceUnavailableException contention) { /* Retry the next polling tick. */ }
       }

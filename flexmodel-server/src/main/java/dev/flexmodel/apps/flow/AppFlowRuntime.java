@@ -295,7 +295,7 @@ public class AppFlowRuntime implements DurableFlowListener {
     String rootRunId = rootRun(appId, run);
     current.setUserId(text(run, "principal"));
     try {
-      output = AppFlowRecordContext.as(rootRunId, () -> historyContext.as(new Snapshot(rootRunId, taskId, text(run, "initiator")), () -> messages.businessEffect(appId, records.schema(appId, text(object(cfg.get("form")), "name")), taskId, () -> records.execute(appId, cfg, variables))));
+      output = AppFlowRecordContext.as(rootRunId, () -> historyContext.as(new Snapshot(rootRunId, taskId, text(run, "initiator")), () -> messages.businessEffect(appId, taskId, () -> records.execute(appId, cfg, variables))));
     } finally {
       current.setUserId(actor);
     }

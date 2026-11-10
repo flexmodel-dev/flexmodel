@@ -1,4 +1,67 @@
-## Engine/Server - 实体类数据访问收敛到 dsl()（2026-11-10）
+## Engine/Server - 平台表全面退出业务库（f_runtime_message，2026-11-10）
+
+- 用户架构决策：platform.fml 的表一律不进业务库，业务库只存应用创建的表单。据此移除业务库 outbox 机制：
+    - `SchemaRegistry.initializeRuntime` 删除——不再向业务库动态建 `f_runtime_message` 表。
+    - `ReliableMessages`：删除 `enqueueBusiness`/`drainBusiness`；`businessEffect` 回执（flow.effect.receipt）改为业务事务
+      afterCommit 后经 `publishPlatformNew` 独立落平台库（签名去掉 schema 参数）；drain/dispatch 去掉业务库分支，
+      所有消息统一平台 outbox，dispatch 仅保留 heads 并行投递。
+    - `AppFlowRecordEvents.capture` 改为 afterCommit + `messages.enqueueNew`（业务提交后才发布，回滚不发）；
+      `NotificationService` 同步改用 `enqueueNew`。
+    - `RuntimeMessageRepository` 删除 ThreadLocal 路由（STORE/inSchema/openSession 覆写），回归纯平台库仓库。
+- 引擎 `UnitOfWork` 新增 `publishNew(schema, action)`（REQUIRES_NEW 发布语义）+ 延迟队列：外层存在同名 schema
+  活动事务时（SQLite 单写者，第二条连接同库写会 SQLITE_BUSY），动作入队延迟到最外层事务结束（pop 时冲刷）；
+  提交/回滚都会释放锁，届时独立事务执行，天然不随外层回滚。`ProjectUnitOfWork.publishPlatformNew` 为其门面。
+  首版直接 `executeNew` 立即执行，在 `businessReceiptSurvivesPlatformRollback` 场景（平台事务内嵌业务事务）撞
+  SQLITE_BUSY，测试暴露后改为延迟方案。
+- 语义变化（已知限制）：回执/事件不再与业务写同库原子——业务提交成功但发布动作执行前崩溃，会丢通知/事件，
+  效果（businessEffect）会重执行一次；原 exactly-once 退化为 effectively-once（毫秒级窗口）。
+- 测试同步：AppFlowIntegrationTest drainBusiness→drain、businessEffect 去掉 schema 参数、照 NotificationResourceTest
+  先例加 `@TestProfile` 关闭 quarkus 调度器（quartz 不受影响；后台 dispatch 与测试线程在 system SQLite 上并发写
+  会 SQLITE_BUSY）；NotificationResourceTest 删除多余的 drainBusiness/schema。
+- 验证：全模块 compile、`mvn -o test -pl flexmodel-engine` 通过；定向 server 41/41
+  （AppFlowIntegrationTest 8、NotificationResourceTest 7、ApprovalPolicyTest 4、AppRecord* 22）。
+- 遗留：生产环境（MySQL）下 dispatch 并行投递与用户写无 SQLite 锁冲突；SQLite dev 环境下 dispatch 与业务写
+  并发仍可能出现瞬时 BUSY（dispatch 侧有重试/deferred 日志），如需缓解可给 SQLite 数据源开 WAL + busy_timeout，未做。
+
+## Server - 通知与源事务回滚解耦（afterCommit 入队，2026-11-10）
+
+- `sourceRollbackCannotDeliverAndRetryPreservesReadState` 失败根因：`NotificationService.enqueue` 在业务事务内
+  直接把消息写入平台库 outbox（`ReliableMessages.enqueue` → `executePlatform`），跨 schema 独立事务立即提交，
+  业务事务回滚后消息照样投递（version=1 ≠ 0）。
+- 用户架构决策：platform.fml 的表一律不进业务库，业务库只存应用创建的表单——不能把 `f_runtime_message`
+  搬进业务库来实现原子性（已否决的第一版方案：通知走 `enqueueBusiness` 业务库 outbox，已回滚）。
+- 最终方案：`messages.enqueue` 包进 `ProjectUnitOfWork.afterCommit`（engine `UnitOfWork.afterCommit`：
+  注册到宿主会话，提交确认后随会话关闭按序执行，回滚丢弃，无事务立即执行）。回滚即不投递；提交后才入
+  平台 outbox，平台表不进业务库。改动仅 `NotificationService` 一个文件（类注释 + enqueue 一行）。
+- 权衡（已知限制）：业务事务提交成功但进程在 afterCommit 执行前崩溃 → 该通知丢失；通知本为尽力投递，
+  outbox 仍提供入队后的可靠重试。
+- 验证：全模块 compile、`mvn -o test -pl flexmodel-engine` 通过；NotificationResourceTest 7/7（含本用例）、
+  ApprovalPolicyTest/AppRecordServiceTest/AppRecordHistoryRecorderTest/AppRecordHistoryDiffTest/AppFlowIntegrationTest
+  共 34/34 通过。
+- 待用户决策：现有 flow 机制仍向业务库写 `f_runtime_message`（`AppFlowRecordEvents.capture` 走
+  `enqueueBusiness`、`businessEffect` 依赖其做业务库内幂等回执、`SchemaRegistry.initializeRuntime` 在业务库建
+  该表）——与"业务库只存应用表单"规则冲突，属流程引擎幂等机制重构，建议单独立项。
+
+## Engine - 修复启动死循环与 SQLite 隔离级别硬失败（2026-11-10）
+
+- 死循环根因：`EngineConfig.sessionFactory` Bean 创建期间 `registerBuildItem → applyBuildItemSchemas` 的 merge 写
+  被业务写拦截器 `AppFlowRecordGuard` 拦截（模型不在 INTERNAL），guard 调 `ProjectFmRepository.findProjects` 又经
+  ClientProxy 解析尚未创建完成的 sessionFactory Bean，Arc 上下文重入 Bean 创建 → 无限递归直至栈溢出。
+  该问题由 b102bb7（会话管理下沉引擎层）引入，之前测试类因启动失败其余用例被跳过、从未暴露。
+- 修复：`SessionOptions` 新增 `schemaImport()`（skipWriteInterceptors）；`applyBuildItemSchemas` 的导入会话
+  以该选项创建，`SqlSession.applyWriteInterceptors` 对 schema 导入会话直接返回原始 dataService——
+  引导期写本就不应经过业务写拦截器，guard 不再参与引导写，递归消失且省去逐条种子数据的 findProjects 开销。
+- 连带修复（同一 b102bb7 引入，死循环解除后暴露）：`UnitOfWork.execute` 使用 READ_COMMITTED，SQLite/xerial
+  不支持该隔离级别，`applySessionOptions` 直接抛 UnsupportedOperationException 导致通知类 6/7 用例失败。
+  改为不支持时保留默认隔离级别（SQLite 默认 SERIALIZABLE，语义更强，安全性无损）并 WARN；MySQL 行为不变。
+- 验证：全模块 `mvn -o clean compile` 通过；`mvn -o test -pl flexmodel-engine` 通过；
+  server 定向 33 项（含 NotificationResourceTest 全类 7 项）32 通过——
+  Quarkus 可正常启动，此前因死循环全部无法运行的用例恢复。唯一失败 `sourceRollbackCannotDeliverAndRetryPreservesReadState`
+  为 11-08 已记录的基线既有失败：b102bb7 后 `UnitOfWork` 跨 schema 挂起外层、开独立事务，源事务回滚不再连带
+  system 库通知流写入，测试断言（version==0）与现行设计冲突，需产品决策后单独处理，与本修复无关。
+  遗留：隔离级别降级 WARN 在 SQLite 测试环境每次开会话都会打印，日志较吵，可后续降为 debug 或按 schema 记一次。
+
+## Engine/Server - 实体类数据访问收敛到 dsl()（2026-11-10，已提交 f894b5d）
 
 - 按用户决定：`DataService` 保持 `String modelName + Map` 契约（还原此前工作区加在其上的 6 个 Class 重载，
   文件与 HEAD 一致）；实体类引用模型的便利统一收敛到 `session.dsl()` 层。

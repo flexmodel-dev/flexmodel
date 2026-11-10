@@ -1,6 +1,7 @@
 package dev.flexmodel.notification;
 
 import dev.flexmodel.apps.record.AppRecordDiscussionRepository;
+import dev.flexmodel.common.ProjectUnitOfWork;
 import dev.flexmodel.common.messaging.ReliableMessageHandler;
 import dev.flexmodel.common.messaging.ReliableMessages;
 import dev.flexmodel.directory.DirectoryService;
@@ -15,7 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Producers only enqueue in their project transaction; delivery owns a separate system transaction.
+ * Producers enqueue after their transaction commits; a rolled-back source never delivers. Delivery owns a separate system transaction.
  */
 @ApplicationScoped
 public class NotificationService implements ReliableMessageHandler {
@@ -92,7 +93,7 @@ public class NotificationService implements ReliableMessageHandler {
     payload.put("content", content);
     payload.put("occurred_at", LocalDateTime.now().toString());
     payload.putAll(extra);
-    messages.enqueue(app, "notification:" + key, type(), payload);
+    ProjectUnitOfWork.afterCommit(() -> messages.enqueueNew(app, "notification:" + key, type(), payload));
   }
 
   /**

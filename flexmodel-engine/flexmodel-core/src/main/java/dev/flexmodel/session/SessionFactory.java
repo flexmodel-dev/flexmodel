@@ -106,7 +106,7 @@ public class SessionFactory {
       return;
     }
 
-    try (Session session = createFailsafeSession(schemaName)) {
+    try (Session session = createFailsafeSession(schemaName, SessionOptions.schemaImport())) {
       // 先快照已注册的旧定义；migrateEntity 会覆盖 registry，必须在迁移前捕获 older 做字段 diff
       Map<String, SchemaObject> existing = session.schema().listModels().stream()
         .collect(Collectors.toMap(SchemaObject::getName, m -> m));
@@ -327,6 +327,9 @@ public class SessionFactory {
       if (failsafeMode) {
         sqlContext.setFailsafe(true);
       }
+      if (options.skipWriteInterceptors()) {
+        sqlContext.setSkipWriteInterceptors(true);
+      }
       applySessionOptions(connection, sqlContext.getSqlDialect(), options);
       DataService eventAwareDataService = new EventAwareDataService(
         new SqlDataService(sqlContext), eventPublisher, schemaName, UUID.randomUUID().toString(), this
@@ -341,9 +344,11 @@ public class SessionFactory {
     try {
       if (options != null && options.applyIsolation()) {
         if (!connection.getMetaData().supportsTransactionIsolationLevel(options.isolation())) {
-          throw new UnsupportedOperationException("数据源不支持所需的事务隔离级别");
+          // SQLite 等数据源不支持 READ_COMMITTED：保留默认隔离级别（多为 SERIALIZABLE，语义更强），仅告警
+          log.warn("Datasource does not support isolation level {}, keeping default", options.isolation());
+        } else {
+          connection.setTransactionIsolation(options.isolation());
         }
-        connection.setTransactionIsolation(options.isolation());
       }
       dialect.prepareConnection(connection);
     } catch (SQLException e) {

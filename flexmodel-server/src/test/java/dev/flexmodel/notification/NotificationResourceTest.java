@@ -45,8 +45,6 @@ class NotificationResourceTest {
   dev.flexmodel.auth.service.ApiKeyService apiKeyService;
   @Inject
   dev.flexmodel.apps.AppService apps;
-  @Inject
-  dev.flexmodel.project.ProjectService projects;
 
   String user() {
     String id = "notice_" + UUID.randomUUID().toString().replace("-", "");
@@ -224,7 +222,6 @@ class NotificationResourceTest {
   void browserRoundTripAgainstRealBackend() throws Exception {
     String app = "notice" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     apps.createApp(new dev.flexmodel.apps.dto.AppCreateRequest("通知浏览器验收", "", app, "Boxes", "blue"));
-    String schema = projects.resolveDatabaseName(app);
     var script = java.nio.file.Path.of("../flexmodel-apps-ui/e2e/notifications-backend.mjs").toAbsolutePath().normalize();
     if (!java.nio.file.Files.exists(script))
       script = java.nio.file.Path.of("flexmodel-apps-ui/e2e/notifications-backend.mjs").toAbsolutePath().normalize();
@@ -238,7 +235,6 @@ class NotificationResourceTest {
     long deadline = System.nanoTime() + Duration.ofSeconds(150).toNanos();
     while (System.nanoTime() < deadline && !(finished = process.waitFor(100, TimeUnit.MILLISECONDS))) {
       try {
-        messages.drainBusiness(app, schema, 50);
         messages.drain(app, 100);
       } catch (jakarta.ws.rs.ServiceUnavailableException busy) {
       }

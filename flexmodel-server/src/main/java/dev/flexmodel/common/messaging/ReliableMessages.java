@@ -36,11 +36,20 @@ public class ReliableMessages {
   }
 
   public void enqueue(String project, String id, String type, Map<String, Object> payload) {
-    runtimeMessageRepository.inSchema(null, () -> unitOfWork.executePlatform(project, () -> {
-      if (!runtimeMessageRepository.existsByMessageId(project, id))
-        runtimeMessageRepository.insert(project, id, type, orderingKey(id, payload), payload);
-      return null;
-    }));
+    unitOfWork.executePlatform(project, () -> insertIfAbsent(project, id, type, payload));
+  }
+
+  /**
+   * 独立平台事务入队：不加入外层平台事务，供业务事务提交后的发布使用。
+   */
+  public void enqueueNew(String project, String id, String type, Map<String, Object> payload) {
+    unitOfWork.publishPlatformNew(project, () -> insertIfAbsent(project, id, type, payload));
+  }
+
+  private Void insertIfAbsent(String project, String id, String type, Map<String, Object> payload) {
+    if (!runtimeMessageRepository.existsByMessageId(project, id))
+      runtimeMessageRepository.insert(project, id, type, orderingKey(id, payload), payload);
+    return null;
   }
 
   @Scheduled(every = "1s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
@@ -48,13 +57,6 @@ public class ReliableMessages {
   void dispatch() {
     try (var workers = Executors.newVirtualThreadPerTaskExecutor()) {
       for (var project : projects.findProjects()) {
-        if (!"system".equals(project.getDatabaseName())) {
-          try {
-            runtimeMessageRepository.inSchema(project.getDatabaseName(), () -> drain(project.getId(), 40));
-          } catch (Exception error) {
-            LOG.debugf(error, "Business outbox deferred: %s", project.getId());
-          }
-        }
         try {
           for (var head : heads(project.getId(), null).stream().limit(40).toList()) {
             String key = Objects.toString(head.get("ordering_key"), head.get("message_id").toString());
@@ -99,7 +101,7 @@ public class ReliableMessages {
       var first = runtimeMessageRepository.findFirstByOrderingKey(project, String.valueOf(message.get("ordering_key")));
       Object anchor = first == null ? id : first.get("id");
       try {
-        boolean processed = transaction(project, () -> {
+        boolean processed = unitOfWork.executePlatform(project, () -> {
           runtimeMessageRepository.lock(project, anchor);
           runtimeMessageRepository.lock(project, id);
           var latest = runtimeMessageRepository.findById(project, id);
@@ -109,18 +111,13 @@ public class ReliableMessages {
           if (!previous.isEmpty() || availableAt(latest).isAfter(LocalDateTime.now())) return false;
           var handler = handlers.stream().filter(item -> item.type().equals(latest.get("type"))).findFirst()
             .orElseThrow(() -> new IllegalStateException("未注册消息处理器: " + latest.get("type")));
-          if (runtimeMessageRepository.schema() == null)
-            handler.handle(project, String.valueOf(latest.get("message_id")), (Map<String, Object>) latest.get("payload"));
-          else runtimeMessageRepository.inSchema(null, () -> unitOfWork.executePlatform(project, () -> {
-            handler.handle(project, String.valueOf(latest.get("message_id")), (Map<String, Object>) latest.get("payload"));
-            return null;
-          }));
+          handler.handle(project, String.valueOf(latest.get("message_id")), (Map<String, Object>) latest.get("payload"));
           runtimeMessageRepository.update(project, id, Map.of("state", "DONE", "error", ""));
           return true;
         });
         if (processed) delivered++;
       } catch (Exception error) {
-        transaction(project, () -> {
+        unitOfWork.executePlatform(project, () -> {
           runtimeMessageRepository.lock(project, anchor);
           runtimeMessageRepository.lock(project, id);
           var latest = runtimeMessageRepository.findById(project, id);
@@ -138,35 +135,22 @@ public class ReliableMessages {
     return delivered;
   }
 
-  private <T> T transaction(String app, java.util.function.Supplier<T> action) {
-    return runtimeMessageRepository.schema() == null ? unitOfWork.executePlatform(app, action) : unitOfWork.execute(app, action);
-  }
-
-  public void enqueueBusiness(String app, String schema, String id, String type, Map<String, Object> payload) {
-    runtimeMessageRepository.inSchema(schema, () -> unitOfWork.execute(app, () -> {
-      if (!runtimeMessageRepository.existsByMessageId(app, id))
-        runtimeMessageRepository.insert(app, id, type, orderingKey(id, payload), payload);
-      return null;
-    }));
-  }
-
-  public int drainBusiness(String app, String schema, int limit) {
-    return runtimeMessageRepository.inSchema(schema, () -> drain(app, limit));
-  }
-
-  public Object businessEffect(String app, String schema, String task, java.util.function.Supplier<Object> action) {
-    return runtimeMessageRepository.inSchema(schema, () -> unitOfWork.execute(app, () -> {
-      String key = "effect:" + task;
-      var old = runtimeMessageRepository.findByMessageId(app, key);
-      if (!old.isEmpty()) return dev.flexmodel.common.Values.object(old.getFirst().get("payload")).get("result");
+  public Object businessEffect(String app, String task, java.util.function.Supplier<Object> action) {
+    String key = "effect:" + task;
+    var old = runtimeMessageRepository.findByMessageId(app, key);
+    if (!old.isEmpty()) return dev.flexmodel.common.Values.object(old.getFirst().get("payload")).get("result");
+    return unitOfWork.execute(app, () -> {
       Object result = action.get();
-      var payload = new LinkedHashMap<String, Object>();
-      payload.put("result", result);
-      runtimeMessageRepository.insert(app, key, "flow.effect.receipt", key, payload);
-      var receipt = runtimeMessageRepository.findByMessageId(app, key).getFirst();
-      runtimeMessageRepository.update(app, receipt.get("id"), Map.of("state", "RECEIPT"));
+      // shortcut: 回执不再与业务写同库原子，业务提交后独立落平台库；两段之间崩溃会重执行效果，需效果幂等时升级
+      dev.flexmodel.common.ProjectUnitOfWork.afterCommit(() -> unitOfWork.publishPlatformNew(app, () -> {
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("result", result);
+        runtimeMessageRepository.insert(app, key, "flow.effect.receipt", key, payload);
+        var receipt = runtimeMessageRepository.findByMessageId(app, key).getFirst();
+        runtimeMessageRepository.update(app, receipt.get("id"), Map.of("state", "RECEIPT"));
+      }));
       return result;
-    }));
+    });
   }
 
   private static LocalDateTime availableAt(Map<String, Object> row) {

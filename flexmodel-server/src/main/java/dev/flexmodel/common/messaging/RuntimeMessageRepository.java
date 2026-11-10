@@ -18,32 +18,6 @@ import static dev.flexmodel.query.Expressions.field;
 
 @ApplicationScoped
 public class RuntimeMessageRepository extends AbstractRepository {
-  private static final ThreadLocal<String> STORE = new ThreadLocal<>();
-
-  public String schema() {
-    return STORE.get();
-  }
-
-  public <T> T inSchema(String schema, java.util.function.Supplier<T> action) {
-    String old = STORE.get();
-    if (schema == null) STORE.remove();
-    else STORE.set(schema);
-    try {
-      return action.get();
-    } finally {
-      if (old == null) STORE.remove();
-      else STORE.set(old);
-    }
-  }
-
-  @Override
-  protected Session openSession() {
-    String schema = STORE.get();
-    if (schema == null) return super.openSession();
-    Session borrowed = ProjectUnitOfWork.borrowSchema(schema);
-    return borrowed == null ? sessionFactory.createSession(schema) : borrowed;
-  }
-
 
   public List<Map<String, Object>> findByMessageId(String appId, String messageId) {
     return findAll(appId, runtimeMessage.messageId.eq(messageId));

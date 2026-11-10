@@ -55,8 +55,9 @@ public class AppFlowDefinitionRepository extends AbstractRepository {
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {
     try (Session session = openSession()) {
-      return session.data().findAll(ReflectionUtils.getModelNameFromClass(FlowDefinition.class),
-        field("project_id").eq(appId).and(predicate == null ? TRUE : predicate));
+      return session.dsl().selectFrom(FlowDefinition.class)
+        .where(field("project_id").eq(appId).and(predicate == null ? TRUE : predicate))
+        .executeMaps();
     }
   }
 }

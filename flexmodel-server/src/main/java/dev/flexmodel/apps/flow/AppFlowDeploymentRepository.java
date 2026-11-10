@@ -4,7 +4,6 @@ import dev.flexmodel.codegen.entity.FlowDeployment;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.query.Predicate;
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -34,8 +33,9 @@ public class AppFlowDeploymentRepository extends AbstractRepository {
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {
     try (Session session = openSession()) {
-      return session.data().findAll(ReflectionUtils.getModelNameFromClass(FlowDeployment.class),
-        field("project_id").eq(appId).and(predicate == null ? TRUE : predicate));
+      return session.dsl().selectFrom(FlowDeployment.class)
+        .where(field("project_id").eq(appId).and(predicate == null ? TRUE : predicate))
+        .executeMaps();
     }
   }
 }

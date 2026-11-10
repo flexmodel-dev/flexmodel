@@ -1,3 +1,50 @@
+## Engine/Server - 实体类数据访问收敛到 dsl()（2026-11-10）
+
+- 按用户决定：`DataService` 保持 `String modelName + Map` 契约（还原此前工作区加在其上的 6 个 Class 重载，
+  文件与 HEAD 一致）；实体类引用模型的便利统一收敛到 `session.dsl()` 层。
+- DSL 层新增最小 Map 能力（typed builder）：
+    - `TypedDSLQueryBuilder.executeMaps()`（List<Map>）/ `executeOneMap()`（Optional<Map>，无记录为 empty）
+      / 补 `orderBy(Query.OrderBy)` 委托；
+    - `TypedDSLInsertBuilder` / `TypedDSLUpdateBuilder` 增加 `values(Map<String,Object>)` 重载
+      （跳过实体转换；execute 的 finally 仅在 typed values 非 null 时回写，避免 Map 路径 NPE）。
+- server 端 14 个文件全部迁移：flow 9 个 Repository、AppRecordDiscussionRepository、
+  AppRecordHistoryRepository（insertAll 两处改为同会话逐条 insertInto 循环，语义与 insertAll default 相同）、
+  DirectoryService、NotificationRepository；`AppFlowRecordGuard` 还原 HEAD（dsl() 路径在进入
+  `session.data()` 代理前即解析出 String 模型名，无需 Class 归一化）。文件内既有
+  `dsl().selectFrom(ReflectionUtils.getModelNameFromClass(X.class))` 同步改为 `selectFrom(X.class).executeMaps()`；
+  DirectoryService/AppRecordDiscussionRepository/AppRecordHistoryRepository 由此去掉 ReflectionUtils import，
+  NotificationRepository/AppFlowDefinitionRepository 因 lockRow/mergeUpdate/ProjectUnitOfWork.lock 仍保留。
+- 验证：`mvn -o clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过；
+  `mvn -o test -pl flexmodel-engine` 通过；server 定向
+  （AppRecordHistoryRecorderTest/AppRecordHistoryDiffTest/NotificationResourceTest/AppRecordServiceTest/ApprovalPolicyTest）
+  33 项中 32 通过，唯一失败 `NotificationResourceTest.inboxIsolationPaginationAndIdempotentReads`
+  为 Quarkus 启动期 applyBuildItemSchemas→AppFlowRecordGuard→findProjects 递归，stash 本次改动后基线复现同样失败，
+  属基线既有问题，与本次收敛无关，需单独排查。
+
+## Apps UI - 无主显字段时详情标题改用 查看{表单名}（2026-11-10，feat-177）
+
+- 需求：表单不存在主显字段（displayField）时，记录详情不要以记录 ID 作标题，改用「查看{form.label}」。
+- 改动：`AppRecordDrawer`（查看态抽屉）与 `AppRecordDetail`（独立记录页）标题逻辑——
+  `form.displayField` 为空返回 `查看${form.label}`；存在时沿用 `recordTitle`（值空仍回退 ID）。
+- 未动：引用值、子表、REFERENCE 渲染等其他 displayField 回退路径。
+- 验证：apps-ui `tsc -b` 通过；`vite build` 失败为本机环境预存问题（esbuild 临时目录清理
+  Access is denied，stash 改动后基线复现同样失败，与本改动无关）。
+
+## 引擎 - DataService 类型化重载（2026-11-10，feat-170）
+
+- `DataService` 新增 Class 重载（insert/insertAll/findById/findAll(Query)/findAll(Predicate)/update），
+  结果保持 Map 行不变（消费方几乎都用 `text(row,...)`/`row.get(...)`，实体化读取已有 `dsl().selectFrom(Class)`），
+  default 方法委托 String 版本，事件链与写拦截链自动继承。
+- server 13 个文件 41 处 `data().xxx(ReflectionUtils.getModelNameFromClass(X.class), ...)` 机械替换为
+  `data().xxx(X.class, ...)`，9 个文件清理多余 import；`AppFlowRecordGuard.intercept` 归一化 args[0]
+  （Class→模型名），否则类型化 insert 会绕过 INTERNAL 短路误走项目查找。
+- 验证：全 18 模块 clean compile 通过；flexmodel-core 99/99；AppRecordDiscussion/History 系列测试全绿。
+  AppFlowIntegrationTest/NotificationRelayTest 启动期 StackOverflow（AppFlowRecordGuard→findProjects→
+  sessionFactory 循环依赖）经 git stash 基线复跑确认为 HEAD 既有失败，与本次无关。
+- 遗留风险：其余 ~40 处 `getModelNameFromClass`（dsl selectFrom(String)、lockRow、mergeUpdate、
+  UnitOfWork.lock）属合法字符串用法未动；若未来 WriteInterceptor 按参数位置解析，新类型化调用
+  需与 AppFlowRecordGuard 同样做归一化。
+
 ## Apps - 通知浏览器验收迁移到 /flows 契约（2026-11-08，feat-176 续）
 
 - 应用户要求修复遗留的 `e2e/notifications-backend.mjs`（此前基于已下线的 /approval-flows、/approval-instances、

@@ -29,6 +29,14 @@ public class TypedDSLInsertBuilder<T> {
   }
 
   /**
+   * 设置要插入的值（Map 形式，跳过实体转换）
+   */
+  public TypedDSLInsertBuilder<T> values(Map<String, Object> values) {
+    delegate.values(values);
+    return this;
+  }
+
+  /**
    * 执行插入操作
    */
   public int execute() {
@@ -37,7 +45,9 @@ public class TypedDSLInsertBuilder<T> {
     } catch (Exception e) {
       throw new RuntimeException(e);
     } finally {
-      JsonUtils.updateValue(values, dataMap);
+      if (values != null) {
+        JsonUtils.updateValue(values, dataMap);
+      }
     }
   }
 }

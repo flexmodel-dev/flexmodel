@@ -3,7 +3,6 @@ package dev.flexmodel.apps.flow;
 import dev.flexmodel.codegen.entity.AppFlowRecordLock;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Predicate;
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -37,7 +36,7 @@ public class AppFlowRecordLockRepository extends AbstractRepository {
     try (Session session = openSession()) {
       var row = new LinkedHashMap<>(lock);
       row.put("app_id", appId);
-      session.data().insert(ReflectionUtils.getModelNameFromClass(AppFlowRecordLock.class), row);
+      session.dsl().insertInto(AppFlowRecordLock.class).values(row).execute();
     }
   }
 
@@ -50,8 +49,9 @@ public class AppFlowRecordLockRepository extends AbstractRepository {
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {
     try (Session session = openSession()) {
-      return session.data().findAll(ReflectionUtils.getModelNameFromClass(AppFlowRecordLock.class),
-        field("app_id").eq(appId).and(predicate == null ? TRUE : predicate));
+      return session.dsl().selectFrom(AppFlowRecordLock.class)
+        .where(field("app_id").eq(appId).and(predicate == null ? TRUE : predicate))
+        .executeMaps();
     }
   }
 }

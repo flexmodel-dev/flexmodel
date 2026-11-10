@@ -3,7 +3,6 @@ package dev.flexmodel.apps.record;
 import dev.flexmodel.codegen.entity.AppRecordDiscussion;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Query;
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -21,13 +20,13 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
     try (Session session = openSession()) {
       var row = new LinkedHashMap<>(discussion);
       row.put("app_id", appId);
-      session.data().insert(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class), row);
+      session.dsl().insertInto(AppRecordDiscussion.class).values(row).execute();
     }
   }
 
   public Map<String, Object> find(String appId, String formName, String recordId, String discussionId) {
     try (Session session = openSession()) {
-      return session.data().findById(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class), discussionId)
+      return session.dsl().selectFrom(AppRecordDiscussion.class).whereId(discussionId).executeOneMap()
         .filter(row -> appId.equals(row.get("app_id"))
           && formName.equals(row.get("form_name"))
           && recordId.equals(row.get("record_id")))
@@ -37,7 +36,7 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
 
   public Map<String, Object> findById(String appId, String discussionId) {
     try (Session session = openSession()) {
-      return session.data().findById(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class), discussionId)
+      return session.dsl().selectFrom(AppRecordDiscussion.class).whereId(discussionId).executeOneMap()
         .filter(row -> appId.equals(row.get("app_id")))
         .orElse(null);
     }
@@ -46,21 +45,21 @@ public class AppRecordDiscussionRepository extends AbstractRepository {
   public List<Map<String, Object>> findRoots(String appId, String formName, String recordId, int page, int size) {
     int limit = Math.clamp(size, 1, 50);
     try (Session session = openSession()) {
-      return session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class))
+      return session.dsl().selectFrom(AppRecordDiscussion.class)
         .where(recordFilter(appId, formName, recordId).and(appRecordDiscussion.parentId.eq("")))
         .orderBy(new Query.OrderBy().desc("created_at").desc("id"))
         .page(Math.clamp(page, 1, Integer.MAX_VALUE / limit), limit)
-        .execute();
+        .executeMaps();
     }
   }
 
   public List<Map<String, Object>> findReplies(String appId, Collection<String> rootIds) {
     if (rootIds.isEmpty()) return List.of();
     try (Session session = openSession()) {
-      return session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordDiscussion.class))
+      return session.dsl().selectFrom(AppRecordDiscussion.class)
         .where(appRecordDiscussion.appId.eq(appId).and(appRecordDiscussion.parentId.in(rootIds)))
         .orderBy(new Query.OrderBy().asc("created_at").asc("id"))
-        .execute();
+        .executeMaps();
     }
   }
 

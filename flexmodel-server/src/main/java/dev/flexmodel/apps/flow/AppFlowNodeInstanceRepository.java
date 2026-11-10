@@ -4,7 +4,6 @@ import dev.flexmodel.codegen.entity.NodeInstance;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.query.Predicate;
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -30,8 +29,9 @@ public class AppFlowNodeInstanceRepository extends AbstractRepository {
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {
     try (Session session = openSession()) {
-      return session.data().findAll(ReflectionUtils.getModelNameFromClass(NodeInstance.class),
-        field("project_id").eq(appId).and(predicate == null ? TRUE : predicate));
+      return session.dsl().selectFrom(NodeInstance.class)
+        .where(field("project_id").eq(appId).and(predicate == null ? TRUE : predicate))
+        .executeMaps();
     }
   }
 }

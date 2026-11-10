@@ -3,7 +3,6 @@ package dev.flexmodel.apps.flow;
 import dev.flexmodel.codegen.entity.InstanceData;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Predicate;
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -37,14 +36,15 @@ public class AppFlowInstanceDataRepository extends AbstractRepository {
     try (Session session = openSession()) {
       var row = new LinkedHashMap<>(data);
       row.put("project_id", appId);
-      session.data().insert(ReflectionUtils.getModelNameFromClass(InstanceData.class), row);
+      session.dsl().insertInto(InstanceData.class).values(row).execute();
     }
   }
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {
     try (Session session = openSession()) {
-      return session.data().findAll(ReflectionUtils.getModelNameFromClass(InstanceData.class),
-        field("project_id").eq(appId).and(predicate == null ? TRUE : predicate));
+      return session.dsl().selectFrom(InstanceData.class)
+        .where(field("project_id").eq(appId).and(predicate == null ? TRUE : predicate))
+        .executeMaps();
     }
   }
 }

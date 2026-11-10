@@ -5,7 +5,6 @@ import dev.flexmodel.codegen.entity.AppRecordHistoryTarget;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Predicate;
 import dev.flexmodel.query.Query;
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -28,7 +27,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
     try (Session session = openSession()) {
       Map<String, Object> row = new LinkedHashMap<>(event);
       row.put("app_id", appId);
-      session.data().insert(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class), row);
+      session.dsl().insertInto(AppRecordHistory.class).values(row).execute();
     }
   }
 
@@ -44,7 +43,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
       rows.add(row);
     }
     try (Session session = openSession()) {
-      session.data().insertAll(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class), rows);
+      rows.forEach(row -> session.dsl().insertInto(AppRecordHistory.class).values(row).execute());
     }
   }
 
@@ -57,7 +56,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
       rows.add(row);
     }
     try (Session session = openSession()) {
-      session.data().insertAll(ReflectionUtils.getModelNameFromClass(AppRecordHistoryTarget.class), rows);
+      rows.forEach(row -> session.dsl().insertInto(AppRecordHistoryTarget.class).values(row).execute());
     }
   }
 
@@ -79,11 +78,11 @@ public class AppRecordHistoryRepository extends AbstractRepository {
           .or(appRecordHistoryTarget.occurredAt.eq(cursorOccurredAt)
             .and(appRecordHistoryTarget.eventId.lt(cursorEventId))));
       }
-      return session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordHistoryTarget.class))
+      return session.dsl().selectFrom(AppRecordHistoryTarget.class)
         .where(filter)
         .orderBy(new Query.OrderBy().desc("occurred_at").desc("event_id"))
         .limit(limit)
-        .execute();
+        .executeMaps();
     }
   }
 
@@ -92,9 +91,9 @@ public class AppRecordHistoryRepository extends AbstractRepository {
     List<Map<String, Object>> result = new ArrayList<>();
     try (Session session = openSession()) {
       for (List<String> chunk : partition(eventIds)) {
-        result.addAll(session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class))
+        result.addAll(session.dsl().selectFrom(AppRecordHistory.class)
           .where(appRecordHistory.appId.eq(appId).and(appRecordHistory.id.in(chunk)))
-          .execute());
+          .executeMaps());
       }
     }
     return result;
@@ -102,7 +101,7 @@ public class AppRecordHistoryRepository extends AbstractRepository {
 
   public Map<String, Object> findEvent(String appId, String eventId) {
     try (Session session = openSession()) {
-      return session.data().findById(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class), eventId)
+      return session.dsl().selectFrom(AppRecordHistory.class).whereId(eventId).executeOneMap()
         .filter(row -> appId.equals(row.get("app_id")))
         .orElse(null);
     }
@@ -110,13 +109,13 @@ public class AppRecordHistoryRepository extends AbstractRepository {
 
   public Map<String, Object> findTarget(String appId, String eventId, String formName, String recordId) {
     try (Session session = openSession()) {
-      return session.dsl().selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordHistoryTarget.class))
+      return session.dsl().selectFrom(AppRecordHistoryTarget.class)
         .where(appRecordHistoryTarget.appId.eq(appId)
           .and(appRecordHistoryTarget.eventId.eq(eventId))
           .and(appRecordHistoryTarget.formName.eq(formName))
           .and(appRecordHistoryTarget.recordId.eq(recordId)))
         .limit(1)
-        .execute()
+        .executeMaps()
         .stream().findFirst().orElse(null);
     }
   }
@@ -130,11 +129,11 @@ public class AppRecordHistoryRepository extends AbstractRepository {
       int page = 1;
       while (true) {
         List<Map<String, Object>> rows = session.dsl()
-          .selectFrom(ReflectionUtils.getModelNameFromClass(AppRecordHistory.class))
+          .selectFrom(AppRecordHistory.class)
           .where(appRecordHistory.appId.eq(appId).and(appRecordHistory.formName.eq(formName)))
           .orderBy(new Query.OrderBy().asc("id"))
           .page(page, DELETE_CHUNK)
-          .execute();
+          .executeMaps();
         rows.forEach(row -> eventIds.add(text(row, "id")));
         if (rows.size() < DELETE_CHUNK) break;
         page++;

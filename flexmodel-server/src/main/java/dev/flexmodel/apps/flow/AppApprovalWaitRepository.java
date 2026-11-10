@@ -4,7 +4,6 @@ import dev.flexmodel.codegen.entity.AppApprovalWait;
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.common.NotFoundException;
 import dev.flexmodel.query.Predicate;
-import dev.flexmodel.reflect.ReflectionUtils;
 import dev.flexmodel.session.Session;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -37,7 +36,7 @@ public class AppApprovalWaitRepository extends AbstractRepository {
     try (Session session = openSession()) {
       var row = new LinkedHashMap<>(wait);
       row.put("app_id", appId);
-      session.data().insert(ReflectionUtils.getModelNameFromClass(AppApprovalWait.class), row);
+      session.dsl().insertInto(AppApprovalWait.class).values(row).execute();
     }
   }
 
@@ -51,14 +50,15 @@ public class AppApprovalWaitRepository extends AbstractRepository {
 
   private List<Map<String, Object>> findAll(String appId, Predicate predicate) {
     try (Session session = openSession()) {
-      return session.data().findAll(ReflectionUtils.getModelNameFromClass(AppApprovalWait.class),
-        field("app_id").eq(appId).and(predicate == null ? TRUE : predicate));
+      return session.dsl().selectFrom(AppApprovalWait.class)
+        .where(field("app_id").eq(appId).and(predicate == null ? TRUE : predicate))
+        .executeMaps();
     }
   }
 
   private Map<String, Object> findOne(String appId, String id) {
     try (Session session = openSession()) {
-      return session.data().findById(ReflectionUtils.getModelNameFromClass(AppApprovalWait.class), id)
+      return session.dsl().selectFrom(AppApprovalWait.class).whereId(id).executeOneMap()
         .filter(row -> appId.equals(row.get("app_id")))
         .orElse(null);
     }

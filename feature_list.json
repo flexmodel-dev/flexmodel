@@ -1,6 +1,20 @@
 {
   "features": [
     {
+      "id": "feat-178",
+      "name": "Engine/Server - 实体类数据访问收敛到 dsl()",
+      "description": "DataService 恢复纯 String modelName + Map 契约（删除 Class 重载）；实体类便利收敛到 session.dsl() 层：typed builder 新增 executeMaps/executeOneMap/orderBy(Query.OrderBy)/values(Map)，server 端 14 个文件约 40 处调用迁移到 selectFrom(Class)/insertInto(Class)/update(Class) 链式写法。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：TypedDSLQueryBuilder 新增 executeMaps（List<Map>）、executeOneMap（Optional<Map>）、orderBy(Query.OrderBy) 委托；TypedDSLInsertBuilder/TypedDSLUpdateBuilder 新增 values(Map) 重载并在 execute finally 加 null 守卫；迁移 flow 9 个 Repository、AppRecordDiscussionRepository、AppRecordHistoryRepository（insertAll 改为同会话逐条循环）、DirectoryService、NotificationRepository，AppFlowRecordGuard 还原 HEAD。验证：mvn -o clean compile 全模块通过；mvn -o test -pl flexmodel-engine 通过；server 定向 33 项 32 通过，唯一失败 NotificationResourceTest.inboxIsolationPaginationAndIdempotentReads 为 Quarkus 启动期递归，stash 后基线复现同样失败，属基线既有问题。"
+    },
+    {
+      "id": "feat-177",
+      "name": "Apps UI - 无主显字段时记录详情标题改用查看{表单名}",
+      "description": "记录详情抽屉与独立记录页在表单未设置主显字段时，标题不再回退记录 ID，改为「查看{form.label}」；主显字段存在时行为不变（空值仍回退 ID）。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：AppRecordDrawer 查看态与 AppRecordDetail 页面标题在 form.displayField 为空时返回 查看${form.label}，不再取 record.id 兜底。验证：apps-ui tsc -b 通过；vite build 失败为环境预存问题（esbuild 临时目录清理 Access is denied，stash 改动后基线复现同样失败，与本改动无关）。"
+    },
+    {
       "id": "feat-176",
       "name": "Apps - 通用工作流与三类触发",
       "description": "统一 /flows；手动和数据事件绑定表单，Quartz 定时无业务输入，复用 Flow、可靠消息和审批节点，含前端/MCP/应用包及跨库幂等。",
@@ -1617,6 +1631,14 @@
       ],
       "status": "done",
       "evidence": "2026-11-03 完成（flexmodel-server，未提交）。1) AppFormService 新增导入专用批量接口：createFormsForImport(appId, records) 按包内定义一次性构建完整 EntityDefinition（系统字段 + 索引 + 主显字段元数据 + 全部业务字段含 REFERENCE）后每表单一次 createModel、最后 persistFormRecords 一次写全部 f_app_form；applyFormLayoutsForImport(appId, records) 一次读实体与现有配置，批量应用布局与视图后同样只写一次。2) 引用字段不再需要目标表单先建表：导入期用 ThreadLocal 快照（IMPORT_FORM_NAMES / IMPORT_ENTITIES）替代 normalizeReferenceForm 的 findForms 查库与 validateSubformItem 的逐项 requireForm，包内循环引用与自引用均可一次建表；非导入路径快照为空，行为不变。3) AppPackageImport 删除 references 阶段与 createSkeletonForms/createReferenceFields/applyLayouts，改为 forms 阶段一次建表、layouts 阶段一次写配置。4) 顺带修复真实缺陷：导入在 activating 步骤失败时 compensate 保留了激活前预写的 COMMITTED 回执，TaskResult.resultOf 会把已回滚的导入报成 COMMITTED；新增 TaskState.failed(...) 在补偿态丢弃回执。验证：mvn -o compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；新增 AppFormImportBatchTest 5 项（一次建表含引用列、包内互相引用、主显字段元数据落到列、布局视图一次写入、包外引用被拒）全绿；新增 AppPackageImportTest 端到端 2 项（内置 wms/plm 模板完整导入并逐表单核对字段类型/引用/布局/视图/记录数）通过；回归 AppPackageValidatorTest 21、AppRecordHistoryRecorderTest 8、AppRecordHistoryDiffTest 8、AppPackageZipTest 10、AppTransferPlannerTest 11、AppRecordServiceTest 6、AppRecordQueryTest 16 全绿；AppTemplateCatalogTest 2 项仍为基线既有失败（同 feat-167）。本地 SQLite 实测同一端到端测试：回退到 HEAD 的基线 wms 20.5s / plm 30.4s（且均在激活步骤因测试库锁回滚，属上界），优化后 wms 2.1–2.6s、plm 1.9–2.5s 并全部断言通过；测试库为单写 SQLite，后台定时任务会写平台表，偶发 5s 锁超时时测试会重试一次，仍失败则 skip 并说明原因。未执行 git commit/push。"
+    },
+    {
+      "id": "feat-170",
+      "name": "引擎 - DataService 类型化重载（Class 引用模型）",
+      "description": "session.data() 只接受 String 模型名，调用方需手工 ReflectionUtils.getModelNameFromClass(X.class) 转换（server 中 40+ 处）。DataService 新增 Class 重载：insert/insertAll/findById/findAll(Query)/findAll(Predicate)/update(Class, Map, Predicate)，结果仍为 Map 行（与既有消费方式一致，实体化查询仍走 dsl()），default 方法委托既有 String 版本，事件链（EventAwareDataService）与写拦截链自动继承。AppFlowRecordGuard 拦截器同步归一化 args[0]（Class→模型名），保证 WriteInterceptor 对类型化调用按内部模型短路。同批规划的另两项取消：泛型仓储基类由用户取消；codegen JSON 字段类型化（Object→Map）因 JSON 列设计上可能为 List（AiMessages.parse 兼容 String/List 两种驱动返回），保持 Object 是有意设计。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "2026-11-10 完成（flexmodel-core + flexmodel-server，未提交）。引擎：DataService 新增 6 个 Class 重载 default 方法。服务端：13 个文件 41 处 data() 调用点改为类型化（apps/flow 9 个仓储、apps/record 2 个、directory/DirectoryService、notification/NotificationRepository），9 个文件清理未使用的 ReflectionUtils import；AppFlowRecordGuard.intercept 对 Class 形式的 args[0] 归一化为模型名。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 18 模块 BUILD SUCCESS；mvn test -pl flexmodel-engine/flexmodel-core 99/99 全绿；AppRecordDiscussionServiceTest 2、AppRecordHistoryDiffTest 8、AppRecordHistoryRecorderTest 8 全绿（直接覆盖改动仓储）。AppFlowIntegrationTest/NotificationRelayTest 的 Failed to start quarkus（启动期 AppFlowRecordGuard→ProjectFmRepository→sessionFactory 循环依赖导致 StackOverflow）经 git stash 基线复跑确认为 HEAD 既有失败，与本次改动无关。未执行 git commit/push。"
     }
   ]
 }

@@ -1,6 +1,20 @@
 {
   "features": [
     {
+      "id": "feat-187",
+      "name": "Apps - 导航菜单快捷管理",
+      "description": "左侧菜单及分组使用浅色更多按钮，鼠标悬浮显示、移开隐藏，分组更多位于折叠按钮左侧且折叠位置固定；支持编辑、授权、删除；左下角 duck栏的加号替换原菜单编辑入口，支持新建系统内置、表单、自定义链接、分组和顶部菜单，内置与表单以二级菜单选择；顶部仅当前选中项显示倒三角，文字与下划线居中，倒三角独立定位避免挤偏文字和切换宽度变化。顶部倒三角支持在此后添加同级分组，保存后紧接当前分组并持久化顺序。删除原三栏菜单编辑器与关联代码。",
+      "status": "done",
+      "evidence": "2026-11-12 完成并按用户反馈调整，未提交。左侧菜单/分组/子项悬浮或聚焦显示更多，编辑/授权/删除与分组内新增接现有 navigation API；NewNavMenu 改为 duck栏内加号，替换原齿轮，不单独占一行；顶部 active 项才渲染倒三角。删除 MenuEditorDialog（三栏弹窗）、AdminLayout/AppLayout/AppHome 中旧入口与状态、mock.ts 中183行专用菜单 CRUD/排序辅助；独立 NavEditorDialog 只负责单项新增/编辑，保留图标、目标、工作台/机器人绑定及错误重试。空应用可先从 duck栏新建顶部菜单，再添加左侧菜单。菜单更新后刷新，删除当前菜单/所属分组后回到有效入口；分组折叠弹层打开更多时暂停悬浮关闭。menu-permissions E2E 改从更多入口授权，并迁移至 navigation/visibility 契约。验证：本轮 bash ./init.sh 全模块 clean compile 与引擎测试通过（WSL 无 Node，跳过附带旧管理端 E2E）；npm test 66/66；npx playwright test --config playwright.menus.config.ts 全部8/8，含授权2项与导航6项，覆盖 duck栏位置、唯一加号、仅选中项倒三角、编辑/授权回填、错误重试、分组子项、LINK校验、删除跳转、明暗截图、折叠菜单和空应用创建。TypeScript 与 npm run build -- --minify=false --target=esnext 通过；默认压缩构建仍因既有 esbuild 临时文件 remove Access is denied 失败，未改构建配置。源码已无 MenuEditorDialog/MenuEditorDraft/onEditMenus/旧mock写入函数引用。浏览器使用模拟接口，未做真实后端联调与可选服务测试；原有用户配置和其他子模块改动保留。同日后续：底部快捷区域按用户指定统一命名为 duck栏（应用/管理端无障碍名称、空态提示与用例同步）；顶部 Link 使用对称间距居中文字，实心倒三角绝对定位在右侧，保持选中标记与文字中心重合。npx playwright test --config playwright.menus.config.ts nav-actions.spec.ts --grep 顶部文字或duck或倒三角 定向4/4通过，包含坐标误差小于1px、切换宽度不变和明暗截图；未重跑完整构建。同日追加顶部在此后添加分组：NavMenuActions 仅顶部提供新操作，NavEditorDraft 携带 insertAfterId；复用新增与排序接口，按最新导航树将新 GROUP 插入锚点之后。保存过程记录已创建 ID，排序或刷新失败后重试更新已有节点，避免重复 POST，保留名称修改。创建与排序为两次请求，错误提示明确关闭弹窗会保留已创建分组。最终验证：菜单 Playwright 全部11/11；补充错误提示后定向在此后用例2/2，含取消、必填、中间/末尾插入、刷新保序、子树保留和失败重试不重复新增。TypeScript及非压缩构建 npm run build -- --minify=false --target=esnext 通过；本次未改后端或重跑 Java 检查，未做真实后端联调。同日左侧更多按钮调整：采用 text-muted-foreground/60 和柔和 hover 背景，移除分组 focus-within 与菜单 open 状态的强制常显；鼠标关闭下拉不回焦触发器，防止 focus-visible 常显，保留键盘操作与触屏可达性。分组行拆出独立折叠按钮，固定在最右侧，更多位于其左侧，不受更多显隐影响。定向 Playwright 4/4通过，覆盖悬浮/移开、点击菜单项后移开、弹出菜单时及鼠标关闭后隐藏、明暗颜色、键盘聚焦可见、分组按钮左右关系与箭头坐标不变、折叠/展开功能及折叠侧栏更多；sidebar-more-light.png 和 sidebar-more-dark.png 已检查。此次仅侧栏交互/样式与回归用例调整，未重跑完整构建。"
+    },
+    {
+      "id": "feat-186",
+      "name": "Apps - 最近使用表单入口",
+      "description": "待实施建议：应用管理在全部应用网格上方展示当前用户最近访问的 10 个表单（表单名、所属应用、访问时间），点击进入业务表单。使用浏览器 localStorage 按用户隔离，应用＋表单去重，成功打开业务表单后更新最近记录；跳转复用当前可见导航，不新增后端表或接口。",
+      "status": "pending",
+      "evidence": "2026-11-12 仅完成代码调研与方案建议，尚未实施。用户认为平台库方案过重，提出前端浏览器缓存；调整建议为 localStorage（key 包含 getAuthSession().user.id），仅保存最近 10 个入口的标识、展示快照和访问时间，不缓存业务记录。成功打开业务表单后更新，按 appId＋formName 去重置顶；缓存读取需解析校验，读写失败不阻塞业务。当前业务路由 /apps/:appId/:navId 依赖导航 ID，打开时按现有可见导航校验并解析同表单入口，无有效入口则移除并提示；本地缓存不参与授权。限制为同源同浏览器、不跨设备同步、清理站点数据后丢失；暂不增加后端表、接口、同步或统计能力。未修改业务代码，未运行 init.sh、构建或测试，状态文档 JSON 与 diff 检查通过，功能保持 pending。"
+    },
+    {
       "id": "feat-185",
       "name": "Engine - 重启自动同步表结构（模型新增字段补列）",
       "description": "修复 platform.fml 等模型新增字段（如 f_app.sort_order）后重启不执行 ALTER TABLE ADD COLUMN、查询报 no such column 的问题；根因是 migrateEntity 先注册新定义导致 createField 早退且 registry 污染后永久跳过。改为建表失败（表已存在）时按 JDBC 物理表元数据 diff 补缺失列，重启即自愈。",

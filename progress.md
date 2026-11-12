@@ -1,3 +1,17 @@
+## Apps - 最近使用表单入口方案（2026-11-12，feat-186）
+
+- 本轮为「应该怎么做」的方案咨询，仅调研代码并记录建议，未实施产品功能；feat-186 保持 pending，方案待用户反馈。
+- 建议在 AppManagement 的全部应用网格上方展示最近 10 个表单：表单名、所属应用与最后访问时间，点击进入业务表单；同一表单重复访问只更新时间并移到最前。
+- 用户认为平台库存储过重，提出前端浏览器缓存。调整建议为 localStorage，存储 key 包含 getAuthSession().user.id，按
+  appId＋formName 去重并置顶，最多 10 条；保存入口标识、名称等展示快照和访问时间，不缓存业务记录。不新增后端表或接口。
+- 当前业务路由是 /apps/:appId/:navId，AppMenuPage 按菜单解析 FORM 并渲染 RecordList；独立记录页为
+  AppRecordView。应在业务页成功打开后显式采集，覆盖菜单与直接链接入口；不在 AppFormResource 的通用 GET 内写访问记录，避免设置页与预加载误记。
+- 打开入口时复用现有可见 FORM
+  菜单解析，菜单删除或改绑时优先选择同表单其他可见入口，无有效入口则移除缓存并提示。缓存不参与授权；本地解析需校验，损坏或读写失败不阻塞业务。同源同浏览器持久化，不跨设备同步，清理站点数据后记录丢失。尚未实施，不承诺所有过期展示快照自动实时更新。
+- 已阅读根目录与 Apps UI AGENTS.md、README、功能状态和最近提交，检查上述页面、登录态与平台表单模型；本轮未修改业务代码，未运行
+  init.sh、Maven、UI 构建或测试，不声称功能完成。仅对状态文档做 JSON 解析与 diff 检查。
+- 现有部署配置、开发配置与 flexmodel-ui 子模块改动保留，未执行 git commit/push。
+
 ## Engine - 重启自动同步表结构修复（f_app.sort_order no such column）（2026-11-10）
 
 - 现象：`platform.fml` f_app 新增 `sort_order` 后重启，查询报
@@ -5120,6 +5134,37 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
   unitOfWork.execute + UnitOfWork.afterCommit，wake 时机保持提交后。
 - 三处合计 51 增/151 删（净约 -100 行）；`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` 通过。未执行 git
   commit/push。
+
+## Apps 导航菜单快捷管理（2026-11-12，feat-187）
+
+- 左侧菜单、分组和子菜单悬浮/聚焦显示更多按钮，提供编辑、授权、删除；分组可新增子菜单。按用户后续定位要求，新建改为左下角
+  duck栏内加号，替换原齿轮，不在底部单独占一行；系统内置与表单使用二级选项，自定义链接、分组、顶部菜单直接选择。
+- 顶部仅当前选中项显示倒三角。删除原 MenuEditorDialog 三栏弹窗及 AdminLayout/AppLayout/AppHome 中相关入口与状态，删除
+  mock.ts 中183行仅供原弹窗使用的菜单 CRUD/排序辅助。独立 NavEditorDialog 只负责单项新增/编辑，复用
+  NavDestinationPicker、图标选择、MenuAuthorizationDialog 与 services/appNavigation，无后端改动或新依赖；直接拖动排序保留。空应用可先从
+  duck栏创建顶部菜单，再新增左侧菜单。
+- 删除需确认，删除分组提示连带删除子项；删除当前入口或其所属分组后回到有效入口。保存/删除失败保留输入并支持重试，选项加载失败重新打开可重试；折叠分组展开更多时暂停悬浮关闭，避免下拉提前消失。
+- 最终验证：本轮重跑 `bash ./init.sh` 全模块 clean compile、引擎测试通过（WSL 无 Node，脚本未运行附带的旧管理端 E2E）；Apps
+  `npm test` 66/66；`npx playwright test --config playwright.menus.config.ts` 8/8（导航6项＋授权2项），覆盖
+  duck栏位置及唯一加号、选中项倒三角、编辑/授权回填、保存/删除失败重试、新建类别与父级、链接校验、删除跳转、明暗主题、折叠菜单和空应用创建。原授权用例已从删除的编辑器入口改为更多入口，并将过时的
+  menus/members 模拟接口同步为 navigation/visibility。截图 `flexmodel-apps-ui/artifacts/nav-create-light.png`、
+  `nav-create-dark.png` 已检查。
+- TypeScript 与 `npm run build -- --minify=false --target=esnext` 通过。默认 `npm run build` 仍因既有 esbuild 临时文件清理
+  Access is denied 失败，未改构建配置。浏览器验收模拟 API，未做真实后端联调及可选服务测试；最终源码搜索确认原编辑器与旧模拟写入函数无残留引用，diff
+  检查通过。
+- 同日后续命名与布局：用户指定底部快捷区名称为「duck栏」，应用/管理端工具栏无障碍名称、空态提示与测试同步。顶部文字改为对称间距居中，实心倒三角在右侧独立定位，与文字中心/下划线对齐，选中切换不增加宽度。定向
+  Playwright（顶部文字、duck栏、倒三角）4/4通过，坐标断言误差小于1px；top-nav-centered-light.png 与 top-nav-centered-dark.png
+  已目视检查。本次仅样式/命名调整，未重跑完整构建。
+- 同日追加「在此后添加分组」：顶部选中项的倒三角提供此操作，复用单项新增弹窗、navigation 新增与排序 API，将新 GROUP
+  保存为根级并按最新树插入锚点后。保留全部子树顺序，记录已创建 ID，失败重试更新同一节点、不重复新增，输入修改保留；创建/排序分两次请求，失败提示明确关闭会保留分组。菜单
+  Playwright 11/11，最后错误提示调整后定向用例2/2，覆盖取消、必填、中间和末尾插入、刷新保序及排序失败重试；TypeScript
+  与非压缩构建通过。本次未改后端或重跑 Java 检查，未做真实服务联调。
+- 同日侧栏更多按钮调整：默认使用 text-muted-foreground/60，悬浮背景与颜色柔和；移除 group-focus-within 和 data-state=open
+  的常显规则，保留键盘 focus-visible 与触屏可达性。按鼠标/键盘来源控制下拉关闭回焦，解决鼠标关闭后按钮仍显示。分组行更多按钮位于独立折叠按钮左侧，折叠箭头固定最右且显隐不位移。定向
+  Playwright（悬浮更多、更多按钮颜色、折叠按钮、折叠分组）4/4，包含鼠标移开、点击后移开、弹层打开/关闭后隐藏、明暗颜色、键盘可用、按钮左右位置及折叠/展开；sidebar-more-light.png /
+  sidebar-more-dark.png 已目视检查。仅交互/样式调整，未重跑完整构建；初次新增用例受 Radix 的 aria-hidden 影响，已用 DOM
+  定位检查打开弹层时的触发器，最终验证全部通过。
+- 状态文档已更新，原有部署、服务配置、feat-186 与 flexmodel-ui 子模块改动保留；未执行 git commit/push。
 
 ## Engine A 类死代码清理（2026-11-08）
 

@@ -1,6 +1,27 @@
 {
   "features": [
     {
+      "id": "feat-190",
+      "name": "Apps - 重新进入应用恢复具体视图",
+      "description": "在现有应用位置记忆中保留 viewId，重新进入应用恢复上次的表单与具体视图；仅保存视图参数，支持特殊字符编码与失效导航/视图回退。",
+      "status": "done",
+      "evidence": "2026-11-12 完成，未提交。AppLayout 在原有 localStorage 应用位置路径中保存 viewId，并监听 location.search，确保仅切换视图也更新记忆；仅保存 viewId，不携带 source 等无关查询参数。AppHome 提取菜单 ID 时排除查询串，校验当前可见导航后恢复含视图的路径；失效菜单回退有效首入口，失效视图复用 RecordList 的首视图回退，显式 top 分组选择继续优先于记忆。未指定 viewId 时维持默认首视图。不新增存储结构或依赖。验证：本轮 Git Bash ./init.sh 全模块 clean compile、引擎测试与附带管理端 E2E 35/35；Playwright view-url.spec.ts 最终9/9（原URL6项＋位置记忆3项），覆盖重入恢复、特殊字符、同表单视图切换更新、切换表单、外部删除后刷新再进入回退、显式顶部分组优先。初轮失效回退用例8/9，因模拟外部删除后未清会话缓存，按已有缓存语义改为刷新后验证；最终全绿。TypeScript与非压缩构建 npm run build -- --minify=false --target=esnext 通过；本轮未重跑默认压缩构建（此前已有 esbuild 临时文件权限错误）。位置只在当前浏览器按应用保留，不跨设备；未改后端或做真实后端联调、可选服务测试、Apps单测及打印回归。原有工作区与暂存改动保留。"
+    },
+    {
+      "id": "feat-189",
+      "name": "Apps - 当前视图同步 URL",
+      "description": "切换视图将 viewId 写入 HashRouter 路由查询参数（#/apps/:appId/:navId?viewId=xxx），刷新、直接打开与前进后退恢复视图；缺失/无效 ID 回退首个视图，复制/新建/删除当前视图同步地址，保留其他查询参数及登录跳转。",
+      "status": "done",
+      "evidence": "2026-11-12 完成，未提交。RecordList 移除本地 activeViewId 状态，复用 useSearchParams 读取 viewId、保留其他参数并写回；HashRouter 地址为 #/apps/:appId/:navId?viewId=xxx。缺失或无效 ID 回退首个视图，空表单保持空态，不自动重写外部传入的无效 ID。切换通过浏览器历史恢复；按实际视图变化清空勾选、记录抽屉和查询弹层。复制、新建、保存设置共用 URL 更新，当前 ID 相同时不增加重复历史；删除当前视图以 replace 写回有效邻近视图。RequireAuth 登录跳转保留 search，确保登录后进入指定视图。验证：本轮 Git Bash ./init.sh 全模块 clean compile、引擎测试及附带管理端 E2E 35/35；Playwright view-url.spec.ts 6/6 + record-print.spec.ts 5/5 共11/11，覆盖切换/其他参数/编码/刷新/历史/直接链接不查询默认视图/无效ID/空态/复制新建删除保存/跨表单/登录恢复及原打印功能。TypeScript与 npm run build -- --minify=false --target=esnext 通过；默认压缩构建仍遇既有 esbuild 临时文件 remove Access is denied。未改后端、未新增依赖、未做真实后端联调或可选服务测试；既有部署配置、打印改动与用户暂存状态保留。"
+    },
+    {
+      "id": "feat-188",
+      "name": "Apps - 记录详情打印",
+      "description": "记录详情的更多菜单提供打印入口，调用浏览器打印当前记录标题、字段和当前页子表内容；打印隐藏导航、操作与记录动态，长文本完整换行，支持抽屉、独立详情页和详情视图。",
+      "status": "done",
+      "evidence": "2026-11-12 完成，未提交。FormMoreMenu 查看态加入打印，覆盖 AppRecordDrawer、AppRecordDetail 与 AppRecordPanel；复制当前只读详情至临时打印节点，afterprint 清理，不新增依赖。打印包含标题、字段、已加载的当前页子表，隐藏导航/动态/操作/搜索/分页，长文本完整换行，折叠分栏打印展开、屏幕状态保留，夜间模式按白纸黑字输出。用户实测打印后抽屉重复入场：新增 animationstart 断言先复现失败（1次），根因为打印 CSS display:none 恢复时重启动画；改用 visibility:hidden 并将原页面固定定位移出打印流，保留原抽屉显示状态，修复后明暗用例均为0次。验证：Git Bash ./init.sh 全模块 clean compile、引擎测试及附带管理端 E2E 35/35 通过；Apps npm test 66/66；打印 Playwright 最终5/5通过，覆盖明暗、长文本、引用、0/false、打印清理/重复打印/继续编辑、独立页折叠、详情视图及加载中/失败禁用；截图已检查，A4 PDF 2页。TypeScript 与 npm run build -- --minify=false --target=esnext 通过；默认压缩构建仍遇既有 esbuild 临时文件 remove Access is denied，未改构建配置。浏览器使用模拟接口，未做真实后端联调、实体打印机及可选服务测试；子表只打印当前页，已注记。"
+    },
+    {
       "id": "feat-187",
       "name": "Apps - 导航菜单快捷管理",
       "description": "左侧菜单及分组使用浅色更多按钮，鼠标悬浮显示、移开隐藏，分组更多位于折叠按钮左侧且折叠位置固定；支持编辑、授权、删除；左下角 duck栏的加号替换原菜单编辑入口，支持新建系统内置、表单、自定义链接、分组和顶部菜单，内置与表单以二级菜单选择；顶部仅当前选中项显示倒三角，文字与下划线居中，倒三角独立定位避免挤偏文字和切换宽度变化。顶部倒三角支持在此后添加同级分组，保存后紧接当前分组并持久化顺序。删除原三栏菜单编辑器与关联代码。",

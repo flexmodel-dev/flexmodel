@@ -1,3 +1,52 @@
+## Apps - 重新进入应用恢复具体视图（2026-11-12，feat-190）
+
+- 原有 appLocationMemory 已按应用保存上次菜单，但 AppLayout 截掉查询串且只监听 pathname。本轮保存路径加入编码后的
+  viewId，并监听 search，解决在同一表单切换视图后记忆不更新；只保存 viewId，不保存 source 等临时参数，不新增存储结构或依赖。
+- AppHome 解析记忆路径的菜单 ID 时排除 `?` 查询串，否则含 viewId 的路径无法通过导航校验。复用原导航有效性检查与 RecordList
+  的无效视图回退；失效菜单进入有效首入口，失效视图显示当前表单首视图；显式 top 分组选择优先，未指定 viewId 时维持默认首视图。
+- 验证：本轮 Git Bash `./init.sh` 全模块 clean compile、引擎测试和附带管理端 E2E 35/35；
+  `npx playwright test --config playwright.records.config.ts view-url.spec.ts` 最终 9/9。新增 3
+  项覆盖重新进入恢复上次表单/视图、特殊字符、同表单只切视图更新记忆、换表单后重入、外部删除菜单/视图后刷新再进入回退、顶部分组优先；原
+  URL 6 项全部保留通过。首轮失效回退用例受会话缓存影响，改为按外部变更后刷新语义验收，未扩大修改现有缓存。
+- TypeScript 与 `npm run build -- --minify=false --target=esnext` 通过，diff 与状态 JSON 检查通过。未重试默认压缩构建（此前已记录
+  esbuild 临时文件权限错误），未改后端、未重跑 Apps 单测、打印回归与可选服务测试；浏览器使用模拟 API，未做真实后端联调。
+- 位置记忆沿用浏览器 localStorage、按应用保存，不跨设备同步；清理站点数据或存储不可用时无法保留。生成的 tsconfig.tsbuildinfo
+  恢复原状，原有打印/URL功能、用户暂存状态及部署/服务配置保留，未执行 git commit/push。
+
+## Apps - 当前视图同步 URL（2026-11-12，feat-189）
+
+- 视图切换写入路由参数 `?viewId=xxx`，当前 HashRouter 的完整格式为 `#/apps/:appId/:navId?viewId=xxx`。RecordList 直接以
+  URL 为当前视图来源，移除重复的本地状态，支持刷新、直接链接和浏览器前进后退；写入时保留其他查询参数并正确编码。
+- 未指定或 ID 无效时沿用首个视图，空表单继续显示原空态；无效外部参数不自动重写。实际视图变化统一清除旧勾选、记录抽屉和查询弹层，点击当前视图不新增历史。
+- 复制、新建、设置保存后的视图选择复用 URL 更新；保存当前视图不增加重复历史，删除当前视图以 replace 更新为相邻有效视图。RequireAuth
+  保留原路径和查询参数，未登录打开指定视图链接后登录仍恢复该视图。
+- 验证：本轮 Git Bash `./init.sh` 全模块 clean compile、引擎测试与附带管理端 E2E 35/35 通过；
+  `npx playwright test --config playwright.records.config.ts view-url.spec.ts record-print.spec.ts` 共 11/11（视图 URL
+  6、原打印回归 5），覆盖参数保留/特殊字符、刷新/历史/初始默认、直接链接不查询错误视图、失效 ID/空态、复制/新建/删除/保存、跨表单与登录跳转。
+- TypeScript 和 `npm run build -- --minify=false --target=esnext` 通过；默认 `npm run build` 仍有既有 esbuild 临时文件
+  remove Access is denied，未改构建配置。未新增依赖或修改后端；未重跑 Apps 单测、旧 records.spec.ts 与可选服务测试，浏览器验收使用模拟
+  API，未做真实后端联调。
+- 状态文档已更新，生成的 tsconfig.tsbuildinfo 恢复原状；原有打印改动、用户暂存状态、部署/服务配置与 flexmodel-ui 子模块改动保留，未执行
+  git commit/push。
+
+## Apps - 记录详情打印（2026-11-12，feat-188）
+
+- 详情抽屉的「更多」增加「打印」，复用 FormMoreMenu；独立详情页和详情视图的记录面板同步接入。新建/编辑及记录加载中或失败时不提供打印入口，保留原表单设计操作。
+- printRecord 复制当前只读详情到临时打印节点，调用浏览器 window.print，afterprint
+  后清理；不修改表单数据、不新增依赖。打印标题、字段与当前页子表；隐藏导航、记录动态、搜索、分页与操作列，长文本完整换行，夜间模式按白纸黑字输出，独立页折叠分栏在纸面展开但保留屏幕折叠状态。
+- 根据用户反馈修复「点击打印后 Drawer 又触发一次」：打印时 display:none 导致恢复后重播 animate-in。新增 animationstart
+  回归断言，原实现复现为 1 次；改用 visibility:hidden，原页面固定定位移出打印流、保留 display，修复后浅色/夜间均 0
+  次。未改全局抽屉动画逻辑。
+- 验证：本轮 Git Bash `./init.sh` 全模块 clean compile、引擎测试与附带管理端 E2E 35/35 通过；Apps `npm test` 66/66；
+  `npx playwright test --config playwright.records.config.ts record-print.spec.ts` 最终 5/5
+  通过，覆盖明暗模式、长文本、引用、0/false、打印清理/重复打印/继续编辑、独立页折叠、详情视图及加载中/失败状态。首轮测试的流程列表模拟响应缺
+  list 已修正，详情视图选择器对齐 tab 角色；原 records.spec.ts 未修改，未重跑其旧用例。
+- TypeScript 和 `npm run build -- --minify=false --target=esnext` 通过；默认 `npm run build` 仍遇既有 esbuild 临时文件
+  remove Access is denied，未改构建配置。截图 `flexmodel-apps-ui/artifacts/record-print-light.png`、`record-print-dark.png`
+  已检查，A4 PDF 均 2 页。
+- 限制：子表只打印当前已加载页（代码注记），浏览器验收使用模拟接口，未做真实后端联调、实体打印机及可选服务测试。状态文档已更新；保留原有用户部署/服务配置与
+  flexmodel-ui 子模块改动，未执行 git commit/push。
+
 ## Apps - 最近使用表单入口方案（2026-11-12，feat-186）
 
 - 本轮为「应该怎么做」的方案咨询，仅调研代码并记录建议，未实施产品功能；feat-186 保持 pending，方案待用户反馈。

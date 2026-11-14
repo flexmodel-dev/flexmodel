@@ -1,6 +1,20 @@
 {
   "features": [
     {
+      "id": "feat-193",
+      "name": "Apps - 应用顶部快捷发起流程入口",
+      "description": "右上角加号打开带搜索的快捷面板，以「发起流程」「新增数据」页签切换；面板限高视口 60%并适应可用空间，仅列表内部滚动，搜索框和页签固定。按当前页签搜索，流程同时匹配流程名与关联表单名。流程以业务名称展示，关联表单名作辅助说明；选择流程后直接打开发布快照绑定的表单并固定所选流程，填写后提交发起。仅列出当前应用已发布启用的手动流程，沿用现有可见表单入口范围；同一表单的多个流程分别展示。已配置但无可发起流程时明确说明发布启用、手动触发与可见表单条件，并提供工作流设置入口。",
+      "status": "done",
+      "evidence": "2026-11-13 完成，未提交。新增 AppQuickCreate，复用 Popover/Tabs/Input；搜索自动聚焦、切页签清空搜索、限高滚动、窄屏避让、加载错误重试，每次打开重新读取流程；过滤 enabled＋publishedTrigger MANUAL＋可见表单。AppLayout→AppRecordCreateDialog→AppRecordFormModal 透传所选流程，直接填写并提交，不再二次选流程；原新增数据保留保存操作。保存成功后发起失败保留记录ID与相同内容的保存结果，重试复用幂等键，提示记录已保存；提交中阻止关闭。验证：Git Bash ./init.sh 全模块编译、引擎测试及附带旧管理端E2E35/35通过；Apps单测66/66；新增快捷面板Playwright最终6/6（含未发布说明、实际点击工作流设置进入 /settings/workflows 列表并显示流程记录、明暗、62流程/61表单、搜索、发布绑定、权限入口范围、重试、键盘、手机）；打印与视图URL回归14/14；TypeScript及 npm run build -- --minify=false --target=esnext 通过，截图已检查。默认构建仍遇既有esbuild临时文件Access is denied。扩大菜单回归发现两项本轮未改逻辑的失败（空应用duck栏不可达、顶部标记位置）；旧records.spec.ts模拟菜单/视图契约过期，停止该套验证，临时fixture调整已撤回。未改后端或新增依赖，未做真实后端联调；既有工作区及暂存改动保留。"
+    },
+    {
+      "id": "feat-192",
+      "name": "Apps - 工作流路由与命名规范化",
+      "description": "应用设置路由 /settings/approvals 改为 /settings/workflow（section key 同步改名）；流程设计器路由 /approvals/:flowId/design 改为 /workflow/:flowId/design；清理残留的「审批流(程)」文案改为「工作流」；文件与目录命名规范化：pages/Approvals 拆分为 pages/Workflows（设计器/列表/画布等 10 个文件，ApprovalDesigner→WorkflowDesigner、ApprovalList→WorkflowList、approval.css→workflow.css）与 pages/Approvals（审批任务/实例 5 个文件）；lib/approval.ts→workflow.ts、approvalSimulation.ts→workflowSimulation.ts、types/approval.ts→workflow.ts、services/approval-model.ts→workflow-model.ts；services/approvals.ts 拆分为 workflows.ts（流程 CRUD/发布/调度/触发日志）与 approvals.ts（审批任务/实例/提交/决策）。另有：顶部导航激活项倒三角默认灰色未选中同款、悬停变白；一级导航无二级菜单时隐藏左侧栏；文件页外层改卡片并统一 AI 对话/文件页边距。",
+      "status": "done",
+      "evidence": "2026-11-13 完成，未提交。前端 tsc -b 与 npm test 66/66 通过；e2e 中 settings/approvals 与设计器 URL 同步更新（workflows.spec.ts、workflow-backend.mjs、flows-backend.mjs、app-packages.spec.ts fixture）；flexmodel-server AppPackageService 资源摘要标签「审批流程」改「工作流」。组件/函数/类型标识符（ApprovalFlow、getApprovalFlows、AdminApprovals 等）未改名——用户仅要求文件/目录名。服务端 mvn 编译因上次会话中断的 clean 后 target 陈旧而失败（ModelField.class 缺失，环境问题），未重跑完整构建。"
+    },
+    {
       "id": "feat-191",
       "name": "Apps - 字段删除收敛至表单设计",
       "description": "移除表单设置的字段管理菜单、页面与路由；表单设计右侧字段列表在加号左侧提供回收站删除按钮，系统内置与核心字段禁用删除，复用现有删除接口与确认交互。",

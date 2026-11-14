@@ -1,3 +1,68 @@
+## Apps - 应用顶部快捷发起流程入口（2026-11-13，feat-193）
+
+- 工作流设置跳转修复：AppQuickCreate 曾链接至单数 `/settings/workflow`，实际路由为复数 `/settings/workflows`，
+  点击后命中兜底路由回到应用管理。已改为实际列表路由，未改 main.tsx/AppSettings 或增加旧地址兼容。
+  回归由仅断言 href 改为实际点击，验证当前应用 URL、工作流标题与流程记录；修复前复现跳回 `/admin/apps` 并失败，
+  修复后快捷面板最终 6/6。现有发起用例改为检查实际表单字段加载，适应工作区已移除抽屉辅助说明的改动，未还原用户代码。
+  本轮 `./init.sh` 全模块编译、引擎测试与附带旧管理端 E2E 35/35；TypeScript 与非压缩构建通过；JSON/diff 检查通过。
+  未重跑默认压缩构建（此前记录 esbuild 权限问题），未发布流程或执行真实业务发起，未提交代码。
+
+- 用户反馈“已配置流程但无数据”的后续核查：本地开发库 `database/sqlite.db` 中 ERP 的 7 条手动流程均没有发布部署版本，
+  开始节点 workflow 元数据为空，对应手动触发绑定不存在；另外 1 条定时流程已停用。引擎原始 status=2 表示编辑态，
+  AppFlowService 会根据部署元数据与触发绑定将这些未发布流程映射为 draft；不能据原始数字误判为已启用。
+  因此本地库场景符合入口筛选条件，需从工作流列表「启用流程」或设计器「发布新版本」后再打开加号。
+  已将空态改为「已配置流程，暂无可发起的流程」，说明发布启用/手动/可见表单条件，并提供工作流设置链接；搜索无匹配维持简洁提示。
+  本轮未发布、修改或执行用户流程。只读检查还发现同机 Docker MySQL 内存在另一套同名 ERP 旧配置，不能混为同一应用。
+  Computer Use 因无法可靠识别 Windows 浏览器 URL 而停止，已结束该工具操作；用户随后确认截图来自 localhost:5180，
+  对应已核查的本地开发库，因此 7 条手动流程尚无发布版本的原因适用于本次反馈。
+  后续验证：重新执行 `./init.sh` 全模块编译、引擎测试与附带旧管理端 E2E 35/35，最终退出 0；快捷面板 E2E 最终 6/6
+  （新增未发布场景说明/设置链接/搜索清空/无业务写入断言）；TypeScript 与非压缩构建通过；状态 JSON/diff 检查通过。
+  测试日志保存在 `C:/Users/cjbi/.codex/tmp/flexmodel-feat-193/`；本次只补空态说明与回归，未再次尝试默认压缩构建或真实业务发起。
+
+- 已实现：AppTopHeader 的加号改为 AppQuickCreate，使用既有 Popover/Tabs/Input，提供「发起流程」「新增数据」页签。
+  打开自动聚焦搜索，按当前类型筛选；流程支持按名称与关联表单名搜索，切页签清空搜索。
+  面板最多 60dvh 且不超过 Popover 可用高度，仅列表滚动；窄屏宽度随视口收缩并保留 16px 边距。
+- 流程每次打开重新读取，提供加载状态、错误重试与空态；只显示 enabled 且发布触发器为 MANUAL、绑定表单在可见
+  导航入口范围内的流程。以 publishedTrigger.formName 打开表单，避免草稿绑定覆盖发布版本；同表单多流程独立展示。
+- AppLayout、AppRecordCreateDialog、AppRecordFormModal 传递 launchFlow，抽屉展示所选流程及关联表单，填写后直接
+  「提交并发起」，无二次流程选择；普通新增仍使用保存。复用字段校验、附件、子表和现有保存/发起接口。
+  发起失败保留已保存记录 ID；未改内容的重试复用保存结果与 requestKey，避免重复新增或先更新已锁定记录。
+  错误提示明确记录已保存；保存与发起仍为两个请求，取消失败后的抽屉不会撤销已保存记录。提交中阻止关闭抽屉。
+- 验证：Git Bash `./init.sh` 全模块 clean compile、引擎测试及附带旧管理端 E2E 35/35；Apps `npm test` 66/66；
+  `npx playwright test --config playwright.menus.config.ts quick-create.spec.ts` 最终 5/5，覆盖明暗、62 流程/61 表单
+  限高滚动、搜索/无匹配、页签、发布快照/可见范围/启用手动过滤、同表单多流程、必填、失败重试/相同幂等键、普通保存、
+  加载失败重试与重新打开刷新、390px 窄屏、键盘操作；明暗与手机截图已检查。
+  `npx playwright test --config playwright.records.config.ts record-print.spec.ts view-url.spec.ts --output test-results/records-regression`
+  14/14；TypeScript 与 `npm run build -- --minify=false --target=esnext` 通过。JSON 与本轮 diff 检查通过。
+- 既有验证限制：默认 `npm run build` 仍因 esbuild 临时文件 `Access is denied` 失败；未改构建配置。
+  扩大菜单回归两项涉及本轮未改逻辑的失败：nav-actions 的空应用 duck栏在侧栏隐藏后不可达、顶部文字与标记相差 40px。
+  新增窄屏测试的就绪条件最初依赖桌面侧栏/品牌可见，已改为等待页面标题，最终 5/5。
+  旧 records.spec.ts 仍使用 /menus、ITEM/target 与无视图/旧查询契约，扩大记录回归在进入业务断言前失败并停止；
+  临时 fixture 调整已撤回以免扩大范围。已维护的打印/视图回归独立重跑 14/14。
+- 未改后端或新增依赖；浏览器测试使用模拟接口，未做真实后端联调及可选服务测试；未加分页、收藏或最近使用。
+  保留既有工作区与暂存改动，未执行 git commit/push。
+
+## Apps - 工作流路由与命名规范化（2026-11-13，feat-192）
+
+- 路由：`/admin/apps/:appId/settings/approvals` → `/settings/workflow`（AppSettings section key approvals→workflow）；
+  流程设计器 `/approvals/:flowId/design` → `/workflow/:flowId/design`；e2e URL 同步更新。残留「审批流(程)」文案统一改
+  「工作流」（设计器返回/面包屑、FlowCanvas 子流程描述、RecordApprovalPanel 选择流程、AppManagement 删除确认、
+  导入步骤文案与注释）；flexmodel-server AppPackageService 资源摘要标签同步改「工作流」。
+- 文件/目录命名：pages/Approvals 拆分——pages/Workflows（WorkflowDesigner←ApprovalDesigner、WorkflowList←
+  ApprovalList、FlowCanvas/NodePanel/SimulationPanel/FlowTriggerEditor/FlowRunsDrawer/controls/directory、
+  workflow.css←approval.css）与 pages/Approvals（ApprovalFeed/ApprovalProgress/InstanceDrawer/
+  RecordApprovalPanel/useApprovalDetail，审批任务语义保留）；lib/approval→workflow（含 test、approvalSimulation→
+  workflowSimulation）；types/approval→workflow；services/approval-model→workflow-model；services/approvals.ts
+  拆分为 workflows.ts（流程 CRUD/发布/调度/触发日志/实例查询）+ approvals.ts（审批任务/提交/决策），双向引用处
+  拆分 import；e2e approvals.spec.ts→workflows.spec.ts、approval-backend.mjs→workflow-backend.mjs。标识符
+  （ApprovalFlow 等类型与函数名）按用户范围（文件/目录名）保留未改。
+- 同轮小项：顶部导航激活项倒三角默认灰（同未选中字体色）、悬停变白（TopHeaderShell）；一级导航无二级菜单时隐藏
+  左侧栏且内容区 ml-0（AppLayout showSidebar，加载期保留占位防闪动）；文件页（FilesDocs）外层改卡片并补边距，
+  AiChatPage 三处全出血布局补 px/pb 边距（对齐 WorkbenchHome 模式）。
+- 验证：apps-ui `npx tsc -b` 通过、`npm test` 66/66 通过；grep 复查无旧路径残留。未跑 vite 默认压缩构建（既有
+  esbuild 临时文件 Access is denied）；服务端编译因上次会话中断的 clean 导致 target 陈旧而失败（ModelField.class
+  缺失），需后续完整 `mvn clean compile` 重建；未执行 git commit/push。
+
 ## Apps - 重新进入应用恢复具体视图（2026-11-12，feat-190）
 
 - 原有 appLocationMemory 已按应用保存上次菜单，但 AppLayout 截掉查询串且只监听 pathname。本轮保存路径加入编码后的

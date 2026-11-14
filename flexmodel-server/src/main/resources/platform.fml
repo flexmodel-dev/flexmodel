@@ -1,3 +1,153 @@
+model f_app {
+  id : String @id @length("64") @comment("应用ID，与 f_project.id 一对一共享"),
+  icon_name : String @length("64") @comment("图标名"),
+  primary_color : String @length("32") @comment("主色"),
+  sort_order : Int @default("0") @comment("排序权重，越小越靠前"),
+  provisioning? : String @length("32") @comment("导入重建状态，空表示正常"),
+  navigation? : JSON @comment("导航配置"),
+  forms? : f_app_form[] @comment("应用表单") @relation(localField: "id", foreignField: "app_id", cascadeDelete: "true"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @system,
+  @index(name:"IDX_idx_created_at", unique: false, fields: [created_at: (sort: "desc")]),
+  @comment("应用")
+}
+model f_app_form {
+  id : String @id @default(uuid()) @length("64"),
+  app_id : String @length("64") @comment("所属应用ID"),
+  app? : f_app @comment("所属应用") @relation(localField: "app_id", foreignField: "id", cascadeDelete: "false"),
+  name : String @length("64") @comment("表单英文名称，同时作为实体名"),
+  content : JSON @comment("表单全量配置（展示名、描述、主显/搜索字段、字段、布局、视图页签等）"),
+  @index(name: "UQ_APP_FORM_NAME", unique: true, fields: [app_id, name]),
+  @system,
+  @comment("应用表单")
+}
+model f_app_data_authorization {
+  id : String @id @default(uuid()) @length("64"),
+  app_id : String @length("64"),
+  form_name : String @length("64"),
+  name : String @length("255"),
+  enabled : Boolean @default("true"),
+  subjects : JSON,
+  data_scope : JSON,
+  @index(name: "IDX_DATA_AUTH_FORM", fields: [app_id, form_name]),
+  @system,
+  @comment("数据授权")
+}
+
+model f_app_data_permission_control {
+  id : String @id @default(uuid()) @length("64"),
+  authorization_id : String @length("64"),
+  form_name : String @length("64"),
+  read_all : Boolean @default("false"),
+  write_all : Boolean @default("false"),
+  allow_delete : Boolean @default("false"),
+  field_controls? : JSON,
+  condition? : JSON,
+  @index(name: "UQ_DATA_PERMISSION_FORM", unique: true, fields: [authorization_id, form_name]),
+  @system,
+  @comment("表单数据权限控制")
+}
+
+model f_app_record_discussion {
+  id : String @id @length("64"),
+  app_id : String @length("64"),
+  form_name : String @length("64"),
+  record_id : String @length("64"),
+  parent_id : String @length("64") @comment("顶层讨论为空串，回复存顶层讨论ID"),
+  reply_to_name? : String @length("128") @comment("回复目标作者姓名快照"),
+  content : Text,
+  author_id : String @length("64"),
+  author_name : String @length("128"),
+  mentioned_user_ids? : JSON,
+  created_at : DateTime,
+  @index(name: "IDX_APP_DISCUSSION_RECORD", fields: [app_id, form_name, record_id, created_at]),
+  @index(name: "IDX_APP_DISCUSSION_PARENT", fields: [app_id, parent_id]),
+  @system,
+  @comment("记录讨论")
+}
+
+model f_app_record_history {
+  id : String @id @length("64"),
+  app_id : String @length("64"),
+  event_key : String @length("180") @comment("服务端生成的事件去重键"),
+  operation_id? : String @length("128") @comment("同一次导入、节点执行等关联标识"),
+  form_name : String @length("64") @comment("实际被操作的业务表单"),
+  form_label? : String @length("128"),
+  record_id : String @length("64"),
+  record_label? : String @length("255") @comment("主显字段摘要快照"),
+  event_type : String @length("40"),
+  source : String @length("20") @comment("APPS、IMPORT、APPROVAL"),
+  actor_type : String @length("10") @comment("USER 或 SYSTEM"),
+  actor_id? : String @length("64"),
+  actor_name : String @length("128"),
+  occurred_at : DateTime,
+  recorded_at : DateTime,
+  changes? : JSON @comment("字段变化及展示快照"),
+  context? : JSON @comment("主子表、导入、审批等扩展信息"),
+  trace_id? : String @length("64"),
+  @index(name: "UQ_APP_HISTORY_EVENT", unique: true, fields: [app_id, event_key]),
+  @index(name: "IDX_APP_HISTORY_RECORD", fields: [app_id, form_name, record_id, occurred_at]),
+  @system,
+  @comment("应用记录操作历史")
+}
+
+model f_app_record_history_target {
+  id : String @id @length("64"),
+  app_id : String @length("64"),
+  event_id : String @length("64"),
+  form_name : String @length("64") @comment("时间线所属表单"),
+  record_id : String @length("64") @comment("时间线所属记录"),
+  target_type : String @length("10") @comment("SELF 或 PARENT"),
+  occurred_at : DateTime,
+  @index(name: "UQ_APP_HISTORY_TARGET", unique: true, fields: [app_id, event_id, form_name, record_id]),
+  @index(name: "IDX_APP_HISTORY_TARGET_RECORD", fields: [app_id, form_name, record_id, occurred_at, event_id]),
+  @system,
+  @comment("应用记录历史展示目标")
+}
+
+model f_notification {
+  id: String @id,
+  project_id: String,
+  event_key: String @length("180"),
+  recipient_id: String,
+  category: String,
+  title: String @length("200"),
+  content: Text,
+  app_name: String,
+  instance_id?: String,
+  task_id?: String,
+  discussion_id?: String @length("64"),
+  occurred_at: DateTime,
+  received_at: DateTime,
+  read_at?: DateTime,
+  is_read: Boolean,
+  @index(name: "UQ_NOTIFICATION_EVENT_USER", unique: true, fields: [project_id, event_key, recipient_id]),
+  @index(name: "IDX_NOTIFICATION_INBOX", fields: [recipient_id, received_at]),
+  @index(name: "IDX_NOTIFICATION_UNREAD", fields: [recipient_id, is_read, received_at]),
+  @system
+}
+model f_notification_stream {
+  id: String @id,
+  version: Long,
+  unread: Long,
+  @system
+}
+model f_notification_event {
+  id: String @id,
+  recipient_id: String,
+  version: Long,
+  type: String,
+  payload: JSON,
+  published: Boolean,
+  created_at: DateTime,
+  @index(name: "UQ_NOTIFICATION_CURSOR", unique: true, fields: [recipient_id, version]),
+  @index(name: "IDX_NOTIFICATION_DISPATCH", fields: [published]),
+  @system
+}
+
 model f_project {
   id : String @id @default(uuid()),
   name: String,
@@ -29,7 +179,46 @@ model f_branch {
   @comment("项目分支")
 }
 
-// f_api_request_log 已迁移至 project.fml，作为项目级模型
+model f_app_ai_robot {
+  id : String @id @default(uuid()),
+  app_id : String @length("64"),
+  config : JSON,
+  created_at? : DateTime @default(now()),
+  updated_at? : DateTime @default(now()),
+  @index(name: "IDX_AI_ROBOT_APP", fields: [app_id]),
+  @system,
+  @comment("应用 AI 对话机器人")
+}
+
+model f_app_ai_conversation {
+  id : String @id @default(uuid()),
+  app_id : String @length("64"),
+  robot_id : String,
+  user_id : String,
+  title : String @length("100"),
+  messages : JSON,
+  created_at? : DateTime @default(now()),
+  updated_at? : DateTime @default(now()),
+  @index(name: "IDX_AI_CHAT_OWNER", fields: [app_id, robot_id, user_id]),
+  @system,
+  @comment("AI 个人会话，当前回复由模拟器生成")
+}
+
+model f_app_workbench {
+  id : String @id @default(uuid()),
+  app_id : String @comment("所属应用ID"),
+  name : String @comment("工作台名称"),
+  description? : String @comment("工作台描述"),
+  layout : JSON @comment("工作台布局"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_WORKBENCH_APP", fields: [app_id]),
+  @index(name: "UQ_WORKBENCH_APP_NAME", unique: true, fields: [app_id, name]),
+  @system,
+  @comment("应用工作台")
+}
 
 model f_auth_api_key {
   id : String @id @default(uuid()),
@@ -43,38 +232,202 @@ model f_auth_api_key {
   created_at? : DateTime @default(now()) @comment("创建时间"),
   updated_at? : DateTime @default(now()) @comment("更新时间"),
   @index(name: "IDX_AUTH_AK_HASH", unique: true, fields: [key_hash]),
-  @index(name: "IDX_AUTH_AK_PROJECT", fields: [project_id]),
   @system,
   @comment("API Key")
+}
+
+enum UserStatus {
+  ACTIVE,
+  DISABLED,
+  INVITED,
+  @system
 }
 
 model f_user {
   id : String @id @default(uuid()),
   name? : String @length("255") @comment("名称"),
   email? : String @length("255") @comment("邮箱"),
+  phone? : String @length("50") @comment("工作电话"),
+  avatar? : String @length("2048") @comment("头像"),
   password_hash : String @length("255") @comment("密码HASH"),
-  role_ids: String @length("255") @comment("角色ID, 逗号分隔"),
+  manager_user_id? : String @length("64") @comment("直属主管用户ID"),
+  status : UserStatus @default("ACTIVE") @comment("状态"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name : "IDX_USERNAME", unique: "true", fields: [name]),
   @index(name : "IDX_EMAIL", unique: "true", fields: [email]),
+  @index(name : "IDX_USER_MANAGER", fields : [manager_user_id]),
+  @metadata({
+    label: "用户",
+    description: "系统用户表单",
+    displayField: "name",
+    searchField: "name",
+    fields: [
+      {name: "name", label: "姓名", type: "TEXT", required: true},
+      {name: "email", label: "邮箱", type: "EMAIL"},
+      {name: "phone", label: "工作电话", type: "PHONE"},
+      {name: "password", label: "密码", type: "TEXT"},
+      {name: "status", label: "状态", type: "SELECT", required: true, options: [
+        {id: "ACTIVE", text: "启用"},
+        {id: "DISABLED", text: "停用"},
+        {id: "INVITED", text: "待激活"}
+      ]},
+      {name: "manager_user_id", label: "直属主管", type: "REFERENCE", referenceForm: "f_user"},
+      {name: "roleIds", label: "角色", type: "MULTIREFERENCE", referenceForm: "f_role"}
+    ],
+    layout: {items: [
+      {type: "SECTION", label: "基础信息", width: "FULL"},
+      {type: "FIELD", name: "name", width: "HALF"},
+      {type: "FIELD", name: "email", width: "HALF"},
+      {type: "FIELD", name: "password", width: "HALF"},
+      {type: "FIELD", name: "status", width: "QUARTER"},
+      {type: "FIELD", name: "manager_user_id", width: "QUARTER"},
+      {type: "SECTION", label: "组织关系", width: "FULL"},
+      {type: "SUBFORM", name: "departments", label: "任职", width: "FULL", formName: "f_user_department", referenceField: "user_id"},
+      {type: "FIELD", name: "roleIds", label: "角色", width: "FULL"}
+    ]},
+    listColumns: [
+      {name: "name", label: "姓名"},
+      {name: "email", label: "邮箱"},
+      {name: "status", label: "状态"},
+      {name: "departments", label: "任职"},
+      {name: "roles", label: "角色"}
+    ],
+    page: {title: "组织用户", description: "维护用户基础信息、任职与角色", pageSize: 30, leftComponent: "DEPARTMENT_TREE"},
+    components: {
+      departments: {type: "USER_DEPARTMENTS", label: "任职"},
+      roles: {type: "USER_ROLES", label: "角色"}
+    },
+    designable: true
+  }),
   @system,
   @comment("用户")
+}
+
+model f_department {
+  id : String @id @default(uuid()),
+  name : String @length("255") @comment("部门名称"),
+  parent_id? : String @length("64") @comment("父级部门ID"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name : "IDX_DEPARTMENT_PARENT", fields : [parent_id]),
+  @metadata({
+    label: "部门",
+    description: "系统部门表单",
+    displayField: "name",
+    searchField: "name",
+    fields: [
+      {name: "name", label: "部门名称", type: "TEXT", required: true},
+      {name: "parent_id", label: "上级部门", type: "TEXT"}
+    ],
+    layout: {items: [
+      {type: "SECTION", label: "基础信息", width: "FULL"},
+      {type: "FIELD", name: "name", width: "HALF"},
+      {type: "FIELD", name: "parent_id", width: "HALF"}
+    ]},
+    listColumns: [
+      {name: "name", label: "部门名称"},
+      {name: "parent_id", label: "上级部门"},
+      {name: "direct_user_count", label: "成员数"}
+    ],
+    page: {title: "部门", description: "维护组织架构", pageSize: 30},
+    components: {},
+    designable: true
+  }),
+  @system,
+  @comment("部门架构")
+}
+
+model f_user_department {
+  id : String @id @default(uuid()),
+  user_id : String @length("64") @comment("用户ID"),
+  department_id : String @length("64") @comment("部门ID"),
+  is_main : Boolean @default("false") @comment("是否主部门"),
+  job_title? : String @length("64") @comment("职位"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name : "UQ_USER_DEPARTMENT", unique : "true", fields : [user_id, department_id]),
+  @index(name : "IDX_USER_DEPARTMENT_USER", fields : [user_id]),
+  @index(name : "IDX_USER_DEPARTMENT_DEPARTMENT", fields : [department_id]),
+  @index(name : "IDX_USER_DEPARTMENT_MAIN", fields : [is_main]),
+  @system,
+  @comment("用户部门关系")
+}
+
+model f_user_role {
+  id : String @id @default(uuid()),
+  user_id : String @length("64") @comment("用户ID"),
+  role_id : String @length("64") @comment("角色ID"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name : "UQ_USER_ROLE", unique : "true", fields : [user_id, role_id]),
+  @index(name : "IDX_USER_ROLE_USER", fields : [user_id]),
+  @index(name : "IDX_USER_ROLE_ROLE", fields : [role_id]),
+  @system,
+  @comment("用户角色关系")
 }
 model f_role {
   id : String @id @unique @default(uuid()),
   name : String @length("255"),
   description? : String @length("255"),
-  resource_ids?: String @length("2000") @comment("资源ID, 逗号分隔"),
   created_by?: String @comment("创建人"),
   updated_by?: String @comment("更新人"),
   created_at?: DateTime @default(now()) @comment("创建时间"),
   updated_at?: DateTime @default(now()) @comment("更新时间"),
   @index(name:"IDX_ROLE_NAME", unique: "true", fields: [name]),
+  @metadata({
+    label: "角色",
+    description: "系统角色表单",
+    displayField: "name",
+    searchField: "name",
+    fields: [
+      {name: "name", label: "角色名称", type: "TEXT", required: true},
+      {name: "description", label: "角色说明", type: "TEXT"},
+      {name: "resourceIds", label: "可访问权限", type: "MULTIREFERENCE"}
+    ],
+    layout: {items: [
+      {type: "SECTION", label: "基础信息", width: "FULL"},
+      {type: "FIELD", name: "name", width: "HALF"},
+      {type: "FIELD", name: "description", width: "HALF"},
+      {type: "SECTION", label: "权限", width: "FULL"},
+      {type: "FIELD", name: "resourceIds", label: "可访问权限", width: "FULL"}
+    ]},
+    listColumns: [
+      {name: "name", label: "角色名称"},
+      {name: "description", label: "说明"},
+      {name: "resources", label: "权限资源"}
+    ],
+    page: {title: "角色权限", description: "维护角色及其权限", pageSize: 30},
+    components: {
+      resources: {type: "ROLE_PERMISSIONS", label: "可访问权限"}
+    },
+    designable: true
+  }),
   @system,
   @comment("角色")
+}
+
+model f_role_resource {
+  id : String @id @default(uuid()),
+  role_id : String @length("64") @comment("角色ID"),
+  resource_id : Long @comment("资源ID"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name : "UQ_ROLE_RESOURCE", unique : "true", fields : [role_id, resource_id]),
+  @index(name : "IDX_ROLE_RESOURCE_ROLE", fields : [role_id]),
+  @index(name : "IDX_ROLE_RESOURCE_RESOURCE", fields : [resource_id]),
+  @system,
+  @comment("角色资源关系")
 }
 model f_resource {
   id: Long @id @default(autoIncrement()),
@@ -303,12 +656,21 @@ seed f_branch {
 }
 
 seed f_user {
-  {id: "admin", name: "Admin", password_hash: "172eee54aa664e9dd0536b063796e54e", created_at: "2025-08-30 19:58:23.000", role_ids: "admin"},
+  {id: "admin", name: "Admin", password_hash: "172eee54aa664e9dd0536b063796e54e", created_at: "2025-08-30 19:58:23.000", status: "ACTIVE"},
+}
+
+seed f_user_role {
+  {id: "admin_admin_role", user_id: "admin", role_id: "admin"},
 }
 
 seed f_role {
-  {id: "admin", name: "管理员", description: "管理员拥有所有权限", resource_ids: "1"},
-  {id: "developer", name: "开发", description: "开发人员拥有项目管理权限", resource_ids: "100"},
+  {id: "admin", name: "管理员", description: "管理员拥有所有权限"},
+  {id: "developer", name: "开发", description: "开发人员拥有项目管理权限"},
+}
+
+seed f_role_resource {
+  {id: "admin_all_resource", role_id: "admin", resource_id: 1},
+  {id: "developer_project_resource", role_id: "developer", resource_id: 100},
 }
 
 seed f_resource {
@@ -337,6 +699,441 @@ seed f_resource {
   {id: 404, name: "删除API Key", permission: "apikey:delete", type: "system", parent_id: 400},
 }
 
+// ==============================
+// 平台级业务表（统一存于平台库，按 project_id 隔离）
+// ==============================
+
+model f_runtime_message {
+  id: Long @id @default(autoIncrement()),
+  project_id: String @comment("所属项目ID"),
+  message_id: String,
+  type: String,
+  ordering_key: String @comment("同一实例的事件与命令有序，无关实例独立处理"),
+  payload: JSON,
+  state: String,
+  attempts: Int @default(0),
+  available_at: DateTime,
+  created_at: DateTime,
+  error?: Text,
+  @index(name: "UQ_RUNTIME_MESSAGE", unique: true, fields: [project_id, message_id]),
+  @index(name: "IDX_RUNTIME_DELIVERY", fields: [project_id, state, available_at]),
+  @index(name: "IDX_RUNTIME_ORDER", fields: [project_id, ordering_key, id]),
+  @system,
+  @comment("可靠事件与命令 Outbox")
+}
+
+model f_app_flow_instance {
+  trigger_type: String,
+  principal: String,
+  source_id: String,
+  request_hash: String,
+  id: String @id,
+  app_id: String @comment("所属应用ID"),
+  request_key: String,
+  flow_id: String,
+  flow_deploy_id: String @comment("绑定的 Flow 部署版本"),
+  form_name: String,
+  record_id: String,
+  initiator: String,
+  status: String,
+  snapshot: JSON,
+  flow_instance_id?: String,
+  parent_task_id?: String,
+  error?: Text,
+  created_at: DateTime,
+  updated_at: DateTime,
+  @index(name: "UQ_FLOW_INSTANCE_REQUEST", unique: true, fields: [app_id, request_key]),
+  @index(name: "IDX_FORM_RUN_RECORD", fields: [app_id, form_name, record_id]),
+  @index(name: "IDX_FORM_RUN_ENGINE", fields: [app_id, flow_instance_id]),
+  @system,
+  @comment("表单流程实例及提交快照")
+}
+
+model f_app_approval_wait {
+  id: String @id,
+  app_id: String @comment("所属应用ID"),
+  run_id: String,
+  members: JSON,
+  status: String,
+  created_at: DateTime,
+  @index(name: "IDX_APPROVAL_WAIT_RUN", fields: [app_id, run_id]),
+  @system,
+  @comment("审批挂起任务")
+}
+
+model f_app_approval_task {
+  id: String @id,
+  app_id: String @comment("所属应用ID"),
+  wait_id: String,
+  run_id: String,
+  user_id: String,
+  position: Int,
+  status: String,
+  decision?: String,
+  request_key?: String,
+  comment?: Text,
+  decided_at?: DateTime,
+  created_at: DateTime,
+  @index(name: "IDX_APPROVAL_PERSONAL", fields: [app_id, user_id, status]),
+  @index(name: "UQ_APPROVAL_WAIT_USER", unique: true, fields: [app_id, wait_id, user_id]),
+  @system,
+  @comment("个人签核任务与决策记录")
+}
+
+model f_app_flow_record_lock {
+  id: String @id,
+  app_id: String @comment("所属应用ID"),
+  run_id: String,
+  schema_name: String,
+  model_name: String,
+  record_id: String,
+  @index(name: "UQ_FLOW_RECORD_LOCK", unique: true, fields: [app_id, schema_name, model_name, record_id]),
+  @system,
+  @comment("审批中的业务记录锁")
+}
+
+model f_bucket {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  name : String @comment("Bucket 名称"),
+  description? : String @length("500") @comment("Bucket 描述"),
+  visibility : BucketVisibility @default("PRIVATE") @comment("访问可见性"),
+  max_file_size? : Long @comment("单文件大小限制(字节)"),
+  owner_type : String @comment("归属类型(如 PROJECT)"),
+  owner_id : String @comment("归属ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_OWNER", fields: [project_id, owner_type, owner_id]),
+  @index(name: "UQ_BUCKET_NAME", unique: true, fields: [project_id, owner_type, owner_id, name]),
+  @system,
+  @comment("存储 Bucket")
+}
+
+model f_auth_provider_config {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  name : String @length("255") @comment("提供商名称"),
+  type : String @length("50") @comment("类型: oidc/script"),
+  enabled : Boolean @default("true") @comment("是否启用"),
+  config : JSON @comment("提供商配置"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name: "UQ_AUTH_PROVIDER_PROJECT_NAME", unique: true, fields: [project_id, name]),
+  @system,
+  @comment("认证提供商配置")
+}
+
+model f_api_request_log {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  url : Text @comment("请求地址"),
+  http_method: String @length("255") @comment("请求方法"),
+  path: String @length("1000") @comment("请求路径"),
+  request_body : JSON @comment("请求参数"),
+  request_headers : JSON @comment("请求头"),
+  status_code : Int,
+  response_time : Int,
+  client_ip?: String @length("45") @comment("IP地址"),
+  created_at : DateTime @default(now()),
+  is_success: Boolean @comment("是否成功") @default("true"),
+  error_message? : JSON @comment("异常信息"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
+  @index(name: "IDX_API_REQUEST_LOG_CREATED_AT", fields: [project_id, created_at]),
+  @index(name: "IDX_API_REQUEST_LOG_IS_SUCCESS", fields: [project_id, is_success]),
+  @index(name: "IDX_API_REQUEST_LOG_CREATED_AT_IS_SUCCESS", fields: [project_id, created_at, is_success]),
+  @index(name: "IDX_API_REQUEST_LOG_CREATED_AT_PATH", fields: [project_id, created_at, path]),
+  @index(name: "IDX_API_REQUEST_LOG_CREATED_AT_STATUS", fields: [project_id, created_at, status_code]),
+  @index(name: "IDX_API_REQUEST_LOG_TRACE", fields: [project_id, trace_id]),
+  @system,
+  @comment("API请求日志")
+}
+
+model f_em_flow_definition {
+  id: Long @id @default(autoIncrement()),
+  project_id: String @comment("所属项目ID"),
+  flow_module_id: String @comment("流程模型id"),
+  flow_name: String @comment("流程名称"),
+  flow_key: String @comment("流程业务标识"),
+  flow_model?: Text @comment("流程定义"),
+  status: Int @default(0) @comment("状态(1.初始态 2.编辑中 3.已下线)"),
+  remark: String @length(512) @comment("备注"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  is_deleted: Boolean @default(0) @comment("删除状态(0未删除，1已删除)"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "UQ_FLOW_DEFINITION_MODULE", unique: true, fields: [project_id, flow_module_id]),
+  @system,
+  @comment("流程定义")
+}
+
+model f_em_flow_deployment {
+  id: Long @id @default(autoIncrement()),
+  project_id: String @comment("所属项目ID"),
+  flow_deploy_id: String @comment("流程模型部署id"),
+  flow_module_id: String @comment("流程模型id"),
+  flow_name: String @comment("流程名称"),
+  flow_key: String @comment("流程业务标识"),
+  flow_model: Text @comment("流程定义"),
+  status: Int @default(0) @comment("状态(1.已部署 3.已下线)"),
+  remark: String @length(512) @comment("备注"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "UQ_FLOW_DEPLOYMENT_DEPLOY", unique: true, fields: [project_id, flow_deploy_id]),
+  @index(name: "IDX_FLOW_DEPLOYMENT_MODULE", fields: [project_id, flow_module_id]),
+  @system,
+  @comment("流程部署")
+}
+
+model f_ei_flow_instance {
+  id: Long @id @default(autoIncrement()),
+  project_id: String @comment("所属项目ID"),
+  flow_instance_id: String @comment("流程执行实例id"),
+  parent_flow_instance_id?: String @comment("父流程执行实例id"),
+  flow_deploy_id: String @comment("流程模型部署id"),
+  flow_module_id: String @comment("流程模型id"),
+  status: Int @default(0) @comment("状态(1.执行完成 2.执行中 3.执行终止(强制终止))"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  initiator?: String @comment("发起人"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "UQ_FLOW_INSTANCE", unique: true, fields: [project_id, flow_instance_id]),
+  @index(name: "IDX_FLOW_INSTANCE_DEPLOY", fields: [project_id, flow_deploy_id]),
+  @system,
+  @comment("流程执行实例")
+}
+
+model f_ei_flow_instance_mapping {
+  id: Long @id @default(autoIncrement()),
+  project_id: String @comment("所属项目ID"),
+  flow_instance_id: String @comment("流程执行实例id"),
+  node_instance_id: String @comment("节点执行实例id"),
+  node_key: String @comment("节点唯一标识"),
+  sub_flow_instance_id: String @comment("子流程执行实例id"),
+  type: Int @default(0) @comment("状态(1.执行 2.回滚)"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "IDX_EI_FLOW_NODE", fields: [project_id, flow_instance_id]),
+  @system,
+  @comment("父子流程实例映射")
+}
+
+model f_ei_node_instance {
+  id: Long @id @default(autoIncrement()),
+  project_id: String @comment("所属项目ID"),
+  node_instance_id: String @comment("节点执行实例id"),
+  flow_instance_id: String @comment("流程执行实例id"),
+  source_node_instance_id: String @comment("上一个节点执行实例id"),
+  instance_data_id: Text @comment("实例数据id"),
+  flow_deploy_id: String @comment("流程模型部署id"),
+  node_key: String @comment("节点唯一标识"),
+  node_type: Int @default(0) @comment("流程类型"),
+  source_node_key: String @comment("上一个流程节点唯一标识"),
+  status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "UQ_NODE_INSTANCE", unique: true, fields: [project_id, node_instance_id]),
+  @index(name: "IDX_FIID_SNIID_NK", fields: [project_id, flow_instance_id, source_node_instance_id, node_key]),
+  @system,
+  @comment("节点执行实例")
+}
+
+model f_ei_node_instance_log {
+  id: Long @id @default(autoIncrement()),
+  project_id: String @comment("所属项目ID"),
+  node_instance_id: String @comment("节点执行实例id"),
+  flow_instance_id: String @comment("流程执行实例id"),
+  instance_data_id: String @comment("实例数据id"),
+  node_key: String @comment("节点唯一标识"),
+  type: Int @default(0) @comment("操作类型(1.系统执行 2.任务提交 3.任务撤销)"),
+  status: Int @default(0) @comment("状态(1.处理成功 2.处理中 3.处理失败 4.处理已撤销)"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
+  event_key?: String @comment("外部处理器的幂等消费标识"),
+  attributes?: JSON @comment("外部处理器的业务执行结果"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "UQ_NODE_INSTANCE_EVENT", unique: true, fields: [project_id, event_key]),
+  @index(name: "IDX_NODE_INSTANCE_LOG_FLOW", fields: [project_id, flow_instance_id]),
+  @index(name: "IDX_NODE_INSTANCE_LOG_TRACE", fields: [project_id, trace_id]),
+  @system,
+  @comment("节点执行记录")
+}
+
+model f_ei_instance_data {
+  id: Long @id @default(autoIncrement()),
+  project_id: String @comment("所属项目ID"),
+  node_instance_id: String @comment("节点执行实例id"),
+  flow_instance_id: String @comment("流程执行实例id"),
+  instance_data_id: String @comment("实例数据id"),
+  flow_deploy_id: String @comment("流程模型部署id"),
+  flow_module_id: String @comment("流程模型id"),
+  node_key: String @comment("节点唯一标识"),
+  instance_data: Text @comment("数据列表json"),
+  type: Int @default(0) @comment("操作类型(1.实例初始化 2.系统执行 3.系统主动获取 4.上游更新 5.任务提交 6.任务撤回)"),
+  archive: Int @default(0) @comment("归档状态(0未删除，1删除)"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+  @index(name: "UQ_INSTANCE_DATA", unique: true, fields: [project_id, instance_data_id]),
+  @index(name: "IDX_INSTANCE_DATA_FLOW", fields: [project_id, flow_instance_id]),
+  @system,
+  @comment("实例数据")
+}
+
+model f_trigger {
+  managed_key?: String,
+  deployment_id?: String,
+  generation: Int @default(0),
+  @index(name: "UQ_FLOW_TRIGGER_BINDING", unique: true, fields: [project_id, managed_key]),
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  name : String @comment("描述"),
+  description? : String @length("100") @comment("描述"),
+  type: TriggerType @comment("触发器类型"),
+  config: JSON @comment("触发器配置"),
+  job_type: String @length("50") @default("FLOW") @comment("任务的类型"),
+  job_group: String @length("190") @comment("任务的分组"),
+  job_id: String @length("50") @comment("任务的ID"),
+  state: Boolean @default(true) @comment("状态"),
+  created_at? : DateTime @default(now()),
+  updated_at? : DateTime @default(now()),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  @index(name: "IDX_TRIGGER_PROJECT", fields: [project_id]),
+  @index(name: "IDX_TRIGGER_JOB", fields: [project_id, job_type, job_id]),
+  @system,
+  @comment("触发器配置")
+}
+
+model f_job_execution_log {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  trigger_id : String @length("50") @comment("触发器ID"),
+  job_id : String @length("50") @comment("作业ID"),
+  job_group : String @length("190") @comment("作业分组"),
+  job_type : String @length("50") @comment("作业类型"),
+  job_name : String @length("255") @comment("作业名称"),
+  execution_status : String @length("20") @comment("执行状态(SUCCESS/FAILED/RUNNING)"),
+  start_time : DateTime @comment("开始执行时间"),
+  end_time? : DateTime @comment("结束执行时间"),
+  execution_duration? : Long @comment("执行时长(毫秒)"),
+  is_success : Boolean @default(false) @comment("是否执行成功"),
+  error_message? : Text @comment("错误信息"),
+  error_stack_trace? : JSON @comment("错误堆栈信息"),
+  input_data? : JSON @comment("输入数据"),
+  output_data? : JSON @comment("输出数据"),
+  retry_count : Int @default(0) @comment("重试次数"),
+  max_retry_count : Int @default(0) @comment("最大重试次数"),
+  scheduler_name : String @length("120") @comment("调度器名称"),
+  instance_name : String @length("190") @comment("调度实例名称"),
+  fired_time : Long @comment("实际触发时间(毫秒)"),
+  scheduled_time : Long @comment("计划执行时间(毫秒)"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
+  created_by?: String @comment("创建人"),
+  updated_by?: String @comment("更新人"),
+  created_at?: DateTime @default(now()) @comment("创建时间"),
+  updated_at?: DateTime @default(now()) @comment("更新时间"),
+
+  @index(name:"IDX_JOB_EXEC_TRIGGER_ID", unique: false, fields: [project_id, trigger_id]),
+  @index(name:"IDX_JOB_EXEC_JOB_ID", unique: false, fields: [project_id, job_id]),
+  @index(name:"IDX_JOB_EXEC_SCHEDULER", unique: false, fields: [project_id, scheduler_name]),
+  @index(name:"IDX_JOB_EXEC_STATUS", unique: false, fields: [project_id, execution_status]),
+  @index(name:"IDX_JOB_EXEC_START_TIME", unique: false, fields: [project_id, start_time]),
+  @index(name:"IDX_JOB_EXEC_SUCCESS", unique: false, fields: [project_id, is_success]),
+  @index(name:"IDX_JOB_EXEC_COMPOSITE", unique: false, fields: [project_id, trigger_id, start_time]),
+  @index(name:"IDX_JOB_EXEC_TRACE_ID", unique: false, fields: [project_id, trace_id]),
+  @system,
+  @comment("作业执行日志")
+}
+
+model f_function {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  name : String @comment("函数名称"),
+  source_files : JSON @comment("函数源代码(文件名→内容)"),
+  timeout : Int @default("30") @comment("超时时间(秒)"),
+  created_by? : String @comment("创建人"),
+  updated_by? : String @comment("更新人"),
+  created_at? : DateTime @default(now()) @comment("创建时间"),
+  updated_at? : DateTime @default(now()) @comment("更新时间"),
+  @index(name: "UQ_FUNCTION_PROJECT_NAME", unique: true, fields: [project_id, name]),
+  @system,
+  @comment("边缘函数(平台级资源，按 project_id 隔离)")
+}
+
+model f_function_log {
+  id : String @id @default(uuid()),
+  project_id : String @comment("所属项目ID"),
+  function_name : String @comment("函数名称"),
+  level : String @comment("日志级别(log/warn/error)"),
+  message : String @comment("日志消息"),
+  trace_id? : String @length("64") @comment("链路追踪ID"),
+  created_at? : DateTime @default(now()) @comment("记录时间"),
+  @index(name: "IDX_FUNCTION_LOG_TRACE", fields: [project_id, trace_id]),
+  @index(name: "IDX_FUNCTION_LOG_NAME_TIME", fields: [project_id, function_name, created_at]),
+  @system,
+  @comment("边缘函数执行日志")
+}
+
+model f_login_log {
+  id : String @id @default(uuid()),
+  user_id? : String @length("64") @comment("用户ID"),
+  username : String @length("255") @comment("登录账号"),
+  client_ip? : String @length("45") @comment("IP地址"),
+  user_agent? : String @length("500") @comment("客户端"),
+  success : Boolean @default("true") @comment("是否成功"),
+  message? : String @length("500") @comment("失败原因"),
+  created_at : DateTime @default(now()) @comment("登录时间"),
+  @index(name: "IDX_LOGIN_LOG_USER", fields: [user_id, created_at]),
+  @index(name: "IDX_LOGIN_LOG_CREATED_AT", fields: [created_at]),
+  @system,
+  @comment("登录日志")
+}
+
+enum TriggerType {
+  MANUAL,
+  EVENT,
+  SCHEDULE,
+  @system
+}
+
+enum ApiType {
+  FOLDER,
+  API,
+  @system
+}
+
+enum DatasourceType {
+  SYSTEM,
+  USER,
+  @system
+}
+
+enum BucketVisibility {
+  PRIVATE,
+  AUTHENTICATED,
+  PUBLIC,
+  @system
+}
+
 model f_function_template {
   id : String @id @default(uuid()),
   name : String @comment("模板名称"),
@@ -358,4 +1155,52 @@ seed f_function_template {
   {id: "tpl-004", name: "IdP Authentication", slug: "idp-authentication", description: "对接第三方 IdP（如 OIDC/OAuth2）进行认证，验证 token 并返回 userId", source_files: {"index.ts": "export default async function(req: Request) {\n  // AuthContext 作为 Request body 传入，包含 bearerToken、headers 等信息\n  // 同时原始客户端 headers 也通过 Request headers 传递\n  const ctx = await req.json();\n  const bearerToken = ctx.bearerToken || req.headers.get(\"Authorization\")?.replace(\"Bearer \", \"\");\n\n  if (!bearerToken) {\n    return new Response(JSON.stringify({ error: \"Missing bearer token\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" }\n    });\n  }\n\n  // 调用 IdP 的 userinfo 端点验证 token\n  // 请根据你的 IdP 替换 userinfo URL\n  const userinfoUrl = \"https://your-idp-domain.com/oauth2/userinfo\";\n\n  try {\n    const response = await fetch(userinfoUrl, {\n      headers: { Authorization: \"Bearer \" + bearerToken }\n    });\n\n    if (!response.ok) {\n      return new Response(JSON.stringify({ error: \"Token validation failed\", status: response.status }), {\n        status: 401,\n        headers: { \"content-type\": \"application/json\" }\n      });\n    }\n\n    const userInfo = await response.json();\n\n    // 认证成功 — 返回 userId 供 Flexmodel 识别用户身份\n    // userId 通常取 IdP 返回的 sub 字段\n    console.log(\"IdP auth succeeded\", { sub: userInfo.sub, email: userInfo.email });\n\n    return new Response(JSON.stringify({\n      userId: userInfo.sub,\n      email: userInfo.email,\n      name: userInfo.name\n    }), {\n      headers: { \"content-type\": \"application/json\" }\n    });\n  } catch (err) {\n    console.error(\"IdP auth error\", err);\n    return new Response(JSON.stringify({ error: \"IdP connection failed\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" }\n    });\n  }\n}"}, tags: "[\"auth\", \"integration\"]", icon: "safety", sort_order: 6},
   {id: "tpl-005", name: "IdP Authentication with JWT", slug: "auth-jwt", description: "JWT Token 认证函数，验证 Bearer Token 中的 upn claim 并返回用户信息", source_files: {"index.ts": "import jwt from \"npm:jsonwebtoken\";\n\nconst ACCOUNT = \"upn\"; \n\nexport default async function (req: Request) {\n  // 1. 提取 Bearer Token\n  let token: string | null = null;\n  try {\n    token = req.headers.get(\"Authorization\")?.replace(\"Bearer \", \"\") ?? null;\n    if (!token && req.body) {\n      const ct = req.headers.get(\"content-type\") ?? \"\";\n      if (ct.includes(\"application/json\")) {\n        token = (await req.json().catch(() => ({}))).bearerToken ?? null;\n      }\n    }\n  } catch {\n    // ignore parse errors\n  }\n\n  if (!token) {\n    return new Response(JSON.stringify({ error: \"Missing bearer token\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" },\n    });\n  }\n\n  // 2. 对应 JwtService.verify(): 先解码取 upn → 拼接密钥 → 验证签名\n  const BASE = Deno.env.get(\"JWT_SECRET\") || \"your-secret\";\n\n  try {\n    // 对应 getClaim(token, ACCOUNT)\n    const upn = (jwt.decode(token) as Record<string, unknown> | null)?.[ACCOUNT];\n    if (!upn || typeof upn !== \"string\") {\n      throw new Error(\"missing upn claim\");\n    }\n\n    // 对应 String secret = getClaim(token, ACCOUNT) + config.jwt().secret()\n    //       Algorithm.HMAC256(secret) + verifier.verify(token)\n    const verified = jwt.verify(token, upn + BASE, { algorithms: [\"HS256\"] }) as Record<string, unknown>;\n\n    console.log(\"JWT 认证成功\", { upn: verified[ACCOUNT] });\n\n    return new Response(\n      JSON.stringify({\n        userId: verified[ACCOUNT],\n        email: verified.email || \"\",\n        name: verified.name || \"\",\n      }),\n      { headers: { \"content-type\": \"application/json\" } },\n    );\n  } catch (err) {\n    console.error(\"JWT 验证失败:\", err instanceof Error ? err.message : err);\n    return new Response(JSON.stringify({ error: \"Invalid or expired token\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" },\n    });\n  }\n}"}, tags: "[\"auth\"]", icon: "safety", sort_order: 5},
   {id: "tpl-006", name: "AI Example", slug: "ai-example", description: "调用 DeepSeek API 的 AI 边缘函数示例", source_files: {"index.ts": "import OpenAI from \"npm:openai\"; // Deno 会自动下载并缓存该 npm 包\n\nconst openai = new OpenAI({\n  apiKey: Deno.env.get(\"DEEPSEEK_API_KEY\"), // 从环境变量读取 API Key\n  baseURL: \"https://api.deepseek.com/v1\",   // 配置 DeepSeek 的官方接口地址\n});\n\n\nexport default async function(req: Request) {\n\n  const completion = await openai.chat.completions.create({\n    messages: [{ role: \"user\", content: \"你好，请自我介绍一下。\" }],\n    model: \"deepseek-v4-flash\",\n  });\n  console.log(completion.choices[0].message.content);\n  return new Response(JSON.stringify({ message: completion }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"}, tags: "[\"ai\", \"beginner\"]", icon: "robot", sort_order: 7},
+}
+
+// dev_test 项目平台级种子数据（原 dev_test.fml，按 project_id 隔离）
+seed f_bucket {
+  {project_id: "dev_test", id: "dev_test_default", name: "default", description: "开发测试默认存储桶", visibility: "PRIVATE", max_file_size: 104857600, owner_type: "PROJECT", owner_id: "dev_test", created_by: "admin"},
+  {project_id: "dev_test", id: "dev_test_public", name: "public", description: "开发测试公共存储桶", visibility: "PUBLIC", max_file_size: 52428800, owner_type: "PROJECT", owner_id: "dev_test", created_by: "admin"},
+}
+
+seed f_em_flow_definition {
+  {project_id: "dev_test",  "flow_module_id": "22203aa0-5f25-4b8a-974d-e4288c1bbd18", "flow_name": "日志归档流程", "flow_key": "log_archive_task", "flow_model": "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgxfy945jnpgtk\"],\"properties\":{\"positionX\":-112,\"positionY\":96}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgxgy62ycwn9ca\"],\"outgoing\":[],\"properties\":{\"positionX\":576,\"positionY\":80}},{\"key\":\"serviceTask_mgxfv7fk1v40d9\",\"type\":5,\"incoming\":[\"SequenceFlow_mgxfy945jnpgtk\"],\"outgoing\":[\"SequenceFlow_mgxgy4t2xqtz2x\"],\"properties\":{\"subType\":\"sql\",\"datasourceName\":\"system\",\"script\":\"create table if not exists `f_api_request_log_202510`\\r\\n(\\r\\n    `id`              varchar(255)  not null,\\r\\n    `url`             varchar(2000) not null comment '请求地址',\\r\\n    `http_method`     varchar(255)  not null comment '请求方法',\\r\\n    `path`            varchar(1000) not null comment '请求路径',\\r\\n    `request_body`    json          not null comment '请求参数',\\r\\n    `request_headers` json          not null comment '请求头',\\r\\n    `status_code`     int           not null,\\r\\n    `response_time`   int           not null,\\r\\n    `client_ip`       varchar(45)            default null comment 'ip地址',\\r\\n    `created_at`      datetime      null,\\r\\n    `is_success`      bit(1)        not null default false comment '是否成功',\\r\\n    `error_message`   json                   default null comment '异常信息',\\r\\n    `project_id`       varchar(255)           default null comment '业务方标识',\\r\\n    primary key (`id`),\\r\\n    key `idx_api_request_log_202510_created_at` (`created_at`),\\r\\n    key `idx_api_request_log_202510_is_error` (`is_success`)\\r\\n) comment ='api请求日志归档202510'\",\"name\":\"创建日志归档表\",\"positionX\":96,\"positionY\":80}},{\"key\":\"serviceTask_mgxgqm93or1gtt\",\"type\":5,\"incoming\":[\"SequenceFlow_mgxgy4t2xqtz2x\"],\"outgoing\":[\"SequenceFlow_mgxgy62ycwn9ca\"],\"properties\":{\"subType\":\"sql\",\"datasourceName\":\"system\",\"script\":\"INSERT INTO f_api_request_log_202510 (id, url, http_method, path, request_body, request_headers, status_code,\\r\\n                                      response_time, created_at, client_ip, is_success, error_message,\\r\\n                                      project_id)\\r\\nVALUES ('${context.data.id}','${context.data.url}', '${context.data.http_method}', '${context.data.path}', '{}', '{}',\\r\\n        ${context.data.status_code}, '${context.data.response_time}','${context.data.created_at}', '${context.data.client_ip}', ${context.data.is_success}, '${context.data.error_message}', '${context.data.project_id}')\",\"name\":\"写入归档数据\",\"positionX\":336,\"positionY\":80}},{\"key\":\"SequenceFlow_mgxfy945jnpgtk\",\"type\":1,\"incoming\":[\"start-node\"],\"outgoing\":[\"serviceTask_mgxfv7fk1v40d9\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgxgy4t2xqtz2x\",\"type\":1,\"incoming\":[\"serviceTask_mgxfv7fk1v40d9\"],\"outgoing\":[\"serviceTask_mgxgqm93or1gtt\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgxgy62ycwn9ca\",\"type\":1,\"incoming\":[\"serviceTask_mgxgqm93or1gtt\"],\"outgoing\":[\"end-node\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}}]}", "status": 2, "remark": "通过sql执行日志归档", "archive": 0, "is_deleted": false, "created_by": null, "updated_by": null, "created_at": "2025-10-19 19:51:42", "updated_at": "2025-10-19 19:51:42" },
+  {project_id: "dev_test",  "flow_module_id": "5c41f37a-87a9-47af-bdba-44d0c27eda89", "flow_name": "testFlowName_1757909108656", "flow_key": "testFlowKey_1757909108656", "flow_model": "{\"flowElementList\":[{\"key\":\"startEvent1\",\"type\":2,\"incoming\":[],\"outgoing\":[\"sequenceFlow1\"],\"properties\":{\"positionX\":40,\"positionY\":121}},{\"key\":\"userTask1\",\"type\":4,\"incoming\":[\"sequenceFlow1\"],\"outgoing\":[\"sequenceFlow2\"],\"properties\":{\"name\":\"提交节点A\",\"positionX\":349,\"positionY\":121}},{\"key\":\"exclusiveGateway1\",\"type\":6,\"incoming\":[\"sequenceFlow2\"],\"outgoing\":[\"sequenceFlow3\",\"sequenceFlow4\"],\"properties\":{\"hookInfoIds\":\"[1,2]\",\"positionX\":658,\"positionY\":121}},{\"key\":\"userTask2\",\"type\":4,\"incoming\":[\"sequenceFlow3\"],\"outgoing\":[\"sequenceFlow5\"],\"properties\":{\"name\":\"提交节点C\",\"positionX\":967,\"positionY\":40}},{\"key\":\"userTask3\",\"type\":4,\"incoming\":[\"sequenceFlow4\"],\"outgoing\":[\"SequenceFlow_mtdqpmq32ppols\"],\"properties\":{\"name\":\"提交节点B\",\"positionX\":967,\"positionY\":201}},{\"key\":\"endEvent1\",\"type\":3,\"incoming\":[\"sequenceFlow5\",\"SequenceFlow_mtdqpmq32ppols\"],\"outgoing\":[],\"properties\":{\"positionX\":1456,\"positionY\":128}},{\"key\":\"sequenceFlow1\",\"type\":1,\"incoming\":[\"startEvent1\"],\"outgoing\":[\"userTask1\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"sequenceFlow2\",\"type\":1,\"incoming\":[\"userTask1\"],\"outgoing\":[\"exclusiveGateway1\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"sequenceFlow3\",\"type\":1,\"incoming\":[\"exclusiveGateway1\"],\"outgoing\":[\"userTask2\"],\"properties\":{\"conditionsequenceflow\":\"a>1&&b==1\",\"defaultConditions\":\"false\"}},{\"key\":\"sequenceFlow4\",\"type\":1,\"incoming\":[\"exclusiveGateway1\"],\"outgoing\":[\"userTask3\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"true\"}},{\"key\":\"sequenceFlow5\",\"type\":1,\"incoming\":[\"userTask2\"],\"outgoing\":[\"endEvent1\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mtdqpmq32ppols\",\"type\":1,\"incoming\":[\"userTask3\"],\"outgoing\":[\"endEvent1\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}}]}", "status": 2, "remark": "testRemark", "archive": 0, "is_deleted": 0, "created_by": "admin", "updated_by": "admin", "created_at": "2026-08-29T10:08:15.634023300", "updated_at": "2026-08-29T10:08:15.634023300" },
+  {project_id: "dev_test",  "flow_module_id": "9243be36-9ced-4413-acd5-5fc93a05c698", "flow_name": "脚本测试", "flow_key": "script_test", "flow_model": "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_miclvtzacagocb\"],\"properties\":{\"positionX\":-96,\"positionY\":64,\"name\":\"Start\"}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_miclvvbzb9t82p\"],\"outgoing\":[],\"properties\":{\"positionX\":800,\"positionY\":48,\"name\":\"End\"}},{\"key\":\"serviceTask_miclvseffazfuf\",\"type\":5,\"incoming\":[\"SequenceFlow_miclvtzacagocb\"],\"outgoing\":[\"SequenceFlow_miclvvbzb9t82p\"],\"properties\":{\"subType\":\"script\",\"script\":\"\\\"hello world\\\";\",\"name\":\"\",\"positionX\":320,\"positionY\":48}},{\"key\":\"SequenceFlow_miclvtzacagocb\",\"type\":1,\"incoming\":[\"start-node\"],\"outgoing\":[\"serviceTask_miclvseffazfuf\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_miclvvbzb9t82p\",\"type\":1,\"incoming\":[\"serviceTask_miclvseffazfuf\"],\"outgoing\":[\"end-node\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}}]}", "status": 2, "remark": "Javascript脚本测试", "archive": 0 },
+  {project_id: "dev_test",  "flow_module_id": "da5835fe-e82a-447f-b614-c0ce9aaecb78", "flow_name": "增删改查测试", "flow_key": "crud_test", "flow_model": "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"properties\":{\"positionX\":-496,\"positionY\":48}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgolxly85affbh\"],\"outgoing\":[],\"properties\":{\"positionX\":1408,\"positionY\":48}},{\"key\":\"serviceTask_mgokolh6ottxgz\",\"type\":5,\"incoming\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"outgoing\":[\"SequenceFlow_mgokv2z5j6tju7\"],\"properties\":{\"subType\":\"insert_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Teacher\",\"document\":[{\"field\":\"teacherName\",\"value\":\"张三丰\"},{\"field\":\"subject\",\"value\":\"太极\"}],\"resultPath\":\"teacherInsertAffectedRows\",\"name\":\"新增教师张三丰\",\"positionX\":-336,\"positionY\":32}},{\"key\":\"serviceTask_mgokspzb8h72r0\",\"type\":5,\"incoming\":[\"SequenceFlow_mgokv2z5j6tju7\"],\"outgoing\":[\"SequenceFlow_mgpv7i2gpvk0qg\"],\"properties\":{\"subType\":\"update_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Teacher\",\"document\":[{\"field\":\"subject\",\"value\":\"太极张三丰\"}],\"filter\":\"{\\\"teacherName\\\":{\\\"_eq\\\":\\\"张三丰\\\"}}\",\"resultPath\":\"teacherUpdateAffectedRows\",\"name\":\"更新教师张三丰\",\"positionX\":-112,\"positionY\":32}},{\"key\":\"serviceTask_mgokvj54kxi9pj\",\"type\":5,\"incoming\":[\"SequenceFlow_mgpvhe0tlgy2hs\"],\"outgoing\":[\"SequenceFlow_mgokyc4xwquno6\"],\"properties\":{\"subType\":\"query_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Student\",\"filter\":\"\",\"sort\":\"[{\\\"field\\\":\\\"id\\\",\\\"order\\\":\\\"desc\\\"}]\",\"page\":1,\"size\":1000,\"resultPath\":\"students\",\"name\":\"查询学生\",\"positionX\":544,\"positionY\":32}},{\"key\":\"serviceTask_mgoky18vc65fea\",\"type\":5,\"incoming\":[\"SequenceFlow_mgokyc4xwquno6\"],\"outgoing\":[\"SequenceFlow_mgolse1rjjms9t\"],\"properties\":{\"subType\":\"insert_record\",\"inputPath\":\"students\",\"datasourceName\":\"dev_test\",\"modelName\":\"Student\",\"document\":[{\"field\":\"studentName\",\"value\":\"${studentName}2\"},{\"field\":\"gender\",\"value\":\"${gender}\"},{\"field\":\"interest\",\"value\":\"${interest}\"},{\"field\":\"age\",\"value\":\"${age}\"},{\"field\":\"classId\",\"value\":\"${classId}\"}],\"resultPath\":\"studentInsertAffectedRows\",\"name\":\"新增学生\",\"positionX\":752,\"positionY\":32}},{\"key\":\"serviceTask_mgoli5cpsdyy77\",\"type\":5,\"incoming\":[\"SequenceFlow_mgolse1rjjms9t\"],\"outgoing\":[\"SequenceFlow_mgolsrsrj4yfkj\"],\"properties\":{\"subType\":\"update_record\",\"inputPath\":\"students\",\"datasourceName\":\"dev_test\",\"modelName\":\"Student\",\"document\":[{\"field\":\"classId\",\"value\":\"3\"}],\"filter\":\"{\\n   \\\"studentName\\\":{\\\"_ends_with\\\":\\\"2\\\"}\\n}\",\"resultPath\":\"studentUpdateAffectedRows\",\"name\":\"更新学生信息\",\"positionX\":960,\"positionY\":32}},{\"key\":\"serviceTask_mgolsqgfgrdmat\",\"type\":5,\"incoming\":[\"SequenceFlow_mgolsrsrj4yfkj\"],\"outgoing\":[\"SequenceFlow_mgolxly85affbh\"],\"properties\":{\"subType\":\"delete_record\",\"resultPath\":\"studentDeleteAffectedRows\",\"name\":\"删除学生信息\",\"positionX\":1200,\"positionY\":32,\"datasourceName\":\"dev_test\",\"modelName\":\"Student\",\"filter\":\"{\\n   \\\"studentName\\\":{\\\"_ends_with\\\":\\\"2\\\"}\\n}\"}},{\"key\":\"serviceTask_mgpv6wp7oavt4f\",\"type\":5,\"incoming\":[\"SequenceFlow_mgpv7i2gpvk0qg\"],\"outgoing\":[\"SequenceFlow_mgpvhb6p3dm76o\"],\"properties\":{\"subType\":\"query_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Teacher\",\"filter\":\"{\\\"teacherName\\\":{\\\"_eq\\\":\\\"张三丰\\\"}}\",\"resultPath\":\"teachers\",\"name\":\"查询教师张三丰\",\"positionX\":96,\"positionY\":32}},{\"key\":\"serviceTask_mgpvgobas8eee4\",\"type\":5,\"incoming\":[\"SequenceFlow_mgpvhb6p3dm76o\"],\"outgoing\":[\"SequenceFlow_mgpvhe0tlgy2hs\"],\"properties\":{\"subType\":\"delete_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Teacher\",\"filter\":\"{\\\"teacherName\\\":{\\\"_eq\\\":\\\"张三丰\\\"}}\",\"resultPath\":\"teacherDeleteAffectedRows\",\"name\":\"删除教师张三丰\",\"positionX\":320,\"positionY\":32}},{\"key\":\"SequenceFlow_mgoksf9skg7m1c\",\"type\":1,\"incoming\":[\"start-node\"],\"outgoing\":[\"serviceTask_mgokolh6ottxgz\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgokv2z5j6tju7\",\"type\":1,\"incoming\":[\"serviceTask_mgokolh6ottxgz\"],\"outgoing\":[\"serviceTask_mgokspzb8h72r0\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgokyc4xwquno6\",\"type\":1,\"incoming\":[\"serviceTask_mgokvj54kxi9pj\"],\"outgoing\":[\"serviceTask_mgoky18vc65fea\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgolse1rjjms9t\",\"type\":1,\"incoming\":[\"serviceTask_mgoky18vc65fea\"],\"outgoing\":[\"serviceTask_mgoli5cpsdyy77\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgolsrsrj4yfkj\",\"type\":1,\"incoming\":[\"serviceTask_mgoli5cpsdyy77\"],\"outgoing\":[\"serviceTask_mgolsqgfgrdmat\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgolxly85affbh\",\"type\":1,\"incoming\":[\"serviceTask_mgolsqgfgrdmat\"],\"outgoing\":[\"end-node\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgpv7i2gpvk0qg\",\"type\":1,\"incoming\":[\"serviceTask_mgokspzb8h72r0\"],\"outgoing\":[\"serviceTask_mgpv6wp7oavt4f\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgpvhb6p3dm76o\",\"type\":1,\"incoming\":[\"serviceTask_mgpv6wp7oavt4f\"],\"outgoing\":[\"serviceTask_mgpvgobas8eee4\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgpvhe0tlgy2hs\",\"type\":1,\"incoming\":[\"serviceTask_mgpvgobas8eee4\"],\"outgoing\":[\"serviceTask_mgokvj54kxi9pj\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}}]}", "status": 2, "remark": "增删改查测试", "archive": 0 },
+}
+
+seed f_em_flow_deployment {
+  {project_id: "dev_test",  "flow_deploy_id": "96933bb6-4e5a-43f2-9d0a-61b3fb7111fa", "flow_module_id": "22203aa0-5f25-4b8a-974d-e4288c1bbd18", "flow_name": "日志归档流程", "flow_key": "log_archive_task", "flow_model": "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgxfy945jnpgtk\"],\"properties\":{\"positionX\":-112,\"positionY\":96}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgxgy62ycwn9ca\"],\"outgoing\":[],\"properties\":{\"positionX\":576,\"positionY\":80}},{\"key\":\"serviceTask_mgxfv7fk1v40d9\",\"type\":5,\"incoming\":[\"SequenceFlow_mgxfy945jnpgtk\"],\"outgoing\":[\"SequenceFlow_mgxgy4t2xqtz2x\"],\"properties\":{\"subType\":\"sql\",\"datasourceName\":\"system\",\"script\":\"create table if not exists `f_api_request_log_202510`\\r\\n(\\r\\n    `id`              varchar(255)  not null,\\r\\n    `url`             varchar(2000) not null comment '请求地址',\\r\\n    `http_method`     varchar(255)  not null comment '请求方法',\\r\\n    `path`            varchar(1000) not null comment '请求路径',\\r\\n    `request_body`    json          not null comment '请求参数',\\r\\n    `request_headers` json          not null comment '请求头',\\r\\n    `status_code`     int           not null,\\r\\n    `response_time`   int           not null,\\r\\n    `client_ip`       varchar(45)            default null comment 'ip地址',\\r\\n    `created_at`      datetime      null,\\r\\n    `is_success`      bit(1)        not null default false comment '是否成功',\\r\\n    `error_message`   json                   default null comment '异常信息',\\r\\n    `project_id`       varchar(255)           default null comment '业务方标识',\\r\\n    primary key (`id`),\\r\\n    key `idx_api_request_log_202510_created_at` (`created_at`),\\r\\n    key `idx_api_request_log_202510_is_error` (`is_success`)\\r\\n) comment ='api请求日志归档202510'\",\"name\":\"创建日志归档表\",\"positionX\":96,\"positionY\":80}},{\"key\":\"serviceTask_mgxgqm93or1gtt\",\"type\":5,\"incoming\":[\"SequenceFlow_mgxgy4t2xqtz2x\"],\"outgoing\":[\"SequenceFlow_mgxgy62ycwn9ca\"],\"properties\":{\"subType\":\"sql\",\"datasourceName\":\"system\",\"script\":\"INSERT INTO f_api_request_log_202510 (id, url, http_method, path, request_body, request_headers, status_code,\\r\\n                                      response_time, created_at, client_ip, is_success, error_message,\\r\\n                                      project_id)\\r\\nVALUES ('${context.data.id}','${context.data.url}', '${context.data.http_method}', '${context.data.path}', '{}', '{}',\\r\\n        ${context.data.status_code}, '${context.data.response_time}','${context.data.created_at}', '${context.data.client_ip}', ${context.data.is_success}, '${context.data.error_message}', '${context.data.project_id}')\",\"name\":\"写入归档数据\",\"positionX\":336,\"positionY\":80}},{\"key\":\"SequenceFlow_mgxfy945jnpgtk\",\"type\":1,\"incoming\":[\"start-node\"],\"outgoing\":[\"serviceTask_mgxfv7fk1v40d9\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgxgy4t2xqtz2x\",\"type\":1,\"incoming\":[\"serviceTask_mgxfv7fk1v40d9\"],\"outgoing\":[\"serviceTask_mgxgqm93or1gtt\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgxgy62ycwn9ca\",\"type\":1,\"incoming\":[\"serviceTask_mgxgqm93or1gtt\"],\"outgoing\":[\"end-node\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}}]}", "status": 1, "remark": "通过sql执行日志归档", "archive": 0, "created_by": null, "updated_by": null, "created_at": "2025-10-19 19:51:42", "updated_at": "2025-10-19 19:51:42" },
+  {project_id: "dev_test",  "flow_deploy_id": "22972842-0b89-4765-a2f9-74a001f9fc10", "flow_module_id": "5c41f37a-87a9-47af-bdba-44d0c27eda89", "flow_name": "testFlowName_1757909108656", "flow_key": "testFlowKey_1757909108656", "flow_model": "{\"flowElementList\":[{\"key\":\"startEvent1\",\"type\":2,\"incoming\":[],\"outgoing\":[\"sequenceFlow1\"],\"properties\":{\"positionX\":40,\"positionY\":121}},{\"key\":\"userTask1\",\"type\":4,\"incoming\":[\"sequenceFlow1\"],\"outgoing\":[\"sequenceFlow2\"],\"properties\":{\"name\":\"提交节点A\",\"positionX\":349,\"positionY\":121}},{\"key\":\"exclusiveGateway1\",\"type\":6,\"incoming\":[\"sequenceFlow2\"],\"outgoing\":[\"sequenceFlow3\",\"sequenceFlow4\"],\"properties\":{\"hookInfoIds\":\"[1,2]\",\"positionX\":658,\"positionY\":121}},{\"key\":\"userTask2\",\"type\":4,\"incoming\":[\"sequenceFlow3\"],\"outgoing\":[\"sequenceFlow5\"],\"properties\":{\"name\":\"提交节点C\",\"positionX\":967,\"positionY\":40}},{\"key\":\"userTask3\",\"type\":4,\"incoming\":[\"sequenceFlow4\"],\"outgoing\":[\"SequenceFlow_mtdqpmq32ppols\"],\"properties\":{\"name\":\"提交节点B\",\"positionX\":967,\"positionY\":201}},{\"key\":\"endEvent1\",\"type\":3,\"incoming\":[\"sequenceFlow5\",\"SequenceFlow_mtdqpmq32ppols\"],\"outgoing\":[],\"properties\":{\"positionX\":1456,\"positionY\":128}},{\"key\":\"sequenceFlow1\",\"type\":1,\"incoming\":[\"startEvent1\"],\"outgoing\":[\"userTask1\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"sequenceFlow2\",\"type\":1,\"incoming\":[\"userTask1\"],\"outgoing\":[\"exclusiveGateway1\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"sequenceFlow3\",\"type\":1,\"incoming\":[\"exclusiveGateway1\"],\"outgoing\":[\"userTask2\"],\"properties\":{\"conditionsequenceflow\":\"a>1&&b==1\",\"defaultConditions\":\"false\"}},{\"key\":\"sequenceFlow4\",\"type\":1,\"incoming\":[\"exclusiveGateway1\"],\"outgoing\":[\"userTask3\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"true\"}},{\"key\":\"sequenceFlow5\",\"type\":1,\"incoming\":[\"userTask2\"],\"outgoing\":[\"endEvent1\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mtdqpmq32ppols\",\"type\":1,\"incoming\":[\"userTask3\"],\"outgoing\":[\"endEvent1\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}}]}", "status": 1, "remark": "testRemark", "archive": 0, "created_by": "admin", "updated_by": "admin", "created_at": "2026-08-29T10:08:14.276860500", "updated_at": "2026-08-29T10:08:14.276860500" },
+  {project_id: "dev_test",  "flow_deploy_id": "fce9c1e9-57dd-483e-bba1-dd7cb5a53ca7", "flow_module_id": "da5835fe-e82a-447f-b614-c0ce9aaecb78", "flow_name": "增删改查测试", "flow_key": "crud_test", "flow_model": "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"properties\":{\"positionX\":-496,\"positionY\":48}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_mgolxly85affbh\"],\"outgoing\":[],\"properties\":{\"positionX\":1408,\"positionY\":48}},{\"key\":\"serviceTask_mgokolh6ottxgz\",\"type\":5,\"incoming\":[\"SequenceFlow_mgoksf9skg7m1c\"],\"outgoing\":[\"SequenceFlow_mgokv2z5j6tju7\"],\"properties\":{\"subType\":\"insert_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Teacher\",\"document\":[{\"field\":\"teacherName\",\"value\":\"张三丰\"},{\"field\":\"subject\",\"value\":\"太极\"}],\"resultPath\":\"teacherInsertAffectedRows\",\"name\":\"新增教师张三丰\",\"positionX\":-336,\"positionY\":32}},{\"key\":\"serviceTask_mgokspzb8h72r0\",\"type\":5,\"incoming\":[\"SequenceFlow_mgokv2z5j6tju7\"],\"outgoing\":[\"SequenceFlow_mgpv7i2gpvk0qg\"],\"properties\":{\"subType\":\"update_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Teacher\",\"document\":[{\"field\":\"subject\",\"value\":\"太极张三丰\"}],\"filter\":\"{\\\"teacherName\\\":{\\\"_eq\\\":\\\"张三丰\\\"}}\",\"resultPath\":\"teacherUpdateAffectedRows\",\"name\":\"更新教师张三丰\",\"positionX\":-112,\"positionY\":32}},{\"key\":\"serviceTask_mgokvj54kxi9pj\",\"type\":5,\"incoming\":[\"SequenceFlow_mgpvhe0tlgy2hs\"],\"outgoing\":[\"SequenceFlow_mgokyc4xwquno6\"],\"properties\":{\"subType\":\"query_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Student\",\"filter\":\"\",\"sort\":\"[{\\\"field\\\":\\\"id\\\",\\\"order\\\":\\\"desc\\\"}]\",\"page\":1,\"size\":1000,\"resultPath\":\"students\",\"name\":\"查询学生\",\"positionX\":544,\"positionY\":32}},{\"key\":\"serviceTask_mgoky18vc65fea\",\"type\":5,\"incoming\":[\"SequenceFlow_mgokyc4xwquno6\"],\"outgoing\":[\"SequenceFlow_mgolse1rjjms9t\"],\"properties\":{\"subType\":\"insert_record\",\"inputPath\":\"students\",\"datasourceName\":\"dev_test\",\"modelName\":\"Student\",\"document\":[{\"field\":\"studentName\",\"value\":\"${studentName}2\"},{\"field\":\"gender\",\"value\":\"${gender}\"},{\"field\":\"interest\",\"value\":\"${interest}\"},{\"field\":\"age\",\"value\":\"${age}\"},{\"field\":\"classId\",\"value\":\"${classId}\"}],\"resultPath\":\"studentInsertAffectedRows\",\"name\":\"新增学生\",\"positionX\":752,\"positionY\":32}},{\"key\":\"serviceTask_mgoli5cpsdyy77\",\"type\":5,\"incoming\":[\"SequenceFlow_mgolse1rjjms9t\"],\"outgoing\":[\"SequenceFlow_mgolsrsrj4yfkj\"],\"properties\":{\"subType\":\"update_record\",\"inputPath\":\"students\",\"datasourceName\":\"dev_test\",\"modelName\":\"Student\",\"document\":[{\"field\":\"classId\",\"value\":\"3\"}],\"filter\":\"{\n   \\\"studentName\\\":{\\\"_ends_with\\\":\\\"2\\\"}\n}\",\"resultPath\":\"studentUpdateAffectedRows\",\"name\":\"更新学生信息\",\"positionX\":960,\"positionY\":32}},{\"key\":\"serviceTask_mgolsqgfgrdmat\",\"type\":5,\"incoming\":[\"SequenceFlow_mgolsrsrj4yfkj\"],\"outgoing\":[\"SequenceFlow_mgolxly85affbh\"],\"properties\":{\"subType\":\"delete_record\",\"resultPath\":\"studentDeleteAffectedRows\",\"name\":\"删除学生信息\",\"positionX\":1200,\"positionY\":32,\"datasourceName\":\"dev_test\",\"modelName\":\"Student\",\"filter\":\"{\n   \\\"studentName\\\":{\\\"_ends_with\\\":\\\"2\\\"}\n}\"}},{\"key\":\"serviceTask_mgpv6wp7oavt4f\",\"type\":5,\"incoming\":[\"SequenceFlow_mgpv7i2gpvk0qg\"],\"outgoing\":[\"SequenceFlow_mgpvhb6p3dm76o\"],\"properties\":{\"subType\":\"query_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Teacher\",\"filter\":\"{\\\"teacherName\\\":{\\\"_eq\\\":\\\"张三丰\\\"}}\",\"resultPath\":\"teachers\",\"name\":\"查询教师张三丰\",\"positionX\":96,\"positionY\":32}},{\"key\":\"serviceTask_mgpvgobas8eee4\",\"type\":5,\"incoming\":[\"SequenceFlow_mgpvhb6p3dm76o\"],\"outgoing\":[\"SequenceFlow_mgpvhe0tlgy2hs\"],\"properties\":{\"subType\":\"delete_record\",\"datasourceName\":\"dev_test\",\"modelName\":\"Teacher\",\"filter\":\"{\\\"teacherName\\\":{\\\"_eq\\\":\\\"张三丰\\\"}}\",\"resultPath\":\"teacherDeleteAffectedRows\",\"name\":\"删除教师张三丰\",\"positionX\":320,\"positionY\":32}},{\"key\":\"SequenceFlow_mgoksf9skg7m1c\",\"type\":1,\"incoming\":[\"start-node\"],\"outgoing\":[\"serviceTask_mgokolh6ottxgz\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgokv2z5j6tju7\",\"type\":1,\"incoming\":[\"serviceTask_mgokolh6ottxgz\"],\"outgoing\":[\"serviceTask_mgokspzb8h72r0\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgokyc4xwquno6\",\"type\":1,\"incoming\":[\"serviceTask_mgokvj54kxi9pj\"],\"outgoing\":[\"serviceTask_mgoky18vc65fea\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgolse1rjjms9t\",\"type\":1,\"incoming\":[\"serviceTask_mgoky18vc65fea\"],\"outgoing\":[\"serviceTask_mgoli5cpsdyy77\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgolsrsrj4yfkj\",\"type\":1,\"incoming\":[\"serviceTask_mgoli5cpsdyy77\"],\"outgoing\":[\"serviceTask_mgolsqgfgrdmat\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgolxly85affbh\",\"type\":1,\"incoming\":[\"serviceTask_mgolsqgfgrdmat\"],\"outgoing\":[\"end-node\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgpv7i2gpvk0qg\",\"type\":1,\"incoming\":[\"serviceTask_mgokspzb8h72r0\"],\"outgoing\":[\"serviceTask_mgpv6wp7oavt4f\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgpvhb6p3dm76o\",\"type\":1,\"incoming\":[\"serviceTask_mgpv6wp7oavt4f\"],\"outgoing\":[\"serviceTask_mgpvgobas8eee4\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_mgpvhe0tlgy2hs\",\"type\":1,\"incoming\":[\"serviceTask_mgpvgobas8eee4\"],\"outgoing\":[\"serviceTask_mgokvj54kxi9pj\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}}]}", "status": 1, "remark": "增删改查测试", "archive": 0 },
+  {project_id: "dev_test",  "flow_deploy_id": "1fe532ae-33c4-4f57-aabe-62640da4f185", "flow_module_id": "9243be36-9ced-4413-acd5-5fc93a05c698", "flow_name": "脚本测试", "flow_key": "script_test", "flow_model": "{\"flowElementList\":[{\"key\":\"start-node\",\"type\":2,\"incoming\":[],\"outgoing\":[\"SequenceFlow_miclvtzacagocb\"],\"properties\":{\"positionX\":-96,\"positionY\":64,\"name\":\"Start\"}},{\"key\":\"end-node\",\"type\":3,\"incoming\":[\"SequenceFlow_miclvvbzb9t82p\"],\"outgoing\":[],\"properties\":{\"positionX\":800,\"positionY\":48,\"name\":\"End\"}},{\"key\":\"serviceTask_miclvseffazfuf\",\"type\":5,\"incoming\":[\"SequenceFlow_miclvtzacagocb\"],\"outgoing\":[\"SequenceFlow_miclvvbzb9t82p\"],\"properties\":{\"subType\":\"script\",\"script\":\"\\\"hello world\\\";\",\"name\":\"\",\"positionX\":320,\"positionY\":48}},{\"key\":\"SequenceFlow_miclvtzacagocb\",\"type\":1,\"incoming\":[\"start-node\"],\"outgoing\":[\"serviceTask_miclvseffazfuf\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}},{\"key\":\"SequenceFlow_miclvvbzb9t82p\",\"type\":1,\"incoming\":[\"serviceTask_miclvseffazfuf\"],\"outgoing\":[\"end-node\"],\"properties\":{\"conditionsequenceflow\":\"\",\"defaultConditions\":\"false\"}}]}", "status": 1, "remark": "Javascript脚本测试", "archive": 0 },
+}
+
+seed f_trigger {
+  {project_id: "dev_test", id: "4e8be2da-8ae7-4571-b347-61af5fdd3e9b", name: "请求日志归档任务", description: "写入日志归档表进行数据归档", type: "EVENT", config: {type: "event", modelName: "api_request_log", mutationTypes: ["create"], triggerTiming: "after", datasourceName: "system"}, job_type: "FLOW", job_group: "system_api_request_log", job_id: "22203aa0-5f25-4b8a-974d-e4288c1bbd18", state: false, created_at: "2025-10-19 17:59:45", updated_at: "2025-10-19 20:38:24", created_by: null, updated_by: null},
+  {project_id: "dev_test", id: "bf492f37-1f01-4eb8-b76d-d319299b4d8e", name: "定时触发-间隔触发", description: "定时触发-间隔触发-备注", type: "SCHEDULE", config: {type: "interval", interval: 1, intervalUnit: "minute", repeatCount: 100}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "testFlowName_1757909108656", state: false, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000"},
+  {project_id: "dev_test", id: "d8c60d2a-19d8-4c3c-b370-96318733858f", name: "定时触发-Cron表达式", description: "定时触发-Cron表达式-备注", type: "SCHEDULE", config: {type: "cron", cronExpression: "0 0 * * * ? *"}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "testFlowName_1757909108656", state: false, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000"},
+  {project_id: "dev_test", id: "9434666d-6b3b-417a-80e3-3352f40ded71", name: "事件触发-之前", description: "事件触发-之前-描述", type: "EVENT", config: {type: "event", datasourceName: "dev_test", modelName: "Student", mutationTypes: ["delete", "update", "create"], triggerTiming: "after"}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "dev_test_Student", state: true, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000"},
+  {project_id: "dev_test", id: "f351b8d9-a450-4f2c-8fff-cf862d690352", name: "事件触发-之后", description: "事件触发-之后-描述", type: "EVENT", config: {type: "event", datasourceName: "dev_test", modelName: "Classes", mutationTypes: ["create", "update", "delete"], triggerTiming: "after"}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "dev_test_Classes", state: true, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000"},
+  {project_id: "dev_test", id: "687d14a2-9d5e-4ecf-b85c-dfc7c3b31493", name: "函数运行时健康检测", description: null, type: "SCHEDULE", config: {type: "interval", interval: 10, intervalUnit: "second", repeatCount: 999999}, job_type: "FUNCTION", job_group: "dev_test_fn_health-check", job_id: "health-check", state: true, created_at: "2026-07-15T10:50:31.284785500", updated_at: "2026-07-17T12:02:48.970596400", created_by: null, updated_by: null},
+}
+
+seed f_function {
+  {project_id: "dev_test",  "id": "hello", "name": "hello", "source_files": { "index.ts": "export default async function(req: Request, ctx: Context) {\n  return new Response(JSON.stringify({ message: \"Hello, World!\" }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}" }},
+  {project_id: "dev_test",  "id": "student_query", "name": "student_query", "source_files": { "index.ts": "import { flexmodelClient } from '@flexmodel/sdk';\nimport { Student } from './type.ts';\n\nexport default async (input) => {\n  // runtime 已在调用前 setAuthToken + setProjectId\n  console.log(\"请求参数: \"+JSON.stringify(input));\n  console.warn(\"这是一个警告信息\"); // 黄色惊叹号图标\n  console.error(\"这是一个错误信息\"); // 红色错误图标，并自带错误堆栈\n  const { list } = await flexmodelClient.data.Student.findMany({ where: { age: { _eq: 10 } } });\n  return { list };\n}", "type.ts": "// Add your code here\nexport interface Student {\n    studentName: string;\n}" } },
+  {project_id: "dev_test",  "id": "health-check", "name": "health-check", "source_files": { "index.ts": "export default async function(req: Request) {\n  const url = \"http://localhost:9999/health\";\n\n  try {\n    const response = await fetch(url);\n\n    if (!response.ok) {\n      return new Response(JSON.stringify({ error: \"Health check failed\", status: response.status }), {\n        status: 401,\n        headers: { \"content-type\": \"application/json\" }\n      });\n    }\n    console.log(\"Health check succeeded\");\n\n    return new Response(JSON.stringify({\n       success: true\n    }), {\n      headers: { \"content-type\": \"application/json\" }\n    });\n  } catch (err) {\n    console.error(\"Health check failed\", err);\n    return new Response(JSON.stringify({ error: \"Health check failed\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" }\n    });\n  }\n}" }, "timeout": 30, "created_at": "2026-07-15T10:49:31.493042100", "updated_at": "2026-07-15T10:49:31.493042100" }
+}
+
+model f_app_flow_trigger_log {
+ id: String @id,
+ app_id: String,
+ flow_id: String,
+ source_id: String,
+ state: String,
+ instance_id: String,
+  reason: Text,
+ created_at: DateTime,
+ @index(name: "IDX_FLOW_TRIGGER_LOG", fields: [app_id, flow_id, created_at]),
+ @system
 }

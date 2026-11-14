@@ -2,9 +2,14 @@ package dev.flexmodel.validator;
 
 import dev.flexmodel.model.field.*;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import dev.flexmodel.JsonUtils;
+
+import java.util.List;
 import dev.flexmodel.model.EntityDefinition;
+import dev.flexmodel.model.EnumDefinition;
+import dev.flexmodel.model.EnumElement;
 
 /**
  * @author cjbi
@@ -62,4 +67,37 @@ public class JsonSerializeTest {
     Assertions.assertNotNull(deSerializeEntity);
   }
 
+
+  @Test
+  void textFieldSurvivesJsonRoundTrip() {
+    EntityDefinition entity = new EntityDefinition("article");
+    entity.addField(new LongField("id").asIdentity());
+    entity.addField(new TextField("content").setComment("正文"));
+
+    String json = JsonUtils.toJsonString(entity);
+    Assertions.assertTrue(json.contains("\"type\":\"Text\""), json);
+
+    EntityDefinition deserialized = JsonUtils.parseToObject(json, EntityDefinition.class);
+    Assertions.assertInstanceOf(TextField.class, deserialized.getField("content"));
+    Assertions.assertEquals("Text", deserialized.getField("content").getType());
+  }
+
+  @Test
+  void enumElementCodesSurviveJsonRoundTrip() {
+    EnumDefinition definition = new EnumDefinition("OrderStatus");
+    definition.setElements(List.of(
+      new EnumElement("PENDING", 1L, "待支付"),
+      new EnumElement("PAID", 2L, null)));
+
+    String json = JsonUtils.toJsonString(definition);
+    Assertions.assertTrue(json.contains("\"elements\":[{\"name\":\"PENDING\""));
+    Assertions.assertFalse(json.contains("\"elementDefinitions\""));
+
+    EnumDefinition deserialized = JsonUtils.parseToObject(json, EnumDefinition.class);
+    Assertions.assertEquals(2, deserialized.getElements().size());
+    Assertions.assertEquals("PENDING", deserialized.getElements().get(0).getName());
+    Assertions.assertEquals(1, ((Number) deserialized.getElements().get(0).getCode()).intValue());
+    Assertions.assertEquals("待支付", deserialized.getElements().get(0).getComment());
+    Assertions.assertEquals(2, ((Number) deserialized.getElements().get(1).getCode()).intValue());
+  }
 }

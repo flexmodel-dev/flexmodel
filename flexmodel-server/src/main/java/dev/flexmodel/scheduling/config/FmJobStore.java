@@ -671,6 +671,15 @@ public class FmJobStore implements JobStore {
         try {
           OperableTrigger operableTrigger = deserializeTrigger(trigger);
           if (operableTrigger != null) {
+            if (operableTrigger.getNextFireTime() != null && operableTrigger.getNextFireTime().getTime() < System.currentTimeMillis() - 1000L) {
+              org.quartz.Calendar calendar = operableTrigger.getCalendarName() == null ? null : retrieveCalendar(operableTrigger.getCalendarName());
+              operableTrigger.updateAfterMisfire(calendar);
+              jobRepository.updateTriggerFireTimes(instanceName, operableTrigger.getKey().getName(), operableTrigger.getKey().getGroup(), operableTrigger.getPreviousFireTime() == null ? null : operableTrigger.getPreviousFireTime().getTime(), operableTrigger.getNextFireTime() == null ? null : operableTrigger.getNextFireTime().getTime());
+              if (operableTrigger.getNextFireTime() == null) {
+                jobRepository.updateTriggerState(instanceName, trigger.getTriggerName(), trigger.getTriggerGroup(), Trigger.TriggerState.COMPLETE.name());
+                continue;
+              }
+            }
             JobDetail jd = retrieveJob(operableTrigger.getJobKey());
             boolean nonConcurrent = isJobNonConcurrent(operableTrigger.getJobKey(), jd);
             if (nonConcurrent && jd != null && acquiredJobKeys.contains(jd.getKey())) {
@@ -741,12 +750,13 @@ public class FmJobStore implements JobStore {
         Date fireTime = new Date();
         try {
           // 触发前，先调用 triggered 以更新 prev/next
+          Date scheduled = t.getNextFireTime(), previous = t.getPreviousFireTime();
           t.triggered(cal);
 
           // 持久化 prev/nextFireTime
           Long prev = t.getPreviousFireTime() != null ? t.getPreviousFireTime().getTime() : null;
           Long next = t.getNextFireTime() != null ? t.getNextFireTime().getTime() : null;
-          jobRepository.updateTriggerFireTimes(instanceName, t.getKey().getName(), t.getKey().getGroup(), prev, next);
+          jobRepository.fired(instanceName, t, jobDetail, scheduled, prev, next);
 
           // 如果没有下一次触发，标记完成
           if (t.getNextFireTime() == null) {
@@ -761,9 +771,9 @@ public class FmJobStore implements JobStore {
             cal,
             false,
             fireTime,
-            t.getPreviousFireTime(),
-            t.getNextFireTime(),
-            null
+            scheduled,
+            previous,
+            t.getNextFireTime()
           );
           results.add(new TriggerFiredResult(b));
         } catch (Exception ex) {

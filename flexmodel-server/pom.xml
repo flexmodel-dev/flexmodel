@@ -15,6 +15,11 @@
   </properties>
   <dependencies>
     <dependency>
+      <groupId>io.quarkiverse.poi</groupId>
+      <artifactId>quarkus-poi</artifactId>
+      <version>2.2.2</version>
+    </dependency>
+    <dependency>
       <groupId>org.quartz-scheduler</groupId>
       <artifactId>quartz</artifactId>
     </dependency>
@@ -126,6 +131,11 @@
       <groupId>io.quarkiverse.mcp</groupId>
       <artifactId>quarkus-mcp-server-http</artifactId>
     </dependency>
+    <!-- AI 对话模型：OpenAI 兼容模型接入（版本由 quarkus-langchain4j-bom 管理） -->
+    <dependency>
+      <groupId>io.quarkiverse.langchain4j</groupId>
+      <artifactId>quarkus-langchain4j-openai</artifactId>
+    </dependency>
     <!-- quickjs4j JSR-223 ScriptEngine (javax.script integration) -->
     <dependency>
       <groupId>io.roastedroot</groupId>
@@ -135,20 +145,13 @@
       <groupId>io.roastedroot</groupId>
       <artifactId>quickjs4j-scripting-experimental</artifactId>
     </dependency>
-    <!-- Flow 生命周期事件 RabbitMQ 桥接（可选，默认关闭，版本由 quarkus-bom 管理，native 兼容） -->
-    <!-- Quarkus 3.33 起扩展更名为 quarkus-messaging-rabbitmq -->
-    <dependency>
-      <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-messaging-rabbitmq</artifactId>
-    </dependency>
-    <!-- Testcontainers：端到端验证 RabbitMQ 事件转发，版本由 quarkus-bom 管理 -->
+    <!-- Testcontainers：ServerSessionsTest 可选 MySQL 集成验证，版本由父 pom 管理 -->
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>rabbitmq</artifactId>
+      <artifactId>testcontainers</artifactId>
       <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- AMQP 客户端：测试直接订阅 RabbitMQ 验证端到端推送 -->
   </dependencies>
   <build>
     <plugins>
@@ -158,6 +161,10 @@
           <delimiters>
             <delimiter>@</delimiter>
           </delimiters>
+          <!-- 内置模板包是二进制 ZIP，不能被文本过滤 -->
+          <nonFilteredFileExtensions>
+            <nonFilteredFileExtension>zip</nonFilteredFileExtension>
+          </nonFilteredFileExtensions>
           <resources>
             <resource>
               <directory>src/main/resources</directory>
@@ -183,17 +190,13 @@
             <schemas>
               <schema>
                 <name>system</name>
-                <import-script>src/main/resources/platform.fml,
-                  src/main/resources/project.fml
-                </import-script>
+                <import-script>src/main/resources/platform.fml</import-script>
                 <packageName>dev.flexmodel.codegen</packageName>
                 <replaceString>^f_ei_|^f_em_|^f_|^em_|^ei_</replaceString>
               </schema>
               <schema>
                 <name>dev_test</name>
-                <import-script>src/main/resources/project.fml,
-                  src/main/resources/dev_test.fml
-                </import-script>
+                <import-script>src/main/resources/dev_test.fml</import-script>
                 <packageName>dev.flexmodel.test.codegen</packageName>
                 <replaceString>^f_ei_|^f_em_|^f_</replaceString>
               </schema>

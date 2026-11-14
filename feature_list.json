@@ -1,6 +1,581 @@
 {
   "features": [
     {
+      "id": "feat-193",
+      "name": "Apps - 应用顶部快捷发起流程入口",
+      "description": "右上角加号打开带搜索的快捷面板，以「发起流程」「新增数据」页签切换；面板限高视口 60%并适应可用空间，仅列表内部滚动，搜索框和页签固定。按当前页签搜索，流程同时匹配流程名与关联表单名。流程以业务名称展示，关联表单名作辅助说明；选择流程后直接打开发布快照绑定的表单并固定所选流程，填写后提交发起。仅列出当前应用已发布启用的手动流程，沿用现有可见表单入口范围；同一表单的多个流程分别展示。已配置但无可发起流程时明确说明发布启用、手动触发与可见表单条件，并提供工作流设置入口。",
+      "status": "done",
+      "evidence": "2026-11-13 完成，未提交。新增 AppQuickCreate，复用 Popover/Tabs/Input；搜索自动聚焦、切页签清空搜索、限高滚动、窄屏避让、加载错误重试，每次打开重新读取流程；过滤 enabled＋publishedTrigger MANUAL＋可见表单。AppLayout→AppRecordCreateDialog→AppRecordFormModal 透传所选流程，直接填写并提交，不再二次选流程；原新增数据保留保存操作。保存成功后发起失败保留记录ID与相同内容的保存结果，重试复用幂等键，提示记录已保存；提交中阻止关闭。验证：Git Bash ./init.sh 全模块编译、引擎测试及附带旧管理端E2E35/35通过；Apps单测66/66；新增快捷面板Playwright最终6/6（含未发布说明、实际点击工作流设置进入 /settings/workflows 列表并显示流程记录、明暗、62流程/61表单、搜索、发布绑定、权限入口范围、重试、键盘、手机）；打印与视图URL回归14/14；TypeScript及 npm run build -- --minify=false --target=esnext 通过，截图已检查。默认构建仍遇既有esbuild临时文件Access is denied。扩大菜单回归发现两项本轮未改逻辑的失败（空应用duck栏不可达、顶部标记位置）；旧records.spec.ts模拟菜单/视图契约过期，停止该套验证，临时fixture调整已撤回。未改后端或新增依赖，未做真实后端联调；既有工作区及暂存改动保留。"
+    },
+    {
+      "id": "feat-192",
+      "name": "Apps - 工作流路由与命名规范化",
+      "description": "应用设置路由 /settings/approvals 改为 /settings/workflow（section key 同步改名）；流程设计器路由 /approvals/:flowId/design 改为 /workflow/:flowId/design；清理残留的「审批流(程)」文案改为「工作流」；文件与目录命名规范化：pages/Approvals 拆分为 pages/Workflows（设计器/列表/画布等 10 个文件，ApprovalDesigner→WorkflowDesigner、ApprovalList→WorkflowList、approval.css→workflow.css）与 pages/Approvals（审批任务/实例 5 个文件）；lib/approval.ts→workflow.ts、approvalSimulation.ts→workflowSimulation.ts、types/approval.ts→workflow.ts、services/approval-model.ts→workflow-model.ts；services/approvals.ts 拆分为 workflows.ts（流程 CRUD/发布/调度/触发日志）与 approvals.ts（审批任务/实例/提交/决策）。另有：顶部导航激活项倒三角默认灰色未选中同款、悬停变白；一级导航无二级菜单时隐藏左侧栏；文件页外层改卡片并统一 AI 对话/文件页边距。",
+      "status": "done",
+      "evidence": "2026-11-13 完成，未提交。前端 tsc -b 与 npm test 66/66 通过；e2e 中 settings/approvals 与设计器 URL 同步更新（workflows.spec.ts、workflow-backend.mjs、flows-backend.mjs、app-packages.spec.ts fixture）；flexmodel-server AppPackageService 资源摘要标签「审批流程」改「工作流」。组件/函数/类型标识符（ApprovalFlow、getApprovalFlows、AdminApprovals 等）未改名——用户仅要求文件/目录名。服务端 mvn 编译因上次会话中断的 clean 后 target 陈旧而失败（ModelField.class 缺失，环境问题），未重跑完整构建。"
+    },
+    {
+      "id": "feat-191",
+      "name": "Apps - 字段删除收敛至表单设计",
+      "description": "移除表单设置的字段管理菜单、页面与路由；表单设计右侧字段列表在加号左侧提供回收站删除按钮，系统内置与核心字段禁用删除，复用现有删除接口与确认交互。",
+      "status": "in_progress",
+      "evidence": "2026-11-12 开始实施。已阅读根与 Apps UI 指令、项目说明及现有实现；启动检查全模块编译和引擎测试通过，附带旧管理端 E2E 34/35，GraphQL 页面加载超时正复跑。保留现有工作区与暂存改动，不提交代码。"
+    },
+    {
+      "id": "feat-190",
+      "name": "Apps - 重新进入应用恢复具体视图",
+      "description": "在现有应用位置记忆中保留 viewId，重新进入应用恢复上次的表单与具体视图；仅保存视图参数，支持特殊字符编码与失效导航/视图回退。",
+      "status": "done",
+      "evidence": "2026-11-12 完成，未提交。AppLayout 在原有 localStorage 应用位置路径中保存 viewId，并监听 location.search，确保仅切换视图也更新记忆；仅保存 viewId，不携带 source 等无关查询参数。AppHome 提取菜单 ID 时排除查询串，校验当前可见导航后恢复含视图的路径；失效菜单回退有效首入口，失效视图复用 RecordList 的首视图回退，显式 top 分组选择继续优先于记忆。未指定 viewId 时维持默认首视图。不新增存储结构或依赖。验证：本轮 Git Bash ./init.sh 全模块 clean compile、引擎测试与附带管理端 E2E 35/35；Playwright view-url.spec.ts 最终9/9（原URL6项＋位置记忆3项），覆盖重入恢复、特殊字符、同表单视图切换更新、切换表单、外部删除后刷新再进入回退、显式顶部分组优先。初轮失效回退用例8/9，因模拟外部删除后未清会话缓存，按已有缓存语义改为刷新后验证；最终全绿。TypeScript与非压缩构建 npm run build -- --minify=false --target=esnext 通过；本轮未重跑默认压缩构建（此前已有 esbuild 临时文件权限错误）。位置只在当前浏览器按应用保留，不跨设备；未改后端或做真实后端联调、可选服务测试、Apps单测及打印回归。原有工作区与暂存改动保留。"
+    },
+    {
+      "id": "feat-189",
+      "name": "Apps - 当前视图同步 URL",
+      "description": "切换视图将 viewId 写入 HashRouter 路由查询参数（#/apps/:appId/:navId?viewId=xxx），刷新、直接打开与前进后退恢复视图；缺失/无效 ID 回退首个视图，复制/新建/删除当前视图同步地址，保留其他查询参数及登录跳转。",
+      "status": "done",
+      "evidence": "2026-11-12 完成，未提交。RecordList 移除本地 activeViewId 状态，复用 useSearchParams 读取 viewId、保留其他参数并写回；HashRouter 地址为 #/apps/:appId/:navId?viewId=xxx。缺失或无效 ID 回退首个视图，空表单保持空态，不自动重写外部传入的无效 ID。切换通过浏览器历史恢复；按实际视图变化清空勾选、记录抽屉和查询弹层。复制、新建、保存设置共用 URL 更新，当前 ID 相同时不增加重复历史；删除当前视图以 replace 写回有效邻近视图。RequireAuth 登录跳转保留 search，确保登录后进入指定视图。验证：本轮 Git Bash ./init.sh 全模块 clean compile、引擎测试及附带管理端 E2E 35/35；Playwright view-url.spec.ts 6/6 + record-print.spec.ts 5/5 共11/11，覆盖切换/其他参数/编码/刷新/历史/直接链接不查询默认视图/无效ID/空态/复制新建删除保存/跨表单/登录恢复及原打印功能。TypeScript与 npm run build -- --minify=false --target=esnext 通过；默认压缩构建仍遇既有 esbuild 临时文件 remove Access is denied。未改后端、未新增依赖、未做真实后端联调或可选服务测试；既有部署配置、打印改动与用户暂存状态保留。"
+    },
+    {
+      "id": "feat-188",
+      "name": "Apps - 记录详情打印",
+      "description": "记录详情的更多菜单提供打印入口，调用浏览器打印当前记录标题、字段和当前页子表内容；打印隐藏导航、操作与记录动态，长文本完整换行，支持抽屉、独立详情页和详情视图。",
+      "status": "done",
+      "evidence": "2026-11-12 完成，未提交。FormMoreMenu 查看态加入打印，覆盖 AppRecordDrawer、AppRecordDetail 与 AppRecordPanel；复制当前只读详情至临时打印节点，afterprint 清理，不新增依赖。打印包含标题、字段、已加载的当前页子表，隐藏导航/动态/操作/搜索/分页，长文本完整换行，折叠分栏打印展开、屏幕状态保留，夜间模式按白纸黑字输出。用户实测打印后抽屉重复入场：新增 animationstart 断言先复现失败（1次），根因为打印 CSS display:none 恢复时重启动画；改用 visibility:hidden 并将原页面固定定位移出打印流，保留原抽屉显示状态，修复后明暗用例均为0次。验证：Git Bash ./init.sh 全模块 clean compile、引擎测试及附带管理端 E2E 35/35 通过；Apps npm test 66/66；打印 Playwright 最终5/5通过，覆盖明暗、长文本、引用、0/false、打印清理/重复打印/继续编辑、独立页折叠、详情视图及加载中/失败禁用；截图已检查，A4 PDF 2页。TypeScript 与 npm run build -- --minify=false --target=esnext 通过；默认压缩构建仍遇既有 esbuild 临时文件 remove Access is denied，未改构建配置。浏览器使用模拟接口，未做真实后端联调、实体打印机及可选服务测试；子表只打印当前页，已注记。"
+    },
+    {
+      "id": "feat-187",
+      "name": "Apps - 导航菜单快捷管理",
+      "description": "左侧菜单及分组使用浅色更多按钮，鼠标悬浮显示、移开隐藏，分组更多位于折叠按钮左侧且折叠位置固定；支持编辑、授权、删除；左下角 duck栏的加号替换原菜单编辑入口，支持新建系统内置、表单、自定义链接、分组和顶部菜单，内置与表单以二级菜单选择；顶部仅当前选中项显示倒三角，文字与下划线居中，倒三角独立定位避免挤偏文字和切换宽度变化。顶部倒三角支持在此后添加同级分组，保存后紧接当前分组并持久化顺序。删除原三栏菜单编辑器与关联代码。",
+      "status": "done",
+      "evidence": "2026-11-12 完成并按用户反馈调整，未提交。左侧菜单/分组/子项悬浮或聚焦显示更多，编辑/授权/删除与分组内新增接现有 navigation API；NewNavMenu 改为 duck栏内加号，替换原齿轮，不单独占一行；顶部 active 项才渲染倒三角。删除 MenuEditorDialog（三栏弹窗）、AdminLayout/AppLayout/AppHome 中旧入口与状态、mock.ts 中183行专用菜单 CRUD/排序辅助；独立 NavEditorDialog 只负责单项新增/编辑，保留图标、目标、工作台/机器人绑定及错误重试。空应用可先从 duck栏新建顶部菜单，再添加左侧菜单。菜单更新后刷新，删除当前菜单/所属分组后回到有效入口；分组折叠弹层打开更多时暂停悬浮关闭。menu-permissions E2E 改从更多入口授权，并迁移至 navigation/visibility 契约。验证：本轮 bash ./init.sh 全模块 clean compile 与引擎测试通过（WSL 无 Node，跳过附带旧管理端 E2E）；npm test 66/66；npx playwright test --config playwright.menus.config.ts 全部8/8，含授权2项与导航6项，覆盖 duck栏位置、唯一加号、仅选中项倒三角、编辑/授权回填、错误重试、分组子项、LINK校验、删除跳转、明暗截图、折叠菜单和空应用创建。TypeScript 与 npm run build -- --minify=false --target=esnext 通过；默认压缩构建仍因既有 esbuild 临时文件 remove Access is denied 失败，未改构建配置。源码已无 MenuEditorDialog/MenuEditorDraft/onEditMenus/旧mock写入函数引用。浏览器使用模拟接口，未做真实后端联调与可选服务测试；原有用户配置和其他子模块改动保留。同日后续：底部快捷区域按用户指定统一命名为 duck栏（应用/管理端无障碍名称、空态提示与用例同步）；顶部 Link 使用对称间距居中文字，实心倒三角绝对定位在右侧，保持选中标记与文字中心重合。npx playwright test --config playwright.menus.config.ts nav-actions.spec.ts --grep 顶部文字或duck或倒三角 定向4/4通过，包含坐标误差小于1px、切换宽度不变和明暗截图；未重跑完整构建。同日追加顶部在此后添加分组：NavMenuActions 仅顶部提供新操作，NavEditorDraft 携带 insertAfterId；复用新增与排序接口，按最新导航树将新 GROUP 插入锚点之后。保存过程记录已创建 ID，排序或刷新失败后重试更新已有节点，避免重复 POST，保留名称修改。创建与排序为两次请求，错误提示明确关闭弹窗会保留已创建分组。最终验证：菜单 Playwright 全部11/11；补充错误提示后定向在此后用例2/2，含取消、必填、中间/末尾插入、刷新保序、子树保留和失败重试不重复新增。TypeScript及非压缩构建 npm run build -- --minify=false --target=esnext 通过；本次未改后端或重跑 Java 检查，未做真实后端联调。同日左侧更多按钮调整：采用 text-muted-foreground/60 和柔和 hover 背景，移除分组 focus-within 与菜单 open 状态的强制常显；鼠标关闭下拉不回焦触发器，防止 focus-visible 常显，保留键盘操作与触屏可达性。分组行拆出独立折叠按钮，固定在最右侧，更多位于其左侧，不受更多显隐影响。定向 Playwright 4/4通过，覆盖悬浮/移开、点击菜单项后移开、弹出菜单时及鼠标关闭后隐藏、明暗颜色、键盘聚焦可见、分组按钮左右关系与箭头坐标不变、折叠/展开功能及折叠侧栏更多；sidebar-more-light.png 和 sidebar-more-dark.png 已检查。此次仅侧栏交互/样式与回归用例调整，未重跑完整构建。"
+    },
+    {
+      "id": "feat-186",
+      "name": "Apps - 最近使用表单入口",
+      "description": "待实施建议：应用管理在全部应用网格上方展示当前用户最近访问的 10 个表单（表单名、所属应用、访问时间），点击进入业务表单。使用浏览器 localStorage 按用户隔离，应用＋表单去重，成功打开业务表单后更新最近记录；跳转复用当前可见导航，不新增后端表或接口。",
+      "status": "pending",
+      "evidence": "2026-11-12 仅完成代码调研与方案建议，尚未实施。用户认为平台库方案过重，提出前端浏览器缓存；调整建议为 localStorage（key 包含 getAuthSession().user.id），仅保存最近 10 个入口的标识、展示快照和访问时间，不缓存业务记录。成功打开业务表单后更新，按 appId＋formName 去重置顶；缓存读取需解析校验，读写失败不阻塞业务。当前业务路由 /apps/:appId/:navId 依赖导航 ID，打开时按现有可见导航校验并解析同表单入口，无有效入口则移除并提示；本地缓存不参与授权。限制为同源同浏览器、不跨设备同步、清理站点数据后丢失；暂不增加后端表、接口、同步或统计能力。未修改业务代码，未运行 init.sh、构建或测试，状态文档 JSON 与 diff 检查通过，功能保持 pending。"
+    },
+    {
+      "id": "feat-185",
+      "name": "Engine - 重启自动同步表结构（模型新增字段补列）",
+      "description": "修复 platform.fml 等模型新增字段（如 f_app.sort_order）后重启不执行 ALTER TABLE ADD COLUMN、查询报 no such column 的问题；根因是 migrateEntity 先注册新定义导致 createField 早退且 registry 污染后永久跳过。改为建表失败（表已存在）时按 JDBC 物理表元数据 diff 补缺失列，重启即自愈。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：SqlSchemaService.createTable 失败分支与 createEntity 异常路径调用新增 addMissingColumns（getSqlMetadata().getTables 读物理列，缺列 createColumn 补 ALTER），不依赖 f_model_registry 中可能已污染的定义；新增 SQLiteIntegrationTests.testApplyFmlAddsMissingColumn 回归测试（同模型两次 applyFML 模拟改 FML+重启），顺带修复该测试类 Agroal 缺 maxSize 的既有问题。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；core/graphql/common-it/sqlite-it 测试全绿（sqlite 33/33 含新用例）。已知限制：补列要求新列可空或有默认值（SQLite 不支持 NOT NULL 无默认加列），与既有 createField 行为一致。"
+    },
+    {
+      "id": "feat-184",
+      "name": "Apps - 应用管理拖动排序",
+      "description": "应用管理的应用卡片支持拖动调整顺序并持久化：f_app 新增 sort_order 排序权重（默认 0，列表按权重升序+创建时间倒序）；PATCH /apps/order 接收全量有序应用ID列表，须包含且仅包含所有应用；前端 @dnd-kit 整卡拖动（桌面 8px 位移起拖、触屏长按 250ms 起拖、支持键盘排序），乐观更新失败回滚并提示。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）。后端：platform.fml f_app 新增 sort_order Int @default(\"0\")；AppFmRepository.findApps 改 sort_order asc + created_at desc，reorder 单事务按下标 set；AppService.reorderApps 校验全量无重复（对齐导航 reorder 语义）；AppResource 新增 PATCH /order（避开 PUT /{appId} 字面量路径冲突）；新增 AppOrderRequest DTO；AppFormImportBatchTest 桩补 reorder 空实现。前端：services/apps.ts 新增 reorderApps 并同步列表缓存；AppManagement 网格接 DndContext+SortableContext(rectSortingStrategy)，卡片抽 SortableAppCard（PointerSensor distance 8 / TouchSensor delay 250 / KeyboardSensor），拖动结束乐观更新+服务端返回同步，失败回滚并显示错误行。验证：mvn -o compile -pl flexmodel-server -am 通过（codegen 重生成 App 实体）；apps-ui tsc -b 通过。修复用户两次实测的拖动放下误入应用：根因为 dnd-kit 在 document 捕获阶段 stopPropagation 截停合成 click，React onClick 不执行但 <a> 默认导航照常；改为 onDragEnd/onDragCancel 注册一次性 document 捕获 click 监听 preventDefault（200ms 自清除），Link onClick 时间戳守卫兜底 Escape 取消路径。新增 e2e/apps-reorder.spec.ts 回归（Playwright 拖放注入不产生合成 click，用例手动补发等价点击）：无修复复现 URL 误入 #/apps/app-a 且用例失败，带修复 2/2 通过（拖放停留本页、PATCH 顺序落库、普通点击仍进入应用）。追加修复用户反馈的拖动后顺序不对（拖到最前跑到最后）：根因是 DSL 链式 orderBy 每次 setOrderBy 整体替换，findApps 的 sort_order 排序被 created_at desc 静默覆盖，服务端返回把乐观更新弹回创建时间序；改为聚合 new Query.OrderBy().asc(\"sort_order\").desc(\"created_at\")（对齐 NotificationRepository 既有写法），mvn -o compile -pl flexmodel-server -am 通过。追加修复应用启动器顺序不刷新：AppLauncher 常驻侧栏仅挂载拉取一次，改为受控 open、每次打开下拉重新 getApps()（命中会话缓存），tsc -b 通过。限制：应用包不携带 sort_order；未拖动过的应用保持创建时间倒序展示。"
+    },
+    {
+      "id": "feat-183",
+      "name": "Apps UI - 应用管理卡片间距加大与名称换行",
+      "description": "应用管理卡片网格间距加大（gap-x-4 gap-y-6）；应用名称超出时自然换行完整展示，不再 truncate 省略号与 title 提示。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：AppManagement 网格 gap-x-2 gap-y-4 改 gap-x-4 gap-y-6；名称 span 移除 truncate/title 改 break-words。纯 className 调整，按用户偏好未跑验证。"
+    },
+    {
+      "id": "feat-182",
+      "name": "Apps UI - 手机端菜单抽屉入场动画方向修复",
+      "description": "手机端打开左上角菜单时左侧抽屉应从左往右滑入，修复实际从右往左入场的问题；DrawerContent 增加 side prop 统一定位/边框/入场动画方向，MobileNavDrawer 使用 side=left。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：根因为 DrawerContent 硬编码 slide-in-from-right，MobileNavDrawer 以 slide-in-from-left 覆盖，但 twMerge 不识别 tailwindcss-animate 插件类冲突，两类并存且 CSS 中 right 规则胜出；连带左抽屉缺 left-0、border-l/r 叠加。DrawerContent 新增 side?: left|right（默认 right，left-0 border-r slide-in-from-left / right-0 border-l slide-in-from-right 二选一），MobileNavDrawer 改 side=\"left\" 并删除覆盖 className，其余抽屉行为不变。验证：apps-ui tsc -b 通过；twMerge 根因经 node 实测。按用户偏好未跑 build/浏览器验证。"
+    },
+    {
+      "id": "feat-181",
+      "name": "Engine/Server - 平台表全面退出业务库",
+      "description": "按用户架构决策（业务库只存应用表单），移除业务库 outbox：f_runtime_message 不再写入业务库，record 事件/通知/效果回执统一平台 outbox，业务事务提交后经 afterCommit + publishNew（REQUIRES_NEW，外层同名 schema 事务活动时延迟到其结束）发布。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：删除 SchemaRegistry.initializeRuntime、ReliableMessages.enqueueBusiness/drainBusiness、RuntimeMessageRepository 的 ThreadLocal 路由；businessEffect 回执独立落平台库；引擎 UnitOfWork 新增 publishNew + 延迟队列（首版 executeNew 立即执行撞 SQLITE_BUSY，测试 businessReceiptSurvivesPlatformRollback 暴露后改为延迟到最外层事务结束）。已知限制：业务提交到发布动作之间崩溃会丢通知/事件、效果重执行一次（exactly-once→effectively-once）。验证：全模块 compile、引擎测试通过；server 定向 41/41（AppFlowIntegrationTest 8 含回执/回滚语义、Notification 7、Approval 4、AppRecord* 22）。AppFlowIntegrationTest 加 @TestProfile 关闭 quarkus 调度器消除 SQLite 并发写 BUSY。"
+    },
+    {
+      "id": "feat-180",
+      "name": "Server - 通知与源事务回滚解耦（afterCommit 入队）",
+      "description": "修复 sourceRollbackCannotDeliverAndRetryPreservesReadState：业务事务回滚后通知仍被投递。按用户架构决策（platform.fml 表不入业务库），enqueue 包进 afterCommit，提交后才写平台 outbox，回滚丢弃。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：NotificationService.enqueue 改为 ProjectUnitOfWork.afterCommit(() -> messages.enqueue(...))，类注释同步更新；改动单文件。验证：全模块 compile、引擎测试通过；NotificationResourceTest 7/7（含该用例，此前为已知基线失败）；ApprovalPolicyTest/AppRecordServiceTest/AppRecordHistoryRecorderTest/AppRecordHistoryDiffTest/AppFlowIntegrationTest 共 34/34 通过。已知限制：提交成功但进程在 afterCommit 前崩溃则通知丢失（尽力投递可接受）。待决策：flow 的 record-event/businessEffect 仍向业务库写 f_runtime_message，与新规则冲突，建议单独立项。"
+    },
+    {
+      "id": "feat-179",
+      "name": "Engine - 修复启动死循环与 SQLite 隔离级别硬失败",
+      "description": "修复 SessionFactory Bean 创建期间 build-item 引导写经 AppFlowRecordGuard 重入未完成 Bean 导致的无限递归（Quarkus 启动失败）；连带修复 SQLite 不支持 READ_COMMITTED 时 applySessionOptions 硬抛异常的问题，改为保留默认隔离级别并告警。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：SessionOptions 新增 schemaImport()（skipWriteInterceptors），applyBuildItemSchemas 导入会话跳过业务写拦截器，guard 不再参与引导写（根因：Bean 创建期间 guard→findProjects 经 ClientProxy 重入 sessionFactory Bean 创建，b102bb7 引入）；applySessionOptions 对数据源不支持的隔离级别降级为 WARN+保留默认（SQLite 默认 SERIALIZABLE 语义更强，MySQL 行为不变）。验证：全模块 compile、mvn -o test -pl flexmodel-engine 通过；server 定向 33 项 32 通过，NotificationResourceTest 此前因启动死循环整类不可运行的 7 项中 6 项恢复通过，唯一失败 sourceRollbackCannotDeliverAndRetryPreservesReadState 为 11-08 已记录基线既有失败（跨 schema 事务语义与测试断言冲突，需产品决策），与本修复无关。"
+    },
+    {
+      "id": "feat-178",
+      "name": "Engine/Server - 实体类数据访问收敛到 dsl()",
+      "description": "DataService 恢复纯 String modelName + Map 契约（删除 Class 重载）；实体类便利收敛到 session.dsl() 层：typed builder 新增 executeMaps/executeOneMap/orderBy(Query.OrderBy)/values(Map)，server 端 14 个文件约 40 处调用迁移到 selectFrom(Class)/insertInto(Class)/update(Class) 链式写法。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：TypedDSLQueryBuilder 新增 executeMaps（List<Map>）、executeOneMap（Optional<Map>）、orderBy(Query.OrderBy) 委托；TypedDSLInsertBuilder/TypedDSLUpdateBuilder 新增 values(Map) 重载并在 execute finally 加 null 守卫；迁移 flow 9 个 Repository、AppRecordDiscussionRepository、AppRecordHistoryRepository（insertAll 改为同会话逐条循环）、DirectoryService、NotificationRepository，AppFlowRecordGuard 还原 HEAD。验证：mvn -o clean compile 全模块通过；mvn -o test -pl flexmodel-engine 通过；server 定向 33 项 32 通过，唯一失败 NotificationResourceTest.inboxIsolationPaginationAndIdempotentReads 为 Quarkus 启动期递归，stash 后基线复现同样失败，属基线既有问题。"
+    },
+    {
+      "id": "feat-177",
+      "name": "Apps UI - 无主显字段时记录详情标题改用查看{表单名}",
+      "description": "记录详情抽屉与独立记录页在表单未设置主显字段时，标题不再回退记录 ID，改为「查看{form.label}」；主显字段存在时行为不变（空值仍回退 ID）。",
+      "status": "done",
+      "evidence": "2026-11-10 代码完成（未提交）：AppRecordDrawer 查看态与 AppRecordDetail 页面标题在 form.displayField 为空时返回 查看${form.label}，不再取 record.id 兜底。验证：apps-ui tsc -b 通过；vite build 失败为环境预存问题（esbuild 临时目录清理 Access is denied，stash 改动后基线复现同样失败，与本改动无关）。"
+    },
+    {
+      "id": "feat-176",
+      "name": "Apps - 通用工作流与三类触发",
+      "description": "统一 /flows；手动和数据事件绑定表单，Quartz 定时无业务输入，复用 Flow、可靠消息和审批节点，含前端/MCP/应用包及跨库幂等。",
+      "status": "in_progress",
+      "evidence": "2026-11-08 开始实施。基线 init.sh 全模块编译与引擎测试通过，附带管理端 E2E 运行中。同日续做创建期触发方式：前端 createApprovalFlow 携带 FlowTrigger（按用户要求移除创建方式模板选择）、新建对话框触发方式以卡片样式选择（FlowTriggerEditor 新增 cards 模式；表单设置入口锁表单禁定时、未选表单禁创建）；后端 save 草稿即校验触发（AppFlowService.save），AppPackageValidator 复用 FlowTrigger.validate 并以触发 formName 为准，AppFlowCapabilities/save_app_flow 契约同步。工作流列表去掉「节点」列、新增「触发方式」列。同日再按用户决定移除 f_em_flow_definition.revision 乐观锁：并发统一走既有 FOR UPDATE lock；hasDraftChanges 改为发布元数据 publishedModelHash 内容哈希对比（AppFlowModel.contentHash）；REST/MCP/应用包导入/前端类型与请求体/单测/e2e（approvals.spec、flows-backend.mjs）全部去 revision，删除无引用的 AppFlowStatusRequest。随后按用户要求修复通知浏览器验收：notifications-backend.mjs 迁移到 /flows 契约（创建携带 MANUAL 触发、无请求体 publish、/flows/{id}/instances、/flow-instances、/flow-tasks/{id}/decisions、完成文案断言改「流程已完成」），NotificationResourceTest 浏览器用例改为测试内创建独立应用并经 NOTIFICATION_TEST_APP 注入，离线段改用 UI 连接状态断言；浏览器用例单跑通过，整类 6/7（剩余 sourceRollback 一项为基线既有失败，stash 验证与改动无关）。验证：全模块 clean compile、引擎测试、定向 45/45、AppFlowIntegrationTest 8/8（含真实浏览器闭环覆盖无 revision 契约）、apps-ui build/vitest 66/66、approvals Playwright 5/5。"
+    },
+    {
+      "id": "feat-175",
+      "name": "Apps UI - 登录页风格统一与 SVG 动效",
+      "description": "按当前 shadcn/ui 风格重写 Apps 登录页，主题色 SVG 业务插画加入分层悬浮、流动连线、进度和入场动效；支持减少动态效果、浅深色、响应式布局、密码显示切换、真实登录与记住登录，移除未接入的旧版入口。",
+      "status": "done",
+      "evidence": "2026-11-05 代码完成，未提交。用户看过首版后要求改善视觉、增加 SVG 动效，并明确不用验证、快速看效果；最终 SVG/CSS 与版式调整未运行验证。此前首版 Playwright 临时脚本通过 6 种尺寸、主题切换与持久化、密码显示、表单必填、请求中禁用、错误恢复、两类会话存储与受保护路由回跳（登录 API mock，无真实后端联调）。首版 tsc 通过，vite build 遇到已知 esbuild 临时目录 Access is denied；尝试隔离 TEMP/TMP。启动 init.sh 全模块 clean compile 与引擎测试通过，旧管理端 E2E 33 通过、2 项概述/接口日志导航超时失败；与 Apps 登录页无关，保留记录，未扩大修改范围。最终版用户要求跳过检查。"
+    },
+    {
+      "id": "feat-174",
+      "name": "Apps - AI 原生推理展示（最小成本实现）",
+      "description": "按 docs/plans/ai-reasoning-display.md 的最小成本路径落地原生推理折叠展示：自定义 StreamingChatModel bean（defaultBean 覆盖扩展默认装配，开启 returnThinking，sendThinking 保持关闭不回传推理）；PartialThinkingEvent 映射为 reasoning SSE 事件，块边界由 token/tool 事件隐式切换；assistant 消息新增 parts 保存推理块（无推理保持旧结构）；前端流式草稿维护推理块并以 details 折叠（生成中展开、结束收起），历史消息渲染推理块，停止/断流保留本地推理片段。不包含：推理摘要适配（OpenAI Responses）、结构化 part.start/part.end 协议、模型状态单独存储、会话级并发准入、推理截断上限与诊断。",
+      "status": "done",
+      "evidence": "2026-11-04 代码完成（未提交，用户要求不跑测试）。后端：新增 AiStreamingModelProducer（读同一套 quarkus.langchain4j.openai.* 配置 + returnThinking(true)，注入 ChatModelListener，未配置 api-key 时回退 DisabledStreamingChatModel；已核对扩展 OpenAiRecorder 的 streamingChatModel 为 defaultBean，应用 bean 可覆盖且 1.7.4 无 returnThinking 配置项，此为唯一开启路径）；AiDtos 新增 MessagePart(type,content) 与 Message.parts，StreamEvent 复用现有字段新增 type=reasoning；AppAiService.doStream 累积请求级推理块（token/tool/完成时封闭），完成后随 assistant 消息持久化 parts，无推理时 parts=null 保持旧存储结构。前端：ai.ts 增加 onReasoning 回调与 AiMessagePart 类型；AiProvider 草稿维护 reasoning/reasoningParts，token/tool 事件按后端相同规则切换块，停止时推理片段落本地消息；AiChat 新增 AiReasoningBlock（原生 details/summary，流式默认展开、结束后收起），历史与流式共用渲染。验证：mvn compile -pl flexmodel-server -am BUILD SUCCESS；apps-ui tsc -b 通过。vite build 在本机环境失败（esbuild 临时目录清理 Access is denied），已用改动前代码对照复现同样失败，确认与本次改动无关，属环境预存问题（另有残留 esbuild 进程锁临时目录）。未执行 init.sh、测试与真实供应商联调。"
+    },
+    {
+      "id": "feat-173",
+      "name": "Apps - AI 推理展示技术方案文档",
+      "description": "基于现有 Multi<ChatEvent> 与 Apps UI 会话链路设计原生推理/摘要的折叠展示方案，覆盖供应商能力配置、SSE 消息块与轮次、模型状态回传、存储、停止与断流、工具写入刷新及验收；本条仅交付技术方案，不实施产品功能。",
+      "status": "done",
+      "evidence": "2026-11-04 技术方案已完成（功能尚未实施，未提交）：docs/plans/ai-reasoning-display.md，flexmodel-server/README.md 增加入口。已核对现有代码、BOM 管理的 Quarkus LangChain4j 1.7.4 / LangChain4j 1.11.0 源码及官方文档，明确 returnThinking/sendThinking、供应商状态与展示数据分离、结构化 SSE 块、工具轮次、停止和断流。文档代码围栏、本地链接、SSE JSON 与新增追踪项经 Node 校验，git diff --check 通过。标准 init.sh 的全模块 clean compile 与引擎测试通过；附带管理端 E2E 32 通过、3 页面导航 load 超时失败，完整基线未通过；日志 .codex-reasoning-plan-init.log。未改业务代码，后续功能实施及验收另行安排。"
+    },
+    {
+      "id": "feat-172",
+      "name": "Apps UI - 应用列表描述单行省略与悬停提示",
+      "description": "应用管理的应用卡片描述仅展示一行，超出宽度显示省略号；鼠标悬停描述时使用已有 Tooltip 展示完整文本，空描述继续显示暂无描述。所有者与更新时间整行与应用名称、描述左对齐，保持单行、超宽省略，仅在实际截断时使用 Tooltip 组件提示完整内容；更多按钮避让仅作用于顶部信息，默认隐藏，悬停卡片、卡片内键盘聚焦或菜单展开时显示。",
+      "status": "done",
+      "evidence": "2026-11-04 代码已完成（未提交）：AppManagement 描述使用 truncate 与现有 Tooltip，元信息增加 ml-14，与 44px 图标加 12px 间距后的文本起点对齐。根据用户截图补充单行修复：元信息使用 whitespace-nowrap，两段文字 min-w-0 truncate，分隔线 shrink-0；右侧按钮避让移至顶部，释放元信息宽度。更多按钮使用 opacity-0、group-hover、group-focus-within 和 data-[state=open]，仅在悬停、聚焦或菜单展开时显示。用户明确要求不用验证直接修改，跳过最终验证；此前启动检查全模块 clean compile 与引擎测试通过，前端构建与完整 init.sh 结果未核对，Playwright 悬停收起断言未通过，未继续排查。2026-11-05 所有者和更新时间改用现有 Tooltip，复用局部 AppMetadataText，通过打开时比较 scrollWidth/clientWidth 仅为被截断的文本展示完整内容，移除原生 title；沿用用户要求未运行验证。"
+    },
+    {
+      "id": "feat-171",
+      "name": "Apps - AI 工具调用后全局刷新",
+      "description": "2026-11-06 按用户维护性优先要求收敛为全局刷新：AiProvider 收到现有 tool 事件后，本轮结束时清空已有缓存并递增 refreshVersion；根页面容器用 key 重新挂载业务页面，AI 会话与侧栏保留。不区分资源或读写工具，不维护工具映射、局部订阅及页面级刷新逻辑。全局刷新会重置业务页筛选和未保存编辑。",
+      "status": "done",
+      "evidence": "2026-11-06 已按用户要求收敛（未提交）：撤回资源分类、缓存订阅/版本及逐页刷新接入，删除 useAppDataRevision、AiToolChanges 与 AppChange/change 协议及其专属测试。新增逻辑集中于 AiProvider 和 main.tsx：本轮收到过 tool 时，在 finally 清空原有缓存并递增 refreshVersion，以 React key 重建业务页；AiComposer 仅跟随同一版本清理提及列表。保留独立的推理、登录页、卡片及工作台样式。验证统一在代码完成后执行：apps-ui npm run build 通过；浏览器 2/2 通过（多个工具仅触发一次取数、正常完成/后续模型失败都刷新、AI 面板/会话/消息草稿保留）；init.sh 的全模块 clean compile 与引擎测试通过，脚本附带的旧管理端 E2E 35/35 通过，init.sh 整体通过。业务页筛选和未保存编辑会随全局重建重置；不区分只读工具，不覆盖外部 MCP 或其他客户端。详见 progress.md。"
+    },
+    {
+      "id": "feat-170",
+      "name": "Apps - AI 入口与对话形态设计",
+      "description": "顶部常驻 AI 助手入口并展开右侧面板（桌面推入内容、移动端抽屉）：管理区为应用搭建助手，业务页为当前应用助手。新建应用对话框新增「AI 创建应用」创建方式（排在首位并默认选中）：展示应用搭建助手的消息区与推荐提示词，输入需求后打开右侧助手并带入内容，在面板内生成方案、确认后创建应用，不提供独立页面。机器人不再放在后台应用设置，且与顶部助手解耦：顶部 AI 助手使用内置「应用助手」（保留ID assistant，不写机器人表，无机器人也可直接对话）；只有内置 AI 对话页面与工作台 AI 组件需要配置机器人，二者在缺失时就地提示并提供创建按钮与机器人管理弹窗（名称/描述/欢迎语/推荐问题/角色提示词/启停，最多 20 个，第一个启用为默认）。导航绑定内置页面 chatbot 与工作台一致：机器人可选，未选择时默认第一个启用的机器人；提供完整对话页 /apps/:appId/ai/chat/:robotId，并与侧栏助手、工作台组件共享会话。工作台 AI 组件支持 shortcut（介绍、推荐问题与输入框，打开助手）和 embedded（内嵌对话）。模型基于 quarkus-langchain4j 声明式 AI Service，工具与 MCP Server 完全共用（AppTools/DirectoryTools，含应用/表单/布局/视图/工作台/导航/记录查询/审批全流程）：页面 AI 走登录用户身份，查询要求登录、写操作仅应用所有者或管理员；AI 创建应用统一走全局助手对话（/api/ai/assistant/conversations），未配置模型时发送返回错误。数据落 f_app_ai_robot / f_app_ai_conversation，删除应用一并清理；整包导出不含机器人，导入时 AI 对话导航补建默认机器人、工作台 AI 组件从布局移除。",
+      "status": "done",
+      "evidence": "2026-11-04 完成（未提交）。后端：新增 apps/ai 特性包（AppAiResource REST、AppAiService 权限与校验、AppAiRepository、MockAiResponder、AiBuilderResource /ai/app-plans 与 /create）与 f_app_ai_robot/f_app_ai_conversation 平台模型；AppAiService 增加保留机器人ID assistant（顶部内置应用助手），usableRobot 对 assistant 直接返回内置资料、不查机器人表也不要求配置，会话仍按 app+user 落库；导航 NavDestinationRecord/Request/Response 增加可选 robotId，AppNavigationService 与工作台绑定一致——chatbot 的 robotId 可省略（默认第一个启用机器人），提供时须属于当前应用，非 chatbot 携带 robotId 拒绝，内置页面文案补「AI 对话」；AppWorkbenchService 校验 AI 组件 robotId/displayMode 并在能力目录登记 ai 组件，WorkbenchComponentConfig 增加 WorkbenchAiConfig；AppService 删除应用时清理 AI 数据；AppPackageValidator 接受 chatbot 内置页，AppPackageImport 为 AI 导航补建默认机器人并从导入布局移除 AI 组件（机器人不随包导出）。测试：AppAiResourceTest 6/6（机器人 CRUD 与权限、会话收发删除、未绑定机器人与非法机器人导航校验、工作台引用校验与删除保护、AI 创建应用端到端、无机器人时内置助手会话收发、应用删除清理）；回归 AppPackageValidatorTest 21、AppPackageZipTest 10、AppPackageImportTest 2（1 跳过）、AppWorkbenchDataServiceTest 4、AppToolsTest 5 通过。前端（flexmodel-apps-ui）：AiProvider 全局挂载并统一会话状态，TopHeaderShell 增加 AI 按钮，AiAssistantPanel 桌面/移动端面板与内嵌方案预览（名称输入、创建应用）；业务页顶部助手固定使用内置「应用助手」资料（不请求机器人列表、不出现创建机器人提示），仅当工作台组件指定机器人时才按 robotId 解析机器人；AppCreateDialog 新增「AI 创建应用」方式（消息区、推荐提示词、需求输入，确认后 close 并 openAssistant 带入内容），AppManagement 移除独立入口并接管 onAiCreate；新增 AiRobotDialog（列表/新建/编辑/删除）由 WorkbenchAiCard、AiChatPage 就地打开，移除应用设置 AI 分区与 /settings/ai、/admin/apps/ai-create 路由；AiChatPage 在机器人缺失或失效时回退第一个启用机器人并提供机器人设置；NavDestinationPicker/MenuEditorDialog 的机器人改为可选并提示默认第一个；ComponentDesigner 新增 AI 类型、机器人/展示方式/推荐问题配置，布局在面板展开时 lg 断点让出 420px。验证：mvn -o compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；mvn -o test -pl flexmodel-engine BUILD SUCCESS；AppAiResourceTest 6/6（新增无机器人时内置助手会话收发）；apps-ui npm run build 通过；npm test 65/65 通过；mock API + Playwright 实测新建应用 AI 模式、推荐提示词带入面板生成方案并创建、无机器人应用顶部助手直接对话、工作台无机器人就地创建、工作台快捷提问、完整对话页发送、390px 移动端抽屉，无 console/page 错误，截图见 flexmodel-apps-ui/artifacts/feat170-*.png。限制：机器人不参与整包导出；MCP 尚未提供机器人列表与 AI 组件写入说明；当前 IntelliJ 调试会话中的 quarkus:dev 因增量编译不处理 Lombok 需重启后才能加载本次后端改动。2026-11-04 补充后端模型接入（未提交）：新增 AiModelProperties/AiModelConfig（@ConfigMapping，base-url/api-key 用 Optional 兼容空配置）、OpenAiCompatibleClient（JDK HttpClient 调 OpenAI 兼容 /chat/completions，解析 tool_calls）、AssistantAgent（应用上下文+最近 20 条历史+只读工具循环，最多 max-tool-rounds 轮；未配置回退 MockAiResponder；模型失败抛 InternalServerException 且不写入会话）、AppAiTools（list_forms/query_records/count_records/get_record，仅业务表单、只读、字段与结果截断；query_records 用 buildFilter 组合 search/filter 并通过 queryViewRecords 补齐非内置字段）；AppAiService.send 改走 AssistantAgent；application.properties 增加 flexmodel.ai.* 并支持 FLEXMODEL_AI_BASE_URL/API_KEY/MODEL 环境变量；前端底部文案改为只读提示，模拟消息仍显示“模拟回复”徽标。测试：OpenAiCompatibleClientTest 3/3、AssistantAgentTest 2/2、AppAiToolsTest 1/1、AppAiResourceTest 6/6 全部通过；apps-ui build 与 npm test 65/65 通过；文档 ai-assistant.md 增加模型接入与工具说明。使用用户提供的 DeepSeek Key 完成真实联调：LiveAiModelTest 1/1 通过（真实模型经 query_records 工具查到记录「订单A」并写入会话），base-url=https://api.deepseek.com、model=deepseek-flash；默认模型改为 deepseek-flash，本地 .env（已加入 .gitignore）保存 FLEXMODEL_AI_BASE_URL/API_KEY/MODEL，测试用 NoModelProfile 保证模拟回复断言不受本地配置影响。限制：暂不支持流式输出与写操作工具；工具沿用现有记录服务权限。2026-11-04 迁移 quarkus-langchain4j 官方声明式 @RegisterAiService（AssistantChat：@SystemMessage/@MemoryId/@UserMessage，AppAiChatMemory 从会话实体装载历史），删除自研 AiModelConfig/OpenAiCompatibleClient；随后按用户确认改为复用 MCP 工具：AppTools/DirectoryTools 改用 langchain4j @Tool/@P 注解（@ApplicationScoped），经 quarkus.mcp.server.support-langchain4j-annotations 自动注册为 MCP 工具，页面助手与 MCP 完全共用一套工具定义（AppAiTools/AppAiBuilderTools 双注解与复制方案废弃删除）；AppTools 新增 query_app_records/count_app_records/get_app_record 记录查询工具并为全部工具补 McpToolAccess 守卫（MCP 顺带收紧 Key 的 projectIds 范围）；McpToolAccess 统一身份——MCP 走 API Key 服务身份（范围+只读校验），页面 AI 走登录用户、写操作要求 isOwnerOrAdmin；删除 MockAiResponder/AiBuilderResource(/ai/app-plans 及 /create)，AiDtos.Message 精简为 4 字段，未配置模型时发送返回 500 不降级模拟；新增全局助手会话（GLOBAL_APP_ID=global，AiGlobalResource /api/ai/assistant/conversations），管理区「AI 创建应用」统一走助手对话；前端 AiProvider 去 builder 状态并支持全局会话房间，AiAssistantPanel 管理区渲染全局对话，AiChat 移除 mock 徽章与 records 表格，AppCreateDialog/AppManagement 改为 openAssistant({prompt})，mock.ts 移除 aiAssistantProfile/aiBuilderSuggestions（迁至 services/ai.ts）。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；AppAiModelFlowTest 2/2（OpenAI 桩端到端：首调 query_app_records 显式 appId 查到「订单A」+ 全局会话链路）；AppAiResourceTest 6/6（去 mock 断言，未配置模型发送 500，新增全局会话生命周期）；新增 McpToolsRegistrationTest 2/2（streamable HTTP：tools/list 含全部共享工具名、tools/call 走 API Key 身份、缺 Key 401）；AppToolsTest 5/5；mvn test -pl flexmodel-engine BUILD SUCCESS；apps-ui tsc -b + vite build 通过、npm test 65/65；文档 ai-assistant.md 重写为共享工具与统一权限模型。用户实测暴露配置键错误：model-name/temperature 实为 chat-model.model-name/chat-model.temperature（此前错误键使模型名落到扩展默认 gpt-4o-mini 被 DeepSeek 拒绝），修复后 LiveAiModelTest 1/1 真实模型联调通过。追加：聊天发送端点改为 SSE 流式返回（Multi<ChatEvent>：token/tool/done/error 事件，完成后落库；AppAiResource/AiGlobalResource @RestSseElementType；前端 requestSse + AiChat 流式草稿渲染；桩支持 SSE chunk；AppAiModelFlowTest 2/2、AppAiResourceTest 6/6、LiveAiModelTest 1/1 真实 deepseek-flash 流式联调通过）。追加：会话统一为一套（/api/ai/conversations，按机器人+用户隔离，删除系统级/应用级两套端点与 AiGlobalResource）；进入应用后发送消息自动携带隐藏 appId 上下文，消息中 @应用名 可显式指定且支持多个（精确/前缀/ID 匹配，优先于隐藏值）；系统提示支持 0/1/N 个应用上下文；前端房间按机器人区分、助手全站共用一套会话。 2026-11-04 追加刷新方案咨询（尚未实施）：确认 AI 服务端写入绕过前端 CRUD 缓存维护，应用管理/启动器仅挂载取数且 Promise 缓存无订阅；建议统一变更事件与按范围缓存失效、已挂载页面后台取数。首期可复用 AI SSE 增加结构化 change，跨 MCP/标签页/用户同步再接应用变更 SSE；保留会话和编辑草稿，处理部分成功、失败/取消、合并刷新与重连核对。本轮仅讨论并记录，未改业务代码、未运行构建或测试，详细约束见 progress.md。"
+    },
+    {
+      "id": "feat-162",
+      "name": "Apps - 导航绑定具体工作台",
+      "description": "导航菜单关联项选择内置工作台页面（BUILTIN:workbench）时支持配置绑定具体工作台：NavDestinationRecord/Request/Response 扩展可选 workbenchId 字段；未配置时渲染默认打开第一个工作台。后端校验 workbenchId 必须存在于当前应用且仅工作台内置页面允许配置；菜单编辑器在选中工作台页面时显示工作台下拉（不提供“默认”选项，未选择即默认第一个）；WorkbenchHome 接收 workbenchId prop，无效或未配置时回退第一个；MCP create_app_navigation 与 create_app_workbench_navigation 增加可选 workbenchId 参数；应用包导出保留 workbenchId，导入时工作台 id 重新生成后经 patchNav 回填重写。",
+      "status": "done",
+      "evidence": "2026-11-03 完成（未提交）。后端：NavDestinationRecord/Request/Response 增加可选 workbenchId（保留二参紧凑构造）；AppNavigationService.validatedNav BUILTIN 分支校验（注入 AppWorkbenchRepository，workbenchId 须存在、非 BUILTIN 类型拒绝）；toResponse 透出 workbenchId。MCP：create_app_navigation/create_app_workbench_navigation 新增 required=false 的 workbenchId 参数并在描述中说明默认第一个工作台。整包：AppPackageValidator BUILTIN 分支校验 workbenchId 引用包内工作台（仅 workbench 页面允许）；AppPackageImport 导航重建时暂存旧 workbenchId 引用（workbenchNavRefs），工作台重建返回 oldId→newId 映射后 rewriteWorkbenchDestinations 经 patchNav 回填。前端：appNavigation.ts NavDestination/AppNavInput.destination 增加 workbenchId；NavDestinationPicker 选中 BUILTIN:workbench 时显示工作台下拉（value 未选用 undefined 显示占位“未选择时默认第一个工作台”，不提供“默认”选项项）；MenuEditorDialog EditorForm 增加 workbenchId，editLeft/editSub/save/moveNavToParent 全链路携带；WorkbenchHome 接收 workbenchId prop，加载列表后当前选中无效或未设置时回退第一个；AppMenuPage/AppNavPage BuiltinPage 透传 destination.workbenchId。验证：mvn compile -pl flexmodel-server -am 通过；AppToolsTest 5/5、AppPackageValidatorTest 20/20 通过；apps-ui npm run build 通过。"
+    },
+    {
+      "id": "feat-161",
+      "name": "MCP - 视图页签能力目录与保存工具",
+      "description": "MCP 此前没有配置表单视图页签的工具，create_app_form 描述还引导 AI 用 REST PATCH 配置视图（MCP 中不可用），导致 AI 无法创建表格/看板/日历/画廊/详情/层级/甘特等页签视图。参照 get_app_workbench_capabilities 模式新增两个工具：get_app_form_view_capabilities 返回 AI 友好能力目录——7 种视图类型契约（各类型 config 字段的必填/可选、可引用字段类型、枚举值、默认值，直接由 AppFormService 校验常量生成保证不漂移）、按当前表单字段类型的筛选操作符矩阵、内置排序字段、数量与长度限制、表单真实字段清单、当前视图与示例；save_app_form_views 用 viewsJson（JSON 数组）整体替换视图列表，复用 AppFormService.patchForm 校验与规范化，描述说明默认 \"all\" 视图与整体替换语义（先读能力目录、至少保留一个视图）并给出示例。create_app_form 描述移除不可用的 PATCH 指引改为指向新工具；get_app_form 描述补充返回当前 viewTabs。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。后端：AppFormService 新增 findViewCapabilities + viewTypeSpecs/exampleViews（内联视图长度常量 VIEW_LABEL_MAX_LENGTH/VIEW_ID_MAX_LENGTH 供校验与目录共用）；新增 DTO AppViewCapabilityResponse/AppViewTypeSpecRecord/AppViewConfigSpecRecord/AppViewFieldOptionRecord。AppTools 新增 get_app_form_view_capabilities 与 save_app_form_views（调用 appFormService.patchForm，解析抽为静态 parseViews 便于测试），save_app_form_views 描述从内联完整契约精简为指向能力目录，与 save_app_workbench_layout/get_app_approval_capabilities 的“能力目录优先”模式一致；create_app_form 描述移除误导性“通过 PATCH 配置视图”；get_app_form 描述补充 viewTabs。契约与 AppFormService.normalizeViews/normalizeViewConfig/viewTabOperators 逐一核对（20 视图上限、label≤32 唯一、id≤64、filter 1-10 条件且值不可为 null、KANBAN 分组字段类型、CALENDAR/GANTT 起止字段类型一致、HIERARCHY parentField 需自引用 REFERENCE、GALLERY 封面字段类型、displayFields≤60 且禁止 id、sort 支持 id/created_at/updated_at）。文档 mcp-server.md 工具表新增两行与视图页签用法示例（能力目录优先），并修正 feat-140 遗留的 create_app_menu/create_app_workbench_menu 旧名称。测试：AppToolsTest 新增 parsesViewTabsFromJson/rejectsNonArrayViewTabs，5/5 通过；mvn compile -pl flexmodel-server -am 通过。"
+    },
+    {
+      "id": "feat-160",
+      "name": "MCP - 内置页面导航绑定提示词补充",
+      "description": "内置页面（工作台 workbench、文件 files、审批中心/待办中心 approval）必须绑定导航 ENTRY 才能在应用内访问，但 AppTools 工具描述未列出合法 BUILTIN destinationId，也未说明绑定要求，导致 AI 建应用时从不为内置页面创建导航。更新 create_app_navigation 工具描述：列出三个合法 BUILTIN ID、说明内置页面需绑定导航后才可访问并按需绑定；destinationId 参数描述同步列出；create_app_workbench_navigation 补充其余内置页面通过 create_app_navigation 暴露。仅提示词变更，无行为改动。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。AppTools.java：create_app_navigation 工具描述增加 BUILTIN 页面（workbench, files, approval）清单与“内置页面绑定导航后才可在应用内访问”说明，destinationId 参数描述列出三个 ID；create_app_workbench_navigation 描述补充 files/approval 经 create_app_navigation destinationType=BUILTIN 暴露。与 AppNavigationService.builtInDestinations 的合法值一致。验证：mvn compile -pl flexmodel-server -am 通过；mvn test -pl flexmodel-server -Dtest=AppToolsTest 3/3 通过。注：feature_list.json 曾被并行会话回退丢失本条目，代码改动一直在工作区，本次会话重新写回。"
+    },
+    {
+      "id": "feat-159",
+      "name": "Apps - 显示控制非活动页签空白卡片修复",
+      "description": "为显示控制 TabsContent 增加 flex 后，Tailwind flex 覆盖了 Radix 非活动页签的 hidden 属性，导致表单布局下方多出一张空白卡片。为显示控制 TabsContent 增加 data-[state=inactive]:hidden，并在 e2e 中断言非活动页签不可见。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。FormDesigner 显示控制 TabsContent className 增加 data-[state=inactive]:hidden；field-config e2e 在布局页断言 [data-state=\"inactive\"][hidden] 为 hidden，确保下方不再出现空白卡片。验证：npm run build 通过；npm test 63/63 通过；npm run test:fields 8/8 通过。"
+    },
+    {
+      "id": "feat-158",
+      "name": "MCP - save_app_form_layout 支持字段显示控制",
+      "description": "AppTools.save_app_form_layout 新增可选 controlsJson，按字段名接收 hidden/required/readonly 控制并写入 layout.controls；scenes 取 CREATE/UPDATE，condition 复用记录查询 filter DSL。省略 controlsJson 保留现有控制并按新布局字段裁剪，传 {} 清空；get_app_form 工具说明同步返回 layout.controls。工具描述明确控制键必须属于 itemsJson、内置字段忽略控制、条件字段需先通过 get_app_form 确认。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。AppTools.save_app_form_layout 增加 required=false 的 controlsJson 参数，使用 JsonUtils.parseToMap + convertValue 解析为 Map<String,AppFormFieldControls>；未传时读取当前表单 controls 并裁剪到新布局字段；构造 AppFormLayoutRequest(items, controls)。更新工具描述与 get_app_form 描述，补充 controls 示例、场景/条件语义、省略与清空规则。文档同步 flexmodel-website/docs/tutorial/features/mcp-server.md 与 docs/plans/app-tools-mcp.md。新增 AppToolsTest 覆盖 controls 解析、空对象清空、非对象拒绝，3/3 通过；mvn -q -pl flexmodel-server -am -DskipTests compile 通过。"
+    },
+    {
+      "id": "feat-157",
+      "name": "Apps - 表单布局内置字段标识",
+      "description": "表单布局画布中，已布局且为内置字段的字段显示“内置”Badge，样式与主显字段的“名称”Badge 一致（bg-primary/10 text-primary）；非内置字段不显示。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。FormDesigner 布局项在显示“名称”Badge 的位置增加 entry.field.builtin 条件渲染“内置”Badge，复用同一 Badge 样式。验证：npm run build 通过；npm test 63/63 通过；npm run test:fields 8/8 通过（内置字段布局用例新增“内置”标识可见断言）。截图：flexmodel-apps-ui/artifacts/form-layout-builtin-badge.png。"
+    },
+    {
+      "id": "feat-156",
+      "name": "Apps - 显示控制矩阵表头吸顶与滚动容器修复",
+      "description": "显示控制页签改为单一纵向/横向滚动容器，表头（字段、隐藏、必填、只读）使用 sticky 吸顶，字段行滚动时表头保持固定；底部说明移出滚动区固定展示，避免出现嵌套滚动条和表头随内容滚走。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。FormDesigner 的显示控制 TabsContent 改为 flex column + overflow-hidden；FormAdvancedControls 的表格容器改为 min-h-0 flex-1 overflow-auto overscroll-contain，统一横向与纵向滚动；thead 各 th 增加 sticky top-0 z-10，底部说明作为固定 flex 子项。验证：npm run build 通过；npm test 63/63 通过；npm run test:fields 8/8 通过（新增“显示控制表头在纵向滚动时保持固定”e2e，矮视口滚动后断言表头 y 坐标不变）。截图：flexmodel-apps-ui/artifacts/form-controls-sticky-header.png。"
+    },
+    {
+      "id": "feat-155",
+      "name": "Apps - 内置字段始终展示且只读，不可配置字段控制",
+      "description": "显示控制矩阵中内置字段（field.builtin）不再允许勾选隐藏/必填/只读或设置条件：隐藏与必填展示为字段默认状态并禁用，只读的新建时/编辑时始终勾选并禁用，条件入口禁用并标注“内置”。运行时 parseFormLayout 对内置字段强制可见且只读，不应用任何 hidden/required/readonly 控制；后端保存布局时忽略内置字段的控制配置，不持久化。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。前端：FormAdvancedControls 为 builtin 行增加“内置”标识，禁用 6 个场景复选框与 3 个条件按钮，隐藏/必填按字段默认值展示，只读两场景强制勾选；禁用态使用 opacity/弱化文字。parseFormLayout 对 field.builtin 强制 hidden=false、readonly=true、不应用 required 控制（新增 1 个单元用例）。后端：AppFormService.saveFormLayout 汇总 BUILTIN_FIELDS 与当前字段记录中的 builtin 字段名，normalizeControls 跳过这些字段，保证内置字段控制不被持久化。验证：mvn -q -pl flexmodel-server -am -DskipTests compile 通过；AppPackageZipTest/AppPackageValidatorTest/AppRecordServiceTest/SystemFormResourceTest 通过；npm run build 通过；npm test 63/63 通过；npm run test:fields 7/7 通过（新增内置字段只读禁用 e2e）。截图：flexmodel-apps-ui/artifacts/form-controls-builtin.png。"
+    },
+    {
+      "id": "feat-154",
+      "name": "Apps - 应用表单字段控制（场景 + 条件）",
+      "description": "表单布局新增 layout.controls[字段名].hidden/required/readonly 配置，每项包含 scenes（CREATE/UPDATE）与可选 condition（记录查询 filter DSL）。不存在某属性时保持默认行为（不隐藏、字段默认必填、可编辑但受权限与 creatable/updatable 约束）；scenes 不含当前场景时不生效；无条件时在场景内始终生效，有条件时按当前表单值实时求值。前端设计器“显示控制”页签按字段×隐藏/必填/只读列出新建时/编辑时勾选与条件入口，复用 FilterConditionEditor；新增/编辑弹窗、记录抽屉与内联编辑面板统一通过 parseFormLayout 应用隐藏、必填、只读。系统表单保留原有静态隐藏/只读配置，不展示显示控制页签。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。后端：AppFormLayoutRecord/Request 增加 controls；新增 AppFormFieldControls/AppFormFieldControlRecord；AppFormService.saveFormLayout 校验控制字段属于布局、scenes 非空且仅为 CREATE/UPDATE、禁止空条件对象，并清除应用表单布局项上的旧静态 hidden/readonly；删除字段时同步移除其控制配置。前端（flexmodel-apps-ui）：services/appForms.ts 定义 AppFormScene/AppFormControl/AppFormControls 并归一化 layout.controls；新增 lib/filterCondition.ts 实现 filter DSL 客户端求值与 lib/filterCondition.test.ts（6 用例）；parseFormLayout 增加 scene+values 解析并向运行时组件输出 requiredFieldNames/entry.readonly/entry.required（4 用例）；新增 components/biz/form/FormAdvancedControls.tsx 复用 FilterConditionEditor 实现矩阵与条件弹窗；FormDesigner“显示控制”页签、保存时同时提交 items 与 controls，切换该页签隐藏字段列表侧栏；AppRecordFormModal/AppRecordDrawer/AppRecordPanel 按 CREATE/UPDATE 场景和当前值应用控制，只读字段不参与交互必填校验。测试：mvn compile -pl flexmodel-server -am 通过；mvn test -pl flexmodel-engine 通过；AppPackageZipTest/AppPackageValidatorTest/AppRecordServiceTest/SystemFormResourceTest 通过（AppPackageZipTest 新增 controls 打包往返断言）；npm run build 通过；npm test 62/62 通过；npm run test:fields 6/6 通过（新增显示控制 e2e，并修正 field-config 用例中过期的 navigation/view 查询 mock）。"
+    },
+    {
+      "id": "feat-153",
+      "name": "Apps - 数据权限条件值类型（固定值/当前用户/字段引用）",
+      "description": "数据权限条件 _eq/_ne 的比较值支持三种值类型：固定值字面量、当前用户 {\"_user\": \"id\"}（运行时解析为访问用户 id，仅 REFERENCE/TEXT 字段）、字段引用 {\"_field\": \"路径\"}（本表裸路径或 引用字段.目标字段 一级路径，两端类型一致或 REFERENCE 对目标 id/TEXT）。与 data_scope 边界：归属范围用 dataScope，非所有者字段的当前用户匹配用条件值类型。动态值运行时解析待授权引擎接入后生效，当前仅保存与校验配置。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。后端：AppPermissionConditions.validate 增加引用表单解析器参数（AppDataAuthorizationService 以 appFormService.findForm 解析 referenceForm，缺失返回 null 报引用表单不存在）；validateOperand 校验动态值仅 _eq/_ne、_user 仅 id 且字段为 REFERENCE/TEXT、_field 路径为裸路径（本表字段存在且类型兼容）或 ref.target 一级路径（ref 为 REFERENCE 且 target 存在于 referenceForm 且类型兼容），requireCompatible 规则：同类型或一端 REFERENCE 对另一端 TEXT/内置 id；多级路径拒绝。测试：AppPermissionConditionsTest 增补动态值接受/拒绝用例并更新签名。前端（flexmodel-apps-ui）：FilterConditionEditor 增加 valueTypes（literal/currentUser/field）与 resolveFormFiles props，叶子节点在 _eq/_ne 时显示值类型选择（固定值/当前用户/字段引用），字段引用渲染分组路径选择（本表字段 + 各 REFERENCE 字段解析目标表单字段，按与服务端一致的类型兼容规则过滤），typesCompatible/fieldReferenceGroups 为共享辅助函数；FormDataPermissions 传入三种值类型与全应用表单解析。文档：data-permissions.md §5.4 增加值类型表格、字段引用路径与类型规则、与 data_scope 的边界说明。验证：mvn test-compile -pl flexmodel-server 通过；apps-ui npm run build 通过（TEMP/TMP 指向项目内）；按用户要求未执行测试用例，测试留待后续运行。实现注意：javac 流作用域下 if (!(x instanceof T t) || …) fail(); 之后 t 不可用（fail 可能正常返回），需重新 cast。"
+    },
+    {
+      "id": "feat-152",
+      "name": "Apps - 数据权限条件复用记录查询 filter DSL",
+      "description": "数据权限规则 Control.condition 从自定义 {field, operator, value}/{logic, children} 树改为复用 records.md 定义的记录查询 filter DSL（_eq/_ne/_gt/_gte/_lt/_lte/_contains/_not_contains/_starts_with/_ends_with/_in/_nin/_between，同层隐式 AND、快捷等值、_and/_or；_eq/_ne + null 表示空值）。后端校验、前端条件编辑器与文档同步，不做历史格式兼容。",
+      "status": "done",
+      "evidence": "2026-11-02 完成（未提交）。后端：AppPermissionConditions 重写为 filter DSL 结构校验（操作符集合与 records.md 一致；保留深度≤8、节点≤100；_in/_nin 1-200 项、_between 两值、大小比较仅 NUMBER/DECIMAL/DATE/DATETIME/TIME、文本匹配不允许数值/布尔字段、_eq/_ne 允许 null 空值；禁止点号关联路径、_field 引用与未知 _ 前缀键；空对象拒绝，与 AppPackageValidator 导入端一致）。实现注意：javac 流作用域下 `if (!(x instanceof T t) || …) fail();` 之后不能使用 t（fail 可能正常返回），沿用旧代码重新 cast 的写法。测试：AppPermissionConditionsTest 重写为 DSL 用例 3/3，AppDataAuthorizationResourceTest 条件与断言改 DSL（condition.name._eq 回读、未知字段 400）4/4；全模块 mvn compile（非 clean，dev.jar 文件锁为既有已知阻塞）通过。前端（flexmodel-apps-ui）：services/appForms.ts 新增共享类型 FilterCondition（Record<string, unknown>），dataAuthorization.ts 的 PermissionCondition 改为其别名；条件编辑器抽为公共组件 components/biz/FilterConditionEditor.tsx，产出 {字段: {操作符: 值}} 叶子与 _and/_or 分组，操作符矩阵与文案复用 RecordFilterControls 的 viewTabOperators/viewTabOperatorLabels（追加 _between/_in/_nin 与 IS_NULL/IS_NOT_NULL 录入糖，存储为 _eq/_ne + null），FormDataPermissions 改为引用该组件，其他需要编辑 filter DSL 的场景（视图筛选、记录查询等）可直接复用；e2e data-permissions 断言同步为 {name: {_eq: ''}}；npm run build 通过（TEMP/TMP 指向项目内规避 esbuild Access denied，抽组件后复验通过）。文档：data-permissions.md §5.4 改为 filter DSL 示例与操作符清单并链接 records.md；form-display-control.md §6.1 算子表数据权限行改为引用 filter DSL。按用户要求停止运行测试用例：Playwright permissions 首跑 3 项失败（含不涉及条件编辑的 403 用例）未定位，留待后续会话核查。"
+    },
+    {
+      "id": "feat-151",
+      "name": "Apps - 修复画廊封面图片不显示",
+      "description": "画廊视图选择图片字段并上传图片后封面不显示：此前直接把附件地址塞进 <img src>，浏览器不会携带 Authorization，私有桶图片返回 401 后落回占位。改为复用 AttachmentField 的鉴权加载逻辑，先以 Bearer 请求取回 blob 再生成 object URL 展示。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-apps-ui，未提交）。AttachmentField 导出 useAttachmentImageSource（复用 useFilePreview/loadAttachment 的鉴权 blob 加载与 object URL 回收）；GalleryView 按附件扩展名判断图片，加载中显示 AppLoading、失败或无图片显示 ImageOff，不再直接使用附件 URL。验证：npm run build 通过；构建产物 + Mock API（PNG 附件端点）无头 Chromium 实测，画廊卡片 <img> 可见且 naturalWidth=1，附件请求携带 Bearer cover-test，控制台无错误。"
+    },
+    {
+      "id": "feat-150",
+      "name": "Apps - 修复视图设置字段选择器被抽屉遮挡",
+      "description": "视图设置抽屉内“封面字段/标题字段/排序字段”等 FieldPicker 的 Popover z-index 为 50，低于抽屉的 z-1040，弹层内容被抽屉覆盖导致无法选择，即使表单已有图片字段也选不了封面。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-apps-ui，未提交）。FieldPicker 的 PopoverContent 增加 z-[1100]，高于抽屉 z-1040 和 Select 内容 z-1050；标题、封面、排序等字段选择器共用此组件。验证：npm run build 通过；构建产物 + Mock API 无头 Chromium 实测，表单含 IMAGE 字段“照片”时打开画廊视图设置，封面字段弹层正常显示“照片”，点击后触发器显示“照片”，控制台无错误。"
+    },
+    {
+      "id": "feat-149",
+      "name": "Apps - 修复内置表单设置/设计报 Project not found",
+      "description": "内置系统表单（f_user/f_department/f_role）通过伪 appId system 访问 /api/apps/system/forms/* 时，AuthFilter 把 system 当成真实项目校验并抛出 Project not found；改为对 system 伪 appId 跳过项目校验，仍要求系统 JWT。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-server，未提交）。AuthFilter 提取 appId 后对 system 置空 projectId，避免 fillSessionContextForUser 校验不存在项目；fillSessionContextForProvider 增加 null project 保护。新增 SystemFormResourceTest.testSystemFormsAccessibleThroughAppScopedRoute，覆盖 GET /apps/system/forms 与 /apps/system/forms/f_user。验证：mvn -q -pl flexmodel-server -am -DskipTests compile 通过；mvn -q -pl flexmodel-server -Dtest=SystemFormResourceTest test 6/6 通过（含新增用例），日志中 SQLite busy/9999 连接失败为既有环境噪声，不影响测试结果。"
+    },
+    {
+      "id": "feat-148",
+      "name": "Apps - 通知铃铛与站内浮窗点击不跳转通知中心",
+      "description": "点击顶部铃铛中的通知或站内通知浮窗时，不再跳转到通知中心页面，而是在当前页面打开共享的通知详情抽屉；自动标记已读，并可从详情继续打开关联审批/讨论记录抽屉。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-apps-ui，未提交）。新增 components/notifications/NotificationDetailDrawer.tsx，抽取原通知中心详情 Drawer（加载详情、标记已读、查看审批/讨论）供通知中心、铃铛和浮窗共用；NotificationProvider 增加 openNotification 全局打开详情抽屉，浮窗点击改为打开抽屉；NotificationBell 通知项由 Link 改为 onSelect 打开抽屉；Notifications 页面改用共享抽屉，保留 /notifications?open= 深链。验证：npm run build 通过；构建产物 + Mock API 无头 Chromium 实测，在表单页点击铃铛通知后 URL 保持 /#/apps/nb/records 不变、通知详情抽屉正常出现、控制台无错误。"
+    },
+    {
+      "id": "feat-147",
+      "name": "Apps - 七种视图交互优化",
+      "description": "在不改变视图数据模型的前提下优化七种视图的实际操作体验：查询刷新不闪烁、页签支持拖拽/重命名/删除保护、设置抽屉分组校验、表格分页与勾选、看板乐观拖拽、日历周期导航、甘特刻度与定位、层级树懒加载、画廊与详情交互，并修复选项筛选值提交文本导致筛选不到记录的问题。",
+      "status": "done",
+      "evidence": "2026-11-01 完成（flexmodel-apps-ui，未提交）。核心改动：useViewQuery 刷新保留旧数据并增加 isFetching/reload；新增 viewFeedback 骨架与细进度条、viewUtils 纯函数、FieldPicker、ViewFiltersEditor、ViewDisplayFieldsEditor、ViewTypeSettings、UnscheduledList；RecordList 紧凑头部（主标题与副标题同一行，窄屏只保留主标题）、工具栏常驻搜索、可移除临时筛选 chip、移除“视图筛选 N 个条件”chip、空状态恢复简单占位、移除无效批量按钮；ViewBar 使用 dnd-kit 排序并增加重命名、复制、左右移动、最后一个视图删除保护、按字段能力禁用新增类型、自动默认字段，页签视觉保持原有 px-3 py-2 text-sm 下划线样式；ViewSettingsDrawer 重做为分组抽屉并自动滚动到错误分区；TableView 修复每页数量初始值 30 不在选项中、半选/本页勾选、分页上限 200；Kanban 整卡点击、DragOverlay 乐观移动与失败回滚、刷新不重置分页；Calendar 增加上一/下一周期、日期跳转、当前周期标题、未排期继续加载与移动端抽屉、FullCalendar 夜间主题；Gantt 增加今日/平移/日期跳转/日周月切换、窗口分页、拖拽天数预览、首次及刻度切换后自动滚动到今日；Hierarchy 移除 ECharts 改为可键盘操作的懒加载树/树形表格；Detail 支持跨页上一条/下一条和窄屏列表/详情切换，内嵌记录操作按钮右对齐；Gallery 整卡点击、常驻操作菜单、封面失败占位；RecordFilterControls 选项筛选改为提交 option id。验证：npm test 52/52（含新增 viewUtils.test.ts 9 项）；npm run build（tsc -b + vite build，TEMP/TMP 指向项目内 .tmp）通过；构建产物 + Mock API 无头 Chromium 实测表格/搜索/每页数量/设置保存/新增看板/跨列拖拽/日历翻页/层级展开/甘特刻度与自动滚动/夜间日历，控制台无错误。"
+    },
+    {
+      "id": "feat-146",
+      "name": "Apps - 记录页签栏滚动条/下划线修复与图标精简",
+      "description": "记录列表页签栏（全部/草稿/…）右侧出现多余竖向滚动条并裁掉激活页签下划线，修复后页签栏无滚动条、激活下划线完整显示；页签去掉视图类型图标，仅保留文字。",
+      "status": "done",
+      "evidence": "2026-11-01 修复（flexmodel-apps-ui，未提交）。根因：ViewBar 页签 ul 的 overflow-x-auto 使 overflow-y 由 visible 计算为 auto 成为滚动容器，页签按钮 -mb-0.5 负外边距让按钮边框盒比 flex 行高高 2px，形成 2px 纵向可滚动溢出，Chromium 在页签末尾绘制 15px 竖向滚动条并裁掉 2px 激活下划线。修改：移除按钮 -mb-0.5，使 ul 高度与按钮一致、消除纵向溢出；ul 保留 overflow-x-auto overflow-y-hidden 防止后续溢出再次生成纵向滚动条；按用户要求页签按钮不再渲染 VIEW_TYPE_META 视图图标，仅保留文字（新增视图下拉图标保留）。验证：tsc -b 与 vite build 通过（TEMP 指向项目内规避 esbuild 临时目录 Access denied）；构建产物 + Mock API 无头 Chromium 实测，修复前 scrollHeight 38/clientHeight 36、竖向滚动条占位 15px、下划线可见 0px，修复后 scrollHeight=clientHeight=38、滚动条占位 0、下划线 2px 完整可见且页签坐标不变，五个页签文本为 全部/草稿/审批中/已批准/已入库。"
+    },
+    {
+      "id": "feat-145",
+      "name": "Apps - dev.flexmodel.apps 按特性垂直分包",
+      "description": "将 dev.flexmodel.apps 根包与 dto 大杂烩按业务特性垂直分包：app/form/navigation/record/workbench/apppackage/template/transfer/dataauthorization（approval 原样保留），DTO 迁入各特性 *.dto 子包，测试类同步迁移，外部引用 import 重写。",
+      "status": "done",
+      "evidence": "2026-10-31 完成（未提交）。git mv 迁移 125 个文件（111 主代码 + 14 测试），包声明与全仓 import 重写（146 文件实质变更）。跨包访问的原 package-private 成员改 public：AppService.isImporting/importBypassed/IMPORT_BYPASS、AppFormService.rawFormRecords/reservedSystemFormNames/builtinFieldNames/fieldTypes/optionFieldTypes/normalizeQueryFilter、AppRecordService.prepareImport/assignCreationFields/buildFilter/buildSort/exposedFields/RecordContext、AppTemplateCatalog.open、AppPackageZip.json。验证：mvn clean compile 全模块 EXIT=0；mvn test-compile -pl flexmodel-server EXIT=0；apps 包 13/15 测试类全绿（AppWorkbenchServiceTest、AppRecordDiscussionNotificationTest 失败经 stash 基线对照确认为 HEAD 既有失败）；engine 102 测试全绿；mcp/rest 8 个测试类失败数与 HEAD 基线逐类一致。"
+    },
+    {
+      "id": "feat-144",
+      "name": "Apps - f_app 应用表与 app_id 归属重构",
+      "description": "新增平台表 f_app（与 f_project 一对一共享主键），应用配置（iconName、primaryColor、provisioning、navigation、forms）从 f_project.metadata.app JSON 节点迁出为强类型列；f_app_* 系列表归属语义统一为 app_id；不做历史数据迁移。",
+      "status": "done",
+      "evidence": "2026-10-31 后端重构完成（未提交）。platform.fml 新增 model f_app（id 与 f_project.id 共享、icon_name、primary_color、provisioning?、navigation?/forms? JSON、审计字段）；不 seed f_app（dev_test 仅作为项目存在）；f_app_data_authorization 的 project_id 改为 app_id。新增 AppRepository 接口与 AppFmRepository 实现（System.app 静态元模型，mergeInto 保存）；AppService 移除 METADATA_APP_KEY/JSON 节点读写，isImporting 改读 f_app.provisioning，createApp 同事务语义创建 f_app 行，findApps/findApp/deleteApp 均以 f_app 为主数据源并 join f_project；AppNavRecordStore 导航存 f_app.navigation、requireAppProject 校验 f_app 行存在且为顶层项目；AppFormService 表单存 f_app.forms；AppPackageService/AppPackageImport 导入导出与 provisioning 隔离改走 f_app；Workbench*、AppApproval*、AppRecordHistory*、AppRecordDiscussion、AppDataAuthorization 各 Repository 查询列统一 app_id（一对一共享主键，值不变）；AppResponse 结构同步；ProjectPlatformDataCleaner 拆分 APP_MODELS（按 app_id 清理，含先删 f_app_data_permission_control 再删授权行）并按 id 删除 f_app 行；AppResourceTest 同步。验证：mvn compile 全模块（非 clean，dev.jar 文件锁为既有已知阻塞）EXIT=0；mvn test -pl flexmodel-engine BUILD SUCCESS；定向后端 9 个测试类 71/71 通过（AppNavigationResourceTest 11、AppDataAuthorizationResourceTest 4、AppRecordResourceTest 6、WorkbenchResourceTest 6、AppPackageValidatorTest 18、AppPackageZipTest 10、AppRecordHistoryRecorderTest 8、AppRecordDiscussionServiceTest 2、AppRecordServiceTest 6）；AppResourceTest 12 项 11 通过，唯一失败 testCreateAppWithExplicitProjectId（期望 404 实得 401）为 feat-126/127 已记录既有失败，与本次无关。历史 metadata.app 数据迁移由用户自行处理，未做代码兼容层。"
+    },
+    {
+      "id": "feat-143",
+      "name": "Apps - 从模板创建应用",
+      "description": "服务端内置应用包目录、模板列表与实例化入口，复用现有应用包导入预览和提交管道。方案见 docs/plans/app-templates.md。",
+      "status": "done",
+      "evidence": "2026-10-31 实现完成。后端（dev.flexmodel.apps）：AppTemplateCatalog 启动读取 app-templates/index.json（显式索引，包名固定 <id>.flexmodel.zip，索引/请求均不能提供路径），id 白名单，启动时先 AppPackageZip 解析再以 AppPackageValidator + 平台基线目录（admin 用户、admin/developer 角色、无组织）语义校验，坏模板 WARN 跳过不阻断启动，目录只读；AppTemplateResource 提供 GET /app-packages/templates 与 POST /app-packages/templates/{id}/imports（401/404）；AppPackageService.instantiateTemplate 复制 classpath 包到 AppPackageStore 暂存并复用既有预览/planHash/commit/补偿管道，PreviewResponse 增加 templateId，模板默认名不追加「-副本」；AppPackageZip.read(InputStream) 支持流式解析；application.properties 增加 quarkus.native.resources.includes=app-templates/**；maven-resources-plugin 增加 nonFilteredFileExtensions=zip（此前 ZIP 被文本过滤报 MalformedInputException）。内置 erp-system（来自用户提供的 ERP管理系统.flexmodel.zip）：4 个业务表单、2 条启用审批、采购工作台、636 条示例记录；入库前将审批执行人改为平台角色 admin/developer、移除引用源实例用户的 data-authorizations、清理示例数据中 56 行已不存在字段。前端（flexmodel-apps-ui）：services/appTemplates.ts；AppManagement 新建应用改为空白/从模板下拉并新增模板画廊；AppPackageImportDialog 支持 initialPreview 直达预览（步骤条首步改为选择模板、隐藏重新选择、模板文案）。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' EXIT=0；mvn test -pl flexmodel-engine EXIT=0；AppTemplateCatalogTest 7/7（index 未知字段/重复/非法 id/缺失包/损坏包/语义无效包跳过，内置模板基线目录零 issue 零 warning，审批来源/导航可见性/数据权限/示例数据字段与附件值可移植断言）、AppPackageValidatorTest 18/18、AppPackageZipTest 10/10；apps-ui npm run build 通过（TEMP/TMP 指向项目内规避 esbuild Access denied）；vitest 43/43；Playwright packages 7/7（新增从模板创建：入口→画廊→预览直达→提交完成，以及空目录隐藏入口，浅色截图检查）。2026-10-31 真实后端冒烟（quarkus:dev + 本地 SQLite）：admin 登录 → GET /app-packages/templates 返回 erp-system → POST 实例化 READY（templateId=erp-system、默认名 ERP 管理系统、4 表单、636 记录、issues=0）→ commit COMMITTED（materials 96 / purchase_order_items 288 / purchase_orders 196 / suppliers 56）→ 应用列表可见、表单为 3 系统表单 + 4 业务表单、suppliers 记录 56、导航 首页(3)/采购管理(1)/基础数据(2) 均重建 → DELETE 应用 204 清理。打包形态验证：mvn -pl flexmodel-server -am package 成功，target/quarkus-app/app/flexmodel-server-0.0.1-SNAPSHOT.jar 内含 app-templates/index.json 与 erp-system.flexmodel.zip；用 quarkus-run.jar 在隔离临时 SQLite（18080 端口）启动，日志 Loaded 1 built-in app template(s)，GET templates / POST 实例化 READY（4 表单/636 记录）/ commit COMMITTED（materials 96）/ DELETE 204，证明 jar 内 ZIP 经 ClassLoader.getResourceAsStream 读取可用。2026-10-31 交互调整（对齐「新建审批流程」）：新建应用改为单一弹窗，首项输入应用名称，再以卡片选择空白应用/从模板创建；空白方式保留原有应用图标/应用描述/应用主色表单并直接创建；模板方式内联之前的模板卡片画廊（图标、分类、描述、表单数、含示例数据），选中后「预览并创建」进入导入预览并沿用创建弹窗名称；移除新建下拉菜单与独立模板画廊弹窗（删除 AppTemplateGalleryDialog），AppPackageImportDialog 新增 initialName 并去掉「选择模板」步骤。验证：apps-ui npm run build 通过（tsc + vite）；vitest 43/43；Playwright packages 8/8（模板选择→预览直达→提交、空白应用含图标/描述/主色创建、空目录隐藏模板方式）。2026-10-31 SQLite 导入报错修复：AppPackageImport 恢复 name 字段时因 requiresNameRestore 条件反向（required=true 触发）且 SqlSchemaService.modifyField 无条件 ALTER，SQLite 不支持 MODIFY 导致 ERROR。改为仅列定义（类型/长度/精度/可空/默认值/唯一/注释）实际变化时执行 DDL；新增 SqlDialect.supportsModifyColumn（SQLite=false，跳过 DDL 并 WARN，仍更新元数据）；requiresNameRestore 改为 !required 才恢复。验证：非 clean 全模块 compile 通过、mvn package -pl flexmodel-server -am 成功、flexmodel-core 测试通过；隔离 SQLite quarkus-run.jar 冒烟模板实例化 READY → commit COMMITTED（636 条记录、suppliers 56 条）→ DELETE 204，日志无 MODIFY/SQLITE_ERROR。遗留：native image 未构建验证；未提交代码。 2026-11-03 修复内置模板替换为 plm/erp 后目录不可用问题：erp.flexmodel.zip 的审批执行人引用源实例用户（cca11013/7d291816）与组织（0a3933a1 等），启动校验产生 DIRECTORY_MEMBER_MISSING/DIRECTORY_ORGANIZATION_MISSING 硬性 issue 被跳过（前端模板列表只见 plm）；且 plm/erp 示例数据共 377 处 f_user/f_department 引用触发不可移植 warning。处理：erp 19 条 users/organizations 审批规则改为 roles（总经理/主管→admin、其余环节→developer，scope=self，通知节点 organizations→initiator）；两包示例数据中 f_user/f_department 引用值全部置空（erp 232 处、plm 145 处），5 个必填的系统引用字段（erp_expense.claimant、plm_product.owner_user、plm_ecr.initiator、plm_ecn.initiator、plm_ecn_task.assignee）required 改为 false 以免空值触发必填 warning；业务 REFERENCE 引用均验证包内可解析。测试同步：AppTemplateCatalogTest 中 erp-system 过期引用改为 erp（名称「ERP 企业资源计划」、formCount 34）。验证：mvn test -pl flexmodel-server -Dtest=AppPackage*Test,AppTemplate*Test 全绿（AppTemplateCatalogTest 7/7、AppPackageValidatorTest 21/21、AppPackageZipTest 10/10），模板目录启动加载 2 个内置模板。未提交代码。 2026-11-03 WMS 模板入库修复：同 erp/scm 病灶（审批执行人引用源实例用户/组织、示例数据 f_user 引用、displayField 误当 id、必填 name 空值），并将四轮手工清洗固化为 flexmodel-server/tools/app-template-sanitize.mjs（零依赖，check/--fix，含 zip 重打包）；AppTemplateCatalogTest 目录完整性断言扩至 4 模板并新增 wms 断言，AppPackage*Test+AppTemplate*Test 全绿。另发现中断构建致 target/classes 残缺、本机 dev 服务全接口 500，已重建恢复、待重启 dev。校验严格度维持：基线目录校验系方案文档明确设计，users/organizations 无法跨实例移植。未提交代码。"
+    },
+    {
+      "id": "feat-142",
+      "name": "Apps - 应用首页加载失败与空状态区分",
+      "description": "应用首页导航加载失败（网络错误或接口 5xx）时展示错误信息与重试按钮，不再误显示“当前分组没有关联菜单”空状态；成功返回空导航时仍展示新增菜单引导。",
+      "status": "done",
+      "evidence": "2026-10-31 flexmodel-apps-ui AppHome：catch 分支记录 toErrorMessage（兜底“加载应用导航失败，请稍后重试。”）并渲染 role=alert 错误卡片 + 重试按钮（设置 isLoading 并通过 reloadKey 触发重新请求，cachedFetch 失败时已清缓存故可重试）；仅请求成功且无首个入口路由时渲染原空状态。验证：Apps npm run build 通过（首次因 Windows Temp 下 esbuild 临时文件删除 Access denied，改用项目内 TEMP 后 tsc -b + vite build 成功）；浏览器实测：失效令牌访问 app_5ef9ed… 显示“请求失败（HTTP 500）”+重试；模拟导航接口返回 [] 显示“当前分组没有关联菜单”+新增菜单；模拟首次 500 后点击重试恢复空状态。未提交代码。"
+    },
+    {
+      "id": "feat-141",
+      "name": "Apps - 应用结构级整包导入导出",
+      "description": "按 docs/plans/app-import-export.md 实现应用定义与可选记录数据的整包导出、预览及创建新应用导入。前后端均已实现并通过验证，待真实后端端到端冒烟。",
+      "status": "done",
+      "evidence": "2026-10-30 前后端全量实现完成。后端（dev.flexmodel.apps）：协议 DTO AppPackage（含 TaskState.result 回执与恢复语义，@RegisterForReflection 全部移除，改由 FlexmodelNativeProcessor registerAppsDtos 以构造器/方法/字段注册 dev.flexmodel.apps.dto.**）；AppPackageZip 受限读写（路径穿越/重复 entry/未知文件/entry≤128/单文件≤50MiB/累计≤100MiB/JSON 深度≤64/planHash）；AppPackageValidator（模型漂移+结构校验、manifest 统计核对、目录成员存在性、业务引用闭包、必填缺失检查）；AppPackageStore+AppPackageTaskRepository（原子暂存、5 分钟清理、任务回执与恢复扫描）；AppPackageService（只读采集+前后结构摘要防并发 409、行数限额、上传预览 INVALID、状态查询、幂等 commit 分发 requestDigest 409）；AppPackageImport（provision→forms→references→layouts→navigation→workbenches→approvals→authorizations→records→activating 分阶段持久重建、provisioning 元数据隔离、启动/定时恢复、补偿核验 deleteApp、CLEANUP_REQUIRED 后台重试）；REST POST /apps/{appId}/package-exports 流式下载、POST/GET /app-packages/imports（multipart 413 限额、状态、commit）。前端：appPackages.ts 改真实 HTTP（上传/状态轮询/commit/导出下载 Content-Disposition 文件名），导入弹窗支持 FAILED/CLEANUP_REQUIRED 区分展示（不宣称回滚成功）与响应丢失轮询找回。验证：全模块 mvn clean compile EXIT=0；mvn test -pl flexmodel-engine EXIT=0；新增 AppPackageZipTest 10/10、AppPackageValidatorTest 17/17；apps-ui npm run build 通过、vitest 43/43、Playwright packages 5/5（API 拦截层改为真实协议 fixture）。剩余：真实后端 dev 起服务端到端冒烟导出→导入全链路。2026-10-30 排障修复：AppPackageStore.stageZip 先创建暂存目录（此前目录不存在必然 NoSuchFileException）；导出资源改为类级 JSON + 方法级 ZIP 并增加 ServerExceptionMapper，全局异常映射器显式 application/json 且移除堆栈数组，前端非 JSON 错误回显 HTTP 状态与 HTML 标题；仅结构导出将模型漂移降级为 manifest warnings、带数据导出仍阻断，修复 validation warnings 未写入 manifest；审批 branch 不再强制 blocks；validator 注入 AppFormService。实测 plm_system 结构导出 200/7323B（manifest 9 条漂移 warning）、includeData=true 仍 400 JSON 带原因、新建应用含记录导出 200 且 dataRows=1；mvn test AppPackageValidatorTest 17/17 + AppPackageZipTest 10/10 BUILD SUCCESS；apps-ui tsc -b EXIT=0（vite build 因沙箱 Node spawn EPERM 未执行）。未提交代码。"
+    },
+    {
+      "id": "feat-140",
+      "name": "Apps - 菜单重命名为导航（内部语义）",
+      "description": "服务端与前端内部抽象由“菜单”统一为“导航”：metadata 节点 app.navigation、REST /navigation、AppNav/NavDestination/NavVisibilityRule、ENTRY 类型、MCP create_app_navigation；UI 组件与搭建者文案保留“菜单”。",
+      "status": "done",
+      "evidence": "服务端（前次会话完成，本次验证）：AppMenuService/Resource/RecordStore 更名 AppNavigationService/AppNavigationResource(@Path /apps/{appId}/navigation)/AppNavRecordStore，metadata 由 app.menus 改为 app.navigation；DTO 更名 AppNavRecord/AppNavResponse/AppNavSaveRequest/AppNavOrderRequest/NavDestinationRecord(原AppMenuTargetRecord)/NavVisibilityRule(原AppMenuMember，字段members改visibility)/NavDestination*/NavDestinationsResponse/WorkbenchNavOptionRecord(原WorkbenchMenuOptionRecord，字段shortcutMenus改shortcutNavs)；类型值 ITEM 改 ENTRY；MCP create_app_menu→create_app_navigation、create_app_workbench_menu→create_app_workbench_navigation；WorkbenchService/AppFormService/AppService/AppRecordHistoryService/AppRecordDiscussionService 引用点全部切换。前端（本次完成）：services/appMenus.ts 与 appMenuNavigation.ts 合并为 appNavigation.ts（AppNav/NavDestination/AppNavDestinations/visibility 字段、/navigation 与 /navigation/destinations 端点），消费方 AppMenuManager/MenuEditorDialog/MenuAuthorizationDialog(PATCH members→visibility)/NavDestinationPicker(替代MenuLinkPicker)/AppLayout/AppTopHeader/AppMenuPage/AppHome/AppRecordView/WorkbenchHome/ComponentDesigner/workbenches.ts(shortcutMenus→shortcutNavs)/appForms.ts/main.tsx(路由参数:menuId→:navId) 全部切换，旧文件已删除；UI 组件名与中文文案保留“菜单”，mock.ts 演示数据不动。测试变量清理：AppNavigationResourceTest 前缀 menu_→nav_；AppFormResourceTest NAV_PATH/createNav/deleteNavQuietly（曾因 Set-Content ANSI 编码损坏，从 git 恢复重做）。验证：Apps npm run build 通过（tsc+vite）；全模块非 clean compile 通过（clean 仍被运行中 dev.jar 文件锁阻塞）；mvn test -pl flexmodel-engine 通过；AppNavigationResourceTest 11/11、AppFormResourceTest 相关用例（testUpdateFormAndDeleteBoundForm）通过，其余失败为字段/布局/认证等已记录既有失败，与导航无关。"
+    },
+    {
+      "id": "feat-139",
+      "name": "Apps - 文件排序与移除分享列表",
+      "description": "文件页移除分享列表，按参考图提供最近上传、最早上传、较大文件和名称升降序；目录保持在前。",
+      "status": "done",
+      "evidence": "FilesDocs移除分享列表及Share图标，默认排序接入既有DropdownMenu：最近上传、最早上传、较大文件、文件名称(A-Z)/(Z-A)，按钮显示当前项并标记选中。基于既有lastModified/size在前端复制列表排序，不修改树缓存、不增加请求；保留目录在前、文件在后，名称忽略大小写并自然排序数字，时间/大小缺失或无效排末尾，同值按名称/路径稳定排序。沿用搜索与附件只读，切换目录/附件保留当前排序。验证：Apps npm run build、files浅色/夜间共4项Playwright通过（含五种实际顺序、零字节/未知值、自然名称顺序、搜索叠加、附件、无额外请求及既有编辑删除回归），截图检查通过；全模块非clean编译与规定引擎测试通过。init.sh clean仍受运行中dev.jar文件锁阻塞，保留原服务。"
+    },
+    {
+      "id": "feat-138",
+      "name": "Apps - 文件与目录编辑、可见权限",
+      "description": "文件页左右统一更多菜单及编辑/删除弹窗；目录修改名称和可见成员，文件仅修改名称，根目录及附件只读。",
+      "status": "done",
+      "evidence": "2026-10-30最终交互：左侧复用右侧原有更多按钮样式（16px图标、6px内边距、无新增边框），两侧共用renderObjectMenu，菜单统一详情/编辑/删除；按tree/card加路径隔离菜单状态。撤回独立授权按钮、授权弹窗和PATCH members改动；文件/目录共用编辑弹窗，目录名称及可见成员合并提交原PUT接口，文件仅名称、调用既有move接口且不请求成员；共用删除确认框，菜单及弹窗标题统一编辑/删除。侧栏保留数字显隐和已配置权限盾牌；目录重命名刷新路径/侧栏缓存，文件编辑保留真实原文件名并支持同名错误重试。后端保持2ba61d2版本，权限继承、访问校验及存储逻辑不变。验证：最终Apps npm run build与files浅色/夜间2项Playwright通过（两侧目录编辑、权限回显、文件改名及冲突重试、文件不加载成员、原更多样式、菜单互斥、删除及附件保护），检查目录/文件编辑与菜单截图；全模块非clean compile及本轮规定引擎测试通过。init.sh clean仍受运行中dev.jar锁阻塞，保留开发服务。"
+    },
+    {
+      "id": "feat-135",
+      "name": "Apps - 表单高级查询",
+      "description": "记录列表气泡框按字段类型组合筛选，支持全部/任一满足、应用、清空，与页签及关键词叠加，筛选导出同步。",
+      "status": "done"
+    },
+    {
+      "id": "feat-134",
+      "name": "Apps - 记录操作历史",
+      "description": "Apps 记录详情历史侧栏展示真实操作时间线：记录增删改、Excel 导入、审批提交/签核/终态事件，主子表汇总到主记录时间线，光标分页查询与可见字段投影。",
+      "status": "done",
+      "evidence": "按 docs/plans/app-record-history.md 落地轻量日志方案：platform.fml 新增 f_app_record_history / f_app_record_history_target（project_id+event_key 唯一去重、查询索引）；后端新增 AppRecordHistoryEvent/Diff/Context/Repository/Recorder/Service/Resource 与 DTO，事件类型 RECORD_CREATED/UPDATED/DELETED 与 APPROVAL_SUBMITTED/TASK_APPROVED/TASK_REJECTED/APPROVED/REJECTED/TERMINATED，来源 APPS/IMPORT/APPROVAL。业务接入：AppRecordService 增删改（SQL 数据源 ProjectUnitOfWork 行锁事务内读前后值，非 SQL 返回 supported=false）、AppTransferExecutor 导入按批 200/批共用 operation_id、AppApprovalRuntime 提交与根实例终态（数据节点经 historyContext 记录发起人等快照）、AppApprovalService 签核、AppApprovalRecordActions 锁序稳定化、AppFormService.deleteForm 与 ProjectPlatformDataCleaner 清理。历史写入在业务事务 afterCommit 后独立平台事务完成，唯一键冲突视为已记录，其他异常仅结构化日志不影响业务。接口 GET /api/apps/{appId}/forms/{formName}/records/{recordId}/histories（size 默认20最大50、Base64URL 不透明游标校验归属、occurred_at DESC 稳定排序、预览最多3个可见变化）与 /histories/{eventId}（校验事件属于当前记录），复用 canAccessForm 与 project_id 隔离，按当前布局投影可见字段，审批意见沿用审批详情访问判断，时间统一 UTC 带 Z ISO 字符串。前端：services/recordHistory.ts + useRecordHistory（stale 序号隔离、静默刷新首屏、加载更多失败保留内容）；RecordActivityAside 重写（supported=false 明确空态、按日期分组、详情懒加载、纯文本渲染、手动刷新）；AppRecordDrawer historySignal 在保存/子表操作/提交审批/签核后触发刷新；AppSubformRecords onChanged 回调；删除 recordHistoryMock 与 useRecordHistoryMock。验证：AppRecordHistoryDiffTest 8 + AppRecordHistoryRecorderTest 8 全部通过（修复 PARENT target 缺失、context 合并、JSON canonicalize 真实缺陷）；npm test -- recordHistory 4 项通过；npm run build 通过（修复 toggleExpand 中 next 变量作用域 TS 错误）；mvn test -pl flexmodel-engine core/codegen/graphql 通过（mysql-it 为既有 Agroal 连接池环境问题）；server 全量 520 项中 34 失败/1 错误均为已记录既有失败（旧入口 404、布局行为变更断言、Playwright 浏览器用例、SQLite busy），无历史相关失败。新增 docs/record-history.md 并在 Server README 加入口。限制：轻量日志允许漏记、不可恢复、事件键去重不替代业务幂等。"
+    },
+    {
+      "id": "feat-133",
+      "name": "Apps - 记录列表固定列与横向滚动",
+      "description": "主显字段与勾选列固定左侧，操作列固定右侧，字段较多时表内横向滚动，兼容固定表头及明暗主题。",
+      "status": "done",
+      "evidence": "追加修复：显式覆盖通用tr:hover td的半透明背景，避免悬停时内容透过固定列；移除固定列两侧阴影分割线。Apps build与浅色/夜间悬停不透明度、无阴影专项3项通过。RecordList按字段数设置最小表宽，勾选列48px与主显字段固定左侧、操作列120px固定右侧；表头层级、选中/悬停不透明背景与明暗主题同步，表内溢出才展示底部横向滚动条。Apps build、记录Playwright 10项通过，最终列宽及滚动条占位专项3项通过，检查浅色/夜间截图；全模块非clean compile与规定引擎测试通过。init.sh仍被运行中dev.jar文件锁阻塞，保留用户服务与原有暂存改动。"
+    },
+    {
+      "id": "feat-132",
+      "name": "Apps - 讨论行内回复与本人删除权限",
+      "description": "点击回复在对应评论下展开独立输入框；删除评论收进更多菜单，仅作者本人可删除，前后端统一约束。",
+      "status": "done",
+      "evidence": "零计数隐藏：收起入口仅总数大于零时显示数量，零条保留展开图标；Apps build与记录切换/零条隐藏专项通过。通知补齐：回复时通知具体目标作者（含二级回复和缺省replyToId），与提及去重、排除自己和停用回复对象；评论和通知Outbox同事务。真实后端通知闭环、2项既有权限测试、SSE即时推送/断线补发、浅色/夜间2项@选择提交回归、全模块非clean编译及引擎测试通过。收起数量提示：记录动态收起时，展开入口仅有评论时显示X条讨论（含回复），零条隐藏文字，首次进入读取总数，展开期间同步增删后的计数，记录切换隔离旧数据，空响应不影响抽屉；Apps build与7项记录Playwright通过，检查浅色/夜间截图。头像修复：按authorId读取缓存成员目录的avatar并传给UserAvatar，评论与回复均支持鉴权图片和姓名首字回退；Apps build与浅色/夜间2项回归通过，验证图片实际解码、Bearer请求及缺失/404回退。追加调整：去掉回复目标横条及取消按钮，改为输入框占位提示回复xxx的讨论，重复点击同一回复按钮收起，切换评论自动聚焦；Apps build与浅色/夜间2项专项回归通过。点击回复在目标评论下复用DiscussionComposer并聚焦，发送携带根parentId与具体replyToId，失败保留草稿；顶部新讨论保留独立草稿。删除入口收进本人评论更多菜单，复用确认框与级联提示；后端canDelete及DELETE仅允许作者本人，取消所有者/管理员特权。修正菜单浮层被抽屉遮挡及夜间删除文字对比度，补齐既有RecordAsideTab类型导入。全模块非clean compile、规定引擎测试、后端权限专项2项、Apps build与记录Playwright 6项通过；检查浅色/夜间行内回复和菜单截图，夜间样式修正后专项复测通过。init.sh仍被既有运行中dev.jar文件锁阻塞，未停止用户服务；保留原有暂存和未暂存改动，本次未混合提交。"
+    },
+    {
+      "id": "feat-131",
+      "name": "Apps - 多表 Excel 导入导出",
+      "description": "多 Sheet 模板、普通 Excel 映射、引用重映射、整包事务与幂等提交，以及记录列表导入导出交互。",
+      "status": "done",
+      "evidence": "实现多 Sheet Excel 模板/导出、普通文件映射、逐行校验、包内键与已有ID引用、UUID重映射、同表无环依赖排序、普通文本子表关联、同业务库事务批量写入与幂等凭据。暂存绑定应用/用户，30分钟TTL；导出使用串行化快照，支持筛选/勾选/多表/子表/引用补齐并去重。Apps接入五步向导、导出弹窗、鉴权multipart/Blob下载。全模块非clean compile、规定引擎测试通过；导入导出专项20项及共享记录12项后端测试通过，Apps build、39项unit与8项Playwright通过，检查浅色/夜间/390px截图。修正既有记录REST测试夹具以符合布局投影，保留断言。init.sh clean仍被运行中dev.jar锁阻塞，保留服务；native POI/XMLBeans未验证，仅验收JVM。文档docs/excel-transfers.md；Apps独立仓库提交a6f39d9。"
+    },
+    {
+      "id": "feat-130",
+      "name": "Apps UI - 刷新与进入应用时避免主色闪烁",
+      "description": "统一路由主题管理，首屏绘制前恢复按应用缓存的主色；首次无缓存时等待主色确定，移除布局与顶部栏重复重置默认色。",
+      "status": "done",
+      "evidence": "新增 AppTheme 统一按 /apps/:appId 路由管理根元素主色：useLayoutEffect 在绘制前应用按应用缓存的配色，无缓存时复用 AppLoading 中性全屏等待接口，失败退出等待；移除 AppLayout 异步设置/清理重置与 TopHeaderShell 挂载强制蓝色。应用列表、详情、创建、更新统一持久化主色，删除清理，存储写入失败仍有内存缓存；明暗模式在 React 首屏前恢复并用布局效果切换。读取 flexmodel-ui/DESIGN.md，复用既有语义 token 与主色色板，未新增配色。Apps npm run build、npx tsc --noEmit、36项unit、5项主题Playwright及diff --check通过，逐绘制帧验证浅色/夜间首次进入、接口延迟刷新、跨应用与返回管理页、存储失败与接口失败。全模块非clean compile与规定引擎测试通过；init.sh clean仍受现有dev.jar锁阻塞，保留运行服务。Apps UI提交02a7e02。"
+    },
+    {
+      "id": "feat-129",
+      "name": "Apps - 菜单授权运行时过滤",
+      "description": "GET /api/apps/{appId}/menus 按当前用户过滤菜单：所有者返回全部；空成员对所有应用用户可见；成员按用户、角色、组织（可含子组织）匹配，分组授权约束整棵子树。",
+      "status": "done",
+      "evidence": "AppMenuService.findMenus 注入 SessionContext 与 DirectoryService：非所有者且存在受限菜单时读取一次目录快照，按 USER/ROLE/ORGANIZATION 过滤并把组织 includeChildren 解析为父级链匹配；无成员菜单默认全员可见，组无可见子项时隐藏，所有者按 project.ownerId 无条件返回全部。AppMenuResourceTest 新增用户、角色、子组织、直属组织、分组子树与所有者用例，11项通过；mvn -pl flexmodel-server -am compile 通过。"
+    },
+    {
+      "id": "feat-128",
+      "name": "Apps UI - 引用字段输入搜索与记录选择弹窗",
+      "description": "新增/编辑引用字段使用可搜索输入框与右侧选取按钮，输入下拉表格选取、分页弹窗输入实时搜索及确认回填，并支持编辑回显与清空。",
+      "status": "done",
+      "evidence": "2026-10-29补充：引用表格名称字段底部不再附加展示ID，下拉候选和选择弹窗同步生效；弹窗移除搜索按钮及待提交关键词状态，输入自动250ms防抖搜索并回到第一页；有内容时显示输入框右侧清空搜索按钮，清空恢复全部记录并返回输入焦点；保留引用值清空。Apps构建/类型检查及diff --check通过，未运行测试用例。共享 ReferenceField 接入 AppRecordFormModal 与 AppRecordDrawer 的 REFERENCE 字段：输入框右侧选取按钮打开带搜索/重置、表格单选、分页和确定/取消的弹窗；输入250ms防抖展示最多10条候选表格，可打开弹窗查看更多；点击下拉记录直接回填ID，弹窗草稿选中后确认回填，取消保留原值；支持清空、方向键/Enter/Esc、加载/空态/失败重试、迟到响应隔离、按ID加载编辑显示名称与系统表单候选覆盖。取消单选引用首100条预加载，多选引用保留原有实现。读取 flexmodel-ui/DESIGN.md，复用 Apps 语义主题、Popover/BizDialog/Pagination。Apps npm run build（tsc -b + vite）及diff --check通过；全模块非clean编译通过。用户要求不要跑测试后未再执行测试用例；既有records断言/夹具同步但未运行。init.sh clean仍受运行中dev.jar文件锁阻塞；界面工具因无法确认Windows浏览器URL自动停止，未完成浏览器实测。Apps UI提交69ef7dc。"
+    },
+    {
+      "id": "feat-127",
+      "name": "Apps - 图标单一数据源、图标扩容与选择器分组搜索",
+      "description": "新增 src/data/appIcons.ts 作为应用与菜单图标唯一数据源，图标从 6/12 个扩充到 252 个并分 9 类；IconPicker 增加搜索与分组标签（标签行无背景），菜单图标同步共用；后端 iconName 改为 PascalCase 格式校验。",
+      "status": "done",
+      "evidence": "新增 flexmodel-apps-ui/src/data/appIcons.ts：252 个 Lucide 图标、9 个中文分组、派生 AppIconName、DEFAULT_APP_ICON 与 resolveAppIconName/resolveAppIcon；删除 mock.ts 的 appIconOptions/appIcons/navIconOptions/navIcons 与 services/apps.ts 的 AppIconName 联合类型，AppManagement/AppSettings/AppLauncher/AppTopHeader/appMenuNavigation/MenuEditorDialog/AppMenuManager 统一改用新数据源，未知图标名回落 Boxes 或显示无图标。IconPicker 弹窗顶部增加搜索框（sticky），图标按分组展示、分组标签为纯文字无背景，图标保持 44px 方块、每行 10 个、间距 6px 左对齐，分组标签与首列图标左边缘对齐，选中态 border-primary bg-primary/10 text-primary；搜索时展示扁平结果。后端 AppCreateRequest/AppUpdateRequest @Pattern 与 AppService/MenuService 校验改为 ^[A-Z][A-Za-z0-9]{0,63}$，MCP 描述与 docs/plans/app-tools-mcp.md 同步，apps-ui AGENTS.md 记录新增图标只改一处。验证：npm run build 通过（主包 2057.71 kB / gzip 647.57 kB）；npm test 36 项通过；mvn -pl flexmodel-server -am -DskipTests compile 通过；AppMenuResourceTest 10 项通过，AppResourceTest 12 项仅既有 testCreateAppWithExplicitProjectId 401 失败，新增 Rocket 图标与 sky 主色创建、非法 slug/非法图标 400 均通过；浏览器实测 252 个图标、9 个分组标签背景透明、6 列 44px 方块、搜索 rocket 命中 1 项且搜索态不显示分组、选中后触发器回填。"
+    },
+    {
+      "id": "feat-126",
+      "name": "Apps - 应用主色单一数据源与色板扩充",
+      "description": "将应用主色收敛到前端 src/theme/appPrimaryColors.ts 唯一数据源，删除 index.css 手写色块、mock 类型、services 重复联合类型与卡片按色类名表；可选配色由 6 种扩充到 18 种，后端改为 slug 格式校验。",
+      "status": "done",
+      "evidence": "新增 src/theme/appPrimaryColors.ts：18 种颜色的 HSL token、派生 AppPrimaryColor 类型、默认色兜底 getAppPrimaryColor、applyAppPrimaryColor 与幂等 installAppPrimaryColorStyles（模块加载时注入 [data-primary='x'] 与 .dark [data-primary='x'],.dark[data-primary='x'] 规则）。index.css 删除 12 段手写变量；mock.ts 删除类型与 appPrimaryColors；services/apps.ts 删除重复联合类型并在 normalizeApp 兜底；AppManagement 删除 appPrimaryStyles，卡片改用自身 data-primary + bg-primary/10 text-primary + hover:border-primary/60；AppSettings 只读展示与 AppLayout 属性设置改用数据源；amber 中文名改为「琥珀」，「橙色」让给新增 orange。后端 AppCreateRequest/AppUpdateRequest @Pattern 与 AppService.validatePrimaryColor 改为 ^[a-z][a-z0-9-]{0,31}$，MCP 描述与 docs/plans/app-tools-mcp.md 同步，apps-ui AGENTS.md 记录新增主色只改一处。验证：npm run build 通过；npm test 36 项通过；mvn -pl flexmodel-server -am -DskipTests compile 通过；AppResourceTest 12 项中仅既有 testCreateAppWithExplicitProjectId 401 失败（progress.md 已记录），新增自定义 slug 201 与非法 slug 400 通过；浏览器实测卡片/图标按各应用主色解析、夜间模式切换为 400 档变量、新建应用 18 个色板且选中高亮正常。"
+    },
+    {
+      "id": "feat-125",
+      "name": "Apps - 菜单授权配置",
+      "description": "菜单行增加与编辑、删除平级的授权操作，复用 DirectoryMemberPicker 多选；通过 PATCH /menus/{menuId} 局部更新 members，不新增独立接口，不接入运行时鉴权；菜单响应携带 project.ownerId。",
+      "status": "done",
+      "evidence": "一级、左侧菜单/分组、子菜单行授权操作改为气泡框，复用 DirectoryMemberPicker 多选用户/角色/组织；存在成员时盾牌图标使用主题主色标记。移除 PUT /menus/{menuId}/members，改为 PATCH /menus/{menuId} 局部更新 members，普通编辑、移动和排序保留配置；菜单响应每个节点携带 project.ownerId，配置界面不处理所有者。全模块非clean编译、AppMenuResourceTest 10项（含 PATCH 保存/清空/非法参数/未知字段、ownerId）、Apps build及36项unit、菜单授权E2E通过，覆盖多选、取消、失败重试、回填、清空及明暗截图。init.sh clean仍受运行中dev.jar文件锁阻塞，采用非clean验证。"
+    },
+    {
+      "id": "feat-124",
+      "name": "Apps - 数据权限配置与所有者字段",
+      "description": "仅保留两表权限配置、主子表单条件与字段开关、公共用户角色组织选择器及 owner_id 建模/默认赋值；撤回运行时权限过滤与访问拦截。",
+      "status": "done",
+      "evidence": "按最新范围撤回记录过滤/授权、事务与通用数据拦截、附件、GraphQL、实时和前端记录权限运行时改动；保留两表配置 CRUD、主子表 Drawer+Tabs、单条件和字段开关、公共 DirectoryMemberPicker 及 owner_id 字段/新增默认赋值。移除应用级启用接口与按钮，页面说明仅保存配置。全模块非 clean 编译、规定引擎测试、Apps UI build 与36项unit通过；后端条件3+配置/所有者REST4+记录6+工作台4共17项通过，含配置不影响CRUD。扩大回归中7项布局投影/系统鉴权失败与已有日志一致；init.sh 的 clean 被运行中 dev.jar 锁定，E2E按前次用户要求跳过。详见progress.md。"
+    },
+    {
+      "id": "feat-123",
+      "name": "Apps - 数据权限技术方案文档",
+      "description": "整理 owner_id 数据归属、两表授权模型、表单级控制明细、READ/WRITE/DELETE、动态主子关系与后端接入方案；本特性仅交付设计文档，不代表权限功能已实现。",
+      "status": "done",
+      "evidence": "新增 flexmodel-server/docs/data-permissions.md 并在服务端 README 链接：包含最终两表 FML、4 个 JSON 示例、owner 初始化、表单级控制、逐记录规则合并、子表关系、服务接入、迁移及验收矩阵。按最新要求补充公共 DirectoryMemberPicker、owner 中文统一为所有者、权限类放在 dev.flexmodel.apps。4 个 JSON 示例解析、6 个本地链接、两表结构和移除字段检查、最新要求核对、代码围栏和空白检查、feature JSON 与新 ID 唯一性、git diff --check 通过。仅文档，运行时功能未实现；init.sh 沙箱启动失败，沙箱外执行授权被拒绝，未运行构建/测试。既有重复 feat-108 未改动。"
+    },
+    {
+      "id": "feat-122",
+      "name": "默认头像对比度修复",
+      "description": "无头像时采用主题配对背景和文字色及细边框，提高姓名首字可读性。",
+      "status": "done",
+      "evidence": "UserAvatar 改用 bg-muted/text-foreground/border-border，保留图片加载逻辑；Apps UI build通过；Playwright实测浅色对比度15.45:1、暗色15.11:1，边框与首字渲染正常。"
+    },
+    {
+      "id": "feat-121",
+      "name": "流程进度用户头像",
+      "description": "人员目录返回头像，流程进度发起人和审批人使用共享图片头像组件。",
+      "status": "done",
+      "evidence": "DirectoryService 返回 avatar，审批成员缓存保留完整用户信息，进度侧栏发起人和审批人及实例抽屉时间线接入 UserAvatar。全模块非clean compile、规定引擎测试、Apps build、34项unit与diff --check通过；Playwright mock实际渲染验证发起人/审批人图片解码、Bearer鉴权、无头像首字回退及暗色/手机渲染。init.sh已知JAR锁仍在；保留前序未提交头像依赖改动。"
+    },
+    {
+      "id": "feat-120",
+      "name": "Apps 登录返回并展示用户头像",
+      "description": "认证响应包含 avatar，会话保留头像并在顶部组件鉴权加载，个人设置保存后同步更新。",
+      "status": "done",
+      "evidence": "全模块非clean Maven compile、规定引擎测试通过；AuthResourceTest 17项通过，新增 login/refresh/whoami 非空头像回归；Apps UI build、34项unit通过；Playwright mock登录验证头像图片实际解码、Bearer鉴权、刷新保留与无效图片文字回退；git diff --check通过。init.sh仍受运行中dev.jar文件锁阻塞。保留已有未提交个人设置改动，未混合提交。"
+    },
+    {
+      "id": "feat-119",
+      "name": "Apps UI - 个人设置接入后端",
+      "description": "个人设置页读取系统用户表单的姓名、邮箱、工作电话、头像与主部门，保存姓名/工作电话/头像；新增平台登录日志表并记录登录成功与失败，提供当前用户登录日志分页接口。",
+      "dependencies": [
+        "feat-118"
+      ],
+      "status": "done",
+      "evidence": "UserSettings 移除 currentUser/loginLogs mock，改为 GET/PUT /api/system/forms/f_user/records/{id}；f_user 新增 phone 字段并复用 avatar，保存 name/phone/avatar；头像上传默认项目 default Bucket 的 avatars/{userId}/ 路径，私有对象通过鉴权 Blob 预览。新增 f_login_log 模型（user_id/username/client_ip/user_agent/success/message/created_at）与 LoginLogRepository/Service/Response；AuthResource.login 记录成功和失败（含 IP、User-Agent），新增 GET /api/auth/login-logs 仅返回当前用户分页日志。验证：后端全模块 compile 通过；AuthResourceTest 16 项通过（新增登录日志查询、未认证 401）；真实服务实测登录日志返回成功与失败记录、f_user 读取/更新 phone 与 avatar、头像上传后重新加载可预览；清理测试手机号/头像与临时 Bucket；Apps UI npm run build 通过，npm test 34 项通过；未改页面样式。"
+    },
+    {
+      "id": "feat-118",
+      "name": "Apps UI - 文件中心接入存储能力",
+      "description": "文件页签展示项目默认桶根目录的共享文件，附件页签按 appId 前缀展示当前应用上传的附件；上传、新建目录、移动、删除、批量下载全部接入 Bucket 接口，并补充对象移动接口。",
+      "dependencies": [
+        "feat-113"
+      ],
+      "status": "done",
+      "evidence": "FilesDocs 移除 fileTree mock，改为按应用 projectId 读取默认 Bucket：文件页签列出桶根目录并过滤 appId 附件目录，附件页签以 appId/ 为前缀浏览表单目录，文件名去掉 uuid 前缀；上传按当前目录写对象并在附件页签保留 uuid_ 前缀。右侧箭头改为下拉菜单，新建目录走 PUT folder=true，移动走新增的 POST /buckets/{name}/move，删除走 DELETE object，批量下载按选中文件递归展开文件夹并逐个下载；文件/文件夹卡片右上角悬浮显示更多按钮（非模态避免悬浮循环弹出），下拉提供详情与删除；详情展示名称、类型、大小、修改时间和位置。附件页签只读，禁用上传、新建目录、移动与删除，卡片仅保留详情，批量下载保持可用。后端 StorageOperations 新增 moveFile，Local 使用 Files.move，S3 使用 copy+批量 delete，BucketService 校验空路径、相同路径、移入自身子目录、源不存在与目标同名冲突，BucketResource 暴露 POST /{bucketName}/move。验证：Apps UI tsc -b 与 npm run build 通过，npm test 34 项通过；真实后端实测文件/附件页签数据、上传、新建目录、移动、删除与批量下载（GET 200），操作后测试文件与目录已清理，产品附件保持原状；LocalStorageOperationsTest 16 项通过（新增文件/目录移动），BucketAttachmentResourceTest 3 项通过（新增 move 往返、相同路径与移入子目录 400）。原生全模块 compile（排除 maven-plugin）与引擎测试通过，未改 engine。"
+    },
+    {
+      "id": "feat-117",
+      "name": "Apps UI - 详情流程进度节点预测",
+      "description": "在详情流程进度面板中基于部署快照、当前审批节点与实例变量预测后续线性节点；条件无法判定时展示分支候选，统一用灰色时间线呈现。",
+      "dependencies": [
+        "feat-116"
+      ],
+      "status": "done",
+      "evidence": "新增 ApprovalForecast 从 flow_deploy_id 的部署快照按当前 WAITING 节点向后推演，条件用 ApprovalRecordActions.matches 与实例变量求值，引用未产出变量的网关返回候选分支；预测仅保留审批、子流程与结束节点，跳过通知和数据类自动节点。实例详情新增 upcoming 与 ending 字段：流程结束时返回实际结束节点，推演失败降级为空。预测节点直接并入 ApprovalTimeline 末尾，沿用原时间线结构并以灰阶及“预计/待定”徽标区分，分支候选列在网关条目下；结束时按实例状态色展示结束节点；实例抽屉签核进度同步复用。验证：ApprovalForecastTest 5 项通过（自动节点跳过、条件命中、候选分支、结束节点、未知起点）；Apps UI tsc -b 与 npm run build 通过；npm test 34 项通过；Playwright + mock 接口实测明暗两种主题面板渲染，临时脚本与截图已移除。未提交，保留仓库既有未提交改动。"
+    },
+    {
+      "id": "feat-116",
+      "name": "Apps UI - 详情流程进度面板重构",
+      "description": "重构详情流程进度的状态概览、纵向节点时间线及审批人和意见层级，突出当前节点，适配窄屏并保留审批操作。",
+      "dependencies": [
+        "feat-104",
+        "feat-105"
+      ],
+      "status": "done",
+      "evidence": "已检查现有面板及共享抽屉布局，原生全模块编译通过；标准init.sh clean仍受现有dev.jar锁阻塞。"
+    },
+    {
+      "id": "feat-115",
+      "name": "Apps UI - 列表附件气泡框",
+      "description": "列表附件点击后使用贴近单元格的气泡框展示全部文件，保留预览下载，支持外部点击和Esc关闭，主列表与子表一致。",
+      "dependencies": [
+        "feat-114"
+      ],
+      "status": "done",
+      "evidence": "AttachmentCell改为Popover，贴近单元格打开，宽度360px且受视口约束，列表内容可内滚动；主列表与子表一致，支持外部点击、关闭按钮、Esc和焦点恢复。列表预览经onPreview回调先收起气泡框，再打开独立预览窗，下载保留气泡框，不误开记录。验证：Apps UI build通过，附件E2E 7项通过，覆盖气泡定位、背景可交互、键盘、各关闭入口、预览焦点返回、下载、抽屉层级与375px边界及缩放后重定位；明暗和手机截图已检查。原生全模块Maven compile、规定引擎测试与git diff --check通过，未改后端或engine。实现已在Apps UI提交54f9cef，响应式测试等待提交636f29b。init.sh clean仍受现有dev.jar文件锁阻塞，保留服务完成非clean等价验证。"
+    },
+    {
+      "id": "feat-114",
+      "name": "Apps UI - 列表附件紧凑展示",
+      "description": "主记录和子表列表将附件URL改为缩略图/文件图标、文件名及数量，点击查看全部附件并预览下载，保持紧凑行高。",
+      "dependencies": [
+        "feat-113"
+      ],
+      "status": "done",
+      "evidence": "新增AttachmentCell供RecordList与AppSubformRecords复用，FILE/IMAGE/AVATAR以首个文件缩略图或图标、解码后的原文件名及+剩余数量展示，长文件名截断、空值为-；点击/键盘进入完整附件列表，复用鉴权预览下载，阻止事件冒泡误开记录。验证：Apps UI build通过、附件E2E 7项（新增2项列表/子表/键盘/行高/长名/移动端/冒泡验证）、记录回归4项通过，明暗及375px截图已检查，四文件行高≤60px；原生全模块Maven compile、规定引擎测试、git diff --check通过。Apps UI提交e2d9dec；无后端或engine改动。init.sh clean仍受现有dev.jar锁阻塞，保留服务完成非clean等价验证。"
+    },
+    {
+      "id": "feat-113",
+      "name": "Apps - 附件字段上传与预览",
+      "description": "附件字段接入BucketResource，按appId/formId/file上传并获取URL；支持多文件逗号分隔保存、编辑回填、只读预览和下载。",
+      "dependencies": [
+        "feat-109"
+      ],
+      "status": "done",
+      "evidence": "FILE/IMAGE/AVATAR共用上传与附件列表，主表/子表新建编辑及只读详情支持图片/PDF/音视频预览和鉴权下载。使用应用projectId的default桶，缺失自动创建PRIVATE；原始字节PUT到appId/formId/uuid_文件名，BucketResource返回url/path/name，多URL逗号分隔，中文与逗号文件名编码，同名不覆盖。上传中禁止保存/发起流程，支持部分失败重试、移除引用、关闭中止及迟到响应隔离。附件字段新建/编辑容量扩到4000。验证：Apps UI build、34项unit、5项附件E2E、4项记录及5项字段回归通过；明暗与手机截图已检查；BucketAttachmentResourceTest 2项通过，含真实上传下载鉴权、编码文件名、零字节、长URL列表记录保存读回；原生全模块compile及规定引擎测试、git diff --check通过。Apps UI提交009ad5f；未改engine。init.sh clean仍受运行中dev.jar锁阻塞，保留服务完成非clean验证。旧严格长度数据库字段需保存配置扩容，未批量迁移；未引用对象暂不自动回收。"
+    },
+    {
+      "id": "feat-112",
+      "name": "Apps UI - 表单管理四列紧凑布局",
+      "description": "表单管理宽屏一行展示四张卡片，缩小卡片间距与内边距，窄屏保持自适应并保留返回导航。",
+      "dependencies": [
+        "feat-111"
+      ],
+      "status": "done",
+      "evidence": "FormManagementContent 网格改为 xl 四列、sm 两列、手机单列；卡片间距与内边距16→12px，缩小图标、描述行高和底部留白，内置徽标禁止挤压换行。验证：npm run build通过，test:settings 7项通过；Playwright用8张卡片实测1440/1280px四列、960/768px两列、375px单列，换行正确、无页面横向或外层溢出、返回按钮可见、无浏览器异常；明暗及手机截图已检查。原生全模块Maven编译、规定引擎测试、git diff --check通过。Apps UI提交f2f0bb9；未改后端及engine。init.sh clean仍受运行中dev.jar文件锁阻塞，保留现有服务并完成非clean等价验证。"
+    },
+    {
+      "id": "feat-111",
+      "name": "Apps UI - 表单设置页面视觉与返回导航统一",
+      "description": "统一应用设置表单列表及基本信息、字段管理、设计器的页头、导航与内容样式，补齐加载/异常状态和直达页面的返回入口，适配窄屏和夜间模式。",
+      "dependencies": [
+        "feat-110"
+      ],
+      "status": "done",
+      "evidence": "新增 SettingsPageHeader 与 FormSettingsNav，统一应用设置表单列表、基本信息、字段管理、设计器页头和操作区；列表卡片统一并保留单一新建入口，基本信息使用信息分组及独立删除区，字段列表统一标识与轻量操作。桌面使用一致的侧栏卡片，窄屏使用横向导航，设计器窄屏画布和字段面板可内滚动。各页均有可见返回按钮，直接访问、加载中、接口失败也可返回表单列表；列表返回应用管理，系统设计器返回对应管理页。验证：npm run build通过、npm test 32项、test:settings 7项、test:fields 5项、test:records 4项通过；375/768/960px无页面横向或外层滚动，明暗与手机截图已检查；原生全模块Maven编译与规定引擎测试通过；git diff --check通过。Apps UI提交66eb414。init.sh仍受已有运行中dev.jar文件锁阻塞，已完成非clean等价验证；未修改后端及engine。"
+    },
+    {
+      "id": "feat-110",
+      "name": "Apps UI - 布局字段编辑接入类型属性",
+      "description": "表单设计器布局中的修改字段入口支持完整类型属性，保存后同步字段定义并保留未保存布局；内置字段只调整布局。",
+      "dependencies": [
+        "feat-109"
+      ],
+      "status": "done",
+      "evidence": "FormDesigner 布局修改字段复用 FieldConfigEditor，回填并保存必填、默认值、校验、选项和显示格式，区分字段名称与布局显示名称。字段更新后同步父子组件字段定义并携带当前布局草稿，保存失败保留草稿可重试；未改变字段属性及内置字段不发字段更新请求，内置字段只编辑布局。补齐 AppFormService 到 SystemFormService 的扩展字段更新分派，保留核心字段保护，不改 engine。验证：Apps UI build通过、npm test 32项、test:fields 5项、test:records 4项通过；已检查明暗主题截图；后端定向10项通过；原生全模块compile与规定引擎测试通过；git diff --check通过。Apps UI提交c82f77c。init.sh仍受运行中dev.jar锁阻塞，保留服务并执行非clean等价验证。"
+    },
+    {
+      "id": "feat-109",
+      "name": "Apps - 字段类型属性完善",
+      "description": "参考 REBUILD 字段文档，在应用层补齐默认值、读写限制、文本常用值和校验、数字精度与格式、日期格式和选项显示属性，接通配置、持久化、记录校验与展示，不修改 engine。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "AppFieldConfig 存入应用表单与系统扩展字段 metadata；创建、批量建表、修改和响应保留属性，不修改 flexmodel-engine。补齐默认值、创建/修改限制、文本常用值/最大长度/Java正则、负数限制/小数位/千分位/前后缀、当前日期默认值/日期格式、选项编辑与默认项/显示样式；多选按数组、布尔按是/否/空处理，记录API强制验证，列表与详情共用格式。字段管理和设计器共用编辑器，MCP 创建字段说明同步更新。验证：全模块原生 Maven 编译、规定引擎测试通过；AppFieldRulesTest 4 + AppRecordServiceTest 6 + 新增字段属性REST闭环1 + SystemFormResourceTest 5 共16项通过（含系统扩展字段默认值与禁止修改）；Apps UI build通过、npm test 32项、test:records 4项、test:fields 2项通过，明暗截图已检查；git diff --check通过。Apps UI提交9a32a5c。扩大后端回归37项有7项既有布局投影/系统鉴权失败，未扩展修复；init.sh clean仍被运行中dev.jar锁定，保留服务并完成非clean等价验证。详见progress.md与flexmodel-server/docs/field-properties.md。"
+    },
+    {
+      "id": "feat-108",
+      "name": "Apps UI - 多层抽屉递减宽度",
+      "description": "同时打开多个右侧 Drawer 时，上层宽度小于下层，保留下层可见边缘；支持兄弟与嵌套抽屉、视口缩放及关闭后重开。",
+      "dependencies": [
+        "feat-105"
+      ],
+      "status": "done",
+      "evidence": "DrawerContent 按打开后的 Portal 顺序追踪右侧抽屉，以实际下层宽度限制上层，桌面至少留 3rem（48px）、窄屏至少留 1rem（16px），保留更窄的自定义宽度；ResizeObserver 跟踪下层尺寸，卸载时清理叠层；左侧 MobileNavDrawer 不参与。验证：npm run build 通过；npm test 27 项通过；npm run test:records 4 项通过；Playwright 浏览器验证兄弟/嵌套三层抽屉、自定义宽度、窗口缩放、Escape 逐层关闭及重开，无浏览器异常：1440px 视口宽度为 1184/1136/1088px，375px 视口为 375/359/343px，自定义窄抽屉为 1184/720/672px；明暗主题截图 artifacts/drawer-stack-{desktop,dark,mobile}.png。原生 Maven 全模块编译和引擎测试通过。init.sh 清理阶段仍被运行中后端锁定的 flexmodel-server-dev.jar 阻塞，未停止现有服务。"
+    },
+    {
       "id": "feat-001",
       "name": "Data - 动态建模与多数据源支持",
       "description": "运行时动态建模，支持 SQLite/MySQL/PostgreSQL/Oracle/DB2/MongoDB 等 10+ 数据库的数据访问层",
@@ -12,7 +587,9 @@
       "id": "feat-002",
       "name": "Auth - RBAC 权限与多租户",
       "description": "基于角色的访问控制、多租户隔离、JWT 安全验证",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/auth 特性包已实现"
     },
@@ -20,7 +597,9 @@
       "id": "feat-003",
       "name": "Flow - 可视化流程编排",
       "description": "流程定义、实例管理、执行引擎、插件系统、校验，低代码后端扩展",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/flow 特性包已实现，FlowService 已按职责拆分为三个服务类"
     },
@@ -28,7 +607,9 @@
       "id": "feat-004",
       "name": "API - API 管理与 GraphQL",
       "description": "API 定义、运行时执行、文档生成、GraphQL 支持",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/api 和 flexmodel-engine/graphql 模块已实现"
     },
@@ -36,7 +617,9 @@
       "id": "feat-005",
       "name": "Job - 分布式任务调度",
       "description": "内置触发器、作业执行的任务调度系统",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/scheduling 特性包已实现；TriggerResourceTest e2e 用例已完善，通过注入的 Scheduler 直接校验 Quartz JobDetail/Trigger 的创建/移除/状态（create/update/patch/delete），16 个用例全部通过 (mvn -pl flexmodel-server -am test -Dtest=TriggerResourceTest)。附带修复 TriggerService.create 对 state=false 的 SCHEDULED 触发器不再误注册 Quartz 作业。"
     },
@@ -54,7 +637,9 @@
       "id": "feat-007",
       "name": "MCP Server - AI 工具集成",
       "description": "基于 Quarkus MCP Server 扩展实现 MCP 协议，通过 @Tool 注解暴露 P0 核心工具（Project/Modeling/Data），支持 AI 客户端直接管理项目、建模和数据",
-      "dependencies": ["feat-001"],
+      "dependencies": [
+        "feat-001"
+      ],
       "status": "done",
       "evidence": "flexmodel-server/mcp 特性包已实现，15 个 MCP Tools（ProjectTools/ModelingTools/DataTools）已通过编译验证"
     },
@@ -62,7 +647,11 @@
       "id": "feat-008",
       "name": "前端 UI 完善",
       "description": "基于 React + Ant Design v6 的前端界面持续优化和功能完善",
-      "dependencies": ["feat-002", "feat-003", "feat-004"],
+      "dependencies": [
+        "feat-002",
+        "feat-003",
+        "feat-004"
+      ],
       "status": "in-progress",
       "evidence": "flexmodel-ui 模块已有基础实现，持续迭代中。2026-08-31 移除 OpenTelemetry 依赖与运行时，改用轻量 trace 上下文；日志按功能归属迁移到后端 feature 包与 UI 路由（API/数据/边缘函数/任务调度）。同日移除前端链路追踪页面、API、路由和跳转，仅保留日志 traceId 元数据。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；ApiLogResourceTest + TriggerResourceTest 18 tests 通过；npx tsc --noEmit 通过。2026-09-08 清理 APILog/AuditLog/Functions/JobExecutionLogList 中未使用导入与变量，flexmodel-ui npm run build 通过；全模块 Maven 编译与 flexmodel-engine 测试通过。"
     },
@@ -81,7 +670,9 @@
       "id": "feat-009",
       "name": "文档站建设",
       "description": "基于 Docusaurus 的文档站内容完善，包含 API 文档和教程",
-      "dependencies": ["feat-004"],
+      "dependencies": [
+        "feat-004"
+      ],
       "status": "in-progress",
       "evidence": "flexmodel-website 模块已有基础结构，docs/api 和 docs/tutorial 目录已有内容"
     },
@@ -89,19 +680,32 @@
       "id": "feat-010",
       "name": "Functions - 边缘函数 (Flexmodel Functions)",
       "description": "对标 Supabase Functions 的边缘函数能力。Deno Functions Runtime (Hono.js) + Worker 隔离执行，file:// URL 加载 + 原生相对 import。Java 后端简化 CRUD (ACTIVE/FAILED)，项目级资源无分支维度。多文件源文件直接存储 JSON，模板系统支持快速创建。",
-      "dependencies": ["feat-001", "feat-002"],
+      "dependencies": [
+        "feat-001",
+        "feat-002"
+      ],
       "status": "in-progress",
       "evidence": "重构完成: 数据模型简化 (去除 f_function_version 表/branch字段/TriggerType.HTTP)，Java 后端简化 (14 files — 删除4个版本/内部资源文件，重写Service/Resource/Invoker/DTO)，Deno Functions Runtime 重写 (file:// 部署模式替代 lazy load)，前端重写 (Supabase-style 多文件编辑器+模板选择+简化API)。Java 424 files + TypeScript 0 errors 编译通过。待: 端到端集成测试 + Deno 运行时验证。"
     },
     {
       "id": "feat-011",
-      "name": "Flow - 生命周期事件（本地 EventBus + 可选 RabbitMQ 桥接）",
-      "description": "在 flow 核心关键生命周期点发布 11 种强类型本地事件（FlowCreated/Updated/Deployed/Deleted、FlowInstanceStarted/Completed/Failed/Terminated、UserTaskSuspended/Committed/RollbackSuspended），经 Vert.x EventBus 广播；新增可选 RabbitMQ 桥接 Bean，默认关闭、未配置不连 broker，本地事件照常发布。核心与 RabbitMQ 解耦，本地事件可被多个内部订阅者复用。",
+      "name": "Flow - 生命周期事件（本地 EventBus）",
+      "description": "在 flow 核心关键生命周期点发布 11 种强类型本地事件（FlowCreated/Updated/Deployed/Deleted、FlowInstanceStarted/Completed/Failed/Terminated、UserTaskSuspended/Committed/RollbackSuspended），经 Vert.x EventBus 广播，本地事件可被多个内部订阅者复用。",
       "dependencies": [
         "feat-003"
       ],
       "status": "done",
-      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。【重构】合并 data-events-out 至 events-out：新增 dev.flexmodel.common.FlexmodelEvent 标记接口，FlowEvent 与 DataChangeEvent 实现之，两个桥接统一注入 @Channel(\"events-out\") MutinyEmitter<FlexmodelEvent>，删除 data-events-out 通道配置。消费端按 routing key 区分（data.* / flow.*），零改动。验证：服务模块编译通过。"
+      "evidence": "新增 dev.flexmodel.flow.event 包：FlowEvent 基类 + 11 个具体事件 + FlowEventTypes 常量；FlowEventPublisher 本地发布；FlowEventRabbitmqBridge（Instance<MutinyEmitter> 延迟注入，转发由 SmallRye 通道 mp.messaging.outgoing.events-out.enabled 单一控制，默认 false 注入 no-op emitter 不连 broker）。埋点 DefinitionProcessor/FlowExecutor/RuntimeProcessor.terminateProcess/UserTaskExecutor。application.properties 通道默认关闭+devservices=false。验证：mvn clean compile 通过；FlowEventPublisherTest(2)/FlowEventRabbitmqBridgeTest(2) 通过；DefinitionProcessorTest(4)/RuntimeProcessorTest(17) 回归通过。【重构】合并 data-events-out 至 events-out：新增 dev.flexmodel.common.FlexmodelEvent 标记接口，FlowEvent 与 DataChangeEvent 实现之，两个桥接统一注入 @Channel(\"events-out\") MutinyEmitter<FlexmodelEvent>，删除 data-events-out 通道配置。消费端按 routing key 区分（data.* / flow.*），零改动。验证：服务模块编译通过。【2026-10-30】RabbitMQ 桥接已移除，见 feat-137。"
+    },
+    {
+      "id": "feat-137",
+      "name": "移除 MQ（AMQP/RabbitMQ）功能",
+      "description": "按用户要求彻底移除 AMQP 相关功能：删除 Flow 生命周期事件 RabbitMQ 桥接、数据变更事件 RabbitMQ 监听器、通知多实例 RabbitMQ fanout 唤醒及事件载荷类型；移除 quarkus-messaging-rabbitmq 依赖、相关配置、测试与部署编排；通知实时分发改为纯进程内唤醒。",
+      "dependencies": [
+        "feat-011"
+      ],
+      "status": "done",
+      "evidence": "删除 FlowEventRabbitmqBridge/RealtimeRabbitmqListener/DataChangeEvent/FlexmodelEvent；EngineConfig 取消监听器注册；FlowEvent 移除 rabbitmqRoutingKey 与 FlexmodelEvent 实现；FlexmodelConfig 删除 events.rabbitmq 配置；FlexmodelApplication 删除启动日志；NotificationRelay 仅保留本地 wake 并发布事件；application.properties/application-dev.properties 删除 smallrye-rabbitmq/events-out 配置；pom 删除 quarkus-messaging-rabbitmq 与 testcontainers:rabbitmq（保留 testcontainers 核心供 ServerSessionsTest 可选 MySQL 验证）。删除 FlowEventRabbitmqBridgeTest/E2ETest/RabbitMqTestResource，NotificationRelayTest 改为本地唤醒与只发布一次，测试 profile 移除 quarkus.rabbitmq.devservices；docker-compose 删除 rabbitmq 服务/环境变量/依赖/文档，更新 notifications/approvals/field-properties 与 website realtime/flow 文档及架构文案。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过（clean 被运行中 dev.jar 锁定）；FlowEventPublisherTest、NotificationRelayTest、AppRecordDiscussionNotificationTest 通过；flexmodel-core 90 tests 通过。存量 deploy/rabbitmq/data 未删除。"
     },
     {
       "id": "feat-015",
@@ -133,6 +737,1013 @@
       ],
       "status": "done",
       "evidence": "新增 RelationStrategy/FieldReference/RelationFilterSupport；ModelRefField 保存 filter 与策略；FML 注解支持对象字面量，filter 路径与查询/GraphQL where 语法对齐：目标字段使用 关联字段.字段，当前表字段在 _field 中使用裸路径；SqlStatementBuilder 支持 key+filter 与 condition-only join；MongoStatementBuilder 支持 $lookup pipeline/let；BaseService 嵌套查询与 LazyLoadInterceptor 支持当前表字段引用解析。UI 建模表单新增 strategy 显式选择与 filter JSON 编辑：FOREIGN_KEY 必填 localField/foreignField 且 filter 可选；CONDITION 必填 filter，隐藏并清理 localField/foreignField/cascadeDelete；提交前校验 JSON 对象并转换为结构化 filter，字段列表展示策略与 filter。策略值已统一为 FOREIGN_KEY/CONDITION，并同步后端枚举、解析、测试、UI、方案文档与 flexmodel-website 的 records/modeling 教程。2026-09-24 hardening 已修复 Mongo 手动 join filter 语义、普通查询 _field、源字段 between、FOREIGN_KEY+filter 懒加载丢失、UI filter 透传、null 源值、模型 filter 与调用方 filter 叠加、共享 Query 修改、集合内 _field、typed scalar、JSON 字符串与 FML round-trip、condition 谓词校验和单数多条错误；FML filter 支持同一对象内多个顶层条件，语义等价于 _and。GraphQL 关系 resolver 已改为 inner join，复数关系无匹配返回 []、多条匹配返回多条，不再生成全 null 占位记录。验证：mvn -pl flexmodel-engine/flexmodel-core test -Dtest=RelationFilterTest,ASTNodeConverterTest 通过（24 tests）；mvn test -q -pl flexmodel-engine 通过；mvn test -q -pl flexmodel-engine/flexmodel-graphql -Dtest=GraphQLProviderTest#relationWithNoRowsReturnsEmptyList 通过；mvn compile -q -pl flexmodel-server 通过且 dev_test.fml 解析成功；mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；flexmodel-ui 针对性 eslint、npx tsc --noEmit --pretty false 与 npm run build 通过；flexmodel-website npm run build 通过；根仓库与两个嵌套仓库 git diff --check 通过。bash ./init.sh 在 WSL JavaCC 生成文件读取处失败，clean 曾被运行中 Quarkus dev 锁定 target jar，已用原生 Maven 等价验证。遗留：引用当前表字段的 CONDITION expand 仍逐父行查询，GraphQL relation filter 的跨数据库全量集成与完整 schema 校验待后续。"
+    },
+    {
+      "id": "feat-018",
+      "name": "Enum - @code 落库编码与 @comment 元素注释",
+      "description": "FML 枚举元素支持可选的 @code（落库编码）与 @comment（展示注释）：API/GraphQL/UI 层使用元素名，TypeHandler 在 SQL 写入/读取时自动完成 name↔code 双向翻译；codegen 将 @comment 写入生成枚举常量的 Javadoc。两者完全可选，未声明时行为与旧版一致。",
+      "dependencies": [
+        "feat-001"
+      ],
+      "status": "done",
+      "evidence": "ModelParser.jj 新增枚举元素级注解文法（PENDING @code(1) @comment(\"待支付\")，整数编码以 Long 保留字面量类型）；EnumDefinition 元素结构化为 EnumElement{name, code, comment}，当前 getElements() 直接返回结构化 EnumElement[]，JSON 仅序列化结构化 elements；toSchemaEnum 校验 code 全量声明/无重复/仅元素级可用，fromSchemaEnum round-trip 保留编码字面量类型（整数不加引号）；EnumTypeHandler/EnumSqlTypeHandler 经 ModelRegistry 解析枚举定义，实现 name→code 写入翻译与 code→name 读取翻译（含 multiple、Enum 实例归一化、未知值抛错、存量名字数据读取回退），SqlContext/MongoContext 完成接线；EnumGenerator 将 @comment 输出为枚举常量 Javadoc（防 */ 注入），无注释时保持原有紧凑格式零变更。验证：flexmodel-core 定向测试（FmlParserTest/ASTNodeConverterTest/EnumTypeHandlerTest/JsonSerializeTest）通过；core+codegen 定向测试（EnumGeneratorTest/GeneratorTest/GenerationToolTest）通过；mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；core/codegen/graphql 三个引擎子模块 mvn test 全部通过。遗留：查询条件（where/ComparisonExp）中的枚举值暂未做 name→code 翻译；Mongo 读取结果暂未反向翻译（写入已翻译）；MCP create_enum_model 的编码编辑与 DDL 按编码类型（TINYINT/INT）落列待后续。2026-09-28 前端跟进：EnumForm 逐元素编辑名称/@code/@comment（均可选，编码全量或全空、名称/编码唯一校验；编辑态读取结构化 elements；提交输出结构化 elements）；ModelForm 创建入口复用 enumPayload 构建器；FieldInput 枚举下拉以 @comment 作为展示标签（value 仍为元素名）；zh/en 文案补齐。验证：flexmodel-ui npx tsc --noEmit、定向 eslint、npm run build 通过；flexmodel-ui 提交 7f776ff。2026-09-28 dev_test 接入：UserGender 元素补充 @comment（暂不加 @code，避免关联 filter 的既有枚举条件翻译遗留问题）；user_interest 元素补充 @code(1-4) 与 @comment，种子数据按元素名写入并由 TypeHandler 翻译落库；mvn test -pl flexmodel-server -am -Dtest=RecordResourceTest \"-Dsurefire.failIfNoSpecifiedTests=false\" 通过（5 tests），测试启动覆盖 dev_test.fml 应用与 Student 种子记录写入。2026-09-28 前端布局优化：EnumForm 编辑态限制 760px 内容宽度，名称/注释双列展示；元素区改为枚举元素卡片，统一名称/编码/注释/操作 Grid 布局，编码列固定宽度，合并上下添加为单个添加元素操作；查看态改为只读 Descriptions + Table。验证：npx tsc --noEmit、定向 eslint、npm run build 通过；flexmodel-ui 提交 498a789。2026-09-28 接口描述按钮：EnumForm 查看态基础信息区右上角新增接口描述按钮，存在 model.fml 时显示，Popover 展示并支持复制 FML，交互与 EntityView 对齐；Enum 类型补充可选 fml 字段。验证：npx tsc --noEmit、定向 eslint、npm run build 通过；flexmodel-ui 提交 2385c10。2026-09-28 按用户反馈将入口改为纯代码图标按钮，保留 aria-label 与 Popover 内容；验证：npx tsc --noEmit、定向 eslint、npm run build 通过；flexmodel-ui 提交 211df06。2026-09-28 契约调整：结构化枚举元素统一为 elements，不再输出 elementDefinitions，也不保留旧字符串 elements/旧 elementDefinitions 输入兼容；EnumDefinition 与调用方统一使用 EnumElement[]，UI 类型/payload/字段下拉同步使用结构化 elements。验证：JsonSerializeTest、engine 全量测试、全模块 compile、RecordResourceTest、UI tsc/eslint/build 通过；flexmodel-ui 提交 d5d70aa。"
+    },
+    {
+      "id": "feat-019",
+      "name": "Apps UI - 登录接口接入",
+      "description": "将 flexmodel-apps-ui 的登录页接入 Flexmodel 认证后端，使用 AuthResource 登录接口完成真实凭据校验、会话存储、受保护路由与退出登录。",
+      "dependencies": [
+        "feat-002"
+      ],
+      "status": "done",
+      "evidence": "新增 flexmodel-apps-ui/src/services/auth.ts：调用 POST /api/auth/login，解析 token/user/permissions 响应，按“记住登录”写入 localStorage 或 sessionStorage，并提供会话读取与清理；登录页默认 admin/admin123，展示登录中/错误状态并成功后跳转来源页面；Vite 开发代理将 /api 转发到 http://localhost:8080；主路由增加 RequireAuth 守卫，未登录访问业务页面跳转 /login；TopHeaderShell 展示后端返回用户并退出时清理会话。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；真实服务 POST http://localhost:8080/api/auth/login 返回 Admin/300000/1 权限；Vite 代理 POST http://localhost:5181/api/auth/login 返回同样结果；Playwright 浏览器验证正确凭据进入 #/dashboard/home 且头部显示 Admin，错误凭据显示 Wrong username or password；错误密码接口返回 401 与 message。./init.sh 的 clean 阶段因运行中 flexmodel-server-dev.jar 被锁定而失败，已用非 clean 全模块 compile 等价验证，停止服务后可恢复标准 init.sh。"
+    },
+    {
+      "id": "feat-020",
+      "name": "Apps Backend - 应用管理基础 CRUD",
+      "description": "在 flexmodel-server 的 dev.flexmodel.apps 包实现应用管理后端，应用与项目一一对齐，应用 ID 等于项目 ID，应用展示配置写入项目 metadata 的 app 节点。",
+      "dependencies": [
+        "feat-002"
+      ],
+      "status": "done",
+      "evidence": "新增 AppResource/AppService/AppCreateRequest/AppUpdateRequest/AppResponse，并扩展 package-info 说明应用与项目一一对齐。应用列表复用 ProjectService.findTopLevelProjects，仅暴露顶级且启用的项目，AppResponse 新增 owner 字段并来自项目 ownerId；创建应用时未传 projectId 则自动生成唯一合法项目 ID，创建后复用 ProjectService.createProject 初始化 Schema、分支、GraphQL 和 Pages；更新应用时只合并 metadata.app 并保留 logSettings 等其他 metadata 节点；删除应用复用 ProjectService.deleteProject 完成项目、分支、Schema、Pages、GraphQL 和调度清理。验证：mvn test -pl flexmodel-server -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests，0 failures，含应用列表与详情 owner 字段断言）；mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；./init.sh 通过（全模块编译与引擎测试）。"
+    },
+    {
+      "id": "feat-021",
+      "name": "Apps UI - 应用管理接口接入",
+      "description": "将 flexmodel-apps-ui 的应用管理 CRUD 从本地 mock 切换为 /api/apps 真实接口。",
+      "dependencies": [
+        "feat-002",
+        "feat-020"
+      ],
+      "status": "done",
+      "evidence": "新增 flexmodel-apps-ui/src/services/apps.ts：封装 GET /api/apps、GET /api/apps/{appId}、POST /api/apps、PUT /api/apps/{appId}、DELETE /api/apps/{appId}，并复用认证 token 与统一响应错误；createdAt / updatedAt 统一格式化为 yyyy-MM-dd HH:mm:ss；AppManagement 改为异步加载列表，创建/更新成功后刷新列表，删除成功后刷新并展示加载、提交、失败状态，大屏列表一行四列，卡片以“所有者：owner”替代“业务对象 n 个”，并按应用自身 primaryColor 渲染图标底色、文字色和悬停边框；AppSettings 改为异步加载应用详情，保存后同步后端返回值，删除成功后返回应用管理；AppForm/AppSettings 表单保留现有图标与主色交互。用户界面概念统一为“表单”，设置导航和页面标题显示为“表单管理”，原“业务对象/实体/数据表”文案已替换，底层接口与实现仍保留实体语义。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-022",
+      "name": "Apps - 应用菜单管理",
+      "description": "在 flexmodel-server 的 dev.flexmodel.apps 包实现应用菜单后端，并以现有 MenuEditorDialog 交互为准接入真实菜单接口；应用页空菜单时弹窗保持为空，一级菜单创建为 GROUP。",
+      "dependencies": [
+        "feat-002",
+        "feat-020",
+        "feat-021"
+      ],
+      "status": "done",
+      "evidence": "新增 AppMenuResource/AppMenuService 与菜单 DTO，菜单保存到项目 metadata.app.menus，提供 GET /apps/{appId}/menus、GET /apps/{appId}/menus/targets、POST /apps/{appId}/menus、PUT /apps/{appId}/menus/{menuId}、DELETE /apps/{appId}/menus/{menuId}、PUT /apps/{appId}/menus/order；ITEM 强制选择 BUILTIN 或 ENTITY 目标并自动生成 /apps/{appId}/{menuId}，GROUP 支持根级与嵌套分组以匹配原始左侧分组/分组内菜单交互，排序递归覆盖全部分组，ITEM 支持在分组内外跨层级拖拽并更新父级。现有 MenuEditorDialog 保持原 UI 与交互：打开时调用后端菜单列表，空数据不再显示 mock；新增一级菜单提交 type=GROUP；左侧菜单、分组、分组内菜单的增删改、图标与关联项均调用真实接口；关联项来自 /menus/targets，ENTITY 分组在界面中显示为“表单管理”；AppHome 与 AppLayout 共用该弹窗，应用页顶部和左侧导航从后端菜单渲染。内置页面关联已打通：BUILTIN 目标选项为工作台、文件、审批中心，保存后生成 /apps/{appId}/{menuId}，点击菜单进入 AppMenuPage 并渲染对应的 Dashboard、文件或审批中心页面；动态、通讯录、通知不再出现在关联项下拉中，关联项下拉也不提供“未关联”选项，未选择时仅显示占位提示。访问 /apps/{appId} 且缺少 menuId 时自动重定向到第一个 ITEM 的 pageRoute，没有 ITEM 时保留空态；点击没有子项的顶部菜单会保留该顶部菜单并展示空态，不再回落到第一个顶部菜单的 ITEM。前端对应用列表、应用详情、菜单和关联项做会话内缓存并合并并发请求，同一应用内点击菜单不再重复请求，菜单写操作按应用失效缓存，登录/退出统一清空缓存。验证：mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests，0 failures，0 errors，含嵌套分组、排序、内置页面路由生成与 ITEM 移出分组）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。遗留：表单页面记录仍为 mock，待后续接入真实模型与记录接口。"
+    },
+    {
+      "id": "feat-023",
+      "name": "Apps UI - 表单配置页面入口",
+      "description": "应用设置中的表单卡片进入当前实体对应的管理配置页，并保留基本信息、字段管理、表单设计、自定义操作、记录锁定、高级配置二级菜单。",
+      "dependencies": [
+        "feat-021"
+      ],
+      "status": "done",
+      "evidence": "BusinessObjectManagementContent 表单卡片改为跳转 /admin/business-object/{currentBusinessObject}/base；新增 BusinessObjectSettings 页面承载基本信息、字段管理、自定义操作、记录锁定与高级配置的页面骨架；主路由补齐 /admin/business-object/:businessObject/base、fields、easy-action、record-alerts、advanced，表单设计继续复用现有 FormDesign 页面；AdminLayout 依据路径中的 currentBusinessObject 渲染既有表单二级菜单。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-024",
+      "name": "Apps UI - 菜单拖拽层级指示线",
+      "description": "应用设置菜单管理的拖拽排序中，拖动项底部显示占位分割线，并与当前根级或分组内菜单层级对齐。",
+      "dependencies": [
+        "feat-022"
+      ],
+      "status": "done",
+      "evidence": "AppMenuManager 的 MenuRow 在拖拽时于行底部渲染不可交互的 primary 色分割线；分割线位于当前行容器内，因此根级菜单与分组内菜单分别继承各自缩进和宽度，实现层级对齐。验证：bash ./init.sh 通过（全模块编译与 flexmodel-engine 测试）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-025",
+      "name": "Apps - 表单管理",
+      "description": "在 flexmodel-server 的 dev.flexmodel.apps 包实现应用表单 CRUD 与字段 CRUD，底层映射 Flexmodel 实体；flexmodel-apps-ui 仅暴露表单、表单字段、FORM、name/label 与 referenceForm 概念。",
+      "dependencies": [
+        "feat-021",
+        "feat-022"
+      ],
+      "status": "done",
+      "evidence": "新增 AppFormResource/AppFormService 与表单 DTO，提供 /api/apps/{appId}/forms、/forms/{name}、/forms/{name}/fields 及字段更新删除接口；表单契约使用 name（英文标识，创建后不可编辑）与 label（展示名），字段契约同样返回 name 与 label，创建时自动生成 id、created_by、updated_by、created_at、updated_at 系统字段，可选创建 name 主显字段并建立非唯一索引；UI 字段类型由服务端映射为底层实体字段，REFERENCE 使用 referenceForm；表单被菜单绑定时禁止删除。前端新增 appForms 服务与真实表单列表、创建弹窗、基本信息、字段管理和表单设计接入；应用设置路由统一为 /admin/apps/{appId}/forms/{name}/{section}，菜单关联目标统一为 BUILTIN/FORM 且 targets.forms 返回 name/label；表单与字段详情展示只读 name；UI 层搜索确认不存在 entityName、ENTITY、entities、referenceEntity 与实体文案。验证：mvn test-compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（8 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。遗留：表单记录数据页尚未实现，绑定表单的菜单先显示开发中提示并提供表单管理入口。"
+    },
+    {
+      "id": "feat-026",
+      "name": "Apps - 表单记录管理",
+      "description": "菜单绑定表单后展示真实记录列表，并提供记录分页、搜索、排序、详情、创建、更新与删除能力；服务端仅暴露 formName，内部映射为实体操作。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "新增 /api/apps/{appId}/forms/{formName}/records 及记录 CRUD 接口；创建写入 id、created_by、updated_by、created_at、updated_at，更新刷新 updated_by/updated_at；列表支持分页、字符串字段搜索、字段排序并修正排序 JSON 为 {field, order}；RecordList、AppRecordView、AppRecordDetail、AppRecordFormModal 与 appRecords 服务接入真实数据，菜单 FORM 目标渲染 RecordList。验证：mvn test -pl flexmodel-server -am -Dtest=AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-027",
+      "name": "Apps UI - 表单设计隐藏系统字段",
+      "description": "表单设计页面默认不布局内置字段，但字段列表可选择内置字段并加入布局。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "FormDesign 保留全部字段用于字段列表与可选布局；无服务端布局和重置布局时默认仅使用非 builtin 字段，用户可从右侧字段列表选择内置字段加入画布，保存布局保留所选内置字段。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-028",
+      "name": "Apps - 内置字段契约统一",
+      "description": "表单字段契约使用 boolean builtin 标识内置字段，页面文案统一展示为内置。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "AppFormFieldRecord 与 AppFormFieldResponse 使用 boolean builtin；metadata 读取保留 system 作为兼容别名，序列化与 API 输出使用 builtin；AppFormService/AppRecordService 按内置字段保护修改、删除、写入与排序；前端字段类型与记录、设计、字段管理逻辑统一使用 builtin，字段管理徽标文案改为内置。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-029",
+      "name": "Apps UI - 表单详情左侧标题展示",
+      "description": "表单详情左侧菜单顶部标题展示 form.label，路由仍使用 form.name。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "AdminLayout 根据 appId/formName 加载表单详情，移动端表单导航与桌面左侧菜单顶部标题均展示 form.label；加载失败时回退展示路由中的 form.name，不影响路由寻址。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-030",
+      "name": "Apps - 主显字段契约重命名",
+      "description": "表单主显字段契约统一使用 displayField，旧 nameField 数据与请求保持兼容读取。",
+      "dependencies": [
+        "feat-025"
+      ],
+      "status": "done",
+      "evidence": "AppFormRecord、AppFormResponse 与 AppFormUpdateRequest 统一使用 displayField；AppFormRecord 和 AppFormUpdateRequest 通过 JsonAlias(nameField) 兼容旧 metadata 与旧请求；AppFormService、前端类型、表单设置、表单设计、记录详情与引用记录标签统一使用 displayField。新增表单编辑可设置主显字段，更新时校验字段存在且不能选择内置字段，删除当前主显字段时同步清空 displayField/searchField。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-031",
+      "name": "Apps UI - 记录列表主显字段链接",
+      "description": "记录列表始终将主显字段放在第一列，并以蓝色链接打开详情；详情标题展示主显字段值。",
+      "dependencies": [
+        "feat-030"
+      ],
+      "status": "done",
+      "evidence": "RecordList 基于 displayField 提取主显字段并强制置于第一列，重复列自动去重；主显字段单元格渲染为蓝色链接，点击打开详情抽屉，详情标题沿用 AppRecordDetail 中的主显字段值。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-032",
+      "name": "Apps UI - 记录详情布局修复",
+      "description": "记录详情去掉表单副标题，避免关闭按钮与操作按钮重叠，并恢复分栏折叠交互。",
+      "dependencies": [
+        "feat-031"
+      ],
+      "status": "done",
+      "evidence": "AppRecordDetail 顶部仅保留主显字段标题，并预留抽屉关闭按钮空间；详情字段统一放在单个卡片容器内，分栏标题去掉横向分割线、使用 font-semibold 加粗，并在最左侧展示主题色竖向强调条；折叠 ChevronDown 图标位于分栏文字右侧，支持展开/收起。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-033",
+      "name": "Apps - 表单子表单",
+      "description": "表单设计支持添加子表单，可选择已有子表单和引用字段；记录接口通过主表上下文查询和维护子表记录。",
+      "dependencies": [
+        "feat-025",
+        "feat-026"
+      ],
+      "status": "done",
+      "evidence": "AppFormLayout 新增 subforms 配置，FormDesign 支持添加、编辑、拖拽和移除子表单，未选择引用字段时自动创建指向当前表单的 REFERENCE 字段；AppRecordService/AppRecordResource 在现有 /records 接口上支持 mainFormName、mainRecordId 与 referenceField 查询参数，列表自动按主记录过滤，新增强制写入归属，详情/更新/删除校验归属；AppRecordDetail 下方渲染子表单列表并支持新增、编辑、删除与空态；子表单表格与工作台明细共用引用值格式化工具，引用对象优先显示 displayValue、缺失时回退 id，数组逐项拼接，避免显示 [object Object]。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest,AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-034",
+      "name": "Apps UI - 引用字段关联表单选择",
+      "description": "字段管理中引用类型字段可选择关联表单，修复无法选择引用字段目标导致保存被禁用的问题。",
+      "dependencies": [
+        "feat-033"
+      ],
+      "status": "done",
+      "evidence": "FormSettings 加载当前应用表单列表；字段类型选择“引用”后展示“引用表单”下拉框，选择后写入 referenceForm 并允许保存。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-035",
+      "name": "Apps UI - 子表单引用字段候选刷新",
+      "description": "添加子表单时，选择子表单后重新获取其最新字段，确保指向当前表单的引用字段可以出现在候选列表中。",
+      "dependencies": [
+        "feat-033",
+        "feat-034"
+      ],
+      "status": "done",
+      "evidence": "FormDesign 在子表单选择变化后调用 getAppForm 获取最新子表单详情，并以该详情计算指向当前表单的 REFERENCE 字段候选，避免应用表单列表缓存导致候选字段缺失；AppFormResourceTest 增加表单列表接口 referenceForm 断言。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-036",
+      "name": "Apps - 子表单关联字段放开限制",
+      "description": "子表单关联字段可选择子表单中任意业务字段，不再强制必须是 REFERENCE 且指向当前表单。",
+      "dependencies": [
+        "feat-033",
+        "feat-035"
+      ],
+      "status": "done",
+      "evidence": "FormDesign 关联字段候选展示子表单全部非内置字段；AppFormService 保存布局时仅校验字段存在；AppRecordService 对显式 referenceField 仅校验为非内置字段并用于保存/过滤主记录 ID，自动创建逻辑仍使用指向当前表单的 REFERENCE 字段。新增 AppFormResourceTest 与 AppRecordResourceTest 用 TEXT 字段验证布局保存与记录上下文。验证：mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest,AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（12 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-037",
+      "name": "Apps UI - 子表单标题简化",
+      "description": "记录详情中的子表单列表左侧标题仅展示子表单名称，移除副标题。",
+      "dependencies": [
+        "feat-036"
+      ],
+      "status": "done",
+      "evidence": "AppSubformRecords 左侧标题展示 form.label（缺失时回退 formName），移除记录数量副标题；同步移除不再使用的 label 参数。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-038",
+      "name": "Apps - 记录列表引用字段展开",
+      "description": "应用表单记录列表查询时，将表单中的引用字段传入数据层 expand 参数。",
+      "dependencies": [
+        "feat-036"
+      ],
+      "status": "done",
+      "evidence": "AppRecordService.findRecords 从表单字段中收集所有 REFERENCE 字段并传给 DataService.findPagingRecords；新增 AppRecordServiceTest 验证 expand 只包含引用字段。验证：mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test）；bash init.sh 通过（全模块编译 + flexmodel-engine 测试）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-039",
+      "name": "Apps - 引用字段服务端渲染与可点击展示",
+      "description": "应用表单记录列表与详情中的引用字段由服务端渲染为主显字段值，前端展示可点击链接并打开引用记录详情。",
+      "dependencies": [
+        "feat-038"
+      ],
+      "status": "done",
+      "evidence": "新增 AppReferenceValueResponse 契约（id/displayValue/referenceForm）；AppRecordService 对列表、详情、创建和更新返回的 REFERENCE 字段做批量渲染，目标记录缺失或主显字段为空时回退记录 ID；AppReferenceValue 直接消费服务端渲染值并保留旧格式兼容。验证：mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests）；mvn test -pl flexmodel-server -am -Dtest='AppRecordResourceTest#testReferenceValueRendering' -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash init.sh 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-040",
+      "name": "Apps UI - 记录列表操作列",
+      "description": "记录列表右侧新增固定操作列，支持单行编辑和删除；单行与批量删除均需二次确认。",
+      "dependencies": [
+        "feat-038",
+        "feat-039"
+      ],
+      "status": "done",
+      "evidence": "RecordList 表头右侧新增“操作”列，行内提供编辑、删除按钮；编辑复用现有 AppRecordFormModal，删除复用 deleteAppRecord 并同步清理选中态与详情抽屉；单行与批量删除均先弹窗二次确认，确认后才执行删除；操作列尺寸、图标和悬停色已与 AppSubformRecords 统一。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-041",
+      "name": "Apps - 表单 Schema Items 重构",
+      "description": "将应用表单布局从平行 map 与哨兵前缀重构为 fields + layout.items 有序节点，统一表单名与实体名，并同步服务端校验与前端设计、记录渲染；表单设计器已拆分为独立组件并适配该结构。",
+      "dependencies": [
+        "feat-025",
+        "feat-033",
+        "feat-036"
+      ],
+      "status": "done",
+      "evidence": "新增 AppFormItemRecord，AppFormLayout 仅保留 items，支持 FIELD/SECTION/SUBFORM 与语义化宽度；AppFormRecord 移除 entityName 并内嵌 layout，表单 name 直接作为实体名，创建表单校验 SchemaObject 名称冲突；AppFormService 校验布局项类型、字段引用、必填属性、非法属性、内置字段限制和全部业务字段必须出现一次，字段增删自动同步布局，保存表单 metadata 时清理旧 app.formLayouts；前端契约、form-items 工具、FormDesign、记录表单、详情、子表单和列表均改为消费 layout.items；修复 FormDesign 布局拖拽目标位置偏差：原逻辑在换算“移除拖拽项后的索引”后又做了一次错误回退，导致跨行/跨多项拖拽偏移一位，现改为直接返回 withoutDraggingIndex 或 withoutDraggingIndex + 1；布局渲染按宽度累计分组为独立行，行内剩余空间不再被后续字段自动填充，同时保留原右侧宽度拖拽柄行为。验证：mvn test-compile -pl flexmodel-server -DskipTests 通过；mvn test -pl flexmodel-server -am -Dtest=AppFormResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（11 tests）；mvn test -pl flexmodel-server -am -Dtest=AppRecordServiceTest,AppRecordResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-042",
+      "name": "MCP - AppTools 应用创建工具链",
+      "description": "新增 AppTools，按创建应用、创建表单与字段、保存扁平布局、创建并绑定菜单、创建显式 mock 数据的顺序，通过 MCP 暴露 Apps 能力给 AI 客户端。",
+      "dependencies": [
+        "feat-007",
+        "feat-041"
+      ],
+      "status": "done",
+      "evidence": "AppTools 已按方案暴露应用与表单工具链；create_app_form 改为一次构建包含内置字段与自定义字段的实体模型，并在持久化前完成字段校验，metadata 保存失败时回滚已创建模型；字段不再按名称反查刚创建的表单，避免 read-your-writes 失败导致半成品；options 兼容字符串数组；ModelingService 仅在请求项目与当前项目一致时复用项目数据库缓存，避免跨项目读取落入错误 schema。验证：mvn test -pl flexmodel-server -am -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 通过（5 tests）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。"
+    },
+    {
+      "id": "feat-043",
+      "name": "Apps - 菜单链接关联与 iframe 展示",
+      "description": "应用菜单关联项新增自定义链接类型，支持通过多个链接菜单项配置多个不同 http/https 地址，并在右侧内容区使用 iframe 展示目标页面。",
+      "dependencies": [
+        "feat-042"
+      ],
+      "status": "done",
+      "evidence": "AppMenuService 新增 LINK 关联类型，URL 保存到 target.id，服务端校验仅允许 http/https、主机名非空且长度不超过 2048，并拒绝 javascript/ftp/无 host 等非法地址；AppMenuResponse 对 LINK 保留 target.type 并返回 URL 作为 label，pageRoute 仍为内部路由；AppTools create_app_menu 契约说明同步支持 LINK；AppMenuManager、MenuLinkPicker 与 MenuEditorDialog 支持选择自定义链接并录入 URL，前端使用同一 URL 校验；AppMenuPage 对 LINK 菜单在右侧内容区渲染全高 iframe，并使用 no-referrer；2026-10-14 修复应用页内新增菜单后切换 menuId 仍读取旧列表导致“菜单不存在或已被删除”的刷新问题，并修复删除当前访问菜单时确认后因立即路由跳转导致菜单编辑器关闭的问题。验证：mvn test -pl flexmodel-server -am -Dtest=AppMenuResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（9 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-044",
+      "name": "Apps - 顶部菜单刷新与加载态优化",
+      "description": "修复刷新菜单详情页时顶部菜单选中状态丢失、标题误回退为销售管理、菜单未加载时先选中第一项的问题，并统一应用内浏览器标题规则。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "AppLayout 会根据当前 menuId 反查所属顶部菜单，刷新后保持选中状态；应用与菜单加载期间分别显示加载态，不再误回退到销售管理或第一个顶部菜单。浏览器标题按“{菜单名} - {应用名称}”展示，无菜单路由仅展示应用名称，加载期间展示“应用加载中…”，离开应用路由恢复 Flexmodel Apps；切换应用时清理旧应用与菜单状态。验证：flexmodel-apps-ui npm run build 通过。"
+    },
+    {
+      "id": "feat-045",
+      "name": "Apps - Header 新增记录快捷入口",
+      "description": "Header 右侧“新建”按钮读取菜单配置中的 FORM 关联项，选择表单后打开该表单的新增记录弹窗。",
+      "dependencies": [
+        "feat-043"
+      ],
+      "status": "done",
+      "evidence": "AppTopHeader 复用 Header 右侧“新建”按钮，在应用内展示菜单配置中的 FORM 关联项，支持加载中、空表单和加载失败状态；选择表单后打开 AppRecordCreateDialog，并复用列表页新增按钮的 AppRecordFormModal 提交新增记录；左侧菜单栏不再额外新增入口，原有编辑菜单入口保持空白新增/编辑能力。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-046",
+      "name": "Apps - 登录默认进入应用管理",
+      "description": "登录成功后默认跳转应用后台的应用管理页面，不再进入 mock 仪表盘页面。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "登录成功后默认跳转 /admin/apps，历史 /dashboard/home 来源路径也会映射到应用管理，避免继续进入 mock 仪表盘；根路由与未知路由兜底同步改为 /admin/apps。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。"
+    },
+    {
+      "id": "feat-047",
+      "name": "Apps - 记录弹窗与详情分栏样式统一",
+      "description": "统一新增/编辑记录弹窗与详情页的分栏标题、字段标签和栅格间距样式。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "新增 AppFormSectionTitle 共用分栏标题组件，详情页与记录表单弹窗复用同一主色竖条与标题样式；表单弹窗分栏不再使用普通底边线，字段标签改为详情页同款浅色小字号，栅格横向间距由 24px 调整为 32px。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-048",
+      "name": "Apps - 左侧菜单分组项图标展示",
+      "description": "修复左侧菜单分组内的子菜单项不展示图标的问题。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "展开分组后的子菜单项渲染 child.icon，图标与文字使用同一 flex 布局并保持截断；折叠侧边栏时的分组弹层同步展示图标。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-049",
+      "name": "MCP - AppTools AI 友好字段名",
+      "description": "允许 AI 在创建表单字段时提供英文 snake_case 字段标识，服务端校验并保留；未提供时优先从 ASCII 标签推导友好名称，冲突或无法推导时才回退随机名称。",
+      "dependencies": [
+        "feat-042"
+      ],
+      "status": "done",
+      "evidence": "AppFormFieldCreateRequest 新增可选 name 并校验 ^[a-z][a-z0-9_]{0,63}$；AppFormService 统一处理批量创建和单字段创建，拒绝非法或冲突标识；create_app_form 工具说明要求 AI 生成简洁英文字段名；未传 name 时从 ASCII 标签推导。验证：mvn test -pl flexmodel-server -am -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 通过（6 tests）；bash ./init.sh 通过（全模块 clean compile + flexmodel-engine 测试）。"
+    },
+    {
+      "id": "feat-050",
+      "name": "Apps UI - 移除团队功能",
+      "description": "从应用前端移除团队管理入口、路由、页面、用户设置展示、动态侧栏团队面板以及团队 mock 数据。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "移除 AdminTeams、/admin/bizuser/teams 路由、左侧管理菜单团队项、用户设置加入团队区域、动态页团队折叠面板、currentUser.teams 与 teams mock 数据；src 中已无团队相关引用。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-051",
+      "name": "Apps UI - 用户与角色路由简化",
+      "description": "将部门用户路由从 /admin/bizuser/users 调整为 /admin/users，将角色权限路由从 /admin/bizuser/role-privileges 调整为 /admin/role-privileges。",
+      "dependencies": [
+        "feat-050"
+      ],
+      "status": "done",
+      "evidence": "main.tsx 路由定义与 AdminLeftSidebar 导航地址同步改为新路径，src 中无旧 /admin/bizuser/users 或 /admin/bizuser/role-privileges 引用。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-052",
+      "name": "Auth - 部门用户与角色关系真实接口",
+      "description": "补齐部门组织架构、用户多部门任职和用户多角色关系，管理页面从 mock 数据切换为真实接口；用户角色不再使用 role_ids 冗余字段。",
+      "dependencies": [
+        "feat-051"
+      ],
+      "status": "done",
+      "evidence": "platform.fml 新增 UserStatus、f_department、f_user_department、f_user_role，f_user_department 支持 is_main、job_title 和 manager_user_id，并移除 f_user.role_ids；后端新增部门、用户部门、用户角色 Repository/Service/Resource，AuthService 通过 f_user_role 解析权限；用户创建时可为空 ID 自动生成 UUID；flexmodel-apps-ui 的部门用户与角色权限页面接入 /api/departments、/api/users、/api/roles、/api/resources，新增/编辑部门弹窗不再展示上级部门字段，层级由节点新增操作隐式确定；部门直属人数为 0 时不展示数字徽标。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过；mvn test -pl flexmodel-server -Dtest=AuthResourceTest,UserResourceTest,DepartmentResourceTest 通过（24 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示）。"
+    },
+    {
+      "id": "feat-053",
+      "name": "Apps - 组织架构部门树操作优化",
+      "description": "部门树默认展开，节点右侧提供点击展开的更多操作下拉。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "部门树首次加载成功后默认展开全部节点，且不重置后续手动折叠状态；每个节点右侧展示更多图标，点击更多图标后展示新增部门、编辑部门、删除部门，节点文字保持左对齐，新增部门默认挂载到当前节点。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-054",
+      "name": "Apps UI - 用户状态行内操作与全局提示",
+      "description": "用户启用/停用从新增/编辑表单移至行内最小尺寸操作按钮，PATCH 支持状态与头像局部更新，状态切换失败通过全局 message 提示。",
+      "dependencies": [
+        "feat-052"
+      ],
+      "status": "done",
+      "evidence": "用户表格操作列提供最小尺寸的启用/停用按钮并保留原用户角色、部门与直属主管信息；新增/编辑用户弹窗不再展示状态选择器；PATCH /api/users/{userId} 使用 UserPatchRequest，status 与 avatar 均可局部更新且必须至少提交一个字段，f_user 新增 avatar 字段并在 UserResponse 返回；状态切换通过同一 PATCH 接口仅提交 status 字段；新增全局 message 组件并挂载到应用根部，后端“Current user cannot be disabled”等状态切换错误改为右上角全局提示，不再渲染为页面错误块。验证：mvn test -pl flexmodel-server -Dtest=UserResourceTest 通过（10 tests）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-055",
+      "name": "Apps - 记录表格页签配置与筛选",
+      "description": "表单支持持久化自定义视图页签，页签使用原生 filter DSL 配置多个条件，记录列表按当前页签与搜索条件组合筛选。",
+      "dependencies": [
+        "feat-045"
+      ],
+      "status": "done",
+      "evidence": "AppFormRecord/AppFormResponse 新增顶层 viewTabs 字段；PATCH /api/apps/{appId}/forms/{formName} 仅支持 viewTabs 局部更新，校验页签数量、名称、ID、字段、操作符、类型和值；GET records 新增 viewTabId 参数，all/空值不过滤，未知页签返回 400，页签筛选与搜索、子表单上下文条件共同合并在 _and 中；表单更新、布局保存、字段更新和字段删除均保留或清理页签配置；前端固定展示“全部”页签，配置弹窗支持字段、操作符、值、多条件增删和页签持久化，切换页签会重置分页与选择。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -Dtest=AppRecordServiceTest,AppFormResourceTest,AppRecordResourceTest 通过（23 tests）；mvn test -pl flexmodel-engine 通过；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-056",
+      "name": "Apps UI - 记录弹窗表单设计入口",
+      "description": "在记录新增、编辑弹窗标题右侧提供表单设置按钮，点击后进入当前表单的设计器页面。",
+      "dependencies": [
+        "feat-055"
+      ],
+      "status": "done",
+      "evidence": "AppRecordFormModal 新增标题右侧设置图标按钮，新增与编辑两种弹窗共用该入口；点击后关闭当前弹窗并跳转 /admin/apps/{appId}/forms/{formName}/form-design。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-057",
+      "name": "Apps - 表单设计器可选字段列表",
+      "description": "表单设计器右侧字段列表展示业务字段与内置字段中尚未布局的字段；新建表单和新建字段不再自动生成布局，字段布局完全由用户显式配置。",
+      "dependencies": [
+        "feat-056"
+      ],
+      "status": "done",
+      "evidence": "新建表单与缺省表单记录返回空布局；createField 只保存字段元数据，不追加布局项；布局校验允许空布局和部分字段布局，但非空布局必须至少包含一个字段且字段必须存在、不重复，内置字段可作为只读字段加入布局；FormDesigner 通过已布局字段集合过滤右侧字段列表，内置字段展示标识，新建字段的备注保留到手动添加布局时；AppRecordFormModal 仅按 layout.items 渲染，必填校验与提交范围同样限定为已布局字段，内置字段只读且不参与提交。验证：mvn test -pl flexmodel-server -Dtest=AppFormResourceTest 通过（13 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-058",
+      "name": "MCP - AppTools 页签契约提示词",
+      "description": "在 create_app_form 的 MCP 提示词中说明记录列表页签 viewTabs 的结构、筛选条件、字段类型与操作符约束，以及通过表单 PATCH 局部更新页签的方式。",
+      "dependencies": [
+        "feat-055"
+      ],
+      "status": "done",
+      "evidence": "AppTools.create_app_form 工具描述新增 viewTabs 契约：页签对象为 {id,label,filter}，PATCH 仅更新 viewTabs；说明 id、label、条件数量、_and 结构与不同字段类型支持的操作符。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -Dtest=AppToolsTest -Dsurefire.failIfNoSpecifiedTests=false 中 3 个布局相关既有断言失败（expected 3/2 field items but was 0、invalid layout keeps original layout），与本次仅提示词改动无关。"
+    },
+    {
+      "id": "feat-059",
+      "name": "Apps UI - 详情与列表展示已布局内置字段",
+      "description": "记录详情和记录列表按表单布局渲染字段，已手动布局的内置字段不再被隐藏，同时保持未布局时仅展示业务字段的默认行为。",
+      "dependencies": [
+        "feat-057"
+      ],
+      "status": "done",
+      "evidence": "AppRecordDetail 移除对已布局字段 builtin 的过滤，记录详情会展示布局中的内置字段；详情页改为 12 列栅格并按布局项 width 应用 QUARTER、THIRD、HALF、TWO_THIRDS、THREE_QUARTERS、FULL 栅格跨度；RecordList 的 layoutColumns 不再排除内置字段，记录列表会展示布局中的内置字段；无布局时仍回退为业务字段。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-060",
+      "name": "Apps UI - 仪表盘添加图表",
+      "description": "仪表盘工具栏提供添加图表入口，弹窗中配置标题并选择图表类型，新图表按类型默认尺寸追加到当前仪表盘布局，数据全部来自 mock 数据源。",
+      "dependencies": [
+        "feat-059"
+      ],
+      "status": "done",
+      "evidence": "DashboardHome 新增添加图表入口，支持指标卡、折线图、柱状图、饼图、明细表和我的常用类型卡片选择，展示默认尺寸并校验标题；addableChartTypes 与 addDashChart 集中维护在 src/data/mock.ts，新图表追加到当前仪表盘并可继续拖拽调整。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。"
+    },
+    {
+      "id": "feat-061",
+      "name": "Apps UI - 我的常用图表",
+      "description": "仪表盘新增“我的常用”图表类型，卡片内放置常用表单，点击后直接打开对应的菜单页面。",
+      "dependencies": [
+        "feat-060"
+      ],
+      "status": "done",
+      "evidence": "DashboardHome 图表类型新增 favorites，并使用 favoriteForms mock 数据渲染客户、商机、产品和报销单四个常用表单；点击任意表单卡片通过 useNavigate 跳转到对应的 /apps/{appId}/{menuId} 菜单路由。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-062",
+      "name": "Apps UI - 图表设计器",
+      "description": "将简易添加图表弹窗升级为图表设计器，支持图表、数据、样式和布局四个配置分区，并在右侧提供实时预览；已有图表卡片支持直接进入设计器编辑。",
+      "dependencies": [
+        "feat-060",
+        "feat-061"
+      ],
+      "status": "done",
+      "evidence": "新增 ChartDesigner 组件，提供图表标题/类型、数据源或类型化配置、图例/标签/曲线/配色、宽度/高度设置，并通过 ChartCanvas 统一渲染预览与仪表盘卡片；DashboardHome 的添加入口与卡片编辑入口均复用该设计器。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-063",
+      "name": "Apps UI - 我的任务审批图表",
+      "description": "在默认仪表盘新增“我的任务”图表，提供“待办工作、最近处理、我发起的”三个页签，切换页签展示对应流程审批列表。",
+      "dependencies": [
+        "feat-062"
+      ],
+      "status": "done",
+      "evidence": "新增 tasks 图表类型；默认仪表盘新增“我的任务”卡片；图表设计器新增对应图标；ChartCanvas 使用 Tabs 展示“待办工作、最近处理、我发起的”三个页签，Tab 采用与记录页签一致的下划线样式；每个页签仅渲染对应流程列表，列表项为横向条目并以横线分隔，左侧展示流程信息，右侧展示提交时间，点击列表项跳转 /approval/home。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-064",
+      "name": "Apps UI - 图表表单数据源",
+      "description": "图表设计器直接以当前系统表单作为唯一数据源，可配置维度字段、指标字段与求和、计数、平均值统计方式，图表使用 mock 表单记录实时聚合渲染。",
+      "dependencies": [
+        "feat-062"
+      ],
+      "status": "done",
+      "evidence": "ChartConfig 新增 formName、dimensionField、measureField 与 aggregation，并移除内置数据源分支；mock.ts 新增 getChartRows，按表单记录维度分组并执行求和、计数、平均值聚合；ChartDesigner 数据分区直接提供表单、维度字段、统计方式、指标字段和记录/聚合摘要；ChartCanvas 统一通过 getChartRows 解析折线图、柱状图与饼图数据，设计器预览与仪表盘卡片保持一致。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-065",
+      "name": "Apps UI - 工作台组件概念重命名",
+      "description": "将前台概念从 dashboard/chart 统一切换为 workbench/component，不保留旧概念命名与兼容分支；页面、组件、类型、mock 存储、路由与内置菜单目标同步更新。",
+      "dependencies": [
+        "feat-064"
+      ],
+      "status": "done",
+      "evidence": "DashboardHome/ChartCanvas/ChartDesigner 重命名为 WorkbenchHome/ComponentCanvas/ComponentDesigner；DashChart、ChartConfig、dashboards、dashCharts、addableChartTypes、defaultChartConfig 与 getChartRows 等类型和数据结构改为 WorkbenchComponent、ComponentConfig、workbenches、workbenchComponents、addableComponentTypes、defaultComponentConfig 与 getComponentRows；前台路由与内置菜单目标从 dashboard 改为 workbench，后端内置菜单 ID 同步改为 workbench，所有旧 dashboard 命名从相关源码和测试中清除。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -Dtest=AppMenuResourceTest 通过（9 tests，0 failures，0 errors）。"
+    },
+    {
+      "id": "feat-066",
+      "name": "Apps - 内置表单",
+      "description": "每个应用默认返回用户、部门、角色与关联关系五个内置表单；内置表单使用 builtin 属性标识，记录数据统一路由到 system schema。",
+      "dependencies": [
+        "feat-057"
+      ],
+      "status": "done",
+      "evidence": "AppFormService 从 system schema 合并 f_role、f_user、f_department、f_user_department、f_user_role 到每个应用表单列表，AppFormResponse 新增 builtin，同名历史用户表单被内置定义压制以避免重复；内置表单禁止创建与修改。AppRecordService 按 builtin 将查询、详情、新增、更新、删除路由到 system schema，非内置表单继续使用应用项目数据源。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test -pl flexmodel-server -Dtest=AppRecordServiceTest,AppFormResourceTest 通过（20 tests，0 failures，0 errors）。"
+    },
+    {
+      "id": "feat-067",
+      "name": "Apps UI - 内置表单标签",
+      "description": "表单管理卡片与表单设置页为内置表单展示“内置”徽标，样式与内置字段徽标保持一致。",
+      "dependencies": [
+        "feat-066"
+      ],
+      "status": "done",
+      "evidence": "AppForm 前端契约补充 boolean builtin，normalizeForm 对缺失值回退 false；表单管理卡片和表单设置标题使用 bg-muted、text-muted-foreground 的 Badge 展示内置表单，与字段列表内置徽标一致；表单设计器与引用表单回退对象同步携带 builtin。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-068",
+      "name": "System - 系统表单配置驱动组织与角色",
+      "description": "部门、用户、角色页面由 system schema 内置模型 metadata 配置驱动；仅暴露 f_user、f_department、f_role 三个系统表单，关联表保留但不作为表单暴露；记录接口保持扁平 JSON，用户与角色支持扩展字段和布局设计，资源不作为用户功能暴露。",
+      "dependencies": [
+        "feat-066",
+        "feat-067"
+      ],
+      "status": "done",
+      "evidence": "新增 /api/system/forms 与 /api/system/forms/{formName}/records 统一入口，表单配置保存在 f_user/f_department/f_role 的模型 metadata；f_role_resource 承载角色资源授权，权限计算改为 f_user_role -> f_role_resource -> f_resource.permission；应用表单列表不再暴露系统表单与关联表；移除 /api/departments、/api/users、/api/roles、/api/resources 旧入口；前端组织用户保留左侧部门树，右侧用户表单按 metadata 渲染布局、列表列、扩展字段、任职与角色，角色页由 f_role metadata 渲染并使用服务端注入权限树；系统表单核心字段校验改为大小写不敏感，并保留 avatar/password_hash 等物理核心字段；应用表单入口中系统核心字段返回 builtin=true，avatar 以 URL 字段进入字段列表，字段列表与设计器可展示“内置字段”。2026-10-19 验证：mvn test -pl flexmodel-server -Dtest=SystemFormResourceTest,SystemRecordResourceTest,AppFormResourceTest,AppRecordServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（29 tests，0 failures，0 errors）；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积与 /logo.png 提示）；bash ./init.sh 因运行中的 flexmodel-server-dev.jar 无法删除而中断，代码验证由目标测试补足。"
+    },
+    {
+      "id": "feat-069",
+      "name": "Apps UI - 表单页面导航修正",
+      "description": "应用管理的表单页面保留左侧二级菜单，移除页面下方的重复导航。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "done",
+      "evidence": "AdminLayout 恢复表单左侧二级菜单，FormSettings 移除页面底部重复导航；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-070",
+      "name": "Apps UI - 表单设计器新增字段自动入布局",
+      "description": "表单设计器右侧“添加字段”保存成功后，新字段默认追加到当前表单布局末尾。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "done",
+      "evidence": "FormDesigner.saveFieldCreate 创建字段后同步更新 items 和 form.layout，新字段默认 HALF 宽度并保留填写提示；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）。"
+    },
+    {
+      "id": "feat-071",
+      "name": "Apps - 系统审计字段与内置引用目标",
+      "description": "应用表单的 created_by/updated_by 使用引用字段指向 f_user，AppTools 创建表单时可引用 f_user、f_role、f_department 三个内置表单。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "done",
+      "evidence": "AppFormService 为 created_by/updated_by 生成 REFERENCE 且 referenceForm=f_user 的字段契约；AppTools 的 list_app_forms 与 create_app_form 说明内置表单可作为 REFERENCE 目标，并新增 createsReferenceFieldsToBuiltinForms 测试覆盖三个内置引用和两个系统审计字段。验证：mvn test -pl flexmodel-server -Dtest=AppToolsTest#createsReferenceFieldsToBuiltinForms -Dsurefire.failIfNoSpecifiedTests=false 通过（1 test，0 failures，0 errors）。"
+    },
+    {
+      "id": "feat-072",
+      "name": "Apps - 记录接口布局字段投影",
+      "description": "应用表单 /records 响应仅返回表单布局中使用的字段，同时保留记录 id 和子表单关联字段，避免未布局字段暴露给前端。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "in-progress",
+      "evidence": "AppRecordService 新增布局投影：列表、详情、创建返回和更新返回均先完成引用渲染，再按 FIELD 节点与 SUBFORM.referenceField 输出字段，id 始终保留；同步调整 AppRecordServiceTest 覆盖未布局字段不返回。按用户要求，本次未运行构建或测试。"
+    },
+    {
+      "id": "feat-073",
+      "name": "Apps UI - NTEXT Textarea control",
+      "description": "Use a resizable Textarea control for multiline text fields in the shared record create/edit modal.",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "in-progress",
+      "evidence": "Added a Textarea primitive and routed NTEXT fields through it; verification not run per user request."
+    },
+    {
+      "id": "feat-074",
+      "name": "Apps UI - 工作台快捷入口命名统一",
+      "description": "工作台“我的常用”组件更名为“快捷入口”，组件类型、配置字段和入口数据源统一使用 shortcuts 命名。",
+      "dependencies": [
+        "feat-068"
+      ],
+      "status": "done",
+      "evidence": "addableComponentTypes、WorkbenchComponent、ComponentConfig、ComponentCanvas 和 ComponentDesigner 同步由 favorites/favoriteForms 改为 shortcuts；flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试（UI E2E 因 Node.js 未安装跳过）。"
+    },
+    {
+      "id": "feat-075",
+      "name": "Apps - 工作台真实配置接口",
+      "description": "应用级工作台配置持久化，支持多工作台、layout.items 显式 x/y/w/h 网格坐标与 PATCH 局部更新；获客端使用 GridStack 支持编辑模式下拖动与宽高缩放。",
+      "dependencies": [
+        "feat-074"
+      ],
+      "status": "done",
+      "evidence": "layout.items 仅保存 componentId/x/y/w/h，不再接受或输出 width/height 历史字段；后端校验位置、尺寸、网格边界与重叠。前端 WorkbenchHome 集成 GridStack，编辑配置模式启用拖动与缩放，拖动/缩放结束后从 `GridItemHTMLElement.gridstackNode` 读取组件 ID 与坐标并发起 PATCH 保存；右下角缩放把手向下偏移 2px，组件标题在编辑模式显示 grab/grabbing 光标；ComponentDesigner 支持网格宽高设置；布局采用 0 16px 16px 0 边距，顶部和左侧与容器起点对齐，右侧和底部保留间距。启动迁移按优先级在引擎初始化后执行，一次性把已持久化的 width/height 数据改写为显式 x/y/w/h，修复旧数据被解析为 null 导致组件退回 1x1 的问题；真实 sqlite.db 中两条旧布局已验证变为 w=6、h=3。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -am -Dtest=WorkbenchServiceTest,WorkbenchStartupMigrationTest,WorkbenchResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（7 tests，0 failures，0 errors）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试。"
+    },
+    {
+      "id": "feat-076",
+      "name": "Apps UI - 快捷入口复用菜单图标",
+      "description": "工作台快捷入口引用菜单时，卡片图标直接复用该菜单已配置的导航图标；菜单未配置图标时保留文件图标兜底。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "appMenuNavigation 的 menuIcon 解析函数开放复用，WorkbenchHome 与 ComponentDesigner 在构造 shortcutTargets 时传入菜单图标，ComponentCanvas 渲染 item.icon 并以 FileText 兜底。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；flexmodel-apps-ui npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-077",
+      "name": "Apps UI - 工作台管理操作按钮",
+      "description": "工作台的新建、编辑和删除操作在页头使用仅图标按钮展示，并通过悬浮提示与 aria-label 保留可访问性。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchHome 页头的新建、编辑、删除三个独立 Button 改为仅图标展示；新建使用 Plus 图标，编辑使用 Pencil 图标，删除使用 Trash2 图标并切换为 danger 样式，均补充 title 与 aria-label。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-078",
+      "name": "Apps UI - 组件标题默认组件名称",
+      "description": "新增组件时标题默认使用当前组件类型名称；切换组件类型时同步默认标题，但不覆盖用户已输入的自定义标题。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "ComponentDesigner 的 toResult 在新建组件时以组件类型 label 初始化标题；changeType 在标题为空或仍为上一个组件类型默认名称时更新为当前组件名称，自定义标题保持不变。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-079",
+      "name": "Apps UI - 工作台头部操作图标",
+      "description": "工作台头部左侧收敛为新增和更多两个无边框 ghost 图标按钮，使用最小尺寸，并仅在鼠标悬浮头部时显示；编辑和删除收进更多菜单。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchHome 的工作台头部容器增加 group/workbench-header，左侧展示最小尺寸的新增和更多两个 ghost 图标按钮，并通过 group-hover/workbench-header:opacity-100 控制悬浮显示；更多菜单收进编辑工作台与删除工作台。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-080",
+      "name": "Apps UI - 快捷入口每行数量",
+      "description": "快捷入口组件支持配置每行展示的入口数量，取值范围为 1 到 12，并随工作台布局一起持久化；入口卡片采用上图标下文字结构，图标带背景色，文字位于背景色外部，图标和文字尺寸随每行数量自适应。",
+      "dependencies": [
+        "feat-074"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchComponentConfig 新增 columnsPerRow 字段；ComponentDesigner 提供每行数量选择，ComponentCanvas 按配置渲染网格列数；后端 WorkbenchComponentConfig 与 WorkbenchService 同步增加字段和 1-12 范围校验。快捷入口卡片改为纵向布局，图标容器使用背景色，文字位于背景色外部，并根据 columnsPerRow 自适应调整图标与文字尺寸；1-3 个/行时使用更大图标档位。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；mvn test -pl flexmodel-server -am -Dtest=WorkbenchServiceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（2 tests，0 failures，0 errors）；git diff --check 通过。"
+    },
+    {
+      "id": "feat-081",
+      "name": "Apps UI - 工作台编辑与保存配置",
+      "description": "工作台头部操作从“编辑配置/锁定配置”改为“编辑组件/保存配置”；组件新增、编辑、删除和布局调整先写入本地草稿，点击保存配置时才统一调用服务端 PATCH 持久化；“添加组件”仅在编辑状态下展示。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchHome 新增 draftLayout 本地草稿状态；拖拽、缩放、组件设计器保存和组件删除仅更新草稿；点击“保存配置”后才调用 patchWorkbench 持久化并退出编辑态，失败时保留草稿与编辑态；“添加组件”按钮仅在 editable 状态渲染。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-082",
+      "name": "Apps UI - 新增组件配置布局优化",
+      "description": "优化新增组件弹窗为左侧紧凑配置、右侧大面积实时预览的构建式布局；先选择组件类型，再填写标题，组件类型改为紧凑图标项；布局宽高变化时预览按工作台网格比例实时缩放。",
+      "dependencies": [
+        "feat-075"
+      ],
+      "status": "done",
+      "evidence": "ComponentDesigner 重构为左侧 360px 紧凑配置栏与右侧大面积实时预览；弹窗加宽到 1680px、加高到 min(92vh, 960px)，配置类型改为两列紧凑图标项，选中类型说明独立展示；右侧顶部展示组件图标、标题与尺寸信息。预览宽度直接按 w/12 转为百分比，保证宽度输入实时生效；高度按 80px 行高计算，并通过 ResizeObserver 与整体等比缩放适配可用区域；图表画布显式使用 100% 宽高，避免容器变化后不重绘。工作台在 GridStack 初始化后显式调用 grid.update 应用组件 x/y/w/h，确保组件设计器保存的新布局立即生效。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；npx tsc --noEmit 通过；git diff --check 通过。"
+    },
+    {
+      "id": "feat-083",
+      "name": "Apps - AI 友好工作台契约与 MCP 能力",
+      "description": "工作台布局升级为 schemaVersion + components 单数组契约，每个组件内嵌 placement，config 按 type 使用判别联合；提供工作台能力目录，并在 AppTools MCP 中开放工作台查询、能力目录、布局保存和 BUILTIN 工作台菜单关联能力。",
+      "dependencies": [
+        "feat-082"
+      ],
+      "status": "done",
+      "evidence": "WorkbenchLayoutRecord 使用 schemaVersion=1 和 components 单数组；WorkbenchPlacementRecord 内嵌组件；WorkbenchComponentConfig 拆分为 metric/chart/dataloader/shortcuts/tasks 判别联合，line/bar/pie 合并为 chartType；后端保留网格、重叠、表单字段、聚合、快捷菜单校验。新增 GET /apps/{appId}/workbenches/capabilities 与 WorkbenchCapabilityResponse，返回组件规格、默认配置、枚举值、表单字段和快捷菜单。AppTools 新增 list_app_workbenches、get_app_workbench、get_app_workbench_capabilities、create_app_workbench、save_app_workbench_layout 和 create_app_workbench_menu，其中 create_app_workbench_menu 使用 BUILTIN targetId=workbench。前端同步为单数组 placement/config union 契约，不调整现有视觉样式；ComponentDesigner.changeForm 切换表单时保留当前组件类型、图表样式和指标选择。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积提示与 /logo.png 运行时解析提示）；mvn test -pl flexmodel-server -am \"-Dtest=WorkbenchServiceTest,WorkbenchResourceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink\" \"-Dsurefire.failIfNoSpecifiedTests=false\" 通过（9 tests，0 failures，0 errors）；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；最终 flexmodel-apps-ui npm run build 与 git diff --check 均通过。"
+    },
+    {
+      "id": "feat-084",
+      "name": "Apps - 工作台真实数据组件与 MCP 数据能力",
+      "description": "metric/chart/dataloader 工作台组件接入真实表单数据：指标支持 count/sum/avg，图表支持分组聚合，明细支持分页与搜索；新增组件数据 REST 端点与 AppTools MCP 工具，前端渲染真实数据但不调整既有视觉样式。",
+      "dependencies": [
+        "feat-083"
+      ],
+      "status": "done",
+      "evidence": "后端新增 WorkbenchDataService、组件数据 DTO、GET /api/apps/{appId}/workbenches/{workbenchId}/components/{componentId}/data 和 MCP get_app_workbench_component_data；DataRepository/DataFmRepository 支持聚合查询；前端 WorkbenchHome/ComponentCanvas/ComponentDesigner 消费真实数据契约。验证：mvn compile -pl flexmodel-server -am 通过；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=WorkbenchDataServiceTest 通过（4 tests）；mvn test -pl flexmodel-server -am \"-Dtest=WorkbenchServiceTest,AppToolsTest#createsAiFriendlyWorkbenchAndMenuLink\" 通过（5 tests）；WorkbenchResourceTest 新增响应形态与分页校验通过；bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；git diff --check 通过；明细组件渲染引用字段时优先展示服务端返回的 displayValue，缺失时回退 id，并支持引用数组拼接，修复引用值显示为 [object Object] 的问题；组件内容滚动条默认隐藏，悬停或键盘聚焦时显示为细滚动条。"
+    },
+    {
+      "id": "feat-085",
+      "name": "Apps - 默认蓝色主色与管理后台统一",
+      "description": "应用主色默认值改为蓝色，颜色选择器将蓝色排在第一位；管理后台在无应用专属主色覆盖时也使用蓝色，前端与后端默认契约保持一致。",
+      "dependencies": [
+        "feat-084"
+      ],
+      "status": "done",
+      "evidence": "后端 AppService 默认主色为 blue，DTO 与 MCP 描述同步蓝色优先；前端新建/编辑表单默认蓝色，颜色列表蓝色第一，管理后台基础主题与回退 data-primary 均为蓝色。补充 data-primary='indigo' 亮色/暗色 CSS 覆盖，修复默认色改为蓝色后已配置靛蓝的应用不再生效的问题；六种可选主色均有亮色/暗色映射。验证：bash ./init.sh 通过全模块编译与 flexmodel-engine 测试；flexmodel-apps-ui npm run build 通过；mvn test -pl flexmodel-server -am -Dtest=AppResourceTest -Dsurefire.failIfNoSpecifiedTests=false 通过（10 tests）；相关文件 git diff --check 通过。"
+    },
+    {
+      "id": "feat-086",
+      "name": "Apps - 审批流程设计与模拟预览",
+      "description": "应用级审批流程列表、FlowGram 纵向设计器、七类节点配置及独立 mock 模拟审批，读取真实表单元数据并提供示例模板。",
+      "dependencies": [
+        "feat-003",
+        "feat-085"
+      ],
+      "status": "done",
+      "evidence": "2026-10-21 完成应用级审批流程列表、FlowGram 1.0.15 纵向设计器、七类业务节点、全部执行人来源与人员范围、三种签核和逐步 mock 模拟；真实表单元数据读取、用户/应用隔离的本地保存、复制引用重建、子流程循环检测、明暗主题及窄屏抽屉均已实现。代码提交于 flexmodel-apps-ui 独立仓库 c5641ad。验证：npm test 22 项通过；npm run test:approvals 5 组浏览器测试通过；npm run build（含 TypeScript）通过；根仓库与 Apps UI git diff --check 通过。标准 init.sh 前后两次均因运行中服务锁定 flexmodel-server-dev.jar 在 clean 阶段失败，已保留现有服务；改用 mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin' 和 mvn test -q -pl flexmodel-engine，前后均通过。无 Java 接口或引擎改动；审批执行及数据变更保持 mock。截图见 flexmodel-apps-ui/artifacts/approvals-*.png。"
+    },
+    {
+      "id": "feat-087",
+      "name": "Apps - 事件驱动的表单流程与真实审批闭环",
+      "description": "以表单提交为流程触发，Flow 提供通用可靠事件、幂等命令和处理器归属校验；独立审批模块消费挂起事件，完成真实执行人解析、签核、记录锁和审批中心。",
+      "dependencies": [
+        "feat-086"
+      ],
+      "status": "done",
+      "evidence": "2026-10-21 完成服务端草稿/不可变发布、七类节点、真实成员解析与三种签核、记录快照/锁、子流程版本固定及审批中心；Flow 通过通用挂起事件和命令与独立审批模块协作。项目数据库 Outbox、事务行锁、退避重投、幂等发起/签核/节点消费与处理器归属校验已实现。修复主应用 Schema 注册遗漏及迁移先于注册导致的 Unexpected schemaName: plm_system，显式配置数据源也同步 project.fml。验证：全模块非 clean 编译、项目要求的引擎验证命令通过；flexmodel-core 实际执行 90 项单元测试通过；后端审批/Flow/启动回归 26 项通过（含隔离 SQLite 后端与真实浏览器闭环）；Apps UI 单元 23 项、Playwright 5 组、类型检查/构建通过；Deno 脚本隔离 2 项通过；两仓库 diff 检查通过。标准 init.sh 因现有开发服务锁定 dev.jar 在 clean 阶段失败，未停止用户服务。Apps UI 提交 579afb3；配置和边界见 flexmodel-server/docs/approvals.md；截图见 Apps UI artifacts/approvals-backend-*.png。模拟预览继续使用独立前端数据副本；真实审批需 SQL 事务数据库，该阶段的自定义执行人脚本能力已在 feat-090 移除，不再依赖脚本密钥或 Functions Runtime。"
+    },
+    {
+      "id": "feat-088",
+      "name": "Apps - 审批流程定义与 Flow 结构统一",
+      "description": "审批流程持久化与接口采用 flow_module_id/flow_name/flow_key/flow_model 等 Flow 字段，设计器通过适配器还原节点树，使用原生排他网关和条件连线。",
+      "dependencies": [
+        "feat-087"
+      ],
+      "status": "done",
+      "evidence": "2026-10-21 审批定义改为 Flow 字段与 flow_model JSON 字符串，节点采用 key/type/incoming/outgoing/properties；网关使用 type=6，分支作为 type=1 连线，审批及表单配置进入 properties，设计器仅保存层级/顺序元数据。新增旧草稿事务迁移与发布快照转换，保留旧表及运行部署；迁移幂等且删除后不会复活。验证：非 clean 全模块编译、引擎验证命令通过；后端审批/Flow/启动/编解码回归 50 项全部通过（含真实后端浏览器闭环、原生网关条件及默认分支、审计字段、指定 flow_key 发布、迁移与线程变量隔离）；Apps UI 单元 23 项、Playwright 5 组、构建通过；两仓库 diff 检查通过。标准 init.sh 因已有开发服务锁定 dev.jar 在 clean 阶段失败，未停止用户服务。协议见 flexmodel-server/docs/approvals.md。"
+    },
+    {
+      "id": "feat-089",
+      "name": "Apps - 审批基础能力收敛到服务端",
+      "description": "撤出 flexmodel-engine 的审批相关改动，在 server 内实现会话写入保护、事务行锁、提交后事件及 GraphQL 写入适配。",
+      "dependencies": [
+        "feat-088"
+      ],
+      "status": "done",
+      "evidence": "2026-10-21 已完整撤出 flexmodel-engine 的 7 个文件改动，HEAD/暂存区/工作区均零差异；使用引擎既有公开 SQL API，在 server 实现 ManagedSession/ServerSessions、审批写入保护、事务归属、跨连接运行时锁和回滚事件丢弃。SQL GraphQL 复用 Schema/查询/指令，写入改走服务端会话；覆盖别名、片段、嵌套 _join_mutation、类型化筛选、批量和整表删除。SQLite 仅开发容错：等待 1 秒后将 BUSY/LOCKED 转为可重试 503，不重放操作、不放宽锁，也不改变 MySQL 行为。验证：服务端 65 项回归通过（最终审批/GraphQL 14 项复验全部通过，含真实浏览器闭环）；MySQL 8.0 与 SQLite 会话/事务/跨连接锁 5 项通过，无跳过；原始引擎 clean 重建与 90 项核心测试通过；规定引擎命令及全模块非 clean 编译通过；根仓库和 Apps UI diff 检查通过。标准 init.sh 仍受已有开发服务锁定 dev.jar 影响，未停止用户服务。协议和边界见 flexmodel-server/docs/approvals.md。"
+    },
+    {
+      "id": "feat-090",
+      "name": "Apps - 移除自定义审批执行人脚本",
+      "description": "回滚审批专用 Functions Runtime 改动，移除服务端脚本解析与密钥配置、设计器入口及模拟脚本成员，保留其余六种人员来源。",
+      "dependencies": [
+        "feat-089"
+      ],
+      "status": "done",
+      "evidence": "2026-10-21 回滚 Functions Runtime 的审批路由、成员脚本 Worker 及测试，移除 MemberScriptRunner、脚本密钥、设计器脚本选项/编辑器与模拟成员配置；保留用户、角色、组织、发起人、上游节点和变量六种来源。旧脚本来源在前端校验、服务端发布和成员解析时明确拒绝并提示重新选择。flexmodel-engine 与 flexmodel-functions-runtime 的 HEAD/暂存区/工作区均零差异。验证：服务端审批/Flow 回归 34 项通过（含真实后端浏览器闭环）；Apps UI 单元 24 项、Playwright 5 组、类型检查/构建通过；全模块非 clean 编译、规定引擎测试及两仓库 diff 检查通过。标准 init.sh 仍因已有开发服务锁定 dev.jar 在 clean 阶段失败，未停止用户服务。日志见 logs/remove-approval-scripts-*.log。"
+    },
+    {
+      "id": "feat-091",
+      "name": "Apps - 审批草稿与发布复用 Flow 原生存储",
+      "description": "移除审批独立定义及发布表，使用 Flow 定义与部署，同一流程多次发布保持 flow_module_id，实例和子流程绑定部署版本。",
+      "dependencies": [
+        "feat-090"
+      ],
+      "status": "done",
+      "evidence": "2026-10-21 已移除审批定义和发布表的建表声明，草稿调用原生 Flow 创建/更新，发布复用同一 flow_module_id 并生成原生部署；revision、当前部署与固定子流程版本仅存 properties.workflow。运行实例直接绑定 flow_deploy_id，审批中心和节点配置读取 Flow 部署。旧数据事务迁入 Flow，旧发布副本定义软删除，部署图连线保持不变，源表标记防止重复导入。未新增替代定义/发布表；engine 和 Functions Runtime 均与 HEAD 零差异。验证：52 项扩展回归与最终 18 项审批回归全部通过（合计 70，含 SQLite/MySQL 会话、真实后端浏览器闭环、重复发布/历史版本/删除后签核、子流程版本固定及旧活动实例迁移）；Apps UI 单元 24 项及构建通过；全模块非 clean 编译、规定引擎测试和两仓库 diff 检查通过。标准 init.sh 仍受开发服务占用 dev.jar 影响。日志见 logs/reuse-flow-drafts-*.log。"
+    },
+    {
+      "id": "feat-092",
+      "name": "Apps - 审批存储复用 Flow、细粒度并发与 Approval 术语统一",
+      "description": "审批业务统一 Approval 命名且不保留历史兼容，移除独立业务节点日志及重复变量，复用 Flow 实例数据和节点日志，按记录/实例/消息替换项目级锁。",
+      "dependencies": [
+        "feat-091"
+      ],
+      "status": "done",
+      "evidence": "2026-10-22 审批业务统一 dev.flexmodel.approval 包、Approval* 类、properties.approval 和 f_approval_instance/wait/task/record_lock；通用引擎保留 Flow。按用户指示移除全部历史迁移、旧字段/处理器别名及 release_id；不再创建独立节点日志或项目级锁表。变量、父子关系和执行日志复用 Flow 实例数据/节点/日志；消息按根实例有序投递，无关组独立推进，记录与实例使用行锁，非 SQLite 使用 READ_COMMITTED。验证：最终单次扩展回归 70 项全部通过（含 SQLite/MySQL 6 项会话与行锁、17 项审批接口及真实浏览器闭环）；Apps UI 24 项单元与构建通过；全模块非 clean 编译、规定引擎测试及两仓库 diff 检查通过。engine/Functions Runtime 与 HEAD 零差异。init.sh 的 clean 仍受既有开发服务占用 dev.jar 影响，未停止该服务。当前协议见 flexmodel-server/docs/approvals.md，日志见 logs/approval-storage-*.log。"
+    },
+    {
+      "id": "feat-093",
+      "name": "MCP - AppTools 审批流程与通用人员目录",
+      "description": "在 AppTools 暴露审批能力目录、查询、草稿保存、校验和发布；人员、角色和组织抽为通用 DirectoryService 与 DirectoryTools，并校验 MCP 项目范围、只读权限和审计身份。",
+      "dependencies": [
+        "feat-042",
+        "feat-092"
+      ],
+      "status": "done",
+      "evidence": "2026-10-22 在 AppTools 新增 6 个审批工具，提供原生 Flow 能力目录、简单/网关完整示例及数据节点模板、列表/详情、草稿保存、校验和带 revision 的发布/停用。人员能力抽到独立 DirectoryService 和 DirectoryTools（get_directory/resolve_members），审批设计和运行时共享。新增工具校验每次 HTTP API Key 的应用范围和只读限制，填充 api_key:<keyId> 审计身份；修复局部审计更新将 Flow 状态重置为默认 0 导致停用无效的问题。最终单次专项回归 38 项通过（含真实 MCP 初始化/发现/调用、权限、版本冲突、目录解析、审批/Flow 接口和真实后端浏览器闭环）；全模块非 clean 编译、规定引擎验证及根仓库/文档站 diff 检查通过。用户要求后未再执行 init.sh，保留开发服务。首次扩大运行的现有 AppToolsTest 有 4 项表单旧契约断言失败，未改动相关表单行为，详情记录于 progress.md。未修改 engine/Functions Runtime；使用文档已更新，日志见 logs/mcp-approvals-*.log。"
+    },
+    {
+      "id": "feat-094",
+      "name": "Apps - 实时站内通知与浏览器提醒",
+      "status": "in-progress",
+      "dependencies": [
+        "feat-092",
+        "feat-093"
+      ],
+      "description": "审批及流程节点通知，可靠收件箱、SSE 重放、跨标签页同步与浏览器系统提醒。"
+    },
+    {
+      "id": "feat-095",
+      "name": "Apps UI - 新增/编辑弹窗支持子表单与自动保存主表单",
+      "description": "抽取弹窗与详情页共享的表单渲染层（布局解析/字段控件/只读值），新增/编辑弹窗内默认渲染子表单记录区；点击子表单新增时自动保存主表单（新建先创建主记录并切换为编辑态，编辑静默保存当前改动），必填字段未填则拦截且不保存；取消弹窗保留已自动保存的主记录（草稿式）。",
+      "dependencies": [
+        "feat-033",
+        "feat-057"
+      ],
+      "status": "done",
+      "evidence": "新增 flexmodel-apps-ui/src/components/biz/form/ 共享渲染层：parseFormLayout（统一 SECTION/SUBFORM/FIELD 解析，空布局回退全部业务字段，hidden 与子表单引用字段不参与渲染与校验）、FormFieldControl（可编辑字段控件与 toInputValue）、FormReadonlyValue（只读值渲染）。AppRecordFormModal 与 AppRecordDetail 重构为消费共享层，行为保持一致；AppRecordFormModal 提供默认 renderSubform 渲染 AppSubformRecords（recordContext/saveRecord 场景不启用，天然防止子表单递归嵌套），新增 persistForSubform 自动保存流程：buildPayload 必填校验失败直接拦截并提示，新建场景创建主记录后 setSavedRecordId 切换编辑态并提示“主表单已自动保存”，取消保留草稿；编辑场景静默保存当前改动。AppSubformRecords 的 mainRecordId 改为可空并新增 onBeforeCreate 拦截，未保存时展示占位提示，新增按钮等待主记录 ID 解析后再打开子记录抽屉；后端 400（如未布局的隐藏必填字段）错误信息透出到抽屉错误区。按用户要求新增/编辑记录统一改为右侧 Drawer 呈现：新增 components/ui/drawer.tsx 的 BizDrawer（标题/额外操作/滚动内容/底部操作结构，宽度与详情页抽屉一致 md:w-[calc(100vw-16rem)]，可通过 width 覆盖），AppRecordFormModal 主表单与子表单记录表单均改用 BizDrawer，「发起流程」等小型确认弹窗保留 BizDialog。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积与 /logo.png 提示）；npm test 通过（27 tests）。"
+    },
+    {
+      "id": "feat-096",
+      "name": "Apps UI - 待办审批复用记录表单与意见弹窗",
+      "description": "审批中心待办任务点击后不再展示表单快照，而是复用记录表单抽屉只读展示当前记录（含子表单记录只读浏览）；底部按钮改为「不同意」「同意」，点击后弹窗填写审批意见（选填，≤2000 字）再提交，保留 requestKey 幂等重试；已处理/我提交的及审批进度详情继续使用 InstanceDrawer。",
+      "dependencies": [
+        "feat-087",
+        "feat-095"
+      ],
+      "status": "done",
+      "evidence": "AppRecordFormModal 新增可选 props：title（覆盖抽屉标题）、readOnly（禁用全部字段控件、隐藏表单设计入口、子表单记录区只读）、footer（覆盖默认保存/取消底部操作）。AppSubformRecords 新增 readOnly：隐藏新增按钮、行内编辑/删除与操作列，空态文案适配。新增 pages/Approvals/ApprovalTaskDrawer.tsx：getAppForm 加载表单（加载/错误态用 Drawer 呈现并支持重试），复用 AppRecordFormModal 只读渲染审批记录，footer 为「不同意/同意」按钮；点击后打开 BizDialog 意见弹窗（Textarea maxLength 2000），确认调用既有 decideApproval(appId, taskId, decision, comment, requestKey)，同任务+同决策+同意见复用 requestKey 幂等重试，成功 message 提示并刷新列表、关闭抽屉。ApprovalFeed 待处理 tab 且任务带 taskId 时打开 ApprovalTaskDrawer，切换 tab 清空选中；其余场景保留 InstanceDrawer。消息中心（Notifications）「查看审批」同步接入：通知详情的 approval 为 ApprovalDetail（不带 taskId），前端从 tasks 中解析当前用户 PENDING 任务并拼装 taskId 打开 ApprovalTaskDrawer，无待办任务时回退 InstanceDrawer 进度详情，决策后刷新通知列表。后端零改动。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有 chunk 体积与 /logo.png 提示）；npm test 通过（27 tests）。"
+    },
+    {
+      "id": "feat-097",
+      "name": "Apps UI - 记录详情与编辑合并统一抽屉",
+      "description": "记录查看与编辑合并到同一抽屉原地切换（Power Apps 表单模式）：点击列表记录默认查看态展示文本；点击「编辑」原地切换为输入控件并保留滚动位置；列表行编辑按钮直接进入编辑；保存成功回到查看态并刷新详情与列表；新建复用同一布局进入新建态；审批锁定时保持只读。保存边界显式化：未保存修改关闭需确认；子表记录即时保存并在底部明确提示；保存与发起流程分离，编辑期间审批状态与锁定原因始终可见。",
+      "dependencies": [
+        "feat-095",
+        "feat-096"
+      ],
+      "status": "done",
+      "evidence": "新增 form/recordPayload.ts（buildRecordPayload 必填校验+载荷、initialCreateValues/toEditValues 输入初值）与 form/useReferenceOptions.ts（引用候选加载 hook），AppRecordFormModal 重构消费共享助手，消除逻辑重复。新增 components/biz/AppRecordDrawer.tsx 统一抽屉：view/edit/create 三态切换共用 parseFormLayout 布局（查看态文本渲染复用 renderFormValue/AppReferenceValue/MULTIREFERENCE displayRecordText，编辑态 FieldControl）；查看/编辑底部按模式切换（查看=删除+编辑，编辑/新建=取消+保存+新建态发起流程），子表保存语义在底部以提示文案明确（子表即时保存、主表单点保存生效）；dirty 关闭/取消拦截并弹确认（新建自动保存后明确提示主记录保留）；保存成功切换查看态并刷新；RecordApprovalPanel 常驻展示审批状态与锁定原因，锁定时禁用编辑/删除/保存；新建态子表新增沿用自动保存主表单流程。RecordList 接入：行点击/主显字段链接=查看态、行编辑与批量编辑=编辑态、新建=新建态、关联记录跳转同样打开统一抽屉；移除双层 Drawer+AppRecordDetail 与 AppRecordFormModal 组合。AppRecordView 独立页面保留 AppRecordDetail（页面编辑仅一层抽屉）。AppRecordFormModal 继续服务子表记录、快速新建、系统表单与审批待办场景。验证：flexmodel-apps-ui npm run build 通过（tsc -b + vite build，仅既有提示）；npm test 通过（27 tests）。用户反馈点击记录详情抽屉空白，Playwright 实测复现并定位：AppRecordDrawer 表单加载成功回调条件写反（if (cancelled) setForm(loaded)，cancelled=false 时表单被丢弃，三段渲染分支均不命中），已修正为 if (!cancelled)；浏览器实测抽屉正常展示记录（标题=主显字段、表单设计入口、字段与子表引用加载正常），build/test 重新通过。用户二次反馈主表单卡片丢失：统一抽屉原为裸 grid，已将主表单字段（三态共用）包回与 AppRecordDetail 一致的 rounded-xl border bg-card 卡片、子表单移至卡片外，Playwright 实测查看/编辑两态卡片均在，build/test 通过。"
+    },
+    {
+      "id": "feat-098",
+      "name": "Apps UI - 审批入口统一为记录表单与流程进度按钮",
+      "description": "所有审批条目入口（审批中心待处理/已处理/我提交的、消息中心查看审批）统一打开关联记录的表单抽屉：待办只读+同意/不同意，流程进行中只读，流程已结束为可编辑表单；表单底部常驻「查看流程进度」按钮打开流程进度抽屉（快照、签核进度、节点记录），InstanceDrawer 不再作为审批条目的主视图。",
+      "dependencies": [
+        "feat-095",
+        "feat-096",
+        "feat-097"
+      ],
+      "status": "done",
+      "evidence": "AppRecordFormModal 新增 footerExtra（默认底部左侧注入按钮）。ApprovalTaskDrawer 泛化：prop 改为 item: ApprovalItem，hasTask=taskId&&!decision（已处理条目也带 taskId，用 decision 区分），readOnly=待办||流程进行中，已结束为编辑模式可保存；底部常驻「查看流程进度」按钮打开 InstanceDrawer（进度/快照/节点记录），三种形态分别为 同意/不同意、关闭、默认保存底部。ApprovalFeed 三 tab 统一走 ApprovalTaskDrawer（移除 InstanceDrawer 条件分支）；Notifications 查看审批统一走 ApprovalTaskDrawer（PENDING 任务拼 taskId，否则传 ApprovalDetail，移除 InstanceDrawer 分支）；RecordApprovalPanel 内嵌的 InstanceDrawer 保留（记录表单内点审批历史打开流程进度，即「查看流程进度」目标形态）。验证：npm run build 通过；npm test 通过（27 tests）；Playwright 实测审批中心已处理 tab：点击打开记录表单（已拒绝实例为编辑模式、子表可操作），点击查看流程进度后流程进度抽屉叠加展示快照与签核进度。"
+    },
+    {
+      "id": "feat-099",
+      "name": "Apps UI - 抽屉右侧内嵌流程进度面板",
+      "description": "审批记录抽屉去掉「查看流程进度」按钮，改为 Drawer 右侧区域内直接展示流程进度（状态卡+签核时间线，轮询刷新），右上角按钮支持展开/折叠（类似明道云）。",
+      "dependencies": [
+        "feat-098"
+      ],
+      "status": "done",
+      "evidence": "BizDrawer 新增 aside prop：主体左右布局（表单 flex-1 + 右侧 w-72 边栏独立滚动），aside 存在时 header 右上角自动渲染展开/折叠按钮（PanelRightClose/Open），默认展开、每次打开抽屉重置展开。AppRecordFormModal 透传 aside。新增 pages/Approvals/ApprovalProgress.tsx：ApprovalTimeline 纯展示时间线（InstanceDrawer 签核进度区同步复用消除重复）+ ApprovalProgressPanel（getApprovalDetail+成员名+3s 轮询，状态卡+时间线）。ApprovalTaskDrawer 移除查看流程进度按钮与 InstanceDrawer 引用，改传 aside 面板，底部恢复纯 同意/不同意、关闭、默认保存。验证：npm run build 通过；npm test 通过（27 tests）；Playwright 实测审批中心已处理：按钮已移除、右侧面板默认展开（288px、状态卡+或签/依次审批时间线与决策意见）、右上角收起/展开正常、底部取消/保存。"
+    },
+    {
+      "id": "feat-100",
+      "name": "Apps UI - 详情抽屉审批 UI 统一",
+      "description": "记录详情抽屉右侧统一展示审批进度（与审批记录抽屉一致的 ApprovalProgressPanel，状态卡+签核时间线，仅查看态、有审批实例时显示，右上角按钮展开/折叠）；审批按钮移到表单底部操作行：待我审批时显示同意/不同意（意见弹窗+requestKey 幂等），未锁定且有启用流程时显示提交审批（直接对现有记录发起，不改动表单数据）；编辑/新建态不展示审批状态。",
+      "dependencies": [
+        "feat-099"
+      ],
+      "status": "done",
+      "evidence": "新增 components/biz/useRecordApproval.ts：3s 轮询审批实例与启用流程、解析当前用户 PENDING 任务，cancelled 防竞态、disabled 清空（修复切换记录后按钮残留上一条记录任务的 bug），返回 locked/latestInstance（优先进行中实例）。AppRecordDrawer：approvalLocked 改由 hook 派生；查看态 footer=锁定提示+提交审批+删除+编辑+同意/不同意（按条件），决策与提交审批均走 BizDialog，查看态提交审批直接 submitApproval 不 persistRecord（与新建态发起流程=保存+提交区分）；aside 仅查看态且有实例时渲染 ApprovalProgressPanel。验证：npm run build 通过；npm test 通过（27 tests）；Playwright 实测：锁定记录（审批中待我审批）footer 显示锁定提示+禁用删除/编辑+同意/不同意、右侧统一进度面板含或签/依次审批时间线、同意弹意见弹窗正常；无审批记录 footer=提交审批+删除+编辑无残留；编辑态 aside 消失。"
+    },
+    {
+      "id": "feat-101",
+      "name": "Apps UI - 审批中心列表展示发起人姓名",
+      "description": "审批中心列表（待处理/已处理/我提交的）发起人一栏展示成员姓名而非用户 id。",
+      "dependencies": [
+        "feat-098"
+      ],
+      "status": "done",
+      "evidence": "services/approvals.ts 新增 getApprovalMemberNames(appId)：审批成员目录 id→姓名映射，会话内缓存。ApprovalFeed 以列表涉及的 appId 集合为依赖批量拉取目录合并 names（5s 轮询不重复请求），发起人渲染 names[item.initiator] ?? item.initiator。验证：npm run build 通过；npm test 通过（27 tests）；Playwright 实测审批中心已处理 tab 前五行发起人均显示姓名（Admin/张三）而非 id。"
+    },
+    {
+      "id": "feat-102",
+      "name": "Apps UI - AppRecordFormModal 主表单卡片补齐",
+      "description": "编辑表单（AppRecordFormModal：审批记录抽屉可编辑态、子表记录新增/编辑、系统表单、页面详情编辑）主表单字段补上与统一抽屉一致的卡片容器，子表单保持在卡片外。",
+      "dependencies": [
+        "feat-097"
+      ],
+      "status": "done",
+      "evidence": "AppRecordFormModal 主体改为 space-y-4 布局：主表单字段（SECTION+FIELD）包进 rounded-xl border bg-card p-4 shadow-sm 卡片，子表单移到卡片外；entries 按 FormLayoutEntry 类型收窄预过滤（mainEntries/subformEntries），与 AppRecordDrawer 布局逻辑一致。验证：npm run build 通过；npm test 通过（27 tests）；Playwright 实测审批中心已处理（已拒绝→可编辑表单）：卡片渲染、主表单 11 字段在卡片内、BOM明细子表在卡片外。"
+    },
+    {
+      "id": "feat-103",
+      "name": "System - project.fml 合并为平台级表",
+      "description": "原 project.fml 中的流程、审批、触发器、作业日志、函数、存储、认证提供商、Pages、API 日志、审计日志、Outbox 等系统表全部上收为平台级表：统一在 platform.fml 声明并存于 system schema，每表增加 project_id 并按 project_id 重建唯一索引与查询索引；删除 project.fml 及项目库初始化路径。",
+      "dependencies": [
+        "feat-102"
+      ],
+      "status": "done",
+      "evidence": "platform.fml 合并全部原 project.fml 模型并增加 project_id；唯一约束改为 [project_id, ...]（如 UQ_RUNTIME_MESSAGE、UQ_APPROVAL_INSTANCE_REQUEST、UQ_FLOW_DEFINITION_MODULE、UQ_FUNCTION_PROJECT_NAME、UQ_PAGE_SITE_PROJECT），f_auth_provider_config 改为 uuid 主键 + [project_id, name] 唯一，f_page_site 每项目唯一。删除 project.fml 与 SchemaInitializer；pom.xml 的 system schema 仅导入 platform.fml，dev_test schema 仅导入 dev_test.fml；dev_test 平台表种子数据迁入 platform.fml 并携带 project_id=dev_test。Java 访问层统一改为 AbstractRepository.getPlatformSession + project_id 过滤（flow、approval、scheduling、functions、storage、pages、auditlog、apilog、projectauth、ReliableMessages）；新增 ProjectUnitOfWork.executePlatform 与平台事务复用，NotificationRepository 复用平台事务；ProcessEngineImpl、ApprovalFlowService、ApprovalService 的流程/审批写操作改为平台事务；项目/分支删除新增 ProjectPlatformDataCleaner 清理平台表数据。审批 Repository 改为实体类入参（ApprovalInstance.class 等）+ System 字段元模型，更新/删除使用 DSL 的 Class API；Resource 不再注入 Repository（记录审批历史、通知、系统选项、函数模板分别经 ApprovalService、NotificationService、SystemOptionService、FunctionService）。按用户要求不考虑历史兼容，未提供旧库数据迁移。随后按模型拆分出 ApprovalInstanceRepository、ApprovalTaskRepository、ApprovalWaitRepository、ApprovalRecordLockRepository、ApprovalFlowDefinitionRepository、ApprovalFlowDeploymentRepository、ApprovalInstanceDataRepository、ApprovalNodeInstanceRepository、ApprovalNodeInstanceLogRepository 与 RuntimeMessageRepository，每个 Repository 内部自动附加 project_id 过滤且只暴露语义化查询方法，删除 ApprovalRepository 与 AbstractPlatformRepository；Repository 注入字段统一命名为 XxxRepository 形式。验证：mvn compile -pl flexmodel-server -am -DskipTests 通过；mvn test-compile -pl flexmodel-server -am -DskipTests 通过（按用户要求未执行测试）；mvn test -pl flexmodel-engine 通过；ApprovalFlowResourceTest 在本地 SQLite 环境下仍有失败，待后续修复。"
+    },
+    {
+      "id": "feat-104",
+      "name": "Apps UI - 审批进度突出展示审批意见",
+      "description": "审批进度时间线不再把审批意见拼在姓名后的灰色小字中，改为独立的「审批意见」块；节点卡片补充会签方式、节点状态、审批人头像、决策结果与决策时间，提升窄侧栏和长意见下的可读性。",
+      "dependencies": [
+        "feat-100"
+      ],
+      "status": "done",
+      "evidence": "重写 pages/Approvals/ApprovalProgress.tsx：节点头部展示标题、会签方式（会签/或签/依次审批）与节点状态（进行中/已通过/已拒绝）；审批人行使用首字头像、姓名、决策状态图标与文案（已同意/已拒绝/待处理/等待前序审批/已关闭）及决策时间；非空审批意见使用独立引用块展示，带「审批意见」标签、左侧强调色（同意绿/拒绝红）和 whitespace-pre-wrap + break-words，长文本与换行不再被姓名行挤压。InstanceDrawer 与 AppRecordDrawer 共用组件同步生效（待办入口随后由 feat-105 统一为 AppRecordDrawer）。验证：flexmodel-apps-ui npm run build 通过；npm test 通过（27 tests）；连接本地 dev 后端（plm_system 真实审批实例 11651de9，意见“同意”）Playwright 实测明暗两种模式均展示「审批意见」块，截图 artifacts/approvals-progress-comment.png、approvals-progress-comment-dark.png。"
+    },
+    {
+      "id": "feat-105",
+      "name": "Apps UI - 审批入口统一为记录详情抽屉",
+      "description": "待办中心与消息中心的审批入口不再使用独立的编辑表单抽屉，统一复用记录列表页的记录详情抽屉 AppRecordDrawer：查看记录、右侧流程进度、底部同意/不同意均与列表页详情一致；移除冗余的 ApprovalTaskDrawer 及 AppRecordFormModal 仅为其服务的 title/readOnly/footer/aside 分支。",
+      "dependencies": [
+        "feat-104"
+      ],
+      "status": "done",
+      "evidence": "ApprovalFeed 与 Notifications 的审批入口改为 AppRecordDrawer，传入 appId/formName/recordId 及 approvalInstanceId（待办/通知对应实例）；useRecordApproval 新增可选 instanceId，优先定位该审批实例解析当前用户 PENDING 任务并将右侧进度固定到该实例，未传时保持原「进行中实例优先」逻辑。AppRecordDrawer 新增 approvalInstanceId 透传并使用 progressInstanceId 渲染 ApprovalProgressPanel。删除 pages/Approvals/ApprovalTaskDrawer.tsx；回滚 AppRecordFormModal 中仅审批抽屉使用的 title/readOnly/footer/footerExtra/aside 参数及对应渲染分支，编辑表单回归统一默认标题、设计入口、保存/取消/发起流程底部。E2E approval-backend.mjs 同步新交互（先点同意再填意见后确认，抽屉标题与状态断言适配详情抽屉）。验证：npm run build 通过；npm test 27 项通过；mvn test -pl flexmodel-server -Dtest=ApprovalFlowResourceTest#browserRoundTripAgainstRealBackend 通过（真实后端浏览器闭环：待办中心打开记录详情抽屉、填写意见同意、进度显示已通过、记录解锁），截图 artifacts/approvals-backend-signing.png 显示统一后的详情抽屉与审批进度。"
+    },
+    {
+      "id": "feat-107",
+      "name": "Apps UI - 表单编辑回填与保存后详情同步",
+      "description": "修复列表直接编辑记录未回填、输入控件显示 undefined，以及详情编辑保存后仍显示旧记录的问题；覆盖记录异步加载与再次编辑。",
+      "dependencies": [
+        "feat-105"
+      ],
+      "status": "done",
+      "evidence": "AppRecordDrawer 在表单与记录异步加载完成后通过 toEditValues 初始化编辑值，并用 dirty 保护已输入内容；记录未加载或加载失败时禁用输入、保存与子表编辑，避免空值覆盖。save 成功后使用完整响应 setRecord(saved)，详情标题、字段、关联显示值和再次编辑即时同步；抽屉重置覆盖 appId/formName。FieldControl 将 null/undefined 归一为空字符串，保留 0/false。新增 npm run test:records（Playwright API mock）：列表编辑回填与切换记录、详情编辑保存与再次编辑、加载失败禁止保存、新建后详情共 4 项通过；npm test 27 项通过；npm run build（tsc -b + vite build）通过；原生 mvn compile -q -pl '!flexmodel-engine/flexmodel-maven-plugin' 与 mvn test -q -pl flexmodel-engine 通过；git diff --check 通过。bash ./init.sh 在 clean 阶段被运行中后端锁定的 flexmodel-server-dev.jar 阻塞，已以不清理的原生编译和引擎测试验证，未停止现有服务。Apps UI 提交 4bfc6bc。"
+    },
+    {
+      "id": "feat-106",
+      "name": "Apps UI - 抽屉更多菜单收纳表单设计入口",
+      "description": "抽屉右上角关闭按钮左侧新增「更多」按钮，原独立的表单设计图标入口收进下拉菜单；记录详情抽屉与编辑/新建表单抽屉保持一致，并移除 BizDrawer 已无调用方的 headerExtra 插槽。",
+      "dependencies": [
+        "feat-105"
+      ],
+      "status": "done",
+      "evidence": "BizDrawer 新增 moreMenu 插槽并固定渲染在进度折叠按钮之后、关闭按钮之前；移除无人使用的 headerExtra 属性。新增 components/biz/FormMoreMenu.tsx：MoreHorizontal 触发按钮（title/aria-label=更多）+ 下拉菜单「表单设计」，DropdownMenuContent 使用 z-[1100] 保证浮于 z-[1040] 的抽屉之上。AppRecordDrawer 与 AppRecordFormModal 移除原头部 Settings 图标按钮，改传 moreMenu，点击表单设计先关闭当前抽屉再跳转 form-design。附带修复开发环境：Windows 原生文件事件偶发丢失导致 Vite 返回半更新模块（曾出现 headerExtra is not defined / ApprovalTaskDrawer is not defined），vite.config.ts 启用 server.watch.usePolling（300ms）。验证：npm run build 通过；npm test 27 项通过；Playwright 实测审批中心记录抽屉：头部仅剩 [收起审批][更多][关闭]，更多菜单可见且可跳转 form-design；新建产品抽屉同样显示更多按钮，页面无异常；截图 artifacts/drawer-more-menu.png、form-modal-more-menu.png。"
+    },
+    {
+      "id": "feat-108",
+      "name": "Apps UI - 消息审批全宽、个人设置精简与表单设计紧凑",
+      "description": "消息中心查看审批改为独占全宽抽屉，不再按上一层通知抽屉宽度收窄并留出间距；个人设置移除全部 mock 内容，仅展示当前登录账号并隐藏左侧菜单；表单设计画布与字段卡片间距收紧。",
+      "dependencies": [
+        "feat-106",
+        "feat-107"
+      ],
+      "status": "done",
+      "evidence": "DrawerContent 已有 stacked 层叠宽度限制，BizDrawer/AppRecordDrawer 新增 stacked 透传；Notifications 打开审批详情时传 stacked={false}，桌面 1440 下审批抽屉由 552px 恢复为 1184px（x=256），完全覆盖通知抽屉且无横向溢出。UserSettings 重写为读取 getAuthSession() 的真实账号（用户名/邮箱/用户 ID），删除 currentUser、loginLogs、部门、工作电话、登录日志、第三方授权、临时授权/秘钥及全部假保存弹窗，保留 AppLayout hideNavigation。FormDesigner 表单布局画布 p-4→p-3、行列 gap-3→gap-2、字段卡片 py-2→py-1.5、分区 h-9→h-8、子表单 min-h-14→min-h-11。表单设计返回按钮复测跳转 /admin/apps/plm_system/settings/forms；列表行编辑回填与详情保存刷新复用 feat-107 已验证。验证：npm run build 通过；npm test 34 项通过；Playwright 实测通知详情→查看审批全宽无溢出、个人设置无 aside 且展示 Admin/cjbi@outlook.com、表单设计画布卡片高度 32-34px、表单设计返回列表；截图 artifacts/notification-approval-current.png、user-settings-new.png、form-designer-compact.png。"
+    },
+    {
+      "id": "feat-136",
+      "name": "移除审计日志功能",
+      "description": "按用户要求彻底移除配置变更审计日志（AuditLog）：删除后端 auditlog 特性包与平台表模型，移除前端页面、路由、服务、类型、项目日志设置中的审计资源白名单及相关文案。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "后端删除 dev.flexmodel.auditlog 包（Resource/Service/Repository/FmRepository/EventListener）并在 EngineConfig 取消监听器注册；platform.fml 删除 f_audit_log 模型；ProjectPlatformDataCleaner 移除 AuditLog 清理项；ProjectLogSettings 删除审计资源白名单（保留日志保留天数）。前端删除 pages/AuditLog 与 services/audit-log.ts，移除 /project/:projectId/audit-logs 路由与菜单入口、AuditLog 类型、metadata.logSettings.auditResources 类型；LogSettingsTab 仅保留日志保留天数并移除模型列表加载与审计资源多选；zh/en 删除相关文案。保留 AuditDataEventListener（created_by/updated_by 自动填充）与 SystemForm/SystemRecord 的 AUDIT_FIELDS。验证：npx tsc -b、定向 eslint、npm run build 通过；mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过（clean 被运行中的 flexmodel-server-dev.jar 锁定，沿用非 clean 编译）；mvn test -pl flexmodel-engine 通过。存量库中的 f_audit_log 表不自动删除。"
+    },
+    {
+      "id": "feat-162",
+      "name": "Apps UI - 视图刷新不再在页签下方绘制横线",
+      "description": "切换视图或刷新数据时，页签下方的记录内容区顶部会出现一条横线（用户截图标注于页签与表头之间）。移除内容区顶部的细进度条，改为在工具栏刷新按钮上呈现刷新中状态；同时避免折叠状态下的批量操作栏保留 1px 下边框加粗页签分隔线。",
+      "dependencies": [
+        "feat-147"
+      ],
+      "status": "done",
+      "evidence": "2026-11-02 修复（flexmodel-apps-ui，未提交）。根因：feat-147 引入的 ViewFetchingBar 在内容区顶部绘制 2px 全宽进度条（轨道 bg-primary/15，动画段 1/3 宽），位置距页签分隔线仅 12px（内容区 p-3）、紧贴表头，动画段移出可视区时只剩整条轨道，看起来就是页签下方多出的一条横线；另外未勾选时批量操作栏 max-h-0 仍保留 border-b，使页签分隔线变成 2px。修改：删除 ViewFetchingBar 与 index.css 的 view-progress 关键帧；新增 components/biz/views/viewFetching.tsx（ViewFetchingProvider + useViewFetching），表格/看板/画廊/详情/层级/日历/甘特视图在后台刷新（isFetching && !isLoading）时上报给 RecordList；工具栏刷新按钮在拉取中让 RefreshCw 旋转（animate-spin）、title 改为「正在刷新…」并设置 aria-busy；批量操作栏改为选中时才加 border-b。验证：tsc -b 通过；npm run build（TEMP/TMP 指向项目内 .tmp）exit 0；npx vitest run 63/63 通过；构建 Mock API（查询延迟 1.2s）+ 无头 Chromium（1600×900、DPR 2）实测，idle/切换视图/刷新三种状态下页签与表头之间不存在任何 ≤4px 的全宽元素（修复前刷新时存在 y=189、2px 高、1270px 宽的进度条轨道），刷新按钮 svg 在拉取中出现 animate-spin、请求结束后恢复。截图 artifacts/view-refresh-no-line.png。遗留（与本改动无关）：e2e/records.spec.ts 仍 mock /forms/.../menus，而应用已改用 /navigation，导致 npm run test:records 15 项在 setup 阶段全部失败。"
+    },
+    {
+      "id": "feat-163",
+      "name": "用 App tools 搭建 PLM 与 ERP 两套演示应用",
+      "description": "仅使用 flexmodel MCP 提供的 app tools（业务表单、布局与字段显示控制、视图页签、导航、工作台、审批流、示例记录）搭建产品生命周期管理（PLM）与企业资源计划（ERP）两套细粒度演示应用，明确不使用云函数，并给出可复跑的校验方式。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "2026-11-02 完成，无代码改动（产物在 %TEMP% 下的 erp_*/plm_* 脚本与本地 dev 库中的应用）。PLM app_970eb8b43e3a：15 张 plm_ 表单、168 个视图页签、示例数据齐备。ERP erp_system：34 张 erp_ 业务表单（主数据→采购→销售→库存→生产→财务全链路）、31 张表单布局共 904 布局项 + 96 条字段显示控制、419 个视图页签（TABLE 216/KANBAN 114/DETAIL 33/CALENDAR 27/GANTT 13/GALLERY 10/HIERARCHY 6）、8 个导航分组约 29 个入口、2 个工作台（经营驾驶舱 15 组件、供应链与库存监控 16 组件，31 个可取数组件全部返回真实数据）、7 条已发布审批流（含费用报销子流程）、301 条示例记录。验证：erp_verify3.mjs 回读全部表单——601 处 REFERENCE 完整性检查 0 悬空 0 必填缺失，385 个带筛选页签逐个执行筛选/排序 DSL 全部命中 ≥1 条且 0 报错，工作台组件逐个取数 0 失败；写入前先由 erp_schema.mjs 导出 34 张表单契约、erp_data.mjs --dry 离线校验 290 条记录再真实写入。过程中修正三类契约误用并记录在 progress.md：视图筛选必须为 _and/_or 结构、KANBAN groupField 不接受 STATE 字段、筛选值不能为空串；MCP 工具业务错误以普通文本 Error: 返回而 isError 仍为 false（首轮 434 页签实际 0 落库）；create_app_mock_records 需显式传子表上下文三参数且 DATE 空值必须为 null。未执行 git commit/push。"
+    },
+    {
+      "id": "feat-165",
+      "name": "引擎 - 系统模型迁移字段重复导致 Duplicate column 修复",
+      "description": "f_user 等保留运行时模型在系统 schema 启动迁移时产生重复字段：SessionFactory.mergedFields 已将种子新字段合并进实体并经 migrateEntity→createEntity 注册，随后 migrateEntity 对 older 快照做字段级 diff 调 createField，SqlSchemaService.createField 又向已含该字段的注册实体无条件 addField 并持久化，导致 phone/avatar/manager_user_id/status 在存储定义中出现两次，SELECT 列列表（SqlStatementBuilder 无投影分支按字段列表逐列生成）出现 Duplicate column。修复不改建模层，在外层限制：createField 在注册实体已含同名字段时幂等跳过；mergedFields 对已存储实体字段列表按名称去重，启动迁移时自愈已被污染的持久化定义。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-core，未提交；EntityDefinition 建模层未改动）。SqlSchemaService.createField：entity.getField 同名非空时直接返回，跳过 addField/register/createColumn（modifyField 为先 removeField 再 addField 不受影响）；SessionFactory.mergedFields：用 fieldNames Set 对 existing 字段流去重并 filter null。验证：mvn compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 通过（clean 因运行中 dev 服务锁文件跳过）；mvn test -pl flexmodel-engine 全绿。需重启 quarkus:dev 生效，重启时迁移会以去重后的定义重新持久化 f_user，自动清理已重复的存储字段。"
+    },
+    {
+      "id": "feat-164",
+      "name": "视图配置与整包导出支持内置字段",
+      "description": "MCP 创建的应用在导出整包时报「VIEW_TAB_INVALID … 日历开始字段不存在: created_at」：保存视图（save_app_form_views）允许引用内置字段（id/owner_id/created_by/updated_by/created_at/updated_at），但导出校验器在包内 forms[].fields 未枚举内置条目时无法解析这些字段，保存与导出语义不一致。要求全链路一致地支持内置字段：保存、能力目录、导出校验三条链路在记录缺失内置条目时也能解析内置字段。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "2026-11-03 修复（flexmodel-server，未提交）。新增 AppFormService.builtinFieldRecords() 静态目录（id=TEXT、owner_id/created_by/updated_by=REFERENCE→f_user、created_at/updated_at=DATETIME，全部 builtin=true），三条链路复用：createFormWithFields 的字段记录种子改用该目录（替代 systemFieldRecords()，已删除）；normalizeViews 的 fields map 先以内置目录打底再覆盖记录字段（存量记录缺内置条目时保存视图仍可引用 created_at 等），normalizeViewSort 去除 VIEW_BUILTIN_SORT_FIELDS 豁免（常量已删，目录已覆盖）；findViewCapabilities 的字段清单与筛选操作符目录同样打底，AI 在存量表单上也能看到并使用内置字段。AppPackageValidator.FormInfo 构造时用该目录预填 builtinFields 与 allFields，resolveField 永远可解析六个内置字段（视图 config/sort/displayFields 引用内置字段通过，displayFields 对 id 的显式拒绝与保存侧一致），validateViewTabSort 的 Set.of(\"id\",\"created_at\",\"updated_at\") 豁免简化为 allFields 判断；授权校验 fieldControls 引用内置字段从「权限字段不存在」warning 变为命中「内置字段不能授权修改」分支（语义更正确）。新增 AppPackageValidatorTest.acceptsViewTabsReferencingBuiltinFields：表单 fields 不含内置条目时日历 startField=created_at、endField=updated_at、排序 created_at、显示字段 created_at 全部通过，displayFields 引用 id 仍拒绝。验证：mvn compile -pl flexmodel-server -am 通过；AppPackageValidatorTest 21/21、AppToolsTest 5/5；mvn test -pl flexmodel-engine BUILD SUCCESS。未执行 git commit/push。"
+    },
+    {
+      "id": "feat-166",
+      "name": "引擎 - 新增 Text 大文本字段类型",
+      "description": "建模/引擎此前只有 String（VARCHAR）一种字符类型，应用层把 NTEXT/IMAGE/FILE/AVATAR 映射为 varchar(4000)，导入 PLM 模板这类宽表时 MySQL 报 Row size too large（65535）导致建表失败。新增 Text 字段类型（ScalarType.TEXT + TextField），DDL 映射 LONGVARCHAR（MySQL longtext、PostgreSQL text、SQL Server nvarchar(MAX)、Oracle clob、DB2 long varchar），FML/JSON/GraphQL/codegen/Mongo/SQL 全链路支持；AppFormService/SystemFormService 的 NTEXT/FILE/IMAGE/AVATAR 改为 TextField。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-engine + flexmodel-server + flexmodel-ui，未提交）。引擎：ScalarType.TEXT(\"Text\")、TextField、Jackson 子类型注册、FML 解析与回写、SqlContext(LONGVARCHAR)/MongoContext 类型处理器、JdbcModelRegistry 反向映射 LONGVARCHAR→Text；codegen JavaType TEXT→String；GraphQL type/comparison 映射 String/StringComparisonExp。服务端：AppFormService.buildField 的 NTEXT/FILE/IMAGE/AVATAR → TextField，inferFieldType(TextField)→NTEXT，SystemFormService 同步。前端：建模字段类型下拉新增 Text、字段输入用 TextArea、FML 补全与高亮、移除无效的 String.text 开关。文档：overview/modeling 类型表与 MCP 说明补充 Text。测试：新增 MySQLSqlDialectTest（longtext 生成 + 行内字节预算回归）、ASTNodeConverterTest.textTypeIsParsedAsTextField、JsonSerializeTest.textFieldSurvivesJsonRoundTrip；mvn test -pl flexmodel-engine/flexmodel-core 通过；mvn compile -pl flexmodel-server -am 通过；flexmodel-ui npx tsc -b 通过。"
+    },
+    {
+      "id": "feat-167",
+      "name": "Apps - f_app.forms 拆分独立 f_app_form 表",
+      "description": "将 f_app.forms JSON 列拆为独立平台表 f_app_form（一表单一行，(app_id, name) 唯一）：外层仅保留 id、app_id、name（唯一索引与寻址键）与 content（AppFormRecord 全量 JSON，冗余 name/label/description），label/description 不作为外层列；f_app 移除 forms JSON 列，改为 f_app_form[] 关联（cascadeDelete），f_app_form 反向 app 关联，app.getForms() 可经 expand 获取全部表单；AppFormService 读写改经 AppFormRepository 按 app_id 直查（不通过 Project/App 行）。不做历史数据迁移。",
+      "dependencies": [
+        "feat-144"
+      ],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-server，未提交）。platform.fml：f_app 移除 forms? JSON 列并新增 forms? : f_app_form[] @relation(localField id, foreignField app_id, cascadeDelete true)；新增 model f_app_form（id uuid、app_id、app? : f_app 关联、name、content JSON，UQ_APP_FORM_NAME 唯一索引 [app_id, name]）。新增 AppFormRepository（findByAppId/save/deleteByAppId）与 AppFormFmRepository（System.appForm，按 name ASC 排序）；AppFormService：formRecords(appId)/findFormRecord/saveFormRecord/persistFormRecords/requireForm/isFormUsedAsSubform/isFieldUsedAsSubform/referenceForm/toFieldResponse/validateSubformItem/normalizeLayoutItem(s)/ensureUniqueFormName 全链路去掉 Project 参数、按 appId 直查 f_app_form，读经 content→AppFormRecord、写为全量替换（deleteByAppId + 逐行 mergeInto，AppFormRecord 序列化为 content Map，保留 f_app.updated_at 时间戳回写与数据授权 reconcile）；AppService.createApp 移除 setForms；ProjectPlatformDataCleaner APP_MODELS 增加 AppForm。验证：mvn compile -pl flexmodel-server -am BUILD SUCCESS（codegen 重生成 App.forms 为 @ModelRef List<AppForm>、AppForm 含 id/appId/name/content+app ref）；定向测试 74 项中 72 通过（AppPackageZipTest 10、AppRecordServiceTest 6、AppRecordHistoryRecorderTest 8、AppRecordDiscussionServiceTest 2、AppViewServiceTest 7、AppToolsTest 5、AppResourceTest/AppNavigationResourceTest/AppFormResourceTest/AppDataAuthorizationResourceTest/WorkbenchResourceTest/AppPackageValidatorTest 全绿），AppTemplateCatalogTest 失败 2 项经 git stash 基线复跑确认为 HEAD 既有失败（模板目录 6≠4 与 qms 示例数据校验，与本次无关）；mvn test -pl flexmodel-engine BUILD SUCCESS。"
+    },
+    {
+      "id": "feat-168",
+      "name": "Apps - 应用整包导入性能优化",
+      "description": "整包导入（含 Excel 转移）在带数据时耗时过长：逐行重建历史事件会按行查询目录与表单元数据，逐条事件再触发项目/触发器查询，历史落库逐条开关会话，校验重复执行且记录引用校验为 O(行²)。本次只改调用方式与批量写入，不动结构重建与库配置。",
+      "dependencies": [
+        "feat-167"
+      ],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-server，未提交）。1) AppRecordHistoryRecorder 新增 ImportContext 与 prepareImportContext(appId, userId, forms)：成员显示名只查一次目录（原先每行两次 directory()，每次 5 张表全量），主子关系按表单快照建 ParentLink 索引，行循环内不再 findForm；importCreated 改为 importCreated(context, importId, form, values)，AppPackageImport/AppTransferExecutor 各建一次上下文。2) AppRecordHistoryRepository 新增 insertEvents 且 insertTargets 改 insertAll，persistBatch 一批两语句替代逐事件开关会话。3) AppPackageValidator.SystemRecordLookup 增加批量 missing(form, ids) 默认实现，服务端按 f_user/f_department/f_role 合并 500 个 ID 一次 IN 查询；validateDataReferences 先建 Map<form, Set<id>> 索引，业务引用由 5000×5000 次线性比较降为 O(行)。4) AppPackageImport.rebuild 在预览已 READY 且 readContent 校验 planHash 一致时跳过重复整包校验。5) TriggerDataChangedEventListener 为项目与触发器查询加 1 秒 TTL 缓存（上限 1024 项），把逐事件 2 次查询压到每秒级；配置刚变更后的首批事件可能延后到 1 秒内生效。验证：mvn -o compile -pl flexmodel-server -am 通过；AppPackageValidatorTest 21/21、AppRecordHistoryRecorderTest 8/8、AppRecordHistoryDiffTest 8/8、AppPackageZipTest 10/10、AppTransferPlannerTest 11/11、AppToolsTest 5/5 全绿；AppTemplateCatalogTest 2 项失败经 git stash 基线复跑确认与本次无关（模板目录 6≠4、qms 示例数据校验，同 feat-167 记录）。未执行 git commit/push，未改 application-dev.properties。"
+    },
+    {
+      "id": "feat-169",
+      "name": "Apps - 整包导入结构重建批量化（不修改 engine）",
+      "description": "上一轮消除了数据路径的 N+1，但结构重建仍是「先建骨架表单、再逐字段 ALTER 补引用列、每个字段/每个表单重写整份表单配置」的 O(F²) 写入。要求在不改动 flexmodel-engine 的前提下，尽量把表单与引用字段一次建好。",
+      "dependencies": [
+        "feat-168"
+      ],
+      "status": "done",
+      "evidence": "2026-11-03 完成（flexmodel-server，未提交）。1) AppFormService 新增导入专用批量接口：createFormsForImport(appId, records) 按包内定义一次性构建完整 EntityDefinition（系统字段 + 索引 + 主显字段元数据 + 全部业务字段含 REFERENCE）后每表单一次 createModel、最后 persistFormRecords 一次写全部 f_app_form；applyFormLayoutsForImport(appId, records) 一次读实体与现有配置，批量应用布局与视图后同样只写一次。2) 引用字段不再需要目标表单先建表：导入期用 ThreadLocal 快照（IMPORT_FORM_NAMES / IMPORT_ENTITIES）替代 normalizeReferenceForm 的 findForms 查库与 validateSubformItem 的逐项 requireForm，包内循环引用与自引用均可一次建表；非导入路径快照为空，行为不变。3) AppPackageImport 删除 references 阶段与 createSkeletonForms/createReferenceFields/applyLayouts，改为 forms 阶段一次建表、layouts 阶段一次写配置。4) 顺带修复真实缺陷：导入在 activating 步骤失败时 compensate 保留了激活前预写的 COMMITTED 回执，TaskResult.resultOf 会把已回滚的导入报成 COMMITTED；新增 TaskState.failed(...) 在补偿态丢弃回执。验证：mvn -o compile -pl '!flexmodel-engine/flexmodel-maven-plugin' BUILD SUCCESS；新增 AppFormImportBatchTest 5 项（一次建表含引用列、包内互相引用、主显字段元数据落到列、布局视图一次写入、包外引用被拒）全绿；新增 AppPackageImportTest 端到端 2 项（内置 wms/plm 模板完整导入并逐表单核对字段类型/引用/布局/视图/记录数）通过；回归 AppPackageValidatorTest 21、AppRecordHistoryRecorderTest 8、AppRecordHistoryDiffTest 8、AppPackageZipTest 10、AppTransferPlannerTest 11、AppRecordServiceTest 6、AppRecordQueryTest 16 全绿；AppTemplateCatalogTest 2 项仍为基线既有失败（同 feat-167）。本地 SQLite 实测同一端到端测试：回退到 HEAD 的基线 wms 20.5s / plm 30.4s（且均在激活步骤因测试库锁回滚，属上界），优化后 wms 2.1–2.6s、plm 1.9–2.5s 并全部断言通过；测试库为单写 SQLite，后台定时任务会写平台表，偶发 5s 锁超时时测试会重试一次，仍失败则 skip 并说明原因。未执行 git commit/push。"
+    },
+    {
+      "id": "feat-170",
+      "name": "引擎 - DataService 类型化重载（Class 引用模型）",
+      "description": "session.data() 只接受 String 模型名，调用方需手工 ReflectionUtils.getModelNameFromClass(X.class) 转换（server 中 40+ 处）。DataService 新增 Class 重载：insert/insertAll/findById/findAll(Query)/findAll(Predicate)/update(Class, Map, Predicate)，结果仍为 Map 行（与既有消费方式一致，实体化查询仍走 dsl()），default 方法委托既有 String 版本，事件链（EventAwareDataService）与写拦截链自动继承。AppFlowRecordGuard 拦截器同步归一化 args[0]（Class→模型名），保证 WriteInterceptor 对类型化调用按内部模型短路。同批规划的另两项取消：泛型仓储基类由用户取消；codegen JSON 字段类型化（Object→Map）因 JSON 列设计上可能为 List（AiMessages.parse 兼容 String/List 两种驱动返回），保持 Object 是有意设计。",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "2026-11-10 完成（flexmodel-core + flexmodel-server，未提交）。引擎：DataService 新增 6 个 Class 重载 default 方法。服务端：13 个文件 41 处 data() 调用点改为类型化（apps/flow 9 个仓储、apps/record 2 个、directory/DirectoryService、notification/NotificationRepository），9 个文件清理未使用的 ReflectionUtils import；AppFlowRecordGuard.intercept 对 Class 形式的 args[0] 归一化为模型名。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' 18 模块 BUILD SUCCESS；mvn test -pl flexmodel-engine/flexmodel-core 99/99 全绿；AppRecordDiscussionServiceTest 2、AppRecordHistoryDiffTest 8、AppRecordHistoryRecorderTest 8 全绿（直接覆盖改动仓储）。AppFlowIntegrationTest/NotificationRelayTest 的 Failed to start quarkus（启动期 AppFlowRecordGuard→ProjectFmRepository→sessionFactory 循环依赖导致 StackOverflow）经 git stash 基线复跑确认为 HEAD 既有失败，与本次改动无关。未执行 git commit/push。"
     }
   ]
 }

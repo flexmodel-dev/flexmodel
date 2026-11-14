@@ -156,6 +156,29 @@ public class LocalStorageOperationsTest {
   }
 
   @Test
+  void testMoveFile() {
+    storage.uploadFile("/move.txt", new ByteArrayInputStream("move".getBytes()), 4);
+
+    storage.moveFile("/move.txt", "/archive/move.txt");
+
+    assertNull(storage.getFile("/move.txt"));
+    FileItem moved = storage.getFile("/archive/move.txt");
+    assertNotNull(moved);
+    assertEquals(4, moved.getSize());
+  }
+
+  @Test
+  void testMoveFolder() {
+    storage.uploadFile("/src/", new ByteArrayInputStream(new byte[0]), 0);
+    storage.uploadFile("/src/a.txt", new ByteArrayInputStream("a".getBytes()), 1);
+
+    storage.moveFile("/src", "/dst");
+
+    assertNull(storage.getFile("/src"));
+    assertNotNull(storage.getFile("/dst/a.txt"));
+  }
+
+  @Test
   void testGetInputStream() throws IOException {
     String content = "Download test content";
     storage.uploadFile("/download.txt", new ByteArrayInputStream(content.getBytes()), content.length());

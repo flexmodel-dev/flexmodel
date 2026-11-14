@@ -8,6 +8,7 @@ import dev.flexmodel.entity.Student;
 import dev.flexmodel.entity.StudentDetail;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
+import dev.flexmodel.model.EnumElement;
 import dev.flexmodel.model.IndexDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.query.Direction;
@@ -153,16 +154,16 @@ public abstract class AbstractSessionTests {
 
   void createStudentEntity(String entityName) {
     EnumDefinition genderEnum = session.schema().createEnum(entityName + "_gender", en ->
-      en.addElement("UNKNOWN")
-        .addElement("MALE")
-        .addElement("FEMALE")
+      en.addElement(new EnumElement("UNKNOWN"))
+        .addElement(new EnumElement("MALE"))
+        .addElement(new EnumElement("FEMALE"))
         .setComment("性别")
     );
     EnumDefinition interestEnum = session.schema().createEnum(entityName + "_interest", en ->
-      en.addElement("chang")
-        .addElement("tiao")
-        .addElement("rap")
-        .addElement("daLanQiu")
+      en.addElement(new EnumElement("chang"))
+        .addElement(new EnumElement("tiao"))
+        .addElement(new EnumElement("rap"))
+        .addElement(new EnumElement("daLanQiu"))
         .setComment("兴趣")
     );
     session.schema().createEntity(entityName, entity -> entity

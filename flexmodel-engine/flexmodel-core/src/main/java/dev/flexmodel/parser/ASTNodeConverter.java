@@ -3,6 +3,7 @@ package dev.flexmodel.parser;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
+import dev.flexmodel.model.EnumElement;
 import dev.flexmodel.model.IndexDefinition;
 import dev.flexmodel.model.SchemaObject;
 import dev.flexmodel.model.field.*;
@@ -89,6 +90,7 @@ public class ASTNodeConverter {
 
         yield field;
       }
+      case ScalarType.TEXT_TYPE -> new TextField(idlField.name);
       case ScalarType.FLOAT_TYPE -> {
         field = new FloatField(idlField.name);
         for (ModelParser.Annotation annotation : idlField.annotations) {
@@ -220,19 +222,59 @@ public class ASTNodeConverter {
 
   public static EnumDefinition toSchemaEnum(ModelParser.Enumeration idlEnum) {
     EnumDefinition anEnum = new EnumDefinition(idlEnum.name);
-    anEnum.setElements(idlEnum.elements);
-    // 处理枚举级别的注解
+    for (String elementName : idlEnum.elements) {
+      EnumElement element = new EnumElement(elementName);
+      for (ModelParser.Annotation mAnno : idlEnum.elementAnnotations.getOrDefault(elementName, List.of())) {
+        switch (mAnno.name) {
+          case "code" -> {
+            Object code = mAnno.parameters.get("value");
+            if (code == null) {
+              throw new IllegalArgumentException(
+                "Enum element " + elementName + " @code requires a value");
+            }
+            element.setCode(code);
+          }
+          case "comment" -> element.setComment((String) mAnno.parameters.get("value"));
+          default -> element.addAdditionalProperty(mAnno.name,
+            mAnno.parameters.isEmpty() ? true : mAnno.parameters);
+        }
+      }
+      anEnum.addElement(element);
+    }
     for (ModelParser.Annotation mAnno : idlEnum.annotations) {
-      // 已知注解显式处理，未识别的放入扩展属性
       switch (mAnno.name) {
         case "comment" -> anEnum.setComment((String) mAnno.parameters.get("value"));
+        case "code" -> throw new IllegalArgumentException(
+          "@code is only allowed on enum elements, not on enum " + idlEnum.name);
         default -> anEnum.addAdditionalProperty(mAnno.name,
           mAnno.parameters.isEmpty() ? true : mAnno.parameters);
       }
     }
+    validateEnumCodes(anEnum);
     return anEnum;
   }
 
+  private static void validateEnumCodes(EnumDefinition anEnum) {
+    boolean anyCode = anEnum.getElements().stream().anyMatch(e -> e.getCode() != null);
+    if (!anyCode) {
+      return;
+    }
+    Set<String> codes = new HashSet<>();
+    for (EnumElement element : anEnum.getElements()) {
+      if (element.getCode() == null) {
+        throw new IllegalArgumentException(
+          "@code must be declared on all elements of enum " + anEnum.getName() + ", missing on " + element.getName());
+      }
+      if (!(element.getCode() instanceof String) && !(element.getCode() instanceof Number)) {
+        throw new IllegalArgumentException(
+          "@code must be a string or number literal, got: " + element.getCode());
+      }
+      if (!codes.add(String.valueOf(element.getCode()))) {
+        throw new IllegalArgumentException(
+          "Duplicate @code value " + element.getCode() + " in enum " + anEnum.getName());
+      }
+    }
+  }
   public static ModelParser.ASTNode fromSchemaObject(SchemaObject schemaObject) {
     if (schemaObject instanceof EntityDefinition) {
       return fromSchemaEntity((EntityDefinition) schemaObject);
@@ -317,6 +359,7 @@ public class ASTNodeConverter {
         }
         addDefaultAnnotation(idlField, stringField.getDefaultValue());
       }
+      case TextField textField -> addDefaultAnnotation(idlField, textField.getDefaultValue());
       case FloatField floatField -> {
         addNumericAnnotations(idlField, floatField.getPrecision(), floatField.getScale());
         addDefaultAnnotation(idlField, floatField.getDefaultValue());
@@ -361,7 +404,24 @@ public class ASTNodeConverter {
 
   public static ModelParser.Enumeration fromSchemaEnum(EnumDefinition schemaEnum) {
     ModelParser.Enumeration enumeration = new ModelParser.Enumeration(schemaEnum.getName());
-    enumeration.elements = new ArrayList<>(schemaEnum.getElements());
+    for (EnumElement element : schemaEnum.getElements()) {
+      enumeration.addElement(element.getName());
+      if (element.getCode() != null) {
+        ModelParser.Annotation codeAnno = new ModelParser.Annotation("code");
+        codeAnno.parameters.put("value", element.getCode());
+        enumeration.addElementAnnotation(element.getName(), codeAnno);
+      }
+      if (element.getComment() != null) {
+        ModelParser.Annotation elementCommentAnno = new ModelParser.Annotation("comment");
+        elementCommentAnno.parameters.put("value", element.getComment());
+        enumeration.addElementAnnotation(element.getName(), elementCommentAnno);
+      }
+      for (Map.Entry<String, Object> entry : element.getAdditionalProperties().entrySet()) {
+        ModelParser.Annotation elementAnno = new ModelParser.Annotation(entry.getKey());
+        appendAdditionalValue(elementAnno, entry.getValue());
+        enumeration.addElementAnnotation(element.getName(), elementAnno);
+      }
+    }
     // 处理枚举级注解
     if (schemaEnum.getComment() != null) {
       ModelParser.Annotation commentAnno = new ModelParser.Annotation("comment");

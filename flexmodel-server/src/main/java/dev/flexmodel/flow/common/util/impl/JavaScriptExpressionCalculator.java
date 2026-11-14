@@ -23,7 +23,10 @@ public class JavaScriptExpressionCalculator implements ExpressionCalculator {
     }
     Object result = null;
     try {
-      result = JavaScriptUtil.execute(expression, new HashMap<>(dataMap));
+      Map<String, Object> bindings = new HashMap<>(dataMap);
+      // A complete snapshot also exposes absent keys correctly when the JS engine is reused.
+      bindings.put("__flowVariables", new HashMap<>(dataMap));
+      result = JavaScriptUtil.execute(expression, bindings);
       if (result instanceof Boolean) {
         return (Boolean) result;
       } else {

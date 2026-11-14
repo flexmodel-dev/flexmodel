@@ -1,0 +1,52 @@
+{
+  "templates": [
+    {
+      "id": "plm",
+      "name": "PLM 产品生命周期管理",
+      "description": "产品与物料主数据、图文档与版本签发、EBOM/MBOM 结构、工艺路线与工序、ECR/ECN 设计变更会签与执行跟踪、研发看板",
+      "category": "企业管理",
+      "iconName": "Container",
+      "order": 1
+    },
+    {
+      "id": "erp",
+      "name": "ERP 企业资源计划",
+      "description": "物料/仓库/库位/客商/科目主数据，BOM 与 MRP，采购申请-订单-入库，销售订单-出库-开票，库存流水/盘点/调拨，生产工单-领料-报工，凭证-应收-应付-收付款与费用报销，配套审批流与经营看板",
+      "category": "企业管理",
+      "iconName": "Calculator",
+      "order": 2
+    },
+    {
+      "id": "scm",
+      "name": "SCM 供应链管理",
+      "description": "供应商准入与绩效考核、产品物料与供货目录、采购申请与订单、出入库流水与库存台账、物流发运跟踪，配套条件审批流与供应链运营看板",
+      "category": "企业管理",
+      "iconName": "Truck",
+      "order": 3
+    },
+    {
+      "id": "wms",
+      "name": "WMS 仓库管理系统",
+      "description": "库区库位与托盘容器管理、物料主数据与收货质检、入库上架、出库拣货、库位库存台账、移库与盘点管理，配套出库/移库审批流与仓储运营看板",
+      "category": "企业管理",
+      "iconName": "Warehouse",
+      "order": 4
+    },
+    {
+      "id": "mes",
+      "name": "MES 制造执行系统",
+      "description": "产品物料/工序/工作中心/设备/人员主数据，工艺路线与BOM，生产工单与工序计划、领料、报工、质量检验、设备维修保养，配套工单下达/维修审批流与生产运营看板",
+      "category": "企业管理",
+      "iconName": "Factory",
+      "order": 5
+    },
+    {
+      "id": "qms",
+      "name": "QMS 质量管理系统",
+      "description": "供应商与质量主数据、质量标准与检验项目、控制计划、来料/过程/成品三级检验、不合格品处理与纠正预防措施、客户投诉与质量审核、质量指标看板，配套不合格品与CAPA审批流",
+      "category": "企业管理",
+      "iconName": "ShieldCheck",
+      "order": 6
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 package dev.flexmodel.session;
 
 import dev.flexmodel.query.DSL;
+import dev.flexmodel.query.Query;
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.SchemaService;
 import dev.flexmodel.ModelImportBundle;
@@ -11,6 +12,8 @@ import dev.flexmodel.parser.ASTNodeConverter;
 import dev.flexmodel.parser.impl.ParseException;
 
 import java.io.Closeable;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -61,6 +64,43 @@ public interface Session extends Closeable {
   SchemaService schema();
 
   DSL dsl();
+
+  /**
+   * 当前会话是否处于显式事务中。
+   */
+  default boolean isTransactionActive() {
+    return false;
+  }
+
+  /**
+   * 注册提交后回调：事务内缓冲至提交确认，回滚丢弃；无事务语义时立即执行。
+   */
+  default void afterCommit(Runnable callback) {
+    callback.run();
+  }
+
+  /**
+   * 占位更新行锁（update t set k=k where k=:v），必须在事务内调用。
+   */
+  default int lockRow(String model, String column, Object value) {
+    throw new UnsupportedOperationException("行锁需要 SQL 数据源");
+  }
+
+  /**
+   * FOR UPDATE 批量锁定查询命中的行集；方言不支持时按主键逐行降级。
+   */
+  default List<Map<String, Object>> lockRows(String model, Query query) {
+    throw new UnsupportedOperationException("行锁需要 SQL 数据源");
+  }
+
+  /**
+   * 读-合并-写部分更新。
+   */
+  default void mergeUpdate(String model, String id, Map<String, Object> values) {
+    Map<String, Object> row = new HashMap<>(data().findById(model, id).orElseThrow());
+    row.putAll(values);
+    data().updateById(model, row, id);
+  }
 
   /**
    * 应用 FML 字符串，创建/更新模型、枚举，并写入种子数据

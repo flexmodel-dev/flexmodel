@@ -20,13 +20,13 @@ import java.util.List;
 public class FunctionTemplateResource {
 
     @Inject
-    FunctionTemplateRepository functionTemplateRepository;
+    FunctionService functionService;
 
     /**
      * List all function templates ordered by sort_order.
      */
     @GET
     public List<FunctionTemplate> list() {
-        return functionTemplateRepository.list();
+      return functionService.list();
     }
 }

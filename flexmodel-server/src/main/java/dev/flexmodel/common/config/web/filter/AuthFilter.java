@@ -79,6 +79,11 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     boolean isOpenSurface = normalizedPath.startsWith("open/");
 
     String projectId = requestContext.getUriInfo().getPathParameters().getFirst("projectId");
+    if (projectId == null) projectId = requestContext.getUriInfo().getPathParameters().getFirst("appId");
+    // 内置系统表单使用伪 appId "system"，不对应真实项目；认证仍然要求系统 JWT。
+    if ("system".equals(projectId)) {
+      projectId = null;
+    }
 
     if (isOpenSurface) {
       // ---- OPEN surface: API Key (open scope) + system JWT + IdP + anonymous ----
@@ -282,6 +287,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
    * 系统 JWT 认证 -> 填充上下文（管理后台用户）。
    */
   private void fillSessionContextForUser(ContainerRequestContext requestContext, String projectId, String userId) {
+    sessionContext.setAuthenticatedUser(true);
     if (projectId != null) {
       Project project = projectService.findProject(projectId);
       if (project == null) {
@@ -308,7 +314,10 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       sessionContext.setProjectId(projectId);
       sessionContext.setProjectDatabaseName(projectService.resolveDatabaseName(projectId));
     }
-    sessionContext.setUserId(apiKey.getName());
+    if (Boolean.TRUE.equals(apiKey.getReadOnly()) && !Set.of("GET", "HEAD", "OPTIONS").contains(requestContext.getMethod()))
+      throw new jakarta.ws.rs.ForbiddenException("只读 API Key 不可执行写操作");
+    sessionContext.setUserId("api_key:" + apiKey.getId());
+    sessionContext.setAuthenticatedUser(false);
     requestContext.setProperty("projectId", projectId);
   }
 
@@ -317,6 +326,11 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
    */
   private void fillSessionContextForProvider(ContainerRequestContext requestContext, String projectId,
       AuthResult result) {
+    if (projectId == null) {
+      sessionContext.setUserId(result.getUserId());
+      sessionContext.setPermissions(result.getPermissions());
+      return;
+    }
     Project project = projectService.findProject(projectId);
     if (project == null) {
       throw new AuthException("Project not found");

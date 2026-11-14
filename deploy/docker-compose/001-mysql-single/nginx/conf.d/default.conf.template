@@ -1,13 +1,4 @@
 # ============================================================
-# Pages alias subpath segment — avoids "//" when alias is empty.
-# Evaluated lazily from $alias captured by the subdomain server_name.
-# ============================================================
-map $alias $alias_path {
-    ""      "";
-    default "/$alias";
-}
-
-# ============================================================
 # Main domain → Admin API + UI
 #   /api/  → Java (admin API: /api/projects/... etc.)
 #   /      → UI (flexmodel-ui)
@@ -31,13 +22,6 @@ server {
         add_header Cache-Control no-cache;
     }
 
-    # Pages (path mode) — /pages/{projectId}/... → /data/pages/{projectId}/production/...
-    # 当 project-base-domain 为空时自动走 path 模式。
-    location ~ ^/pages/(?<pproj>[^/]+)(?<prest>.*)$ {
-        root /data/pages;
-        try_files /$pproj/production$prest /$pproj/production/index.html =404;
-    }
-
     # UI reverse proxy
     location / {
         proxy_pass http://flexmodel-ui:80;
@@ -56,17 +40,13 @@ server {
 }
 
 # ============================================================
-# Subdomain → Pages + Open API (data plane)
-#   {projectId}.{domain}                   → pages (production)
-#   {alias}.{projectId}.{domain}           → pages (alias)
+# Subdomain → Open API (data plane)
 #   /api/open/{projectId}/...               → Java (open API)
 # ============================================================
 server {
     listen       80;
-    server_name  ~^(?<alias>[^.]+)\.(?<projectId>[^.]+)\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$
-                 ~^(?<projectId>[^.]+)\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$;
+    server_name  ~^.+\.${FLEXMODEL_PROJECT_BASE_DOMAIN_ESCAPED}$;
 
-    root /data/pages;
     client_max_body_size 1024m;
 
     # Open API → Java (SDK sends /api/open/{projectId}/..., no rewrite needed)
@@ -82,24 +62,7 @@ server {
         add_header Cache-Control no-cache;
     }
 
-    # Pages base path (projectId + optional alias segment)
-    set $pages_base $projectId$alias_path;
-
-    # Static assets — long cache (hash filenames)
-    location ~* \.(js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|ico|mjs)$ {
-        try_files /$pages_base$uri /$projectId/production$uri =404;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Root → serve index.html directly (avoids directory match → 403)
-    location = / {
-        try_files /$pages_base/index.html /$projectId/production/index.html =404;
-    }
-
-    # Pages — SPA fallback (for non-root paths)
     location / {
-        try_files /$pages_base$uri /$pages_base/index.html /$projectId/production$uri /$projectId/production/index.html =404;
+        return 404;
     }
-
 }

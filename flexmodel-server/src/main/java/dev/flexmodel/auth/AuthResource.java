@@ -1,12 +1,18 @@
 package dev.flexmodel.auth;
 
+import dev.flexmodel.auth.dto.LoginLogResponse;
 import dev.flexmodel.auth.service.AuthService;
+import dev.flexmodel.auth.service.LoginLogService;
 import dev.flexmodel.codegen.entity.User;
+import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.config.web.jwt.JwtService;
 import dev.flexmodel.common.config.web.response.UserinfoResponse;
+import dev.flexmodel.common.dto.PageDTO;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
@@ -28,11 +34,34 @@ public class AuthResource {
   @Inject
   JwtService jwtService;
 
+  @Inject
+  LoginLogService loginLogService;
+
+  @Inject
+  SessionContext sessionContext;
+
   @POST
   @Path("/login")
   @PermitAll
-  public Response login(LoginRequest req) {
-    User user = authService.login(req.username, req.password);
+  public Response login(LoginRequest req, @Context HttpHeaders headers) {
+    String clientIp = clientIp(headers);
+    String userAgent = headers.getHeaderString(HttpHeaders.USER_AGENT);
+    User user;
+    try {
+      user = authService.login(req.username, req.password);
+    } catch (RuntimeException e) {
+      User existing = req == null || req.username == null ? null : authService.findByUsername(req.username);
+      loginLogService.record(
+        req == null ? null : req.username,
+        existing == null ? null : existing.getId(),
+        false,
+        e.getMessage(),
+        clientIp,
+        userAgent
+      );
+      throw e;
+    }
+    loginLogService.record(req.username, user.getId(), true, null, clientIp, userAgent);
     // 签发 accessToken
     String accessToken = jwtService.signAccessToken(user.getId());
     // 签发 refreshToken
@@ -100,11 +129,33 @@ public class AuthResource {
   }
 
 
+  @GET
+  @Path("/login-logs")
+  public PageDTO<LoginLogResponse> getLoginLogs(
+    @QueryParam("page") @DefaultValue("1") int page,
+    @QueryParam("size") @DefaultValue("20") int size
+  ) {
+    String userId = sessionContext.getUserId();
+    if (userId == null || userId.isBlank()) {
+      throw new dev.flexmodel.auth.exception.AuthException("Token is missing");
+    }
+    return loginLogService.findByUserId(userId, page, size);
+  }
+
+  private String clientIp(HttpHeaders headers) {
+    String forwarded = headers.getHeaderString("X-Forwarded-For");
+    if (forwarded != null && !forwarded.isBlank()) {
+      return forwarded.split(",")[0].trim();
+    }
+    String realIp = headers.getHeaderString("X-Real-IP");
+    return realIp == null || realIp.isBlank() ? null : realIp.trim();
+  }
+
   private UserinfoResponse buildUserInfo(String accessToken, User user) {
     UserinfoResponse userinfo = new UserinfoResponse();
     userinfo.setToken(accessToken);
     userinfo.setExpiresIn(300000L);
-    userinfo.setUser(new UserinfoResponse.UserResponse(user.getId(), user.getName(), user.getEmail()));
+    userinfo.setUser(new UserinfoResponse.UserResponse(user.getId(), user.getName(), user.getEmail(), user.getAvatar()));
     userinfo.setPermissions(authService.findPermissions(user.getId()));
     return userinfo;
   }

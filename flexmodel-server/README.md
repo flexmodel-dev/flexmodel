@@ -13,7 +13,7 @@
 ## 🛠️ 技术栈
 
 - **主框架**: Quarkus 3 (REST, Jackson, Hibernate Validator, Scheduler, Cache)
-- **AI 能力**: MCP Server (Quarkus MCP 扩展，15 个 @Tool 注解工具)
+- **AI 能力**: MCP Server（Quarkus MCP 扩展，项目、模型、数据、函数、应用及通用人员目录工具）
 - **边缘函数**: Deno Functions Runtime (Hono.js, Worker 隔离执行)
 - **API 协议**: REST API, GraphQL, OpenAPI/Swagger UI
 - **持久化**: SQLite (默认演示) / 支持扩展多种关系型与 NoSQL 数据库
@@ -30,7 +30,8 @@
 - **`data/`**: 数据访问 — 记录 CRUD、查询
 - **`scheduling/`**: 任务调度 — 触发器、作业执行
 - **`storage/`**: 对象存储 — 本地、S3
-- **`mcp/`**: MCP Server — AI 工具集成，15 个 MCP Tools
+- **`mcp/`**: MCP Server — AI 工具集成；AppTools 包含应用审批，DirectoryTools 提供通用人员目录与解析
+- **`directory/`**: 通用人员、角色、组织架构目录与人员规则解析，供审批和 MCP 复用
 - **`functions/`**: 边缘函数 — Deno Functions Runtime 隔离执行
 - **`projectauth/`**: 身份提供商 — OIDC、LDAP、Script
 - **`settings/`**: 系统设置
@@ -71,6 +72,30 @@
 # 运行可执行 JAR
 java -jar target/flexmodel-server-dev.jar
 ```
+
+审批流程的架构、可靠投递、执行人配置与验证方式见 [表单流程与审批接入](docs/approvals.md)。
+
+Apps 的个人收件箱、SSE 实时通知与浏览器提醒见 [实时站内通知](docs/notifications.md)。
+
+AI 工具调用后的页面统一刷新见 [AI 对话后的全局刷新](docs/ai-refresh.md)。
+
+AI 会话的原生推理与摘要接入、流式协议和折叠展示设计见 [AI 推理内容展示技术方案](../docs/plans/ai-reasoning-display.md)
+（技术设计，尚未实施）。
+
+应用表单字段的默认值、输入校验与显示格式见 [字段类型属性](docs/field-properties.md)。
+
+应用表单的授权配置与所有者字段见 [数据权限技术方案](docs/data-permissions.md)（当前仅保留配置，运行时授权未接入）。
+
+应用多表单 Excel 模板、导入预览、关系重映射、事务提交与导出接口见 [多表单 Excel 导入导出](docs/excel-transfers.md)。
+
+Apps 记录操作历史的采集规则、事件类型、存储模型与查询接口见 [记录操作历史](docs/record-history.md)（轻量日志，历史失败不影响业务，不支持恢复）。
+
+Apps 表单高级查询的气泡框、条件结构与筛选导出见 [表单高级查询](docs/record-query.md)。
+
+应用表单的字段状态矩阵、选项联动与条件规则设计见 [表单显示控制技术方案](docs/form-display-control.md)（设计与取舍依据，尚未实现）。
+
+应用整包导入导出见 [应用包导入导出](../docs/plans/app-import-export.md)
+；从内置模板创建应用见 [应用模板](../docs/plans/app-templates.md)。
 
 ## 📄 许可证
 

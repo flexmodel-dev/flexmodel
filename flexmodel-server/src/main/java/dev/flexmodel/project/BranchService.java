@@ -78,6 +78,9 @@ public class BranchService {
   @Inject
   ManagedExecutor managedExecutor;
 
+  @Inject
+  ProjectPlatformDataCleaner platformDataCleaner;
+
   private final SchemaManager schemaManager = new JdbcSchemaManager();
 
   public List<Branch> listBranches(String projectId) {
@@ -263,6 +266,7 @@ public class BranchService {
     // 3. 删除分支项目记录
     String branchProjectId = rootProjectId + "_" + branchName;
     graphQLManager.removeGraphQL(branchProjectId);
+    platformDataCleaner.clean(branchProjectId);
     projectRepository.delete(branchProjectId);
 
     // 4. 删除分支记录

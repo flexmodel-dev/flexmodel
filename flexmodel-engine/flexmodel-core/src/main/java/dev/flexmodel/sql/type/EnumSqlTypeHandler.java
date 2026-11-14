@@ -2,6 +2,7 @@ package dev.flexmodel.sql.type;
 
 import dev.flexmodel.model.field.EnumRefField;
 import dev.flexmodel.model.field.Field;
+import dev.flexmodel.ModelRegistry;
 import dev.flexmodel.type.EnumTypeHandler;
 
 import java.sql.ResultSet;
@@ -16,6 +17,15 @@ import java.util.stream.Collectors;
  * @author cjbi
  */
 public class EnumSqlTypeHandler extends EnumTypeHandler implements SqlTypeHandler<Object> {
+
+  public EnumSqlTypeHandler() {
+    super();
+  }
+
+  public EnumSqlTypeHandler(ModelRegistry modelRegistry, String schemaName) {
+    super(modelRegistry, schemaName);
+  }
+
   @Override
   public int getJdbcTypeCode() {
     return Types.VARCHAR;
@@ -26,29 +36,30 @@ public class EnumSqlTypeHandler extends EnumTypeHandler implements SqlTypeHandle
     if (value == null) {
       return null;
     }
-    EnumRefField enumField = (EnumRefField) field;
-    if (enumField.isMultiple()) {
-      if (value instanceof String[] strings) {
-        return String.join(",", strings);
-      } else if (value instanceof Collection<?> col) {
-        return col.stream()
-          .map(Objects::toString)
-          .collect(Collectors.joining(","));
-      }
+    Object converted = super.convertParameter(field, value);
+    if (!(field instanceof EnumRefField enumField) || !enumField.isMultiple()) {
+      return converted;
     }
-    return super.convertParameter(field, value);
+    Collection<?> collection = converted instanceof Collection<?> col
+      ? col
+      : converted instanceof String[] array ? List.of(array) : List.of(converted);
+    return collection.stream()
+      .map(Objects::toString)
+      .collect(Collectors.joining(","));
   }
 
   @Override
   public Object getNullableResult(ResultSet rs, String columnName, Field field) throws SQLException {
-    EnumRefField enumField = (EnumRefField) field;
     String value = rs.getString(columnName);
-    if (enumField.isMultiple()) {
-      if (value == null) {
-        return List.of();
-      }
-      return List.of(value.split(","));
+    if (value == null) {
+      return null;
     }
-    return value;
+    if (!(field instanceof EnumRefField enumField)) {
+      return value;
+    }
+    if (enumField.isMultiple()) {
+      return getResult(field, List.of(value.split(",")));
+    }
+    return getResult(field, value);
   }
 }

@@ -94,9 +94,24 @@ public class SQLiteSqlDialect extends SqlDialect {
     return false;
   }
 
+  /**
+   * 开发库并发写竞争容忍：写锁等待 5 秒，超时以 DatabaseBusyException 暴露给调用方。
+   */
+  @Override
+  public void prepareConnection(java.sql.Connection connection) throws java.sql.SQLException {
+    try (var statement = connection.createStatement()) {
+      statement.execute("PRAGMA busy_timeout=5000");
+    }
+  }
+
   @Override
   public String getAddColumnString() {
     return "add";
+  }
+
+  @Override
+  public boolean supportsModifyColumn() {
+    return false;
   }
 
   @Override

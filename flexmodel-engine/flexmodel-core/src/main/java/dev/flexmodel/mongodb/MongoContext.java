@@ -26,6 +26,7 @@ public class MongoContext extends AbstractSessionContext {
     this.conditionCalculator = new DefaultMongoExpressionCalculator();
 
     this.typeHandlerMap.put(ScalarType.STRING.getType(), new StringTypeHandler());
+    this.typeHandlerMap.put(ScalarType.TEXT.getType(), new TextTypeHandler());
     this.typeHandlerMap.put(ScalarType.FLOAT.getType(), new DecimalTypeHandler());
     this.typeHandlerMap.put(ScalarType.INT.getType(), new IntTypeHandler());
     this.typeHandlerMap.put(ScalarType.LONG.getType(), new LongTypeHandler());
@@ -34,7 +35,7 @@ public class MongoContext extends AbstractSessionContext {
     this.typeHandlerMap.put(ScalarType.DATE.getType(), new DateTypeHandler());
     this.typeHandlerMap.put(ScalarType.TIME.getType(), new TimeTypeHandler());
     this.typeHandlerMap.put(ScalarType.JSON.getType(), new JsonTypeHandler());
-    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumTypeHandler());
+    this.typeHandlerMap.put(ScalarType.ENUM_REF.getType(), new EnumTypeHandler(modelRegistry, schemaName));
   }
 
   public MongoDatabase getMongoDatabase() {

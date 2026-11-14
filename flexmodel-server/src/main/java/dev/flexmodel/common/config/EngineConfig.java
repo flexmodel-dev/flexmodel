@@ -1,28 +1,33 @@
 package dev.flexmodel.common.config;
 
+import dev.flexmodel.apps.flow.AppFlowRecordGuard;
 import dev.flexmodel.codegen.entity.Branch;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.common.AuditDataEventListener;
 import dev.flexmodel.common.FlexmodelConfig;
-import dev.flexmodel.auditlog.AuditEventListener;
 import dev.flexmodel.common.SchemaRegistry;
 import dev.flexmodel.project.BranchRepository;
 import dev.flexmodel.project.ProjectService;
 import dev.flexmodel.realtime.RealtimeEventListener;
-import dev.flexmodel.realtime.RealtimeRabbitmqListener;
 import dev.flexmodel.scheduling.TriggerDataChangedEventListener;
 import dev.flexmodel.session.SessionFactory;
+import dev.flexmodel.session.UnitOfWork;
 import dev.flexmodel.sql.JdbcSchemaProvider;
+import dev.flexmodel.system.SystemBuildItem;
 import dev.flexmodel.test.codegen.DevTest;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.runtime.StartupEvent;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Produces;
+import jakarta.interceptor.Interceptor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * @author cjbi
@@ -33,18 +38,21 @@ public class EngineConfig {
 
   public static final String SYSTEM_DS_KEY = "system";
 
-  public void installDatasource(@Observes StartupEvent startupEvent,
+  public void installDatasource(@Observes @Priority(Interceptor.Priority.APPLICATION) StartupEvent startupEvent,
                                 ProjectService projectService, SchemaRegistry schemaRegistry,
                                 BranchRepository branchRepository) {
     long beginTime = System.currentTimeMillis();
     List<Project> projects = projectService.findProjects();
+    Set<String> schemas = new LinkedHashSet<>();
     for (Project project : projects) {
-      // 注册非 main 分支的数据库 SchemaProvider
+      schemas.add(project.getDatabaseName());
       List<Branch> branches = branchRepository.findByProjectId(project.getId());
       for (Branch branch : branches) {
-        schemaRegistry.registerSchema(branch.getDatabaseName());
+        schemas.add(branch.getDatabaseName());
       }
     }
+    // registerSchema 仅注册项目业务库的数据源；平台级表统一存于 system schema
+    schemas.forEach(schemaRegistry::registerSchema);
     log.info("========== Engine init successful in {} ms!", System.currentTimeMillis() - beginTime);
   }
 
@@ -54,8 +62,7 @@ public class EngineConfig {
                                        TriggerDataChangedEventListener triggerDataChangedEventListener,
                                        AuditDataEventListener auditDataEventListener,
                                        RealtimeEventListener realtimeEventListener,
-                                       RealtimeRabbitmqListener realtimeRabbitmqListener,
-                                       AuditEventListener auditEventListener) {
+                                       AppFlowRecordGuard appFlowRecordGuard) {
     FlexmodelConfig.DatasourceConfig datasourceConfig = flexmodelConfig.datasources().get(SYSTEM_DS_KEY);
     AgroalDataSource defaultDs = AgroalDataSourceFactory.createDataSource(
       datasourceConfig.url(),
@@ -63,7 +70,8 @@ public class EngineConfig {
       datasourceConfig.password().orElse(null));
     SessionFactory.Builder builder = SessionFactory.builder()
       .setDefaultSchemaProvider(new JdbcSchemaProvider(SYSTEM_DS_KEY, defaultDs))
-      .setFailsafe(true);
+      .setFailsafe(true)
+      .addWriteInterceptor(appFlowRecordGuard);
     flexmodelConfig.datasources().forEach((key, value) -> {
       if (key.equals(SYSTEM_DS_KEY)) {
         return;
@@ -79,14 +87,18 @@ public class EngineConfig {
     SessionFactory sf = builder.build();
     // 直接注册 BuildItem 实例，绕过 SPI ServiceLoader 机制
     // 在 GraalVM 原生镜像中 ServiceLoader.load() 无法正确发现 SPI 实现类
-    sf.registerBuildItem(new dev.flexmodel.codegen.System());
+    sf.registerBuildItem(new SystemBuildItem());
     sf.registerBuildItem(new DevTest());
     sf.getEventPublisher().addListener(triggerDataChangedEventListener);
     sf.getEventPublisher().addListener(auditDataEventListener);
     sf.getEventPublisher().addListener(realtimeEventListener);
-    sf.getEventPublisher().addListener(realtimeRabbitmqListener);
-    sf.getEventPublisher().addListener(auditEventListener);
     return sf;
+  }
+
+  @Produces
+  @ApplicationScoped
+  public UnitOfWork unitOfWork(SessionFactory sessionFactory) {
+    return sessionFactory.unitOfWork();
   }
 
   /**

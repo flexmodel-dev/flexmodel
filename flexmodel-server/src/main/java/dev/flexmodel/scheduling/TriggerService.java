@@ -52,6 +52,8 @@ public class TriggerService {
   @Inject
   Scheduler scheduler;
   @Inject
+  dev.flexmodel.apps.flow.AppFlowBindings flowBindings;
+  @Inject
   EventBus eventBus;
   @Inject
   JobExecutionLogService jobExecutionLogService;
@@ -112,6 +114,10 @@ public class TriggerService {
     int restored = 0;
     for (Trigger trigger : triggers) {
       try {
+        if ("WORKFLOW".equals(trigger.getJobType())) {
+          flowBindings.sync(trigger);
+          continue;
+        }
         TriggerConfig triggerConfig = JsonUtils.convertValue(trigger.getConfig(), TriggerConfig.class);
         if (!(triggerConfig instanceof ScheduledTriggerConfig scheduledTriggerConfig)) {
           continue;
@@ -204,6 +210,7 @@ public class TriggerService {
 
   //  @Transactional
   public Trigger create(String projectId, Trigger trigger) {
+    requireUnmanaged(trigger);
     TriggerConfig triggerConfig = JsonUtils.convertValue(trigger.getConfig(), TriggerConfig.class);
     trigger.setJobGroup(getJobGroup(projectId, trigger, triggerConfig));
     trigger = triggerRepository.save(projectId, trigger);
@@ -233,6 +240,8 @@ public class TriggerService {
     if (record == null) {
       throw new TriggerException("记录不存在");
     }
+    requireUnmanaged(record);
+    requireUnmanaged(req);
     if (req.getState() == null) {
       req.setState(record.getState());
     }
@@ -267,6 +276,7 @@ public class TriggerService {
   public void deleteById(String projectId, String id) {
     Trigger record = triggerRepository.findById(projectId, id);
     if (record != null) {
+      requireUnmanaged(record);
       // 实现定时任务调度
       try {
         unscheduleTrigger(record);
@@ -311,6 +321,7 @@ public class TriggerService {
         throw new TriggerException("触发器不存在: " + id);
       }
 
+      requireUnmanaged(trigger);
       // 验证触发器状态
       if (!Boolean.TRUE.equals(trigger.getState())) {
         throw new TriggerException("触发器已禁用，无法执行: " + id);
@@ -493,6 +504,11 @@ public class TriggerService {
       .withSchedule(scheduleBuilder.withMisfireHandlingInstructionFireNow())
       .startNow()
       .build();
+  }
+
+  private void requireUnmanaged(Trigger value) {
+    if (value != null && ("WORKFLOW".equals(value.getJobType()) || value.getManagedKey() != null))
+      throw new jakarta.ws.rs.ForbiddenException("工作流触发器由流程发布服务管理");
   }
 
   public long count(String projectId, Predicate aTrue) {

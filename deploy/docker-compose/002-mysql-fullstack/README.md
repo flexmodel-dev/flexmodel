@@ -5,7 +5,6 @@ Flexmodel 生产部署，包含以下服务：
 | 服务                          | 镜像                                      | 端口         |
 |-------------------------------|-------------------------------------------|--------------|
 | `mysql`                       | `mysql:8.0`                               | 3306 (内部)  |
-| `rabbitmq`                    | `rabbitmq:3.13-management`                | 5672 / 15672 |
 | `rustfs`                      | `rustfs/rustfs:latest`                    | 9000 / 9001  |
 | `flexmodel`                   | `cjbi/flexmodel-server:latest`            | 8080 (内部)  |
 | `flexmodel-ui`                | `cjbi/flexmodel-ui:latest`                | 80           |

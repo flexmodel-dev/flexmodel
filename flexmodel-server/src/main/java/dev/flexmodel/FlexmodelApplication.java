@@ -43,7 +43,6 @@ public class FlexmodelApplication implements QuarkusApplication {
     log.info("  project-base-domain: {}", flexmodelConfig.projectBaseDomain().orElse("<not set>"));
     log.info("  routing-mode: {}", flexmodelConfig.isSubdomainRouting() ? "subdomain" : "path");
     log.info("  api-root-path: {}", flexmodelConfig.apiRootPath());
-    log.info("  pages.root-path: {}", flexmodelConfig.pages().rootPath());
     if (flexmodelConfig.datasources() != null && !flexmodelConfig.datasources().isEmpty()) {
       flexmodelConfig.datasources().forEach((name, ds) -> {
         log.info("  datasource[{}]:", name);
@@ -58,7 +57,6 @@ public class FlexmodelApplication implements QuarkusApplication {
     log.info("  jwt.secret: {}", flexmodelConfig.jwt().secret().isBlank() ? "<empty>" : "***");
     log.info("  jwt.access-token-lifetime: {}", flexmodelConfig.jwt().accessTokenLifetime());
     log.info("  jwt.refresh-token-lifetime: {}", flexmodelConfig.jwt().refreshTokenLifetime());
-    log.info("  events.rabbitmq.enabled: {}", flexmodelConfig.events().rabbitmq().enabled());
   }
 
 }

@@ -37,6 +37,9 @@ public class BucketService {
   @Inject
   SessionContext sessionContext;
 
+  @Inject
+  FolderPermissions folderPermissions;
+
   // ==================== Bucket CRUD ====================
 
   public Bucket createBucket(String ownerType, String ownerId, Bucket bucket) {
@@ -116,26 +119,89 @@ public class BucketService {
   // ==================== 文件操作委托 ====================
 
   public List<FileItem> listFiles(Bucket bucket, String path) {
+    folderPermissions.requireAccess(bucket, path);
     StorageOperations ops = storageOperationsFactory.forBucket(bucket);
-    return ops.listFiles(path);
+    return ops.listFiles(path).stream().filter(item -> folderPermissions.visible(bucket, item.getPath()))
+      .map(item -> {
+        item.setRestricted(item.getType() == FileItem.FileType.folder && folderPermissions.isRestricted(bucket, item.getPath()));
+        return item;
+      }).toList();
   }
 
   public FileItem getFile(Bucket bucket, String path) {
+    folderPermissions.requireAccess(bucket, path);
     StorageOperations ops = storageOperationsFactory.forBucket(bucket);
     return ops.getFile(path);
   }
 
   public void uploadFile(Bucket bucket, String path, InputStream inputStream, long size) {
+    folderPermissions.requireAccess(bucket, path);
     StorageOperations ops = storageOperationsFactory.forBucket(bucket);
     ops.uploadFile(path, inputStream, size);
   }
 
   public void deleteFile(Bucket bucket, String path) {
+    folderPermissions.requireTreeAccess(bucket, path);
     StorageOperations ops = storageOperationsFactory.forBucket(bucket);
     ops.deleteFile(path);
+    folderPermissions.relocate(bucket, FolderPermissions.path(path), null);
+  }
+
+  public void moveFile(Bucket bucket, String source, String target) {
+    folderPermissions.requireTreeAccess(bucket, source);
+    folderPermissions.requireAccess(bucket, target);
+    String normalizedSource = normalizeObjectPath(source);
+    String normalizedTarget = normalizeObjectPath(target);
+    if (normalizedSource.isEmpty() || normalizedTarget.isEmpty()) {
+      throw new ValidationException("源路径和目标路径不能为空");
+    }
+    if (normalizedSource.equals(normalizedTarget)) {
+      throw new ValidationException("源路径和目标路径不能相同");
+    }
+    if (normalizedTarget.startsWith(normalizedSource + "/")) {
+      throw new ValidationException("不能将文件移动到自身或其子目录");
+    }
+
+    StorageOperations ops = storageOperationsFactory.forBucket(bucket);
+    if (ops.getFile(normalizedSource) == null) {
+      throw new NotFoundException("File not found: " + source);
+    }
+    if (ops.getFile(normalizedTarget) != null) {
+      throw new ValidationException("目标位置已存在同名文件或目录");
+    }
+    ops.moveFile(normalizedSource, normalizedTarget);
+    folderPermissions.relocate(bucket, normalizedSource, normalizedTarget);
+  }
+
+  public void updateFolder(Bucket bucket, String path, String requestedName, List<FolderPermissions.Member> members) {
+    folderPermissions.members(bucket, path); // 校验目录管理权限
+    String source = FolderPermissions.path(path);
+    if (source.isEmpty() || source.equals(bucket.getOwnerId()) || source.startsWith(bucket.getOwnerId() + "/"))
+      throw new ValidationException("系统目录不能修改");
+    if (requestedName == null || requestedName.isBlank() || members == null)
+      throw new ValidationException("目录名称与权限不能为空");
+    String name = requestedName.trim();
+    if (name.contains("/") || !FolderPermissions.path(name).equals(name))
+      throw new ValidationException("目录名称不正确");
+    FileItem item = getFile(bucket, source);
+    if (item == null || item.getType() != FileItem.FileType.folder)
+      throw new NotFoundException("目录不存在");
+    String target = source.contains("/") ? source.substring(0, source.lastIndexOf('/') + 1) + name : name;
+    if (target.equals(bucket.getOwnerId())) throw new ValidationException("不能使用系统目录名称");
+    StorageOperations ops = storageOperationsFactory.forBucket(bucket);
+    if (!source.equals(target) && ops.getFile(target) != null)
+      throw new ValidationException("目标位置已存在同名文件或目录");
+    folderPermissions.edit(bucket, source, target, members,
+      () -> {
+        if (!source.equals(target)) ops.moveFile(source, target);
+      },
+      () -> {
+        if (!source.equals(target)) ops.moveFile(target, source);
+      });
   }
 
   public InputStream getInputStream(Bucket bucket, String path) {
+    folderPermissions.requireAccess(bucket, path);
     StorageOperations ops = storageOperationsFactory.forBucket(bucket);
     return ops.getInputStream(path);
   }
@@ -153,5 +219,19 @@ public class BucketService {
 
   private String buildPrefix(Bucket bucket) {
     return bucket.getOwnerType() + "/" + bucket.getOwnerId() + "/" + bucket.getName();
+  }
+
+  private static String normalizeObjectPath(String path) {
+    if (path == null) {
+      return "";
+    }
+    String normalized = path.replace('\\', '/');
+    while (normalized.startsWith("/")) {
+      normalized = normalized.substring(1);
+    }
+    while (normalized.endsWith("/")) {
+      normalized = normalized.substring(0, normalized.length() - 1);
+    }
+    return normalized;
   }
 }

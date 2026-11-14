@@ -1,10 +1,6 @@
 package dev.flexmodel.sql.condition;
 
-import dev.flexmodel.condition.ConditionNode;
-import dev.flexmodel.condition.FieldReference;
-import dev.flexmodel.condition.ConditionOperator;
-import dev.flexmodel.condition.FieldConditionNode;
-import dev.flexmodel.condition.LogicalConditionNode;
+import dev.flexmodel.condition.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -59,7 +55,6 @@ public final class SqlConditionRenderer {
 
   private static String renderField(FieldConditionNode field, SqlRenderContext context) {
     String column = context.formatFieldPath(field.getFieldPath());
-    PlaceholderHandler placeholderHandler = context.getPlaceholderHandler();
     Object value = field.getValue();
 
     if (value instanceof FieldReference reference) {
@@ -75,6 +70,21 @@ public final class SqlConditionRenderer {
       };
     }
 
+    if (value == null) {
+      return switch (field.getOperator()) {
+        case EQ -> column + " IS NULL";
+        case NE -> column + " IS NOT NULL";
+        // 其余比较符对 null 无意义，保持与数据库一致的“不匹配”语义。
+        case GT, GTE, LT, LTE -> "1=0";
+        default -> renderFieldWithValue(field, column, context);
+      };
+    }
+    return renderFieldWithValue(field, column, context);
+  }
+
+  private static String renderFieldWithValue(FieldConditionNode field, String column, SqlRenderContext context) {
+    PlaceholderHandler placeholderHandler = context.getPlaceholderHandler();
+    Object value = field.getValue();
     return switch (field.getOperator()) {
       case EQ -> column + " = " + placeholderHandler.handle(column, value);
       case NE -> column + " <> " + placeholderHandler.handle(column, value);

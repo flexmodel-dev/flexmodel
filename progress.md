@@ -1,3 +1,28 @@
+## Apps - 前端按特性垂直分包重构（2026-11-15）
+
+- E2E 配置收敛：13 个 `playwright.<特性>.config.ts` 合并为一个 `playwright.config.ts` + `projects`（13 个 project，
+  每个 spec 恰好归属一个）；package.json 的 8 个 test:* 脚本改为 `--project <特性>`。
+  顺带修复 c328814 重命名遗留：e2e/workflows.spec.ts 仍 import 已改名的 `src/lib/approval`、
+  `src/services/approval-model`（改为 workflow/workflow-model），且断言旧按钮 title「返回审批流程」（现为「返回工作流」）；
+  该 spec 重命名后从未可运行，旧 approvals config 一直在匹配 0 文件空跑。修复后 `test:workflows` 5/5。
+- 收敛残留的散落特性：`components/ai/`（6 组件）与 AiChatPage 合并成 `pages/ai/`，
+  `components/notifications/`（3 组件）与 Notifications.tsx 合并成 `pages/notifications/`，
+  ApprovalHome 移入 `pages/approvals/`，Login 三件套移入 `pages/login/`；
+  AppHome/FilesDocs/UserSettings 等单文件演示页按规则保留平铺。13 文件 import 更新。
+- pages 特性目录大小写统一为小写：`Approvals/`→`approvals/`、`Workflows/`→`workflows/`（git mv 两步改名 +
+  12 个文件 import 更新）。注：PowerShell `-ne` 忽略大小写，导致第一轮纯大小写替换未写入，改用 `-cne` 后成功。
+- 拆散 `src/components/biz/`（74 文件大杂烩）：业务组件按特性迁入 `src/pages/`
+  （`apps/` 应用管理、`forms/` 表单设计、`records/` 记录含 form/views 子目录、`workbench/` 工作台），
+  审批域组件（approvalDecision、useRecordApproval）入 `pages/Approvals/`，flowLaunch 入 `pages/Workflows/`，
+  跨特性组件（AppLoading、Pagination、SearchInput、SettingsPageHeader、DirectoryMemberPicker）入 `src/components/shared/`。
+  相关页面（AppManagement、FormDesign、RecordList、WorkbenchHome 等 10 个）一并移入对应特性目录。
+- `src/services/`、`components/ui|layout|ai|notifications/` 未动；全量 import 走 `@/` 别名机械替换，77 个文件更新，
+  `components/biz` 引用清零；顺手清理了索引中三个 staged 但已删除的残留文件（FormDisplayControlDialog 等，无引用）。
+- 已更新 `flexmodel-apps-ui/AGENTS.md` 目录约定（原 `components/rb/` 描述与实际不符）。
+- 验证：`tsc -b` 通过；`vitest run` 66/66；`npm run build -- --minify=false --target=esnext` 通过。
+  默认压缩构建仍因已知 esbuild 临时文件 Access is denied 失败（A/B 已确认迁移前 HEAD 同样失败，环境问题，未改构建配置）。
+  未提交代码。
+
 ## Apps - 应用顶部快捷发起流程入口（2026-11-13，feat-193）
 
 - 工作流设置跳转修复：AppQuickCreate 曾链接至单数 `/settings/workflow`，实际路由为复数 `/settings/workflows`，

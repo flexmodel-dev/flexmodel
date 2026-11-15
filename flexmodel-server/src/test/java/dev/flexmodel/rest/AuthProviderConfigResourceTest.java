@@ -74,40 +74,6 @@ public class AuthProviderConfigResourceTest {
   }
 
   /**
-   * 测试创建Function认证提供商
-   */
-  @Test
-  void testCreateFunctionAuthProvider() {
-    given()
-      .header("Authorization", testTokenHelper.getAuthorizationHeader())
-      .contentType(ContentType.JSON)
-      .body("""
-        {
-          "name": "test_provider_e2e",
-          "type": "function",
-          "enabled": true,
-          "config": {
-            "functionName": "test-auth"
-          }
-        }
-        """)
-      .when()
-      .post(BASE_PATH)
-      .then()
-      .statusCode(200)
-      .body("name", equalTo("test_provider_e2e"))
-      .body("type", equalTo("function"));
-
-    // 清理
-    given()
-      .header("Authorization", testTokenHelper.getAuthorizationHeader())
-      .when()
-      .delete(BASE_PATH + "/" + TEST_PROVIDER_NAME)
-      .then()
-      .statusCode(204);
-  }
-
-  /**
    * 测试更新认证提供商
    */
   @Test

@@ -13,8 +13,7 @@
 ## 🛠️ 技术栈
 
 - **主框架**: Quarkus 3 (REST, Jackson, Hibernate Validator, Scheduler, Cache)
-- **AI 能力**: MCP Server（Quarkus MCP 扩展，项目、模型、数据、函数、应用及通用人员目录工具）
-- **边缘函数**: Deno Functions Runtime (Hono.js, Worker 隔离执行)
+- **AI 能力**: MCP Server（Quarkus MCP 扩展，项目、模型、数据、应用及通用人员目录工具）
 - **API 协议**: REST API, GraphQL, OpenAPI/Swagger UI
 - **持久化**: SQLite (默认演示) / 支持扩展多种关系型与 NoSQL 数据库
 - **其他**: Lombok, QuickJS, Docker, Maven
@@ -32,7 +31,6 @@
 - **`storage/`**: 对象存储 — 本地、S3
 - **`mcp/`**: MCP Server — AI 工具集成；AppTools 包含应用审批，DirectoryTools 提供通用人员目录与解析
 - **`directory/`**: 通用人员、角色、组织架构目录与人员规则解析，供审批和 MCP 复用
-- **`functions/`**: 边缘函数 — Deno Functions Runtime 隔离执行
 - **`projectauth/`**: 身份提供商 — OIDC、LDAP、Script
 - **`settings/`**: 系统设置
 - **`metrics/`**: 监控指标

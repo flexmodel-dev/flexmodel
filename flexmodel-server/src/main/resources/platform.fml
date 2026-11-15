@@ -1064,35 +1064,6 @@ model f_job_execution_log {
   @comment("作业执行日志")
 }
 
-model f_function {
-  id : String @id @default(uuid()),
-  project_id : String @comment("所属项目ID"),
-  name : String @comment("函数名称"),
-  source_files : JSON @comment("函数源代码(文件名→内容)"),
-  timeout : Int @default("30") @comment("超时时间(秒)"),
-  created_by? : String @comment("创建人"),
-  updated_by? : String @comment("更新人"),
-  created_at? : DateTime @default(now()) @comment("创建时间"),
-  updated_at? : DateTime @default(now()) @comment("更新时间"),
-  @index(name: "UQ_FUNCTION_PROJECT_NAME", unique: true, fields: [project_id, name]),
-  @system,
-  @comment("边缘函数(平台级资源，按 project_id 隔离)")
-}
-
-model f_function_log {
-  id : String @id @default(uuid()),
-  project_id : String @comment("所属项目ID"),
-  function_name : String @comment("函数名称"),
-  level : String @comment("日志级别(log/warn/error)"),
-  message : String @comment("日志消息"),
-  trace_id? : String @length("64") @comment("链路追踪ID"),
-  created_at? : DateTime @default(now()) @comment("记录时间"),
-  @index(name: "IDX_FUNCTION_LOG_TRACE", fields: [project_id, trace_id]),
-  @index(name: "IDX_FUNCTION_LOG_NAME_TIME", fields: [project_id, function_name, created_at]),
-  @system,
-  @comment("边缘函数执行日志")
-}
-
 model f_login_log {
   id : String @id @default(uuid()),
   user_id? : String @length("64") @comment("用户ID"),
@@ -1134,28 +1105,6 @@ enum BucketVisibility {
   @system
 }
 
-model f_function_template {
-  id : String @id @default(uuid()),
-  name : String @comment("模板名称"),
-  slug : String @comment("模板标识符"),
-  description : String @comment("模板描述"),
-  source_files : JSON @comment("模板源代码(文件名→内容)"),
-  tags? : String @comment("标签(JSON数组)"),
-  icon? : String @comment("图标名称"),
-  sort_order : Int @default("0") @comment("排序权重"),
-  @index(name: "IDX_FUNCTION_TEMPLATE_SLUG", unique: true, fields: [slug]),
-  @system,
-  @comment("边缘函数模板(平台级)")
-}
-
-seed f_function_template {
-  {id: "tpl-001", name: "Hello World", slug: "hello-world", description: "最简单的函数，返回问候语", source_files: {"index.ts": "export default async function(req: Request) {\n  return new Response(JSON.stringify({ message: \"Hello, World!\" }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"}, tags: "[\"beginner\"]", icon: "code", sort_order: 1},
-  {id: "tpl-002", name: "Database Query", slug: "database-query", description: "查询 Flexmodel 数据表并返回结果", source_files: {"index.ts": "import { flexmodelClient } from \"@flexmodel/sdk\";\n\nexport default async function(req: Request) {\n  const url = new URL(req.url);\n  const model = url.searchParams.get(\"model\") || \"Student\";\n  const page = Number(url.searchParams.get(\"page\") || \"1\");\n  const size = Number(url.searchParams.get(\"size\") || \"10\");\n  const result = await flexmodelClient.data.from(model).findMany({ page, size });\n  console.log(\"Query completed\", { model, total: result.total });\n  return new Response(JSON.stringify(result), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"}, tags: "[\"database\"]", icon: "database", sort_order: 2},
-  {id: "tpl-003", name: "Database CRUD", slug: "database-crud", description: "根据请求方法执行增删改查操作", source_files: {"index.ts": "import { flexmodelClient } from \"@flexmodel/sdk\";\n\nexport default async function(req: Request) {\n  const url = new URL(req.url);\n  const model = url.searchParams.get(\"model\") || \"Student\";\n  const id = url.searchParams.get(\"id\");\n  if (req.method === \"GET\" && id) {\n    const record = await flexmodelClient.data.from(model).findOne(id);\n    return new Response(JSON.stringify(record), { headers: { \"content-type\": \"application/json\" } });\n  }\n  if (req.method === \"GET\") {\n    const result = await flexmodelClient.data.from(model).findMany({ page: 1, size: 10 });\n    return new Response(JSON.stringify(result), { headers: { \"content-type\": \"application/json\" } });\n  }\n  if (req.method === \"POST\") {\n    const body = await req.json();\n    const record = await flexmodelClient.data.from(model).create(body);\n    return new Response(JSON.stringify(record), { status: 201, headers: { \"content-type\": \"application/json\" } });\n  }\n  return new Response(JSON.stringify({ error: \"Method not supported\" }), { status: 405 });\n}"}, tags: "[\"database\"]", icon: "database", sort_order: 3},
-  {id: "tpl-004", name: "IdP Authentication", slug: "idp-authentication", description: "对接第三方 IdP（如 OIDC/OAuth2）进行认证，验证 token 并返回 userId", source_files: {"index.ts": "export default async function(req: Request) {\n  // AuthContext 作为 Request body 传入，包含 bearerToken、headers 等信息\n  // 同时原始客户端 headers 也通过 Request headers 传递\n  const ctx = await req.json();\n  const bearerToken = ctx.bearerToken || req.headers.get(\"Authorization\")?.replace(\"Bearer \", \"\");\n\n  if (!bearerToken) {\n    return new Response(JSON.stringify({ error: \"Missing bearer token\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" }\n    });\n  }\n\n  // 调用 IdP 的 userinfo 端点验证 token\n  // 请根据你的 IdP 替换 userinfo URL\n  const userinfoUrl = \"https://your-idp-domain.com/oauth2/userinfo\";\n\n  try {\n    const response = await fetch(userinfoUrl, {\n      headers: { Authorization: \"Bearer \" + bearerToken }\n    });\n\n    if (!response.ok) {\n      return new Response(JSON.stringify({ error: \"Token validation failed\", status: response.status }), {\n        status: 401,\n        headers: { \"content-type\": \"application/json\" }\n      });\n    }\n\n    const userInfo = await response.json();\n\n    // 认证成功 — 返回 userId 供 Flexmodel 识别用户身份\n    // userId 通常取 IdP 返回的 sub 字段\n    console.log(\"IdP auth succeeded\", { sub: userInfo.sub, email: userInfo.email });\n\n    return new Response(JSON.stringify({\n      userId: userInfo.sub,\n      email: userInfo.email,\n      name: userInfo.name\n    }), {\n      headers: { \"content-type\": \"application/json\" }\n    });\n  } catch (err) {\n    console.error(\"IdP auth error\", err);\n    return new Response(JSON.stringify({ error: \"IdP connection failed\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" }\n    });\n  }\n}"}, tags: "[\"auth\", \"integration\"]", icon: "safety", sort_order: 6},
-  {id: "tpl-005", name: "IdP Authentication with JWT", slug: "auth-jwt", description: "JWT Token 认证函数，验证 Bearer Token 中的 upn claim 并返回用户信息", source_files: {"index.ts": "import jwt from \"npm:jsonwebtoken\";\n\nconst ACCOUNT = \"upn\"; \n\nexport default async function (req: Request) {\n  // 1. 提取 Bearer Token\n  let token: string | null = null;\n  try {\n    token = req.headers.get(\"Authorization\")?.replace(\"Bearer \", \"\") ?? null;\n    if (!token && req.body) {\n      const ct = req.headers.get(\"content-type\") ?? \"\";\n      if (ct.includes(\"application/json\")) {\n        token = (await req.json().catch(() => ({}))).bearerToken ?? null;\n      }\n    }\n  } catch {\n    // ignore parse errors\n  }\n\n  if (!token) {\n    return new Response(JSON.stringify({ error: \"Missing bearer token\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" },\n    });\n  }\n\n  // 2. 对应 JwtService.verify(): 先解码取 upn → 拼接密钥 → 验证签名\n  const BASE = Deno.env.get(\"JWT_SECRET\") || \"your-secret\";\n\n  try {\n    // 对应 getClaim(token, ACCOUNT)\n    const upn = (jwt.decode(token) as Record<string, unknown> | null)?.[ACCOUNT];\n    if (!upn || typeof upn !== \"string\") {\n      throw new Error(\"missing upn claim\");\n    }\n\n    // 对应 String secret = getClaim(token, ACCOUNT) + config.jwt().secret()\n    //       Algorithm.HMAC256(secret) + verifier.verify(token)\n    const verified = jwt.verify(token, upn + BASE, { algorithms: [\"HS256\"] }) as Record<string, unknown>;\n\n    console.log(\"JWT 认证成功\", { upn: verified[ACCOUNT] });\n\n    return new Response(\n      JSON.stringify({\n        userId: verified[ACCOUNT],\n        email: verified.email || \"\",\n        name: verified.name || \"\",\n      }),\n      { headers: { \"content-type\": \"application/json\" } },\n    );\n  } catch (err) {\n    console.error(\"JWT 验证失败:\", err instanceof Error ? err.message : err);\n    return new Response(JSON.stringify({ error: \"Invalid or expired token\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" },\n    });\n  }\n}"}, tags: "[\"auth\"]", icon: "safety", sort_order: 5},
-  {id: "tpl-006", name: "AI Example", slug: "ai-example", description: "调用 DeepSeek API 的 AI 边缘函数示例", source_files: {"index.ts": "import OpenAI from \"npm:openai\"; // Deno 会自动下载并缓存该 npm 包\n\nconst openai = new OpenAI({\n  apiKey: Deno.env.get(\"DEEPSEEK_API_KEY\"), // 从环境变量读取 API Key\n  baseURL: \"https://api.deepseek.com/v1\",   // 配置 DeepSeek 的官方接口地址\n});\n\n\nexport default async function(req: Request) {\n\n  const completion = await openai.chat.completions.create({\n    messages: [{ role: \"user\", content: \"你好，请自我介绍一下。\" }],\n    model: \"deepseek-v4-flash\",\n  });\n  console.log(completion.choices[0].message.content);\n  return new Response(JSON.stringify({ message: completion }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}"}, tags: "[\"ai\", \"beginner\"]", icon: "robot", sort_order: 7},
-}
 
 // dev_test 项目平台级种子数据（原 dev_test.fml，按 project_id 隔离）
 seed f_bucket {
@@ -1183,13 +1132,6 @@ seed f_trigger {
   {project_id: "dev_test", id: "d8c60d2a-19d8-4c3c-b370-96318733858f", name: "定时触发-Cron表达式", description: "定时触发-Cron表达式-备注", type: "SCHEDULE", config: {type: "cron", cronExpression: "0 0 * * * ? *"}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "testFlowName_1757909108656", state: false, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000"},
   {project_id: "dev_test", id: "9434666d-6b3b-417a-80e3-3352f40ded71", name: "事件触发-之前", description: "事件触发-之前-描述", type: "EVENT", config: {type: "event", datasourceName: "dev_test", modelName: "Student", mutationTypes: ["delete", "update", "create"], triggerTiming: "after"}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "dev_test_Student", state: true, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000"},
   {project_id: "dev_test", id: "f351b8d9-a450-4f2c-8fff-cf862d690352", name: "事件触发-之后", description: "事件触发-之后-描述", type: "EVENT", config: {type: "event", datasourceName: "dev_test", modelName: "Classes", mutationTypes: ["create", "update", "delete"], triggerTiming: "after"}, job_id: "5c41f37a-87a9-47af-bdba-44d0c27eda89", job_type: "FLOW", job_group: "dev_test_Classes", state: true, created_at: "2025-09-15 12:05:09.000", updated_at: "2025-09-15 12:05:09.000"},
-  {project_id: "dev_test", id: "687d14a2-9d5e-4ecf-b85c-dfc7c3b31493", name: "函数运行时健康检测", description: null, type: "SCHEDULE", config: {type: "interval", interval: 10, intervalUnit: "second", repeatCount: 999999}, job_type: "FUNCTION", job_group: "dev_test_fn_health-check", job_id: "health-check", state: true, created_at: "2026-07-15T10:50:31.284785500", updated_at: "2026-07-17T12:02:48.970596400", created_by: null, updated_by: null},
-}
-
-seed f_function {
-  {project_id: "dev_test",  "id": "hello", "name": "hello", "source_files": { "index.ts": "export default async function(req: Request, ctx: Context) {\n  return new Response(JSON.stringify({ message: \"Hello, World!\" }), {\n    headers: { \"content-type\": \"application/json\" }\n  });\n}" }},
-  {project_id: "dev_test",  "id": "student_query", "name": "student_query", "source_files": { "index.ts": "import { flexmodelClient } from '@flexmodel/sdk';\nimport { Student } from './type.ts';\n\nexport default async (input) => {\n  // runtime 已在调用前 setAuthToken + setProjectId\n  console.log(\"请求参数: \"+JSON.stringify(input));\n  console.warn(\"这是一个警告信息\"); // 黄色惊叹号图标\n  console.error(\"这是一个错误信息\"); // 红色错误图标，并自带错误堆栈\n  const { list } = await flexmodelClient.data.Student.findMany({ where: { age: { _eq: 10 } } });\n  return { list };\n}", "type.ts": "// Add your code here\nexport interface Student {\n    studentName: string;\n}" } },
-  {project_id: "dev_test",  "id": "health-check", "name": "health-check", "source_files": { "index.ts": "export default async function(req: Request) {\n  const url = \"http://localhost:9999/health\";\n\n  try {\n    const response = await fetch(url);\n\n    if (!response.ok) {\n      return new Response(JSON.stringify({ error: \"Health check failed\", status: response.status }), {\n        status: 401,\n        headers: { \"content-type\": \"application/json\" }\n      });\n    }\n    console.log(\"Health check succeeded\");\n\n    return new Response(JSON.stringify({\n       success: true\n    }), {\n      headers: { \"content-type\": \"application/json\" }\n    });\n  } catch (err) {\n    console.error(\"Health check failed\", err);\n    return new Response(JSON.stringify({ error: \"Health check failed\" }), {\n      status: 401,\n      headers: { \"content-type\": \"application/json\" }\n    });\n  }\n}" }, "timeout": 30, "created_at": "2026-07-15T10:49:31.493042100", "updated_at": "2026-07-15T10:49:31.493042100" }
 }
 
 model f_app_flow_trigger_log {

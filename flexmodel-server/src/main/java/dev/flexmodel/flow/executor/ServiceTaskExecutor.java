@@ -10,14 +10,12 @@ import dev.flexmodel.flow.common.RuntimeContext;
 import dev.flexmodel.flow.common.util.JavaScriptUtil;
 import dev.flexmodel.flow.dto.bo.NodeInstanceBO;
 import dev.flexmodel.flow.exception.ProcessException;
-import dev.flexmodel.functions.FunctionService;
 import dev.flexmodel.query.Direction;
 import dev.flexmodel.query.Query;
 import dev.flexmodel.session.Session;
 import dev.flexmodel.common.persistence.ServerSessions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import jakarta.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,9 +37,6 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
   @Inject
   ServerSessions sessions;
-
-  @Inject
-  FunctionService functionService;
 
   @Override
   protected void doExecute(RuntimeContext runtimeContext) throws ProcessException {
@@ -73,13 +68,12 @@ public class ServiceTaskExecutor extends ElementExecutor {
 
     try {
       Object result;
-      // CRUD 操作和边缘函数调用不需要 script 参数
+      // CRUD 操作不需要 script 参数
       if (subType.equalsIgnoreCase("insert_record") ||
-          subType.equalsIgnoreCase("update_record") ||
-          subType.equalsIgnoreCase("delete_record") ||
-          subType.equalsIgnoreCase("query_record") ||
-          subType.equalsIgnoreCase("function")) {
-        // 执行 CRUD 操作或边缘函数调用
+        subType.equalsIgnoreCase("update_record") ||
+        subType.equalsIgnoreCase("delete_record") ||
+        subType.equalsIgnoreCase("query_record")) {
+        // 执行 CRUD 操作
         result = executeAction(subType, null, nodeInstance, runtimeContext);
       } else {
         // 获取脚本内容（用于 js、sql 等脚本类型）
@@ -170,11 +164,6 @@ public class ServiceTaskExecutor extends ElementExecutor {
       }
       case "query_record" -> {
         return executeQueryRecord(nodeInstance, contextData);
-      }
-      case "function" -> {
-        LOGGER.debug("executeFunction: invoking Edge Function.||functionName={}",
-          nodeInstance.get("functionName"));
-        return executeFunction(nodeInstance, contextData, runtimeContext.getProjectId());
       }
       default -> {
         LOGGER.error("executeScript: unsupported subType.||subType={}", subType);
@@ -558,45 +547,6 @@ public class ServiceTaskExecutor extends ElementExecutor {
       long endTime = System.currentTimeMillis() - beginTime;
       // 释放Session
       LOGGER.info("executeSqlScript: completed, executionTime={}ms", endTime);
-    }
-  }
-
-  /**
-   * 执行边缘函数调用
-   */
-  private Object executeFunction(NodeInstanceBO nodeInstance, Map<String, Object> contextData, String projectId) {
-    String functionName = getRequiredProperty(nodeInstance, "functionName");
-
-    LOGGER.info("executeFunction: invoking Edge Function.||functionName={}||projectId={}",
-      functionName, projectId);
-
-    // 构建函数输入
-    Object inputData;
-    String inputPath = getOptionalProperty(nodeInstance, "inputPath");
-    if (StringUtils.isNotBlank(inputPath)) {
-      inputData = getInputData(inputPath, contextData);
-    } else {
-      inputData = contextData;
-    }
-
-    // 调用函数 — 直接传数据对象作为 Request body
-    Response response = functionService.invoke(projectId, functionName, inputData);
-
-    try {
-      if (response.getStatus() >= 200 && response.getStatus() < 300) {
-        Object result = response.readEntity(Object.class);
-        LOGGER.info("executeFunction: Edge Function completed successfully.||functionName={}||status={}",
-          functionName, response.getStatus());
-        return result;
-      } else {
-        String errorBody = response.hasEntity() ? response.readEntity(String.class) : "no response body";
-        LOGGER.error("executeFunction: Edge Function returned error.||functionName={}||status={}||body={}",
-          functionName, response.getStatus(), errorBody);
-        throw new ProcessException(ErrorEnum.SERVICE_TASK_EXECUTION_FAILED,
-          "边缘函数执行失败 [" + functionName + "]: HTTP " + response.getStatus() + " - " + errorBody);
-      }
-    } finally {
-      response.close();
     }
   }
 

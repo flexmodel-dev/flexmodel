@@ -39,19 +39,6 @@ public interface FlexmodelConfig extends Serializable {
     return projectBaseDomain().map(d -> !d.isBlank()).orElse(false);
   }
 
-  /**
-   * 推导边缘函数调用 URL（统一经 Java 代理端点 /open/{projectId}/functions/{name}/invoke）。
-   * - path 模式: /api/open/{{projectId}}/functions/{{name}}/invoke
-   * - subdomain 模式: https://{{projectId}}.{projectBaseDomain}/api/open/{{projectId}}/functions/{{name}}/invoke
-   */
-  default String edgeUrlTemplate() {
-    if (isSubdomainRouting()) {
-      return "https://{{projectId}}." + projectBaseDomain().orElse("")
-        + "/api/open/{{projectId}}/functions/{{name}}/invoke";
-    }
-    return "/api/open/{{projectId}}/functions/{{name}}/invoke";
-  }
-
   @WithName("datasource")
   @WithUnnamedKey(DEFAULT_SCHEMA_NAME)
   Map<String, DatasourceConfig> datasources();
@@ -66,6 +53,13 @@ public interface FlexmodelConfig extends Serializable {
   @WithName("version")
   @WithDefault("dev")
   String version();
+
+  /**
+   * 演示模式：开启后启动时才向 dev_test schema 写入表结构和种子数据。
+   */
+  @WithName("demo-mode")
+  @WithDefault("false")
+  boolean demoMode();
 
   @WithName("jwt")
   JwtConfig jwt();

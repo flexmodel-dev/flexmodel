@@ -600,9 +600,6 @@
       "type": "dev.flexmodel.auth.service.AuthService"
     },
     {
-      "type": "dev.flexmodel.auth.service.InternalTokenService"
-    },
-    {
       "type": "dev.flexmodel.auth.service.ResourceService"
     },
     {
@@ -4877,80 +4874,7 @@
       "type": "dev.flexmodel.flow.validator.UserTaskValidator"
     },
     {
-      "type": "dev.flexmodel.functions.FunctionFmRepository"
-    },
-    {
-      "type": "dev.flexmodel.functions.FunctionInvoker"
-    },
-    {
-      "type": "dev.flexmodel.functions.FunctionRepository"
-    },
-    {
-      "type": "dev.flexmodel.functions.FunctionResource"
-    },
-    {
-      "type": "dev.flexmodel.functions.FunctionRuntimeClient"
-    },
-    {
-      "type": "dev.flexmodel.functions.FunctionService"
-    },
-    {
-      "type": "dev.flexmodel.functions.FunctionTemplateFmRepository"
-    },
-    {
-      "type": "dev.flexmodel.functions.FunctionTemplateRepository"
-    },
-    {
-      "type": "dev.flexmodel.functions.FunctionTemplateResource"
-    },
-    {
-      "type": "dev.flexmodel.functions.dto.FunctionDeployRequest"
-    },
-    {
-      "type": "dev.flexmodel.functions.dto.FunctionResponse",
-      "methods": [
-        {
-          "name": "getCreatedAt",
-          "parameterTypes": []
-        },
-        {
-          "name": "getCreatedBy",
-          "parameterTypes": []
-        },
-        {
-          "name": "getId",
-          "parameterTypes": []
-        },
-        {
-          "name": "getName",
-          "parameterTypes": []
-        },
-        {
-          "name": "getSourceFiles",
-          "parameterTypes": []
-        },
-        {
-          "name": "getTimeout",
-          "parameterTypes": []
-        },
-        {
-          "name": "getUpdatedAt",
-          "parameterTypes": []
-        },
-        {
-          "name": "getUpdatedBy",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "dev.flexmodel.functions.dto.FunctionResponse[]"
-    },
-    {
       "type": "dev.flexmodel.mcp.DataTools"
-    },
-    {
-      "type": "dev.flexmodel.mcp.FunctionTools"
     },
     {
       "type": "dev.flexmodel.mcp.McpAuthHandler"

@@ -37,16 +37,13 @@ public class DirectoryService {
           String id = text(user, "id");
           List<String> roleIds = userRoles.stream().filter(item -> id.equals(text(item, "user_id"))).map(item -> text(item, "role_id")).sorted().toList();
           List<String> orgIds = userDepartments.stream().filter(item -> id.equals(text(item, "user_id"))).map(item -> text(item, "department_id")).sorted().toList();
-          Map<String, Object> member = new LinkedHashMap<>(Map.of("id", id, "name", text(user, "name"), "roleIds", roleIds, "organizationIds", orgIds,
-            "role", roles.stream().filter(item -> roleIds.contains(text(item, "id"))).map(item -> text(item, "name")).reduce((a, b) -> a + "、" + b).orElse(""),
-            "organization", orgIds.isEmpty() ? "" : orgIds.getFirst()));
+          Map<String, Object> member = new LinkedHashMap<>(Map.of("id", id, "name", text(user, "name"), "roleIds", roleIds, "organizationIds", orgIds, "role", roles.stream().filter(item -> roleIds.contains(text(item, "id"))).map(item -> text(item, "name")).reduce((a, b) -> a + "、" + b).orElse(""), "organization", orgIds.isEmpty() ? "" : orgIds.getFirst()));
           member.put("avatar", text(user, "avatar"));
           member.put("managerId", text(user, "manager_user_id"));
           members.add(member);
         }
       members.sort(Comparator.comparing(member -> text(member, "id")));
-      return Map.of("members", members, "roles", roles.stream().map(role -> Map.of("id", text(role, "id"), "name", text(role, "name"))).toList(),
-        "organizations", organizations.stream().map(org -> Map.of("id", text(org, "id"), "name", text(org, "name"), "parentId", text(org, "parent_id"))).toList());
+      return Map.of("members", members, "roles", roles.stream().map(role -> Map.of("id", text(role, "id"), "name", text(role, "name"))).toList(), "organizations", organizations.stream().map(org -> Map.of("id", text(org, "id"), "name", text(org, "name"), "parentId", text(org, "parent_id"))).toList());
     }
   }
 

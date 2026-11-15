@@ -1,6 +1,13 @@
 {
   "features": [
     {
+      "id": "feat-194",
+      "name": "Server - 演示模式开关",
+      "description": "新增运行期配置 flexmodel.demo-mode（默认 false）：开启时启动才向 dev_test schema 写入表结构与种子数据（registerBuildItem(new DevTest())），关闭时跳过并打日志。application-dev.properties 与 application-test.properties 置 true 保持开发/测试现状；platform.fml 中 dev_test 平台级种子（项目行、流程、触发器等）按用户决策保留，不随开关隐藏。pom.xml 的 codegen 导入保持不变（EngineConfig 编译期引用 DevTest 类，类生成不等于写库）。",
+      "status": "done",
+      "evidence": "2026-11-15 完成，未提交。改动 3 文件约 10 行：FlexmodelConfig 新增 demoMode() 配置项（@WithDefault(\"false\")）；EngineConfig.sessionFactory 按 demoMode 条件注册 DevTest；application.properties 加默认 false 注释、application-dev.properties/application-test.properties 各加 demo-mode=true。验证：mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin' EXIT=0（codegen 仍生成双 schema，EngineConfig 编译通过）；mvn test -pl flexmodel-engine EXIT=0；mvn test -pl flexmodel-server -am -Dtest=RecordResourceTest '-Dsurefire.failIfNoSpecifiedTests=false' EXIT=0（日志确认 'Load schema: dev_test, Number of models: 7'，测试行为与现状一致；health-check 函数连 9999 报错为种子触发器既有噪音）。未验证：demo-mode=false 的启动路径无自动化测试覆盖（简单 if 分支）；native image 构建未跑。"
+    },
+    {
       "id": "feat-193",
       "name": "Apps - 应用顶部快捷发起流程入口",
       "description": "右上角加号打开带搜索的快捷面板，以「发起流程」「新增数据」页签切换；面板限高视口 60%并适应可用空间，仅列表内部滚动，搜索框和页签固定。按当前页签搜索，流程同时匹配流程名与关联表单名。流程以业务名称展示，关联表单名作辅助说明；选择流程后直接打开发布快照绑定的表单并固定所选流程，填写后提交发起。仅列出当前应用已发布启用的手动流程，沿用现有可见表单入口范围；同一表单的多个流程分别展示。已配置但无可发起流程时明确说明发布启用、手动触发与可见表单条件，并提供工作流设置入口。",

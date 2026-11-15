@@ -1,3 +1,20 @@
+## Server - 演示模式开关（feat-194）(2026-11-15)
+
+**目标:** `flexmodel.demo-mode` 运行期开关，开启时启动才向 dev_test schema 写入表结构与种子数据；默认关闭。
+
+- 背景结论：pom.xml 的 fml 导入只是 codegen（生成 `dev.flexmodel.test.codegen.DevTest`），真正写库发生在
+  启动时 `EngineConfig.sessionFactory` 的 `sf.registerBuildItem(new DevTest())` → `applyBuildItemSchemas`。
+  故 pom 导入保持不变（编译期需要 DevTest 类），开关只控制运行期注册。
+- 改动：`FlexmodelConfig` 新增 `demoMode()`（`flexmodel.demo-mode`，默认 false）；`EngineConfig` 条件注册 DevTest，
+  关闭时打日志跳过；`application.properties` 默认 false，`application-dev.properties` 与
+  `application-test.properties` 置 true（开发/测试行为与现状完全一致）。
+- 按用户决策：platform.fml 里 dev_test 的平台级种子（f_project 项目行、流程、触发器、函数、存储桶）保留，
+  关闭演示模式时 dev_test 项目仍出现在列表但为空项目。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` EXIT=0；`mvn test -pl flexmodel-engine` EXIT=0；
+  `mvn test -pl flexmodel-server -am -Dtest=RecordResourceTest "-Dsurefire.failIfNoSpecifiedTests=false"` EXIT=0，
+  日志确认测试侧 dev_test schema 正常加载（models: 7）。health-check 函数连 9999 报错为种子触发器既有噪音。
+- 遗留：demo-mode=false 启动路径无自动化测试；native image 构建未验证。未提交代码。
+
 ## Apps - 前端按特性垂直分包重构（2026-11-15）
 
 - E2E 配置收敛：13 个 `playwright.<特性>.config.ts` 合并为一个 `playwright.config.ts` + `projects`（13 个 project，

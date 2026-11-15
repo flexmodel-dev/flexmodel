@@ -88,7 +88,11 @@ public class EngineConfig {
     // 直接注册 BuildItem 实例，绕过 SPI ServiceLoader 机制
     // 在 GraalVM 原生镜像中 ServiceLoader.load() 无法正确发现 SPI 实现类
     sf.registerBuildItem(new SystemBuildItem());
-    sf.registerBuildItem(new DevTest());
+    if (flexmodelConfig.demoMode()) {
+      sf.registerBuildItem(new DevTest());
+    } else {
+      log.info("Demo mode disabled, skipping dev_test schema import");
+    }
     sf.getEventPublisher().addListener(triggerDataChangedEventListener);
     sf.getEventPublisher().addListener(auditDataEventListener);
     sf.getEventPublisher().addListener(realtimeEventListener);

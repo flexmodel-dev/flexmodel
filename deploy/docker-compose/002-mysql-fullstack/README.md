@@ -8,7 +8,6 @@ Flexmodel 生产部署，包含以下服务：
 | `rustfs`                      | `rustfs/rustfs:latest`                    | 9000 / 9001  |
 | `flexmodel`                   | `cjbi/flexmodel-server:latest`            | 8080 (内部)  |
 | `flexmodel-ui`                | `cjbi/flexmodel-ui:latest`                | 80           |
-| `flexmodel-functions-runtime` | `cjbi/flexmodel-functions-runtime:latest` | 9999 (内部)  |
 | `nginx`                       | `nginx:1.25.3`                            | 80 (内部)    |
 
 ## 部署命令

@@ -10,7 +10,6 @@ import dev.flexmodel.event.EventListener;
 import dev.flexmodel.event.EventType;
 import dev.flexmodel.event.PreChangeEvent;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
-import dev.flexmodel.functions.FunctionService;
 import dev.flexmodel.common.trace.TraceContext;
 import dev.flexmodel.project.ProjectRepository;
 import io.vertx.mutiny.core.eventbus.EventBus;
@@ -38,8 +37,6 @@ public class TriggerDataChangedEventListener implements EventListener {
   ProjectRepository projectRepository;
   @Inject
   JobExecutionLogService jobExecutionLogService;
-  @Inject
-  FunctionService functionService;
   @Inject
   EventBus eventBus;
 
@@ -176,34 +173,26 @@ public class TriggerDataChangedEventListener implements EventListener {
   }
 
   /**
-   * 根据触发器任务类型分派执行（流程或边缘函数）
+   * 根据触发器任务类型分派执行（启动流程）
    */
   private void dispatchEventTrigger(String projectId, Trigger trigger, Object eventData, String logId) {
-    if ("FUNCTION".equals(trigger.getJobType())) {
-      functionService.invoke(projectId, trigger.getJobId(), Map.of(
-        "triggerId", trigger.getId(),
-        "eventData", eventData,
-        "triggerTime", System.currentTimeMillis()
-      ));
-    } else {
-      StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
-      startProcessParam.setProjectId(projectId);
-      try {
-        SessionContext sessionContext = CDI.current().select(SessionContext.class).get();
-        startProcessParam.setUserId(sessionContext.getUserId());
-      } catch (Exception e) {
-        startProcessParam.setUserId("admin");
-      }
-
-      startProcessParam.setFlowModuleId(trigger.getJobId());
-      @SuppressWarnings("unchecked")
-      Map<String, Object> variables = JsonUtils.convertValue(eventData, Map.class);
-      startProcessParam.setVariables(variables);
-      startProcessParam.setEventId(logId);
-      startProcessParam.setStartTime(System.currentTimeMillis());
-
-      eventBus.send("flow.start", startProcessParam);
+    StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
+    startProcessParam.setProjectId(projectId);
+    try {
+      SessionContext sessionContext = CDI.current().select(SessionContext.class).get();
+      startProcessParam.setUserId(sessionContext.getUserId());
+    } catch (Exception e) {
+      startProcessParam.setUserId("admin");
     }
+
+    startProcessParam.setFlowModuleId(trigger.getJobId());
+    @SuppressWarnings("unchecked")
+    Map<String, Object> variables = JsonUtils.convertValue(eventData, Map.class);
+    startProcessParam.setVariables(variables);
+    startProcessParam.setEventId(logId);
+    startProcessParam.setStartTime(System.currentTimeMillis());
+
+    eventBus.send("flow.start", startProcessParam);
   }
 
   /**

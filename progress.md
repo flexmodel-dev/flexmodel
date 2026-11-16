@@ -1,3 +1,34 @@
+## Functions - 边缘函数整体移除（2026-11-15，feat-010 → removed）
+
+**目标:** 按用户决策，云函数（边缘函数）功能判定为多余，端到端整体移除，不留死代码。
+
+- 删除范围（均已落地）：
+    - `flexmodel-functions-runtime/` 整个 Deno 模块；flexmodel-server `dev.flexmodel.functions` 包；
+      `mcp/FunctionTools`、`open/OpenFunctionResource`、`projectauth/EdgeValidate*`、
+      `auth/service/InternalTokenService`、`projectauth/provider/FunctionAuthProvider`（认证 function 方式）、
+      `scheduling/job/ScheduledFunctionExecutionJob` 及 TriggerService/TriggerDataChangedEventListener 中的
+      FUNCTION 分支；`flow/executor/ServiceTaskExecutor` 的函数任务分支。
+    - `platform.fml`：f_function / f_function_log / f_function_template 模型与种子（含 FUNCTION 触发器种子）。
+      注意：该文件原为 GBK 编码，本轮整理时整体转为 UTF-8（Java 25 + Files.readString 均按 UTF-8 读，
+      转换为正确方向；整文件 diff 较大由此而来）。
+    - 配置：application.properties 的 rest-client.function-runtime；FlexmodelConfig.edgeUrlTemplate 与
+      GlobalResource 的 edgeUrlTemplate 字段；native-image reachability-metadata 与 FlexmodelNativeProcessor
+      的 functions 条目；测试（EdgeValidateResourceTest、AuthProviderConfigResourceTest 的 function 用例、
+      ScheduledJobExecutionTest 的 FUNCTION job 用例、GlobalResourceTest 的 edgeUrlTemplate 用例）。
+    - 部署与 CI：docker-compose 两套（001/002）的 functions-runtime 服务与 env；ci.yml 的
+      functions-runtime-test / push-functions-runtime-image 任务；README/AGENTS.md/docs 相关描述。
+    - flexmodel-ui 子模块：Functions 页面/编辑器、services/function*.ts、Authentication 的 FunctionForm 与
+      function 认证选项、FlowDesign 函数节点（catalog/NodePanel/PropertyPanel/index 校验）、
+      Scheduling 的 FUNCTION 任务类型、McpConnectionDrawer 的 function tools、locales 的 function.* 键。
+- 主体改动已由用户提交：主仓 96910db、子模块 a985ff3（2026-11-15 20:11）。
+  未提交残留（本轮后续补充）：GlobalResourceTest edgeUrlTemplate 用例删除、feature_list.json feat-010 状态更新、
+  本 progress 记录；子模块另有 locale 键清理、McpConnectionDrawer/NodePanel/ServiceTaskNode 小幅清理未提交。
+- flexmodel-ui 存在非本任务遗留：`src/icons.ts` 处于 staged-add + worktree-delete 状态（lucide 图标映射实验，无引用），待用户处理。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` EXIT=0；
+  `mvn test -pl flexmodel-engine` EXIT=0；`mvn test-compile -pl flexmodel-server -am -q` EXIT=0
+  （含 GlobalResourceTest/ScheduledJobExecutionTest/AuthProviderConfigResourceTest/TriggerResourceTest 编辑后编译）；
+  flexmodel-ui `npx tsc --noEmit` 通过；reachability-metadata.json JSON 解析通过。
+
 ## Server - 演示模式开关（feat-194）(2026-11-15)
 
 **目标:** `flexmodel.demo-mode` 运行期开关，开启时启动才向 dev_test schema 写入表结构与种子数据；默认关闭。

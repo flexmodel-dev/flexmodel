@@ -55,8 +55,6 @@ public class ProjectPlatformDataCleaner {
     FlowDefinition.class,
     JobExecutionLog.class,
     Trigger.class,
-    FunctionLog.class,
-    Function.class,
     Bucket.class,
     AuthProviderConfig.class,
     ApiRequestLog.class

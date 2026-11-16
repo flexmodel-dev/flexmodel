@@ -7,14 +7,12 @@ import graphql.ExecutionResult;
 import graphql.GraphQL;
 import graphql.execution.values.InputInterceptor;
 import graphql.schema.GraphQLScalarType;
-import dev.flexmodel.graphql.FlexmodelGraphQL;
 import dev.flexmodel.codegen.entity.Project;
 import dev.flexmodel.project.ProjectRepository;
 import dev.flexmodel.session.SessionFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,12 +23,11 @@ import static graphql.ExecutionInput.newExecutionInput;
 /**
  * @author cjbi
  */
+@Slf4j
 @ApplicationScoped
 public class GraphQLManager {
 
-  private static final Logger log = LoggerFactory.getLogger(GraphQLManager.class);
-
-  private final Map<String, GraphQL> tenantGraphqlMap = new ConcurrentHashMap<>();
+  private final Map<String, GraphQL> graphqlMap = new ConcurrentHashMap<>();
 
   @Inject
   SessionFactory sf;
@@ -44,14 +41,14 @@ public class GraphQLManager {
   ProjectRepository projectRepository;
 
   public GraphQL getGraphQL(String projectId) {
-    return tenantGraphqlMap.get(projectId);
+    return graphqlMap.get(projectId);
   }
 
   /**
    * 懒加载获取 GraphQL 实例，首次访问时按需生成 Schema。
    */
   public GraphQL getOrLoadGraphQL(String projectId) {
-    return tenantGraphqlMap.computeIfAbsent(projectId, pid -> {
+    return graphqlMap.computeIfAbsent(projectId, pid -> {
       Project project = projectRepository.findProject(pid);
       if (project == null) {
         throw new IllegalArgumentException("项目不存在: " + pid);
@@ -79,15 +76,15 @@ public class GraphQLManager {
   }
 
   public void addGraphQL(String projectId, GraphQL graphQL) {
-    tenantGraphqlMap.put(projectId, graphQL);
+    graphqlMap.put(projectId, graphQL);
   }
 
   public void removeGraphQL(String projectId) {
-    tenantGraphqlMap.remove(projectId);
+    graphqlMap.remove(projectId);
   }
 
   public void clearAll() {
-    tenantGraphqlMap.clear();
+    graphqlMap.clear();
     log.info("GraphQL cache cleared, schemas will be lazy-loaded on next access");
   }
 

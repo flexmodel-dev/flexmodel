@@ -21,7 +21,6 @@
         <sqlite-jdbc.version>3.45.3.0</sqlite-jdbc.version>
         <graphql-java.version>22.3</graphql-java.version>
         <slf4j.version>2.0.12</slf4j.version>
-        <jackson.version>2.17.2</jackson.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <mongodb-driver.version>5.0.1</mongodb-driver.version>
         <junit.version>6.0.3</junit.version>
@@ -50,7 +49,7 @@
         <compiler-plugin.version>3.15.0</compiler-plugin.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.33.1</quarkus.platform.version>
+      <quarkus.platform.version>3.40.1.2</quarkus.platform.version>
         <jandex-maven-plugin.version>3.2.3</jandex-maven-plugin.version>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
     </properties>
@@ -75,16 +74,6 @@
                 <groupId>com.graphql-java</groupId>
                 <artifactId>graphql-java</artifactId>
                 <version>${graphql-java.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-jsr310</artifactId>
-                <version>${jackson.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>

@@ -12,6 +12,7 @@ import dev.flexmodel.common.config.EngineConfig;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.data.DataService;
 import dev.flexmodel.project.ProjectService;
+import dev.flexmodel.system.SystemRecordService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ClientErrorException;
@@ -58,6 +59,9 @@ public class AppRecordService {
 
   @Inject
   ProjectService projectService;
+
+  @Inject
+  SystemRecordService systemRecordService;
 
   public PageDTO<Map<String, Object>> findRecords(
     String appId,
@@ -750,6 +754,10 @@ public class AppRecordService {
       throw new ValidationException("搜索关键字长度不能超过100");
     }
     List<Object> conditions = new ArrayList<>();
+    if (form.builtin()) {
+      // 系统表单核心字段标记为内置，搜索条件复用 /system 路径的核心字段定义
+      conditions.addAll(systemRecordService.searchConditions(form.name(), search));
+    }
     form.fields().stream()
       .filter(field -> !field.builtin() && SEARCHABLE_TYPES.contains(field.type()))
       .forEach(field -> {

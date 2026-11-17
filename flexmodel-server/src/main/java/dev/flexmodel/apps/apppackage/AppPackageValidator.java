@@ -1186,10 +1186,12 @@ public class AppPackageValidator {
           if (!byId.containsKey(child)) {
             issues.add("APPROVAL_INVALID", "flows[" + index + "].definition",
               "子流程不在包内: " + child);
-          } else if (children.add(child) && "enabled".equals(text(flow, "status"))
-            && !"enabled".equals(text(byId.get(child), "status"))) {
-            issues.add("APPROVAL_DEPENDENCY", "flows[" + index + "].definition",
-              "启用流程依赖未启用的子流程: " + child);
+          } else if (children.add(child)) {
+            String parentStatus = text(flow, "status"), childStatus = text(byId.get(child), "status");
+            if ("enabled".equals(parentStatus) && !"enabled".equals(childStatus)
+              || "disabled".equals(parentStatus) && "draft".equals(childStatus))
+              issues.add("APPROVAL_DEPENDENCY", "flows[" + index + "].definition",
+                "流程发布状态与子流程不一致: " + child);
           }
         }
       }

@@ -195,7 +195,7 @@ public class AppPackageImport {
       rewriteWorkbenchDestinations(appId, workbenchNavRefs, navIds, workbenchIds);
 
       run.phase("flows");
-      rebuildFlows(appId, content.flows());
+      Map<String, String> flowIds = rebuildFlows(appId, content.flows());
 
       run.phase("authorizations");
       rebuildAuthorizations(appId, content.authorizations());
@@ -210,6 +210,8 @@ public class AppPackageImport {
 
       run.phase("activating");
       transactions.executePlatform(appId, () -> {
+        // 发布绑定与激活一起提交，导入期间不暴露可执行的触发器。
+        restoreFlowStates(appId, content.flows(), flowIds);
         activate(appId);
         return null;
       });
@@ -344,7 +346,8 @@ public class AppPackageImport {
 
   // ---------------------------------------------------------------- 审批
 
-  private void rebuildFlows(String appId, List<Map<String, Object>> flows) {
+  private Map<String, String> rebuildFlows(String appId, List<Map<String, Object>> flows) {
+    if (flows == null || flows.isEmpty()) return Map.of();
     Map<String, Map<String, Object>> created = new LinkedHashMap<>();
     for (Map<String, Object> flow : flows == null ? List.<Map<String, Object>>of() : flows) {
       Map<String, Object> body = new LinkedHashMap<>();
@@ -369,6 +372,31 @@ public class AppPackageImport {
       body.put("definition", rewritten);
       created.put(text(flow, "id"), approvalService.save(appId, text(response, "id"), body));
     }
+    return ids;
+  }
+
+  private void restoreFlowStates(String appId, List<Map<String, Object>> flows, Map<String, String> ids) {
+    Map<String, Map<String, Object>> pending = new LinkedHashMap<>();
+    for (var flow : flows == null ? List.<Map<String, Object>>of() : flows)
+      if (!"draft".equals(text(flow, "status"))) pending.put(text(flow, "id"), flow);
+    Set<String> published = new HashSet<>();
+    while (!pending.isEmpty()) {
+      int before = pending.size();
+      for (var iterator = pending.entrySet().iterator(); iterator.hasNext(); ) {
+        var entry = iterator.next();
+        boolean waiting = AppFlowJson.flatten(objects(object(entry.getValue().get("definition")).get("nodes"))).stream()
+          .filter(node -> "subflow".equals(text(node, "type")))
+          .anyMatch(node -> !published.contains(text(AppFlowJson.config(node), "flowId")));
+        if (waiting) continue;
+        approvalService.publish(appId, ids.get(entry.getKey()));
+        published.add(entry.getKey());
+        iterator.remove();
+      }
+      if (pending.size() == before) throw new ValidationException("流程发布依赖无法满足: " + pending.keySet());
+    }
+    // 父流程发布时要求子流程启用，全部发布成功后再恢复停用状态。
+    for (var flow : flows == null ? List.<Map<String, Object>>of() : flows)
+      if ("disabled".equals(text(flow, "status"))) approvalService.status(appId, ids.get(text(flow, "id")), "disabled");
   }
 
   private Object rewriteSubflows(Object definition, Map<String, String> ids) {

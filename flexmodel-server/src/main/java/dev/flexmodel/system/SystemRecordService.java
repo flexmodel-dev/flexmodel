@@ -375,7 +375,7 @@ public class SystemRecordService {
     return record;
   }
 
-  private List<Map<String, Object>> searchConditions(String formName, String search) {
+  public List<Map<String, Object>> searchConditions(String formName, String search) {
     if (isBlank(search)) {
       return List.of();
     }

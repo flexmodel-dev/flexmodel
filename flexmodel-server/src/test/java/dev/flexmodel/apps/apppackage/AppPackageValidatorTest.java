@@ -106,6 +106,37 @@ class AppPackageValidatorTest {
   }
 
   @org.junit.jupiter.api.Test
+  void validatesPublishedSubflowStatesBeforeImport() {
+    for (String parentStatus : List.of("enabled", "disabled", "draft")) {
+      for (String childStatus : List.of("enabled", "disabled", "draft")) {
+        var parent = packageFlow("parent", parentStatus, List.of(packageNode("call", "subflow", Map.of("flowId", "child"))));
+        var child = packageFlow("child", childStatus, List.of());
+        var base = content(List.of(orderForm()), Map.of());
+        var withFlows = new Content(base.manifest(), base.app(), base.forms(), base.navigation(), base.workbenches(),
+          List.of(parent, child), base.authorizations(), base.data(), Map.of());
+        var result = validate(withFlows);
+        boolean allowed = parentStatus.equals("draft") || childStatus.equals("enabled")
+          || parentStatus.equals("disabled") && childStatus.equals("disabled");
+        org.junit.jupiter.api.Assertions.assertEquals(allowed, result.valid(), parentStatus + "/" + childStatus + result.issues());
+      }
+    }
+  }
+
+  private Map<String, Object> packageFlow(String id, String status, List<Map<String, Object>> tasks) {
+    var nodes = new java.util.ArrayList<Map<String, Object>>();
+    nodes.add(packageNode("start", "start", Map.of("trigger", Map.of("type", "MANUAL", "formName", "f_order"))));
+    nodes.addAll(tasks);
+    nodes.add(packageNode("end", "end", Map.of()));
+    return Map.of("id", id, "flowKey", id, "name", id, "status", status, "definition", Map.of("nodes", nodes));
+  }
+
+  private Map<String, Object> packageNode(String id, String kind, Map<String, Object> config) {
+    var cfg = new java.util.LinkedHashMap<>(config);
+    cfg.put("kind", kind);
+    return Map.of("id", id, "type", kind, "data", Map.of("config", cfg));
+  }
+
+  @org.junit.jupiter.api.Test
   void acceptsPackageWithDataAndReferences() {
     var order = form("f_order", List.of(required("name", "TEXT"), reference("customer", "f_customer")));
     var result = validate(content(List.of(order, customerForm()), Map.of(

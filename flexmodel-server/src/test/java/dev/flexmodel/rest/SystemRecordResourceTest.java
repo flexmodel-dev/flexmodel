@@ -85,6 +85,62 @@ public class SystemRecordResourceTest {
   }
 
   @Test
+  void testAppScopedUserSearchMatchesName() {
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "name": "张三-%s",
+          "email": "zhangsan-%s@example.com",
+          "password": "123456",
+          "status": "ACTIVE",
+          "roleIds": [],
+          "departments": []
+        }
+        """.formatted(TEST_SUFFIX, TEST_SUFFIX))
+      .when()
+      .post(BASE_PATH + "/f_user/records")
+      .then()
+      .statusCode(201);
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .when()
+      .get(Resources.ROOT_PATH + "/apps/system/forms/f_user/records")
+      .then()
+      .statusCode(200)
+      .body("list.name", hasItem("张三-" + TEST_SUFFIX));
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .queryParam("search", "zhangsan-" + TEST_SUFFIX)
+      .when()
+      .get(Resources.ROOT_PATH + "/apps/system/forms/f_user/records")
+      .then()
+      .statusCode(200)
+      .body("list.name", hasItem("张三-" + TEST_SUFFIX));
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .queryParam("search", "张三-" + TEST_SUFFIX)
+      .when()
+      .get(Resources.ROOT_PATH + "/apps/system/forms/f_user/records")
+      .then()
+      .statusCode(200)
+      .body("list.name", hasItem("张三-" + TEST_SUFFIX));
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .queryParam("search", "查无此人-" + TEST_SUFFIX)
+      .when()
+      .get(Resources.ROOT_PATH + "/apps/system/forms/f_user/records")
+      .then()
+      .statusCode(200)
+      .body("list", hasSize(0));
+  }
+
+  @Test
   void testUserRequiresExactlyOneMainDepartment() {
     String firstDepartmentId = createDepartment("主部门一-" + TEST_SUFFIX);
     String secondDepartmentId = createDepartment("主部门二-" + TEST_SUFFIX);

@@ -1,3 +1,25 @@
+## Apps - 工作台产品化改造：两栏布局、真实知会与可处理待办（feat-196 后续，2026-11-18）
+
+- 起因是产品层面评审：原四卡单列等权重堆叠，行动入口「我的应用」排第三、AI 输入框独占整行、已知会为固定值
+  8、收藏默认全选导致与「所有」视图相同、最近使用不展示时间。本轮按方案 A 改造，仅动 `AdminWorkbench.tsx` 与其 E2E。
+- 布局：`xl` 起两栏（左主栏 `minmax(0,1fr)`：流程待办＋我的应用；右辅栏 360px：AI 助手＋最近使用），移动端单列顺序为待办→应用→最近→AI（右列用
+  `order`/`xl:order` 实现）；内容 `mx-auto max-w-[1600px]`，滚动容器改 `-mx-1.5 px-1.5` 避免焦点环裁切，卡片头部间距统一。
+- 流程待办：新增「待我审批」前 5 条真实列表（`listPersonalApprovals('pending')`），点击复用 `InstanceDrawer`（无 recordId）或
+  `AppRecordDrawer`（有 recordId，含引用记录二级抽屉）直接审批；`refreshApprovals` 统一刷新 counts、知会 total 与待办列表，作为抽屉
+  `onChanged/onSaved` 回调。
+- 数据口径：已知会去掉硬编码 8，改取 `listNotifications({category:'workflow', status:'all', page:1, size:1})` 的 `total`
+  ，与审批中心知会列表同源；收藏首次默认改为最近使用过的应用（去重前 8），不再默认全收藏；最近使用副标题展示相对时间（form
+  为「应用名 · 时间」）并限量 6 条；补「所有」视图空态；指标 `aria-label` 加载中报「加载中」而非 0。
+- AI 卡：保留 `AiComposer`＋全局助手，补一句使用说明；管理端无 appId 时 `useAiRobots()` 不加载机器人，推荐问题无数据来源，本轮未加。
+- 验证：`npx playwright test --project workbench` **11/11**。测试同步：新增 `seedAllFavorites`
+  为排序/星标/更多菜单/默认收藏视图用例预置收藏；知会断言
+  8→1；修正两处基线遗留失配（问候断言漏全角感叹号、最近使用默认页签应为应用优先）；新增「首次默认收藏最近使用应用」「待办抽屉同意后刷新数字」两例。明暗与
+  390px 截图已目视检查。
+- `tsc -b` 与 `npm run build -- --minify=false --target=esnext` 通过；默认压缩构建仍遇既有 esbuild 临时文件 remove Access
+  is denied（与本轮改动无关）。
+- 未做：`/admin/workbench` 路由是否迁出管理端的定位决策、最近使用服务端化（feat-186）、AI 推荐问题、真实后端联调与可选服务测试。未执行
+  commit/push。
+
 ## Apps - 应用内后台入口图标语义修正（2026-11-17）
 
 - 应用内右上角「后台设置」按钮实际是跳转 `/admin/workbench` 的导航入口，原齿轮 `Settings` 图标易被误认为打开设置面板；改为

@@ -35,8 +35,8 @@ build/
 ### Qoder ###
 .qoder/
 
-### Codebuddy ###
-.codebuddy/
+### Workbuddy ###
+.workbuddy/
 
 ### Claude ###
 .claude/

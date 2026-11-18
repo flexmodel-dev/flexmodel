@@ -1,3 +1,136 @@
+## Apps - 应用内后台入口图标语义修正（2026-11-17）
+
+- 应用内右上角「后台设置」按钮实际是跳转 `/admin/workbench` 的导航入口，原齿轮 `Settings` 图标易被误认为打开设置面板；改为
+  `LayoutDashboard`（控制台/仪表盘），与后台工作台语义一致。导航目标与 tooltip 文案保持不变。
+- 修改文件：`flexmodel-apps-ui/src/components/layout/AppTopHeader.tsx`（仅 import 与图标节点）。
+- 验证：`npx tsc -b` 通过；`npx vitest run` 66/66（11 个测试文件全通过）。未执行 commit/push。
+
+## Apps - 工作台接入真实接口并点击直达应用（feat-196 后续，2026-11-17）
+
+- 默认首页改为工作台：根路由 `/`、兜底路由与登录默认跳转均从 `/admin/apps` 改为 `/admin/workbench`
+  ；应用内右上角「后台设置」按钮改为跳转工作台（原跳应用管理），无历史记录时的返回兜底同步改为工作台。
+- 我的应用：改用 `getApps()`（GET /api/apps）真实应用列表；收藏改为 localStorage 持久化（键
+  `flexmodel-apps.workbench-favorites`，首次进入默认收藏全部应用），拖动排序与「收藏应用」弹窗保留。按用户要求，应用图标点击不再打开预览
+  Drawer，直接进入 `/apps/:appId`；卡片更多菜单仅保留取消收藏。
+- 流程待办：`approvals.ts` 新增 `getApprovalCounts()`（GET
+  /api/flows/mine/counts），待处理/已处理/已发起为真实数字；已知会后端暂无计数接口，按用户要求保留卡片并使用固定值 8
+  占位（代码已标注 shortcut），深链 `/approval/home?view=copied` 不变，加载前显示 —。
+- 最近使用：后端暂无接口，新增 `src/lib/recentUsage.ts` 本地记录（上限 20 条，按应用+菜单去重）；`AppLayout`
+  在进入应用首页/菜单页时统一写入，工作台按应用/应用项页签展示，点击直达 `/apps/:appId` 或 `/apps/:appId/:navId`。`mock.ts`
+  删除 `adminWorkbenchApps/Metrics/Pending/Recent` 与「示例数据」标记、预览 Drawer。
+- 验证：`npx tsc -b` 通过；vitest 66/66；`npx playwright test --project workbench` 重写后 **7/7**（mock
+  /api/apps、/api/flows/mine/counts 契约，覆盖指标真实数字与深链、应用点击直达、收藏增减/键盘/拖动排序/刷新持久化、最近使用本地记录与直达、明暗与手机截图、更多菜单仅取消收藏）。默认压缩构建仍遇既有
+  esbuild 临时文件 remove Access is denied（构建收尾清理阶段，与本轮改动无关）。未做真实后端浏览器联调；最近使用的服务端持久化
+  feat-186 仍 pending。未执行 commit/push。
+
+## Apps - 工作台视觉收敛与 AI/待办卡片（feat-196 后续，2026-11-17）
+
+- 页头改为按上海时区显示上午好/下午好/晚上好及当前登录用户姓名（06:00、12:00、18:
+  00边界）。五张卡片的标题图标统一在左侧。流程指标改为素色淡灰背景，移除彩色底块和辅助文案，仅强调待处理数值。
+- 收藏应用继续使用共用 AppGrid；通过已有 renderActions 恢复每个应用右上角更多按钮，提供打开应用预览/取消收藏，桌面悬浮及键盘聚焦可见，手机直接显示，保留直接拖动排序。
+- 我的应用下方新增 AI 助手、待办列表两张等宽卡片，桌面并排，窄屏或 AI 侧栏打开时纵排。AI 直接复用 AiComposer、AiProvider
+  与既有全局侧栏，支持输入/@应用、发送、停止生成、三项搭建应用快捷提问；不新建聊天实现或后端接口。
+- 待办卡片展示三条集中在 `src/data/mock.ts` 的示例事项（标题、应用、发起人、到达时间）；数量沿用流程指标，查看全部进入
+  `/approval/home?view=pending`。列表是展示预览，不使用示例 ID 执行真实审批。
+- 验证：`npx playwright test --project workbench` **8/8**
+  ，包含已有工作台/待办跳转回归、问候边界、更多菜单、两个卡片等宽、AI空输入禁发/发送内容/快捷提问复用已有会话、手机纵排及无横向溢出。截图稳定性调整后定向用例额外1/1通过。
+- `npx tsc -b` 及 `npm run build -- --minify=false --target=esnext`
+  通过；workbench-light.png、workbench-dark.png、workbench-mobile-ai.png 已目视检查。截图禁用CSS过渡，避免将明暗切换中间色误认为最终样式。
+-
+仅前端变动，沿用本会话此前已跑的全模块编译和引擎测试，未重跑Java/可选服务测试或真实模型联调；默认压缩构建及旧后台E2E的既有问题见下文。AI验证使用模拟接口，工作台数字/收藏/最近使用/待办预览继续mock；真实待办中心保持既有接口。保留用户其他改动，未执行commit/push。
+
+## Apps - 工作台复用现有待办中心（feat-196 后续，2026-11-17）
+
+- 用户指定复用 `/approval/home`。工作台四项指标改为 `/approval/home?view=pending|handled|initiated|copied`
+  ，删除独立示例待办中心、示例流程详情及 `adminWorkbenchTasks` 等专属 mock 数据和类型。
+- 在既有 `ApprovalFeed` 中接入 URL 页签，使用已有 Radix
+  Tabs，支持直接打开、刷新、浏览器前进后退、无效值回退待处理，切换保留其他查询参数；切换页签/所属应用复位分页并关闭旧详情。待处理、已处理、已发起继续调用已有真实接口，原审批与记录详情交互保留。
+- 已知会复用现有个人流程通知：`/api/notifications?category=workflow&status=all`，支持所属应用、分页、SSE
+  更新；点击复用全局通知详情并标读。避免把审批任务/结果通知混作知会；不新增后端接口或持久化模型，不在页面中伪造流程列表。
+- 现有页面标题统一为待办中心，“我提交的”改“已发起”，增加返回工作台入口，窄屏筛选栏允许换行。同步真实后端验收脚本页签选择器。
+- 验证：`npx playwright test --project workbench` **5/5**
+  ，覆盖四项指标进入现有页面、个人接口取数、知会详情与标读请求、URL刷新和历史导航、搜索/应用筛选/分页复位、接口失败重试，以及原型收藏排序/最近使用回归。TypeScript
+  与 `npm run build -- --minify=false --target=esnext` 通过；待办中心明暗与390px手机截图已检查（
+  `artifacts/approval-center-{light,dark,mobile}.png`）。
+- 本轮重跑 `./init.sh`：全模块编译、引擎测试通过，脚本附带旧后台
+  E2E仍31/35，4项相同的边缘函数用例访问已删除页面，为既有基线问题。未做真实后端浏览器联调、未运行可选服务测试；沿用已知可用的非压缩构建，默认压缩构建权限问题见下文。
+- 工作台数字、收藏和最近使用仍按此前要求使用 mock；待办中心使用既有真实接口。其他未提交改动保留，未执行 commit/push。
+
+## Apps - 管理后台工作台页面原型（feat-196，2026-11-17）
+
+- 新增 `/admin/workbench`，后台侧栏第一项进入。以流程待办、我的应用、最近使用三张卡片聚合入口，数据集中在 `src/data/mock.ts`
+  ，页头标记示例。
+- 按用户反馈精简：移除描述、问候语、独立待办预览及排序模式。应用管理和收藏应用共用 `AppGrid`/`AppIcon`
+  ，保持原有图标、直接拖动、触屏长按、键盘排序与拖后防误点击；应用管理的排序保存、失败回滚、编辑/导出/删除操作保留。
+- 最近使用参照用户截图改为左侧小圆形图标＋右侧名称/所属应用的紧凑网格，标题旁展示应用/应用项下划线页签，默认应用项。支持示例应用和表单预览。
+- 四项流程指标通过 `?view=pending|handled|initiated|copied` 打开 mock 待办中心对应页签，支持搜索、详情预览和返回。
+- 验证：Playwright `npx playwright test --project workbench --project apps-reorder` 最终 **5/5**
+  通过（工作台3项＋原应用管理排序回归2项）；覆盖收藏增减、键盘与鼠标排序、拖后不误开、普通点击、深链、搜索、详情、最近使用筛选、明暗主题与390px手机无横向溢出。截图
+  `flexmodel-apps-ui/artifacts/workbench-light.png`、`workbench-dark.png`、`workbench-mobile.png` 已检查并修复夜间文字对比度。键盘用例等待
+  dnd-kit 首次测量后再移动，消除输入早于布局初始化的竞态。
+- TypeScript 与 `npm run build -- --minify=false --target=esnext` 通过。默认构建仍遇既有 esbuild 临时文件
+  `remove Access is denied`；未改构建配置。
+- 启动 `./init.sh` 的全模块编译、引擎测试通过；脚本附带旧后台 E2E **31/35**，4项边缘函数测试仍访问最近提交已移除的页面，作为基线遗留记录，不扩展本次原型范围。
+- 限制：本轮是用户要求的 mock 原型，收藏和排序刷新后重置，未接工作台真实业务接口；真实持久化最近使用的 feat-186 保持
+  pending。未跑可选服务测试，保留用户其他改动；未执行 git commit/push。
+
+## Apps - 应用包导入恢复工作流发布状态（feat-176 子问题，2026-11-16）
+
+- 已补齐导入状态恢复：先重建全部草稿并替换子流程 ID；数据写入完成后，在最终激活的平台事务内按子流程优先顺序调用
+  既有 `AppFlowService.publish`，全部发布成功后统一恢复 disabled。原始 draft 不发布；新部署、触发器绑定及应用激活一起提交。
+  发布失败回滚该平台事务，再走原有整包补偿，避免中间触发或残留运行绑定。
+- `AppPackageValidator` 提前拒绝停用父流程依赖草稿子流程；原有启用父流程必须依赖启用子流程的约束保留，停用父/子组合可恢复。
+- 修复直接阻塞激活的既有问题：`AppFmRepository` 继承 `AbstractRepository`，统一使用 openSession 借用平台事务。
+  原 activate 在事务内另开连接保存 f_app，隔离 SQLite 实测发生自锁；调整后激活与发布可在同一事务完成。
+- 新增 `AppPackageFlowImportTest` 真实服务闭环：创建应用、表单、记录及8条流程，经真实 export/upload/commit 验证三类状态、
+  新流程/部署 ID、父子引用及冻结的子流程部署、重复提交幂等、手动父子流程成功执行、数据更新触发、启用/停用 Quartz 作业、
+  导入记录不发起实例；另测先成功发布一条、再因未知变量发布失败时应用补偿删除且无定义/触发器消息残留。
+  测试使用独立 SQLite 项目 URL 模板与显式 drain，关闭 Quarkus 后台调度，避免本机项目 URL 环境配置指向 MySQL。
+- 修复前验证：首先暴露测试项目 URL 继承本机 MySQL 配置及激活 SQLite 自锁；修复事务借用后，发布无效的 enabled 流程仍被导入为
+  COMMITTED，准确确认原代码未执行发布。最终定向 Maven 验证43/43通过、无跳过：AppPackageFlowImportTest 2、
+  AppPackageValidatorTest 22（新增父/子9种状态组合）、AppPackageZipTest 10、AppTemplateCatalogTest 7、AppFlowTemplateTest 2。
+  命令：
+  `mvn test -pl flexmodel-server -am -Dtest=AppPackageFlowImportTest,AppPackageValidatorTest,AppPackageZipTest,AppTemplateCatalogTest,AppFlowTemplateTest -Dsurefire.failIfNoSpecifiedTests=false -q`。
+- 本轮启动 `Git Bash ./init.sh` 的全模块 clean compile 与引擎测试通过；附带旧管理端 E2E 为26通过/9失败
+  （登录2、流程列表1、已移除边缘函数4、GraphQL/API日志各1），发生在产品修改前，未扩大到旧管理端修复。
+  `git diff --check` 与功能状态 JSON 解析通过。日志在 `.codex/package-flow-status/`。
+- 同步 `docs/plans/app-import-export.md`：移除过期 revision 描述，明确最终事务发布、状态恢复与失败补偿。
+  本轮子问题完成，feat-176整体仍 in_progress；仅影响后续导入，未修改既有应用中已变成草稿的流程。
+  未运行完整服务端测试或新增浏览器验收；已有业务/部署/子模块改动全部保留，未提交代码。
+
+## Apps - ERP 库存调拨流程引用字段校验修复（feat-176 子问题，2026-11-16）
+
+- 根因：内置 `app-templates/erp.flexmodel.zip` 的 `erp_transfer_approval` 中，`tr_cross`、`tr_same`
+  条件左侧为裸字段 `from_warehouse`，缺少 `record.`；设计器生成的选项与后端变量路径协议一致，并非 REFERENCE 类型不受支持。
+- 修复：仅将模板中上述两处改为 `record.from_warehouse`，保留右侧 `record.to_warehouse`；不放宽变量作用域校验。
+  ZIP 内容逐项 SHA-256 比对确认只有 `flows.json` 变化，且文本差异严格为两处路径替换。
+- 新增 `AppFlowTemplateTest`：读取实际 ERP 模板及表单元数据、使用平台基线目录验证全部模板流程；检查同仓、跨仓超 5 万、
+  跨仓金额等于 5 万时，Java 条件判断与编译后的原生 JavaScript 表达式一致。修复前两项均失败：准确复现两个节点校验错误及同仓误入跨仓条件。
+- 修复后运行 `mvn test -pl flexmodel-server -am -Dtest=AppFlowTemplateTest,AppTemplateCatalogTest,AppFlowModelTest,ApprovalPolicyTest
+  -Dsurefire.failIfNoSpecifiedTests=false -q`：16/16 通过（新增2、模板目录7、模型3、策略4）；`git diff --check` 通过。
+- 启动 `Git Bash ./init.sh` 的必需全模块 clean compile、引擎测试通过；脚本附带旧管理端 E2E 为29通过/6失败
+  （已移除边缘函数的4项、存储与基础设置页面各1项），发生在本轮修复前，未扩大修改到这些页面/子模块。
+- 附件中的 `localhost:5180` 接口读取超时，未写入已导入应用的草稿，未发布流程。当前应用仍需将 `tr_cross`、`tr_same`
+  的条件字段改为 `record.from_warehouse` 后保存；修正后的完整校验请求体（不含凭证）保存在
+  `.codex/flow-reference/erp-transfer-validation.json`，日志在同目录。模板修复只影响之后创建的应用，不迁移已有流程。
+- 本轮子问题已完成；feat-176 整体保留 in_progress。原有未提交修改保持，未执行 git commit/push。
+
+## Server - 修复系统表单应用路径关键字搜索（feat-195）(2026-11-16)
+
+**目标:** 应用记录列表对系统表单（f_user 等）按关键字搜索返回空。
+
+- 根因：`SystemFormService.toAppFormResponse` 将系统表单核心字段标记 `builtin=true`（语义为"核心字段"，
+  前端依赖该标记做只读/不可删展示，不能改）；而 `AppRecordService.buildSearchFilter` 只搜索
+  `!field.builtin()` 字段，于是关键字只命中扩展字段（f_user 默认仅 phone），搜"张"自然无结果。
+- 修复（3 文件）：`SystemRecordService.searchConditions` private→public；`AppRecordService` 注入
+  `SystemRecordService`，`buildSearchFilter` 对 builtin 表单追加核心字段条件（用户→name/email，
+  部门/角色→name，与 /system 路径行为一致），扩展字段搜索保持不变。
+- 测试：`SystemRecordResourceTest.testAppScopedUserSearchMatchesName`——经 /system 建用户后，
+  走 `/api/apps/system/forms/f_user/records` 验证中文名、email 搜索命中，无匹配关键字返回空列表。
+- 验证：`mvn clean compile -pl '!flexmodel-engine/flexmodel-maven-plugin'` EXIT=0；
+  `mvn test -pl flexmodel-server -am -Dtest=SystemRecordResourceTest` EXIT=0（5/5）。
+- 未跑：引擎测试（改动不涉及引擎）、完整 `./init.sh`。未提交代码。
+
 ## Functions - 边缘函数整体移除（2026-11-15，feat-010 → removed）
 
 **目标:** 按用户决策，云函数（边缘函数）功能判定为多余，端到端整体移除，不留死代码。
@@ -5366,3 +5499,17 @@ PowerShell/cmd 环境完成验证。Vite 仍提示既有 Monaco Editor chunk 大
 - 已排除误删嫌疑：TypedDSLQueryBuilder（server 经 session.dsl ().selectFrom (Class) 重度使用）、codegen 模块（183 个 server
   文件 import 生成实体）、SchemaCopier（BranchService 分支复制调用）。
 - 未执行 git commit/push。
+
+## Apps 工作台应用卡片收藏星标（2026-11-17）
+
+- flexmodel-apps-ui：AppGrid 新增 renderLeading 左上插槽（与右上更多按钮同款 secondary icon 按钮、悬浮显示、手机常显），AdminWorkbench
+  传入可点选收藏切换按钮（aria-label「收藏星标：应用名」、aria-pressed 表状态），选中 fill-amber-400 实星黄描边、未选中空星
+  muted；点击直接切换收藏，不进应用。
+- 验证：tsc -b 通过；npx playwright test --project workbench 9/9 通过（新增定向用例覆盖切换、不误进应用、刷新持久化）。默认 npm
+  run build 的 vite 阶段仍遇既有 esbuild 临时文件 remove Access is denied，git stash 基线复跑同样失败，属环境问题未处理。
+- feature_list.json feat-196 已追加 evidence；未执行 git commit/push。
+
+- 2026-11-17 后续：星标按用户反馈移至卡片右下角（renderTrailing，bottom-0 right-0），workbench E2E 9/9 复跑通过。
+
+- 2026-11-17 后续定稿：星标为纯图标、默认隐藏仅悬浮/键盘 focus-visible 显示，修复点击后鼠标移开仍显示（group-focus-within
+  引起），workbench E2E 9/9 通过。

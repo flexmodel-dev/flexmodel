@@ -16,7 +16,6 @@
 package dev.flexmodel.common.utils;
 
 
-import io.vertx.codegen.annotations.Nullable;
 
 /**
  * Utility methods for simple pattern matching, in particular for
@@ -36,7 +35,7 @@ public abstract class PatternMatchUtils {
    * @param str     the String to match
    * @return whether the String matches the given pattern
    */
-  public static boolean simpleMatch(@Nullable String pattern, @Nullable String str) {
+  public static boolean simpleMatch(String pattern, String str) {
     if (pattern == null || str == null) {
       return false;
     }
@@ -82,7 +81,7 @@ public abstract class PatternMatchUtils {
    * @param str      the String to match
    * @return whether the String matches any of the given patterns
    */
-  public static boolean simpleMatch(@Nullable String[] patterns, String str) {
+  public static boolean simpleMatch(String[] patterns, String str) {
     if (patterns != null) {
       for (String pattern : patterns) {
         if (simpleMatch(pattern, str)) {

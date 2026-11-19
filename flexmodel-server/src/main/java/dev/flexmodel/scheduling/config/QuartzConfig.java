@@ -2,6 +2,7 @@ package dev.flexmodel.scheduling.config;
 
 import dev.flexmodel.scheduling.job.ScheduledFlowExecutionJobListener;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,19 @@ public class QuartzConfig {
 
     scheduler.start();
     return scheduler;
+  }
+
+  /**
+   * 容器销毁（含 dev 模式热重启）时关闭调度器，避免旧的 QuartzSchedulerThread
+   * 残留并继续通过已关闭的 ArC 容器访问 CDI Bean。
+   */
+  public void stopScheduler(@Disposes Scheduler scheduler) {
+    try {
+      scheduler.shutdown(true);
+      log.info("Quartz scheduler 已关闭");
+    } catch (SchedulerException e) {
+      log.error("关闭 Quartz scheduler 失败", e);
+    }
   }
 
 }

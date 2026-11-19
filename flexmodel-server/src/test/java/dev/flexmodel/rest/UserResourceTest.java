@@ -197,6 +197,101 @@ public class UserResourceTest {
   }
 
   /**
+   * 测试局部更新用户状态
+   */
+  @Test
+  void testUpdateUserStatus() {
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "id": "test_user_e2e",
+          "name": "状态测试用户",
+          "email": "status@test.com",
+          "password": "test123",
+          "roleIds": []
+        }
+        """)
+      .when()
+      .post(BASE_PATH)
+      .then()
+      .statusCode(200);
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "status": "DISABLED"
+        }
+        """)
+      .when()
+      .patch(BASE_PATH + "/" + TEST_USER_ID)
+      .then()
+      .statusCode(200)
+      .body("id", equalTo(TEST_USER_ID))
+      .body("status", equalTo("DISABLED"))
+      .body("name", equalTo("状态测试用户"))
+      .body("email", equalTo("status@test.com"));
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "status": "ACTIVE"
+        }
+        """)
+      .when()
+      .patch(BASE_PATH + "/" + TEST_USER_ID)
+      .then()
+      .statusCode(200)
+      .body("status", equalTo("ACTIVE"));
+  }
+
+  /**
+   * 测试局部更新用户头像
+   */
+  @Test
+  void testPatchUserAvatar() {
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "id": "test_user_e2e",
+          "name": "头像测试用户",
+          "email": "avatar@test.com",
+          "password": "test123",
+          "roleIds": []
+        }
+        """)
+      .when()
+      .post(BASE_PATH)
+      .then()
+      .statusCode(200);
+
+    given()
+      .header("Authorization", testTokenHelper.getAuthorizationHeader())
+      .contentType(ContentType.JSON)
+      .body("""
+        {
+          "avatar": "https://example.com/avatar.png"
+        }
+        """)
+      .when()
+      .patch(BASE_PATH + "/" + TEST_USER_ID)
+      .then()
+      .statusCode(200)
+      .body("id", equalTo(TEST_USER_ID))
+      .body("name", equalTo("头像测试用户"))
+      .body("email", equalTo("avatar@test.com"))
+      .body("status", equalTo("ACTIVE"))
+      .body("avatar", equalTo("https://example.com/avatar.png"));
+  }
+
+  /**
    * 测试删除用户
    */
   @Test

@@ -1,1 +1,0 @@
-@flexmodel-ui/DESIGN.md

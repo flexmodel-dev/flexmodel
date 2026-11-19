@@ -15,38 +15,40 @@ public class FlowDefinitionFmRepository extends AbstractRepository implements Fl
 
   @Override
   public int insert(String projectId, FlowDefinition flowDefinition) {
-    try (Session session = getProjectSession(projectId)) {
+    flowDefinition.setProjectId(projectId);
+    try (Session session = openSession()) {
       return session.dsl().insertInto(FlowDefinition.class).values(flowDefinition).execute();
     }
   }
 
   @Override
   public int updateByModuleId(String projectId, FlowDefinition record) {
-    try (Session session = getProjectSession(projectId)) {
+    record.setProjectId(projectId);
+    try (Session session = openSession()) {
       return session.dsl()
         .update(FlowDefinition.class)
         .values(record)
-        .where(flowDefinition.flowModuleId.eq(record.getFlowModuleId()))
+        .where(flowDefinition.projectId.eq(projectId).and(flowDefinition.flowModuleId.eq(record.getFlowModuleId())))
         .execute();
     }
   }
 
   @Override
   public FlowDefinition selectByModuleId(String projectId, String flowModuleId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(FlowDefinition.class)
-        .where(flowDefinition.flowModuleId.eq(flowModuleId))
+        .where(flowDefinition.projectId.eq(projectId).and(flowDefinition.flowModuleId.eq(flowModuleId)))
         .executeOne();
     }
   }
 
   @Override
   public List<FlowDefinition> find(String projectId, Predicate filter, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(FlowDefinition.class)
         .page(page, size)
-        .where(filter)
+        .where(flowDefinition.projectId.eq(projectId).and(filter))
         .orderByDesc(flowDefinition.id)
         .execute();
     }
@@ -54,9 +56,9 @@ public class FlowDefinitionFmRepository extends AbstractRepository implements Fl
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(FlowDefinition.class)
-        .where(filter)
+        .where(flowDefinition.projectId.eq(projectId).and(filter))
         .count();
     }
   }

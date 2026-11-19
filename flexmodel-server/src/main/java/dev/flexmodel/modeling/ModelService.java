@@ -34,6 +34,10 @@ public class ModelService {
     return modelRepository.createModel(projectId, datasourceName, model);
   }
 
+  public SchemaObject saveModel(String projectId, String datasourceName, SchemaObject model) {
+    return modelRepository.saveModel(projectId, datasourceName, model);
+  }
+
   public void dropModel(String projectId, String datasourceName, String modelName) {
     modelRepository.dropModel(projectId, datasourceName, modelName);
   }

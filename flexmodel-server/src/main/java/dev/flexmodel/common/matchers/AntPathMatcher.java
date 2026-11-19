@@ -17,7 +17,6 @@
 package dev.flexmodel.common.matchers;
 
 import graphql.Assert;
-import io.vertx.codegen.annotations.Nullable;
 import dev.flexmodel.common.utils.StringUtils;
 
 import java.util.*;
@@ -90,8 +89,6 @@ public class AntPathMatcher implements PathMatcher {
   private boolean caseSensitive = true;
 
   private boolean trimTokens = false;
-
-  @Nullable
   private volatile Boolean cachePatterns;
 
   private final Map<String, String[]> tokenizedPatternCache = new ConcurrentHashMap<>(256);
@@ -212,8 +209,8 @@ public class AntPathMatcher implements PathMatcher {
    *                  as far as the given base path goes is sufficient)
    * @return {@code true} if the supplied {@code path} matched, {@code false} if it didn't
    */
-  protected boolean doMatch(String pattern, @Nullable String path, boolean fullMatch,
-                            @Nullable Map<String, String> uriTemplateVariables) {
+  protected boolean doMatch(String pattern, String path, boolean fullMatch,
+                            Map<String, String> uriTemplateVariables) {
 
     if (path == null || path.startsWith(this.pathSeparator) != pattern.startsWith(this.pathSeparator)) {
       return false;
@@ -438,7 +435,7 @@ public class AntPathMatcher implements PathMatcher {
    * @return {@code true} if the string matches against the pattern, or {@code false} otherwise
    */
   private boolean matchStrings(String pattern, String str,
-                               @Nullable Map<String, String> uriTemplateVariables) {
+                               Map<String, String> uriTemplateVariables) {
 
     return getStringMatcher(pattern).matchStrings(str, uriTemplateVariables);
   }
@@ -657,8 +654,6 @@ public class AntPathMatcher implements PathMatcher {
     private final boolean caseSensitive;
 
     private final boolean exactMatch;
-
-    @Nullable
     private final Pattern pattern;
 
     private final List<String> variableNames = new ArrayList<>();
@@ -720,7 +715,7 @@ public class AntPathMatcher implements PathMatcher {
      *
      * @return {@code true} if the string matches against the pattern, or {@code false} otherwise.
      */
-    public boolean matchStrings(String str, @Nullable Map<String, String> uriTemplateVariables) {
+    public boolean matchStrings(String str, Map<String, String> uriTemplateVariables) {
       if (this.exactMatch) {
         return this.caseSensitive ? this.rawPattern.equals(str) : this.rawPattern.equalsIgnoreCase(str);
       } else if (this.pattern != null) {
@@ -840,8 +835,6 @@ public class AntPathMatcher implements PathMatcher {
      * occurrences of "*", "**", and "{" pattern elements.
      */
     private static class PatternInfo {
-
-      @Nullable
       private final String pattern;
 
       private int uriVars;
@@ -853,11 +846,9 @@ public class AntPathMatcher implements PathMatcher {
       private boolean catchAllPattern;
 
       private boolean prefixPattern;
-
-      @Nullable
       private Integer length;
 
-      public PatternInfo(@Nullable String pattern) {
+      public PatternInfo(String pattern) {
         this.pattern = pattern;
         if (this.pattern != null) {
           initCounters();

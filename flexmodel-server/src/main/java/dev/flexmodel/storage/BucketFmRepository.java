@@ -19,10 +19,11 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
 
   @Override
   public List<Bucket> findByOwner(String ownerType, String ownerId) {
-    try (Session session = getProjectSession(ownerId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(Bucket.class)
-        .where(System.bucket.ownerType.eq(ownerType)
+        .where(System.bucket.projectId.eq(ownerId)
+          .and(System.bucket.ownerType.eq(ownerType))
           .and(System.bucket.ownerId.eq(ownerId)))
         .execute();
     }
@@ -30,10 +31,11 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
 
   @Override
   public Optional<Bucket> findOne(String ownerType, String ownerId, String bucketName) {
-    try (Session session = getProjectSession(ownerId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(Bucket.class)
-        .where(System.bucket.ownerType.eq(ownerType)
+        .where(System.bucket.projectId.eq(ownerId)
+          .and(System.bucket.ownerType.eq(ownerType))
           .and(System.bucket.ownerId.eq(ownerId))
           .and(System.bucket.name.eq(bucketName)))
         .execute()
@@ -44,7 +46,8 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
 
   @Override
   public Bucket save(Bucket record) {
-    try (Session session = getProjectSession(record.getOwnerId())) {
+    record.setProjectId(record.getOwnerId());
+    try (Session session = openSession()) {
       session.dsl()
         .mergeInto(Bucket.class)
         .values(record)
@@ -55,9 +58,10 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
 
   @Override
   public void delete(String ownerType, String ownerId, String bucketName) {
-    try (Session session = getProjectSession(ownerId)) {
+    try (Session session = openSession()) {
       session.dsl().deleteFrom(Bucket.class)
-        .where(System.bucket.ownerType.eq(ownerType)
+        .where(System.bucket.projectId.eq(ownerId)
+          .and(System.bucket.ownerType.eq(ownerType))
           .and(System.bucket.ownerId.eq(ownerId))
           .and(System.bucket.name.eq(bucketName)))
         .execute();
@@ -66,9 +70,10 @@ public class BucketFmRepository extends AbstractRepository implements BucketRepo
 
   @Override
   public Integer count(String ownerType, String ownerId) {
-    try (Session session = getProjectSession(ownerId)) {
+    try (Session session = openSession()) {
       return (int) session.dsl().selectFrom(Bucket.class)
-        .where(System.bucket.ownerType.eq(ownerType)
+        .where(System.bucket.projectId.eq(ownerId)
+          .and(System.bucket.ownerType.eq(ownerType))
           .and(System.bucket.ownerId.eq(ownerId)))
         .count();
     }

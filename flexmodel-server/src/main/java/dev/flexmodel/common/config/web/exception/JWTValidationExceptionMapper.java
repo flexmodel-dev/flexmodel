@@ -1,6 +1,7 @@
 package dev.flexmodel.common.config.web.exception;
 
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -26,7 +27,7 @@ public class JWTValidationExceptionMapper implements ExceptionMapper<JWTVerifica
     body.put("code", 401);
     body.put("message", e.getMessage());
     body.put("success", false);
-    return Response.status(Response.Status.UNAUTHORIZED).entity(body).build();
+    return Response.status(Response.Status.UNAUTHORIZED).type(MediaType.APPLICATION_JSON).entity(body).build();
   }
 
 }

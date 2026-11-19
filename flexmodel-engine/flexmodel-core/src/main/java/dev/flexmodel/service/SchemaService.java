@@ -53,6 +53,13 @@ public interface SchemaService {
   EntityDefinition createEntity(EntityDefinition entity);
 
   /**
+   * 保存实体定义而不修改物理表结构，用于模型级 metadata 更新。
+   */
+  default EntityDefinition saveEntity(EntityDefinition entity) {
+    return createEntity(entity);
+  }
+
+  /**
    * 迁移实体定义到数据库，保证 schema 与模型同步。
    * <p>
    * 表不存在时等价于 {@link #createEntity}；表已存在（older 不为 null）时按旧定义做字段级 diff，

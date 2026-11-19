@@ -46,6 +46,15 @@ public class TypedDSLUpdateBuilder<T> {
 
 
   /**
+   * 设置多个字段的值（Map 形式，跳过实体转换）
+   */
+  public TypedDSLUpdateBuilder<T> values(Map<String, Object> values) {
+    delegate.values(values);
+    return this;
+  }
+
+
+  /**
    * 设置WHERE条件（字符串形式）
    */
   public TypedDSLUpdateBuilder<T> where(String condition) {
@@ -78,7 +87,9 @@ public class TypedDSLUpdateBuilder<T> {
     } catch (Exception e) {
       throw new RuntimeException(e);
     } finally {
-      values = JsonUtils.updateValue(values, dataMap);
+      if (values != null) {
+        values = JsonUtils.updateValue(values, dataMap);
+      }
     }
   }
 }

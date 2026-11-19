@@ -3,7 +3,7 @@ package dev.flexmodel.flow.event;
 /**
  * Flow 生命周期事件路由 key 常量。
  * <p>
- * 供 {@code @ConsumeEvent} 注解与 RabbitMQ 桥接消费者引用，避免散落字符串字面量。
+ * 供 {@code @ConsumeEvent} 注解引用，避免散落字符串字面量。
  *
  * @author cjbi
  */

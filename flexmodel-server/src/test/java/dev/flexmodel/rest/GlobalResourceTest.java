@@ -119,30 +119,4 @@ public class GlobalResourceTest {
       .statusCode(200)
       .body("routingMode", equalTo("path"));
   }
-
-  /**
-   * 测试 path 模式（localhost）下 edgeUrlTemplate 为经 Java 代理的相对路径
-   */
-  @Test
-  void testPathModeEdgeUrlTemplate() {
-    given()
-      .when()
-      .get(BASE_PATH + "/profile")
-      .then()
-      .statusCode(200)
-      .body("edgeUrlTemplate", equalTo("/api/open/{{projectId}}/functions/{{name}}/invoke"));
-  }
-
-  /**
-   * 测试 path 模式下 pagesUrlTemplate 为相对路径
-   */
-  @Test
-  void testPathModePagesUrlTemplate() {
-    given()
-      .when()
-      .get(BASE_PATH + "/profile")
-      .then()
-      .statusCode(200)
-      .body("pagesUrlTemplate", equalTo("/pages/{{projectId}}"));
-  }
 }

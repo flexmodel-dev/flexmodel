@@ -4,6 +4,7 @@ import dev.flexmodel.JsonUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.UnaryOperator;
 
 /**
@@ -104,6 +105,14 @@ public class TypedDSLQueryBuilder<T> {
   }
 
   /**
+   * 设置排序
+   */
+  public TypedDSLQueryBuilder<T> orderBy(Query.OrderBy sort) {
+    delegate.orderBy(sort);
+    return this;
+  }
+
+  /**
    * 设置分页
    */
   public TypedDSLQueryBuilder<T> page(int pageNumber, int pageSize) {
@@ -162,7 +171,7 @@ public class TypedDSLQueryBuilder<T> {
   /**
    * 指定要展开的关联字段列表
    */
-  public TypedDSLQueryBuilder<T> expand(java.util.List<String> fields) {
+  public TypedDSLQueryBuilder<T> expand(List<String> fields) {
     delegate.expand(fields);
     return this;
   }
@@ -205,6 +214,20 @@ public class TypedDSLQueryBuilder<T> {
   public <R> R executeOne(Class<R> resultType) {
     Map<String, Object> result = delegate.executeOne();
     return JsonUtils.convertValue(result, resultType);
+  }
+
+  /**
+   * 执行查询并返回Map结果
+   */
+  public List<Map<String, Object>> executeMaps() {
+    return delegate.execute();
+  }
+
+  /**
+   * 执行查询并返回单个Map结果（无记录时为 empty）
+   */
+  public Optional<Map<String, Object>> executeOneMap() {
+    return Optional.ofNullable(delegate.executeOne());
   }
 
   /**

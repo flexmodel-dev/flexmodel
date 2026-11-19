@@ -15,18 +15,19 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
 
   @Override
   public Trigger findById(String projectId, String id) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .select()
         .from(Trigger.class)
-        .where(trigger.id.eq(id))
+        .where(trigger.projectId.eq(projectId).and(trigger.id.eq(id)))
         .executeOne();
     }
   }
 
   @Override
   public Trigger save(String projectId, Trigger trigger) {
-    try (Session session = getProjectSession(projectId)) {
+    trigger.setProjectId(projectId);
+    try (Session session = openSession()) {
       session.dsl()
         .mergeInto(Trigger.class)
         .values(trigger)
@@ -37,21 +38,21 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
 
   @Override
   public void deleteById(String projectId, String id) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl()
         .deleteFrom(Trigger.class)
-        .where(trigger.id.eq(id))
+        .where(trigger.projectId.eq(projectId).and(trigger.id.eq(id)))
         .execute();
     }
   }
 
   @Override
   public List<Trigger> find(String projectId, Predicate filter, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .select()
         .from(Trigger.class)
-        .where(filter)
+        .where(trigger.projectId.eq(projectId).and(filter))
         .page(page, size)
         .orderByDesc(trigger.createdAt)
         .execute();
@@ -60,11 +61,11 @@ public class TriggerFmRepository extends AbstractRepository implements TriggerRe
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .select()
         .from(Trigger.class)
-        .where(filter)
+        .where(trigger.projectId.eq(projectId).and(filter))
         .count();
     }
   }

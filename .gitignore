@@ -35,8 +35,8 @@ build/
 ### Qoder ###
 .qoder/
 
-### Codebuddy ###
-.codebuddy/
+### Workbuddy ###
+.workbuddy/
 
 ### Claude ###
 .claude/
@@ -51,3 +51,6 @@ build/
 
 ### Codex ###
 .codex/
+### Local secrets ###
+.env
+

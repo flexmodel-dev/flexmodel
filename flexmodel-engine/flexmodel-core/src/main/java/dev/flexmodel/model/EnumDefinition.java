@@ -12,7 +12,7 @@ public class EnumDefinition implements SchemaObject {
 
     private String name;
     private String comment;
-    private List<String> elements = new ArrayList<>();
+    private List<EnumElement> elements = new ArrayList<>();
     protected Map<String, Object> additionalProperties = new HashMap<>();
 
     public EnumDefinition(String name) {
@@ -31,21 +31,21 @@ public class EnumDefinition implements SchemaObject {
 
     @Override
     public String getType() {
-      return "Enum";
+        return "Enum";
     }
 
-    public EnumDefinition setElements(List<String> elements) {
-        this.elements = elements;
+    public List<EnumElement> getElements() {
+        return elements;
+    }
+
+    public EnumDefinition setElements(List<EnumElement> elements) {
+        this.elements = elements == null ? new ArrayList<>() : new ArrayList<>(elements);
         return this;
     }
 
-    public EnumDefinition addElement(String element) {
+    public EnumDefinition addElement(EnumElement element) {
         elements.add(element);
         return this;
-    }
-
-    public List<String> getElements() {
-        return elements;
     }
 
     public String getComment() {

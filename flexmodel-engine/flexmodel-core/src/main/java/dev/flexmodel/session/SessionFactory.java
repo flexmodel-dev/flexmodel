@@ -10,19 +10,24 @@ import dev.flexmodel.event.EventPublisher;
 import dev.flexmodel.event.impl.SimpleEventPublisher;
 import dev.flexmodel.model.EntityDefinition;
 import dev.flexmodel.model.EnumDefinition;
+import dev.flexmodel.model.IndexDefinition;
 import dev.flexmodel.model.SchemaObject;
+import dev.flexmodel.model.field.TypedField;
 import dev.flexmodel.mongodb.MongoContext;
 import dev.flexmodel.mongodb.MongoSchemaProvider;
 import dev.flexmodel.mongodb.MongoSession;
 import dev.flexmodel.service.DataService;
 import dev.flexmodel.service.EventAwareDataService;
+import dev.flexmodel.service.WriteInterceptor;
 import dev.flexmodel.sql.*;
+import dev.flexmodel.sql.dialect.SqlDialect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,8 +44,9 @@ public class SessionFactory {
   private final MemoryScriptManager memoryScriptManager;
   private final boolean failsafe;
   private final EventPublisher eventPublisher;
+  private final List<WriteInterceptor> writeInterceptors;
 
-  SessionFactory(SchemaProvider defaultSchemaProvider, List<SchemaProvider> schemaProviders, Cache cache, boolean failsafe, EventPublisher eventPublisher) {
+  SessionFactory(SchemaProvider defaultSchemaProvider, List<SchemaProvider> schemaProviders, Cache cache, boolean failsafe, EventPublisher eventPublisher, List<WriteInterceptor> writeInterceptors) {
     this.cache = cache;
     this.memoryScriptManager = new MemoryScriptManager();
     this.eventPublisher = eventPublisher != null ? eventPublisher : new SimpleEventPublisher();
@@ -49,6 +55,7 @@ public class SessionFactory {
     schemaProviders.forEach(this::registerSchemaProvider);
     this.modelRegistry = initializeModelRegistry(defaultSchemaProvider);
     this.failsafe = failsafe;
+    this.writeInterceptors = List.copyOf(writeInterceptors);
 //    processBuildItem();
   }
 
@@ -83,8 +90,9 @@ public class SessionFactory {
    * </ul>
    *
    * @param schemaName 要应用的 schema 名称
+   * @param preservedRuntimeModels 需要合并保留运行时实体定义的模型名称
    */
-  private void applyBuildItemSchemas(String schemaName) {
+  private void applyBuildItemSchemas(String schemaName, Set<String> preservedRuntimeModels) {
     MemoryScriptManager.SchemaScriptConfig config = memoryScriptManager.getScriptConfig(schemaName);
     if (config == null) {
       return;
@@ -98,13 +106,16 @@ public class SessionFactory {
       return;
     }
 
-    try (Session session = createFailsafeSession(schemaName)) {
+    try (Session session = createFailsafeSession(schemaName, SessionOptions.schemaImport())) {
       // 先快照已注册的旧定义；migrateEntity 会覆盖 registry，必须在迁移前捕获 older 做字段 diff
       Map<String, SchemaObject> existing = session.schema().listModels().stream()
         .collect(Collectors.toMap(SchemaObject::getName, m -> m));
       config.getSchema().forEach(obj -> {
         if (obj instanceof EntityDefinition e) {
-          session.schema().migrateEntity(e, existing.get(e.getName()));
+          EntityDefinition entity = mergedRuntimeEntity(
+            e, existing.get(e.getName()), preservedRuntimeModels);
+          cache.put(schemaName + ":" + entity.getName(), entity);
+          session.schema().migrateEntity(entity, existing.get(e.getName()));
         } else if (obj instanceof EnumDefinition e) {
           session.schema().createEnum(e);
         }
@@ -119,6 +130,79 @@ public class SessionFactory {
         }
       });
     }
+  }
+
+  private EntityDefinition mergedRuntimeEntity(
+    EntityDefinition incoming,
+    SchemaObject older,
+    Set<String> preservedRuntimeModels
+  ) {
+    if (!preservedRuntimeModels.contains(incoming.getName())
+      || !(older instanceof EntityDefinition existingEntity)) {
+      return incoming;
+    }
+
+    EntityDefinition entity = incoming.clone();
+    entity.setFields(mergedFields(incoming, existingEntity));
+    entity.setIndexes(mergedIndexes(incoming, existingEntity));
+
+    entity.setAdditionalProperties(mergedAdditionalProperties(incoming, existingEntity));
+    return entity;
+  }
+
+  private Map<String, Object> mergedAdditionalProperties(
+    EntityDefinition incoming,
+    EntityDefinition existing
+  ) {
+    Map<String, Object> result = new HashMap<>(incoming.getAdditionalProperties());
+    existing.getAdditionalProperties().forEach((key, value) -> {
+      if (value != null || !result.containsKey(key)) {
+        result.put(key, value);
+      }
+    });
+    return result;
+  }
+
+  private List<TypedField<?, ?>> mergedFields(EntityDefinition incoming, EntityDefinition existing) {
+    Map<String, TypedField<?, ?>> incomingFields = incoming.getFields().stream()
+      .collect(Collectors.toMap(TypedField::getName, field -> field, (left, right) -> right,
+        LinkedHashMap::new));
+    Set<String> fieldNames = new LinkedHashSet<>();
+    List<TypedField<?, ?>> fields = existing.getFields().stream()
+      .<TypedField<?, ?>>map(field -> {
+        if (!fieldNames.add(field.getName())) {
+          return null;
+        }
+        return incomingFields.getOrDefault(field.getName(), field);
+      })
+      .filter(Objects::nonNull)
+      .toList();
+    List<TypedField<?, ?>> result = new ArrayList<>(fields);
+    incoming.getFields().stream()
+      .filter(field -> !fieldNames.contains(field.getName()))
+      .forEach(result::add);
+    return result;
+  }
+
+  private List<IndexDefinition> mergedIndexes(EntityDefinition incoming, EntityDefinition existing) {
+    Map<String, IndexDefinition> incomingIndexes = incoming.getIndexes().stream()
+      .filter(index -> index.getName() != null)
+      .collect(Collectors.toMap(IndexDefinition::getName, index -> index, (left, right) -> right,
+        LinkedHashMap::new));
+    Set<String> indexNames = new LinkedHashSet<>();
+    List<IndexDefinition> indexes = existing.getIndexes().stream()
+      .map(index -> {
+        if (index.getName() != null) {
+          indexNames.add(index.getName());
+        }
+        return index.getName() == null ? index : incomingIndexes.getOrDefault(index.getName(), index);
+      })
+      .toList();
+    List<IndexDefinition> result = new ArrayList<>(indexes);
+    incoming.getIndexes().stream()
+      .filter(index -> index.getName() != null && !indexNames.contains(index.getName()))
+      .forEach(result::add);
+    return result;
   }
 
   private void loadJSONString(String schemaName, String jsonString) {
@@ -204,84 +288,95 @@ public class SessionFactory {
   }
 
   /**
-   * 宽松模式:
-   * 允许ddl语句的错误
-   *
-   * @param id
-   * @return
+   * 按选项创建会话：隔离级别 + 方言连接准备（PRAGMA 等）。
    */
+  public Session createSession(String schemaName) {
+    return createSession(schemaName, SessionOptions.none());
+  }
+
+  public Session createSession(String schemaName, SessionOptions options) {
+    if (!isSchemaExists(schemaName)) {
+      throw new SchemaNotFoundException("Schema not found: " + schemaName);
+    }
+    if (failsafe) {
+      return createFailsafeSession(schemaName, options);
+    }
+    return switch (schemaProviders.get(schemaName)) {
+      case JdbcSchemaProvider jdbc -> createJdbcSession(schemaName, jdbc, false, options);
+      case MongoSchemaProvider mongodb -> createMongoSession(schemaName, mongodb, false);
+      case null, default -> throw new IllegalStateException("Unexpected schemaName: " + schemaName);
+    };
+  }
+
   public Session createFailsafeSession(String id) {
+    return createFailsafeSession(id, SessionOptions.none());
+  }
+
+  public Session createFailsafeSession(String id, SessionOptions options) {
+    return switch (schemaProviders.get(id)) {
+      case JdbcSchemaProvider jdbc -> createJdbcSession(id, jdbc, true, options);
+      case MongoSchemaProvider mongodb -> createMongoSession(id, mongodb, true);
+      case null, default -> throw new IllegalStateException("Unexpected schemaName: " + id);
+    };
+  }
+
+  private Session createJdbcSession(String schemaName, JdbcSchemaProvider jdbc, boolean failsafeMode, SessionOptions options) {
     try {
-      return switch (schemaProviders.get(id)) {
-        case JdbcSchemaProvider jdbc -> {
-          Connection connection = jdbc.dataSource().getConnection();
-          SqlContext sqlContext = new SqlContext(id, new NamedParameterSqlExecutor(connection), modelRegistry, this);
-          sqlContext.setFailsafe(true);
-
-          DataService originalDataService = new SqlDataService(sqlContext);
-
-          String sessionId = UUID.randomUUID().toString();
-          DataService eventAwareDataService = new EventAwareDataService(
-            originalDataService, eventPublisher, id, sessionId, this
-          );
-
-          yield new SqlSession(sqlContext, eventAwareDataService);
-        }
-        case MongoSchemaProvider mongodb -> {
-          MongoDatabase mongoDatabase = mongodb.mongoDatabase();
-          MongoContext mongoContext = new MongoContext(id, mongoDatabase, modelRegistry, this);
-          mongoContext.setFailsafe(true);
-
-          yield new MongoSession(mongoContext);
-        }
-        case null,
-             default -> throw new IllegalStateException("Unexpected schemaName: " + id);
-      };
-    } catch (Exception e) {
+      Connection connection = jdbc.dataSource().getConnection();
+      SqlContext sqlContext = new SqlContext(schemaName, new NamedParameterSqlExecutor(connection), modelRegistry, this);
+      if (failsafeMode) {
+        sqlContext.setFailsafe(true);
+      }
+      if (options.skipWriteInterceptors()) {
+        sqlContext.setSkipWriteInterceptors(true);
+      }
+      applySessionOptions(connection, sqlContext.getSqlDialect(), options);
+      DataService eventAwareDataService = new EventAwareDataService(
+        new SqlDataService(sqlContext), eventPublisher, schemaName, UUID.randomUUID().toString(), this
+      );
+      return new SqlSession(sqlContext, eventAwareDataService);
+    } catch (SQLException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public Session createSession(String schemaName) {
-    if (!isSchemaExists(schemaName)) {
-      throw new SchemaNotFoundException("Schema not found: " + schemaName);
-    }
+  private void applySessionOptions(Connection connection, SqlDialect dialect, SessionOptions options) {
     try {
-      if (failsafe) {
-        return createFailsafeSession(schemaName);
+      if (options != null && options.applyIsolation()) {
+        if (!connection.getMetaData().supportsTransactionIsolationLevel(options.isolation())) {
+          // SQLite 等数据源不支持 READ_COMMITTED：保留默认隔离级别（多为 SERIALIZABLE，语义更强），仅告警
+          log.warn("Datasource does not support isolation level {}, keeping default", options.isolation());
+        } else {
+          connection.setTransactionIsolation(options.isolation());
+        }
       }
-      return switch (schemaProviders.get(schemaName)) {
-        case JdbcSchemaProvider jdbc -> {
-          Connection connection = jdbc.dataSource().getConnection();
-          SqlContext sqlContext = new SqlContext(schemaName, new NamedParameterSqlExecutor(connection), modelRegistry, this);
-
-          DataService originalDataService = new SqlDataService(sqlContext);
-
-          String sessionId = UUID.randomUUID().toString();
-          DataService eventAwareDataService = new EventAwareDataService(
-            originalDataService, eventPublisher, schemaName, sessionId, this
-          );
-
-          yield new SqlSession(sqlContext, eventAwareDataService);
-        }
-        case MongoSchemaProvider mongodb -> {
-          MongoDatabase mongoDatabase = mongodb.mongoDatabase();
-          MongoContext mongoContext = new MongoContext(schemaName, mongoDatabase, modelRegistry, this);
-
-          yield new MongoSession(mongoContext);
-        }
-        case null,
-             default -> throw new IllegalStateException("Unexpected schemaName: " + schemaName);
-      };
-    } catch (Exception e) {
+      dialect.prepareConnection(connection);
+    } catch (SQLException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private Session createMongoSession(String schemaName, MongoSchemaProvider mongodb, boolean failsafeMode) {
+    MongoContext mongoContext = new MongoContext(schemaName, mongodb.mongoDatabase(), modelRegistry, this);
+    if (failsafeMode) {
+      mongoContext.setFailsafe(true);
+    }
+    return new MongoSession(mongoContext);
+  }
+
+  public UnitOfWork unitOfWork() {
+    return new UnitOfWork(this);
+  }
+
+  public List<WriteInterceptor> getWriteInterceptors() {
+    return writeInterceptors;
   }
 
   public static class Builder {
     private Cache cache;
     private SchemaProvider defaultSchemaProvider = null;
     private final List<SchemaProvider> schemaProviders = new ArrayList<>();
+    private final List<WriteInterceptor> writeInterceptors = new ArrayList<>();
     private boolean failsafe = false;
     private EventPublisher eventPublisher = null;
 
@@ -313,6 +408,11 @@ public class SessionFactory {
       return this;
     }
 
+    public Builder addWriteInterceptor(WriteInterceptor interceptor) {
+      this.writeInterceptors.add(interceptor);
+      return this;
+    }
+
     public SessionFactory build() {
       if (defaultSchemaProvider == null) {
         throw new IllegalStateException("Please set defaultSchemaProvider");
@@ -320,7 +420,7 @@ public class SessionFactory {
       if (cache == null) {
         this.cache = new ConcurrentHashMapCache();
       }
-      return new SessionFactory(defaultSchemaProvider, schemaProviders, cache, failsafe, eventPublisher);
+      return new SessionFactory(defaultSchemaProvider, schemaProviders, cache, failsafe, eventPublisher, writeInterceptors);
     }
   }
 
@@ -343,7 +443,7 @@ public class SessionFactory {
     // 立即将加载的 schema 应用到缓存和数据库
     // 因为 processBuildItem() 在构造函数中已执行过，此方法调用时
     // buildItem 是新追加的，需要独立触发应用逻辑
-    applyBuildItemSchemas(buildItem.getSchemaName());
+    applyBuildItemSchemas(buildItem.getSchemaName(), buildItem.getPreservedRuntimeModels());
   }
 
   public String getDefaultSchema() {

@@ -14,9 +14,10 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public boolean insertOrUpdateList(String projectId, List<NodeInstance> nodeInstanceList) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       boolean ok = true;
       for (NodeInstance ni : nodeInstanceList) {
+        ni.setProjectId(projectId);
         if (ni.getId() == null) {
           int r = session.dsl().insertInto(NodeInstance.class).values(ni).execute();
           ok = ok && r > 0;
@@ -25,7 +26,7 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
             .update(NodeInstance.class)
             .set(System.nodeInstance.status, ni.getStatus())
             .set(System.nodeInstance.updatedAt, ni.getUpdatedAt())
-            .where(System.nodeInstance.id.eq(ni.getId()))
+            .where(System.nodeInstance.projectId.eq(projectId).and(System.nodeInstance.id.eq(ni.getId())))
             .execute();
           ok = ok && r > 0;
         }
@@ -36,9 +37,10 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public NodeInstance selectByNodeInstanceId(String projectId, String flowInstanceId, String nodeInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId)
+        .where(System.nodeInstance.projectId.eq(projectId)
+          .and(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
           .and(System.nodeInstance.nodeInstanceId.eq(nodeInstanceId)))
         .executeOne();
     }
@@ -46,9 +48,10 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public NodeInstance selectBySourceInstanceId(String projectId, String flowInstanceId, String sourceNodeInstanceId, String nodeKey) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId)
+        .where(System.nodeInstance.projectId.eq(projectId)
+          .and(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
           .and(System.nodeInstance.sourceNodeInstanceId.eq(sourceNodeInstanceId))
           .and(System.nodeInstance.nodeKey.eq(nodeKey)))
         .executeOne();
@@ -57,9 +60,10 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public NodeInstance selectRecentOne(String projectId, String flowInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
+        .where(System.nodeInstance.projectId.eq(projectId)
+          .and(System.nodeInstance.flowInstanceId.eq(flowInstanceId)))
         .orderByDesc(System.nodeInstance.id)
         .limit(1)
         .executeOne();
@@ -68,9 +72,10 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public NodeInstance selectRecentActiveOne(String projectId, String flowInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId)
+        .where(System.nodeInstance.projectId.eq(projectId)
+          .and(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
           .and(System.nodeInstance.status.eq(NodeInstanceStatus.ACTIVE)))
         .orderByDesc(System.nodeInstance.id)
         .limit(1)
@@ -80,9 +85,10 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public NodeInstance selectRecentCompletedOne(String projectId, String flowInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId)
+        .where(System.nodeInstance.projectId.eq(projectId)
+          .and(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
           .and(System.nodeInstance.status.eq(NodeInstanceStatus.COMPLETED)))
         .orderByDesc(System.nodeInstance.id)
         .limit(1)
@@ -101,9 +107,10 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public List<NodeInstance> selectByFlowInstanceId(String projectId, String flowInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
+        .where(System.nodeInstance.projectId.eq(projectId)
+          .and(System.nodeInstance.flowInstanceId.eq(flowInstanceId)))
         .orderBy(System.nodeInstance.id)
         .execute();
     }
@@ -111,9 +118,10 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public List<NodeInstance> selectDescByFlowInstanceId(String projectId, String flowInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
+        .where(System.nodeInstance.projectId.eq(projectId)
+          .and(System.nodeInstance.flowInstanceId.eq(flowInstanceId)))
         .orderByDesc(System.nodeInstance.id)
         .execute();
     }
@@ -121,19 +129,20 @@ public class NodeInstanceFmRepository extends AbstractRepository implements Node
 
   @Override
   public void updateStatus(String projectId, NodeInstance nodeInstance, int status) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl().update(NodeInstance.class)
         .set(System.nodeInstance.status, status)
-        .where(System.nodeInstance.id.eq(nodeInstance.getId()))
+        .where(System.nodeInstance.projectId.eq(projectId).and(System.nodeInstance.id.eq(nodeInstance.getId())))
         .execute();
     }
   }
 
   @Override
   public List<NodeInstance> selectByFlowInstanceIdAndNodeKey(String projectId, String flowInstanceId, String nodeKey) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(NodeInstance.class)
-        .where(System.nodeInstance.flowInstanceId.eq(flowInstanceId)
+        .where(System.nodeInstance.projectId.eq(projectId)
+          .and(System.nodeInstance.flowInstanceId.eq(flowInstanceId))
           .and(System.nodeInstance.nodeKey.eq(nodeKey)))
         .execute();
     }

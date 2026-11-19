@@ -51,6 +51,7 @@ public class McpAuthHandler {
         return;
       }
       log.debug("MCP authenticated: key={}, path={}", apiKey.getName(), rc.request().path());
+      rc.put(McpToolAccess.API_KEY_ATTRIBUTE, apiKey);
       rc.next();
     });
   }

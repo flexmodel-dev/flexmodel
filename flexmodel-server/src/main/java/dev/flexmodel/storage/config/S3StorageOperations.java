@@ -207,6 +207,45 @@ public class S3StorageOperations implements StorageOperations {
   }
 
   @Override
+  public void moveFile(String source, String target) {
+    String sourceKey = prefix + normalizeKey(source);
+    String targetKey = prefix + normalizeKey(target);
+    String folderPrefix = sourceKey + "/";
+    try {
+      ListObjectsV2Response page = s3Client.listObjectsV2(b -> b.bucket(bucket).prefix(folderPrefix));
+      if (page.contents().isEmpty()) {
+        s3Client.copyObject(b -> b.sourceBucket(bucket).sourceKey(sourceKey)
+          .destinationBucket(bucket).destinationKey(targetKey));
+        s3Client.deleteObject(b -> b.bucket(bucket).key(sourceKey));
+        return;
+      }
+
+      List<ObjectIdentifier> copied = new ArrayList<>();
+      while (true) {
+        for (S3Object object : page.contents()) {
+          String destinationKey = targetKey + object.key().substring(sourceKey.length());
+          s3Client.copyObject(b -> b.sourceBucket(bucket).sourceKey(object.key())
+            .destinationBucket(bucket).destinationKey(destinationKey));
+          copied.add(ObjectIdentifier.builder().key(object.key()).build());
+        }
+        if (!page.isTruncated()) {
+          break;
+        }
+        String token = page.nextContinuationToken();
+        page = s3Client.listObjectsV2(b -> b.bucket(bucket).prefix(folderPrefix).continuationToken(token));
+      }
+
+      for (int index = 0; index < copied.size(); index += 1000) {
+        List<ObjectIdentifier> batch = copied.subList(index, Math.min(index + 1000, copied.size()));
+        s3Client.deleteObjects(b -> b.bucket(bucket)
+          .delete(Delete.builder().objects(batch).build()));
+      }
+    } catch (S3Exception e) {
+      throw new InternalServerException("Failed to move file in S3: " + source + " -> " + target, e);
+    }
+  }
+
+  @Override
   public InputStream getInputStream(String path) {
     String key = prefix + normalizeKey(path);
     try {

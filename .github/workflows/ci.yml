@@ -15,28 +15,6 @@ jobs:
   # Test Jobs (run in parallel)
   # ============================================================
 
-  functions-runtime-test:
-    name: functions-runtime tests (Deno)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: "2.8.3"
-      - name: Cache Deno dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cache/deno
-            ~/.deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('flexmodel-functions-runtime/deno.json', 'flexmodel-functions-runtime/src/**/*.ts') }}
-          restore-keys: |
-            ${{ runner.os }}-deno-
-      - name: Run Deno tests
-        working-directory: flexmodel-functions-runtime
-        run: deno test --allow-all --unstable-worker-options
-
   engine-test:
     name: Engine tests (Java)
     runs-on: ubuntu-latest
@@ -198,40 +176,6 @@ jobs:
             -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} \
             -Dquarkus.container-image.password=${{ secrets.DOCKER_PASSWORD }}
 
-  push-functions-runtime-image:
-    name: Push functions-runtime docker image
-    needs: [ functions-runtime-test ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Read version
-        id: version
-        run: |
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "tag=${VERSION}.${{ github.run_number }}" >> $GITHUB_OUTPUT
-          echo "ver=${VERSION}" >> $GITHUB_OUTPUT
-          echo "full=${VERSION}.${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Build and push functions-runtime image
-        uses: docker/build-push-action@v7
-        with:
-          context: flexmodel-functions-runtime
-          push: true
-          tags: |
-            cjbi/flexmodel-functions-runtime:latest
-            cjbi/flexmodel-functions-runtime:${{ steps.version.outputs.ver }}
-            cjbi/flexmodel-functions-runtime:${{ steps.version.outputs.tag }}
-            cjbi/flexmodel-functions-runtime:${{ steps.version.outputs.full }}
-            cjbi/flexmodel-functions-runtime:sha-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   push-ui-image:
     name: Push UI docker image
     needs: [ ui-e2e-test ]
@@ -268,11 +212,47 @@ jobs:
             cjbi/flexmodel-ui:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+  push-apps-ui-image:
+    name: Push Apps UI docker image
+    #    needs: [ ui-e2e-test ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "tag=${VERSION}.${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "ver=${VERSION}" >> $GITHUB_OUTPUT
+          echo "full=${VERSION}.${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and push UI image
+        uses: docker/build-push-action@v7
+        with:
+          context: flexmodel-apps-ui
+          push: true
+          tags: |
+            cjbi/flexmodel-apps-ui:latest
+            cjbi/flexmodel-apps-ui:${{ steps.version.outputs.ver }}
+            cjbi/flexmodel-apps-ui:${{ steps.version.outputs.tag }}
+            cjbi/flexmodel-apps-ui:${{ steps.version.outputs.full }}
+            cjbi/flexmodel-apps-ui:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
 #  deploy:
 #    name: Deploy to production
 #    runs-on: ubuntu-latest
-#    needs: [ push-server-image, push-functions-runtime-image, push-ui-image ]
+#    needs: [ push-server-image, push-ui-image ]
 #    steps:
 #      - uses: actions/checkout@v5
 #      - name: Read version
@@ -292,10 +272,8 @@ jobs:
 #          script: |
 #            cd /opt/flexmodel-quickstarts/docker-compose
 #            docker pull cjbi/flexmodel-server:${IMAGE_TAG}
-#            docker pull cjbi/flexmodel-functions-runtime:${IMAGE_TAG}
 #            docker pull cjbi/flexmodel-ui:${IMAGE_TAG}
 #            docker tag cjbi/flexmodel-server:${IMAGE_TAG} cjbi/flexmodel-server:latest
-#            docker tag cjbi/flexmodel-functions-runtime:${IMAGE_TAG} cjbi/flexmodel-functions-runtime:latest
 #            docker tag cjbi/flexmodel-ui:${IMAGE_TAG} cjbi/flexmodel-ui:latest
 #            docker-compose up -d
 #            echo "Deployed version ${IMAGE_TAG}"

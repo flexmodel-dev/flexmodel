@@ -91,6 +91,12 @@ public class MongoSchemaService extends BaseService implements SchemaService {
   }
 
   @Override
+  public EntityDefinition saveEntity(EntityDefinition entity) {
+    modelRegistry.register(schemaName, entity);
+    return entity;
+  }
+
+  @Override
   public NativeQueryDefinition createNativeQuery(NativeQueryDefinition nq) {
     modelRegistry.register(schemaName, nq);
     return nq;

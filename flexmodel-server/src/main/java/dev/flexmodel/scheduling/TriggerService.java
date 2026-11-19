@@ -11,7 +11,6 @@ import dev.flexmodel.common.SessionContext;
 import dev.flexmodel.common.dto.PageDTO;
 import dev.flexmodel.flow.dto.StartProcessParamEvent;
 import dev.flexmodel.flow.service.FlowDeploymentService;
-import dev.flexmodel.functions.FunctionService;
 import dev.flexmodel.common.trace.TraceContext;
 import dev.flexmodel.project.ProjectRepository;
 import dev.flexmodel.query.Expressions;
@@ -20,7 +19,6 @@ import dev.flexmodel.scheduling.config.*;
 import dev.flexmodel.scheduling.dto.TriggerDTO;
 import dev.flexmodel.scheduling.dto.TriggerPageRequest;
 import dev.flexmodel.scheduling.job.ScheduledFlowExecutionJob;
-import dev.flexmodel.scheduling.job.ScheduledFunctionExecutionJob;
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -48,9 +46,9 @@ public class TriggerService {
   @Inject
   FlowDeploymentService flowService;
   @Inject
-  FunctionService functionService;
-  @Inject
   Scheduler scheduler;
+  @Inject
+  dev.flexmodel.apps.flow.AppFlowBindings flowBindings;
   @Inject
   EventBus eventBus;
   @Inject
@@ -112,6 +110,10 @@ public class TriggerService {
     int restored = 0;
     for (Trigger trigger : triggers) {
       try {
+        if ("WORKFLOW".equals(trigger.getJobType())) {
+          flowBindings.sync(trigger);
+          continue;
+        }
         TriggerConfig triggerConfig = JsonUtils.convertValue(trigger.getConfig(), TriggerConfig.class);
         if (!(triggerConfig instanceof ScheduledTriggerConfig scheduledTriggerConfig)) {
           continue;
@@ -172,13 +174,9 @@ public class TriggerService {
     dto.setState(trigger.getState());
     dto.setCreatedAt(trigger.getCreatedAt());
     dto.setUpdatedAt(trigger.getUpdatedAt());
-    if ("FUNCTION".equals(trigger.getJobType())) {
-      dto.setJobName(trigger.getJobId());
-    } else {
-      FlowDeployment flowDeployment = flowService.findRecentByFlowModuleId(projectId, trigger.getJobId());
-      if (flowDeployment != null) {
-        dto.setJobName(flowDeployment.getFlowName());
-      }
+    FlowDeployment flowDeployment = flowService.findRecentByFlowModuleId(projectId, trigger.getJobId());
+    if (flowDeployment != null) {
+      dto.setJobName(flowDeployment.getFlowName());
     }
     return dto;
   }
@@ -192,9 +190,7 @@ public class TriggerService {
       return projectId + "_" + eventTriggerConfig.getModelName();
     } else {
       if (triggerConfig instanceof ScheduledTriggerConfig) {
-        if ("FUNCTION".equals(trigger.getJobType())) {
-          return projectId + "_fn_" + trigger.getJobId();
-        } else if ("FLOW".equals(trigger.getJobType())) {
+        if ("FLOW".equals(trigger.getJobType())) {
           return projectId + "_flow_" + trigger.getJobId();
         }
       }
@@ -204,6 +200,7 @@ public class TriggerService {
 
   //  @Transactional
   public Trigger create(String projectId, Trigger trigger) {
+    requireUnmanaged(trigger);
     TriggerConfig triggerConfig = JsonUtils.convertValue(trigger.getConfig(), TriggerConfig.class);
     trigger.setJobGroup(getJobGroup(projectId, trigger, triggerConfig));
     trigger = triggerRepository.save(projectId, trigger);
@@ -233,6 +230,8 @@ public class TriggerService {
     if (record == null) {
       throw new TriggerException("记录不存在");
     }
+    requireUnmanaged(record);
+    requireUnmanaged(req);
     if (req.getState() == null) {
       req.setState(record.getState());
     }
@@ -267,6 +266,7 @@ public class TriggerService {
   public void deleteById(String projectId, String id) {
     Trigger record = triggerRepository.findById(projectId, id);
     if (record != null) {
+      requireUnmanaged(record);
       // 实现定时任务调度
       try {
         unscheduleTrigger(record);
@@ -311,6 +311,7 @@ public class TriggerService {
         throw new TriggerException("触发器不存在: " + id);
       }
 
+      requireUnmanaged(trigger);
       // 验证触发器状态
       if (!Boolean.TRUE.equals(trigger.getState())) {
         throw new TriggerException("触发器已禁用，无法执行: " + id);
@@ -322,46 +323,26 @@ public class TriggerService {
       String projectId2 = sessionContext.getProjectId();
       long startTime = System.currentTimeMillis();
 
-      if ("FUNCTION".equals(trigger.getJobType())) {
-        // 执行边缘函数
-        Object invokeBody = Map.of("triggerId", trigger.getId(), "triggerTime", startTime);
+      // 构建启动流程参数
+      StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
+      startProcessParam.setProjectId(projectId2);
+      startProcessParam.setUserId(sessionContext.getUserId());
+      startProcessParam.setFlowModuleId(trigger.getJobId());
+      startProcessParam.setVariables(Map.of());
+      startProcessParam.setStartTime(startTime);
 
-        JobExecutionLog jobExecutionLog = jobExecutionLogService.recordJobStart(trigger.getId(), trigger.getJobId(), trigger.getJobGroup(),
-          trigger.getJobType(), trigger.getName(), trigger.getName(), trigger.getName(), startTime,
-          startTime, invokeBody, projectId2, traceContext.currentTraceId());
+      JobExecutionLog jobExecutionLog = jobExecutionLogService.recordJobStart(trigger.getId(), trigger.getJobId(), trigger.getJobGroup(),
+        trigger.getJobType(), trigger.getName(), trigger.getName(), trigger.getName(), startTime,
+        startTime, startProcessParam, projectId2, traceContext.currentTraceId());
 
-        try {
-          jakarta.ws.rs.core.Response response = functionService.invoke(projectId2, trigger.getJobId(), invokeBody);
-          Object result = response.readEntity(Object.class);
-          jobExecutionLogService.recordJobSuccess(projectId, jobExecutionLog.getId(), result,
-            System.currentTimeMillis() - startTime);
-        } catch (Exception e) {
-          log.error("边缘函数执行失败: {}", trigger.getJobId(), e);
-          jobExecutionLogService.recordJobFailure(projectId, jobExecutionLog.getId(), e.getMessage(),
-            e.getClass().getSimpleName(), System.currentTimeMillis() - startTime);
-        }
-      } else {
-        // 构建启动流程参数
-        StartProcessParamEvent startProcessParam = new StartProcessParamEvent();
-        startProcessParam.setProjectId(projectId2);
-        startProcessParam.setUserId(sessionContext.getUserId());
-        startProcessParam.setFlowModuleId(trigger.getJobId());
-        startProcessParam.setVariables(Map.of());
-        startProcessParam.setStartTime(startTime);
+      startProcessParam.setEventId(jobExecutionLog.getId());
 
-        JobExecutionLog jobExecutionLog = jobExecutionLogService.recordJobStart(trigger.getId(), trigger.getJobId(), trigger.getJobGroup(),
-          trigger.getJobType(), trigger.getName(), trigger.getName(), trigger.getName(), startTime,
-          startTime, startProcessParam, projectId2, traceContext.currentTraceId());
+      // 传播当前 HTTP span 的 traceId/spanId，EventBus 消费端恢复链路，使流程执行与手动触发同属一条 trace
+      startProcessParam.setTraceId(traceContext.currentTraceId());
+      startProcessParam.setSpanId(traceContext.currentSpanId());
 
-        startProcessParam.setEventId(jobExecutionLog.getId());
-
-        // 传播当前 HTTP span 的 traceId/spanId，EventBus 消费端恢复链路，使流程执行与手动触发同属一条 trace
-        startProcessParam.setTraceId(traceContext.currentTraceId());
-        startProcessParam.setSpanId(traceContext.currentSpanId());
-
-        // 直接调用流程应用服务启动流程
-        eventBus.send("flow.start", startProcessParam);
-      }
+      // 直接调用流程应用服务启动流程
+      eventBus.send("flow.start", startProcessParam);
       return trigger;
     } catch (TriggerException e) {
       log.error("立即执行触发器失败: {}", id, e);
@@ -379,12 +360,7 @@ public class TriggerService {
     JobKey jobKey = buildJobKey(trigger);
 
     // 根据任务类型选择不同的 Job 实现类
-    Class<? extends Job> jobClass = "FUNCTION".equals(trigger.getJobType())
-      ? ScheduledFunctionExecutionJob.class
-      : ScheduledFlowExecutionJob.class;
-
-    // 创建 JobDetail
-    JobDetail jobDetail = JobBuilder.newJob(jobClass)
+    JobDetail jobDetail = JobBuilder.newJob(ScheduledFlowExecutionJob.class)
       .withIdentity(jobKey)
       .withDescription(trigger.getName())
       .usingJobData("triggerId", trigger.getId())
@@ -493,6 +469,11 @@ public class TriggerService {
       .withSchedule(scheduleBuilder.withMisfireHandlingInstructionFireNow())
       .startNow()
       .build();
+  }
+
+  private void requireUnmanaged(Trigger value) {
+    if (value != null && ("WORKFLOW".equals(value.getJobType()) || value.getManagedKey() != null))
+      throw new jakarta.ws.rs.ForbiddenException("工作流触发器由流程发布服务管理");
   }
 
   public long count(String projectId, Predicate aTrue) {

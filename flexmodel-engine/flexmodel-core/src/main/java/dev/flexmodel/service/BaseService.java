@@ -830,14 +830,14 @@ public abstract class BaseService {
       modelName, inputData.size(), isUpdate);
 
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(modelName);
-    List<TypedField<?, ?>> entityFields = entity.getFields();
     Map<String, Object> processedData = new HashMap<>();
 
     // 处理输入数据的类型转换
     processInputData(inputData, entity, processedData);
 
-    // 处理默认值和自动生成值
-    processDefaultAndGeneratedValues(entityFields, processedData, isUpdate);
+    if (!isUpdate) {
+      processDefaultAndGeneratedValues(entity.getFields(), processedData);
+    }
 
     log.debug("Field value generation completed for model: {}, processed data size: {}",
       modelName, processedData.size());
@@ -871,11 +871,9 @@ public abstract class BaseService {
    *
    * @param entityFields 实体字段列表
    * @param processedData 处理后的数据
-   * @param isUpdate 是否为更新操作
    */
   private void processDefaultAndGeneratedValues(List<TypedField<?, ?>> entityFields,
-                                                Map<String, Object> processedData,
-                                                boolean isUpdate) {
+                                                Map<String, Object> processedData) {
     log.debug("Processing default and generated values for {} fields", entityFields.size());
 
     for (TypedField<?, ?> field : entityFields) {
@@ -886,7 +884,7 @@ public abstract class BaseService {
       Object currentValue = processedData.get(field.getName());
       DefaultValue defaultValue = field.getDefaultValue();
       if (defaultValue != null) {
-        Object generatedValue = generateFieldValue(field, currentValue, isUpdate);
+        Object generatedValue = generateFieldValue(field, currentValue);
         processedData.put(field.getName(), generatedValue);
 
         if (!Objects.equals(currentValue, generatedValue)) {
@@ -925,10 +923,9 @@ public abstract class BaseService {
    *
    * @param field 字段定义
    * @param currentValue 当前值
-   * @param isUpdate 是否为更新操作
    * @return 生成的值
    */
-  protected Object generateFieldValue(TypedField<?, ?> field, Object currentValue, boolean isUpdate) {
+  protected Object generateFieldValue(TypedField<?, ?> field, Object currentValue) {
     if (currentValue != null) {
       return currentValue;
     }

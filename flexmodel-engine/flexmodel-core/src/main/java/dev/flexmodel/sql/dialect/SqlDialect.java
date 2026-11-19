@@ -1,7 +1,6 @@
 package dev.flexmodel.sql.dialect;
 
 import dev.flexmodel.sql.*;
-import dev.flexmodel.sql.*;
 
 import java.sql.SQLException;
 import java.sql.Types;
@@ -57,6 +56,13 @@ public abstract class SqlDialect {
     registerFunction("min", args -> "min(" + args[0] + ")", 1);
   }
 
+
+  /**
+   * 会话创建后的连接级准备钩子（PRAGMA、会话变量等）。
+   * 默认无操作；需要时由具体方言覆写。
+   */
+  public void prepareConnection(java.sql.Connection connection) throws java.sql.SQLException {
+  }
 
   private String identifierQuoteString = "";
 
@@ -495,6 +501,13 @@ public abstract class SqlDialect {
 
   public String getModifyColumnString() {
     return "modify";
+  }
+
+  /**
+   * 是否支持通过 ALTER TABLE 修改列定义。SQLite 等数据库需重建表，返回 false 时仅更新元数据。
+   */
+  public boolean supportsModifyColumn() {
+    return true;
   }
 
   public String getSqlAlterTableModifyColumnString(SqlColumn sqlColumn) {

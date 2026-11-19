@@ -13,27 +13,28 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
 
   @Override
   public int insert(String projectId, FlowDeployment flowDeployment) {
-    try (Session session = getProjectSession(projectId)) {
+    flowDeployment.setProjectId(projectId);
+    try (Session session = openSession()) {
       return session.dsl().insertInto(FlowDeployment.class).values(flowDeployment).execute();
     }
   }
 
   @Override
   public FlowDeployment findByDeployId(String projectId, String flowDeployId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(FlowDeployment.class)
-        .where(flowDeployment.flowDeployId.eq(flowDeployId))
+        .where(flowDeployment.projectId.eq(projectId).and(flowDeployment.flowDeployId.eq(flowDeployId)))
         .executeOne();
     }
   }
 
   @Override
   public FlowDeployment findRecentByFlowModuleId(String projectId, String flowModuleId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(FlowDeployment.class)
-        .where(flowDeployment.flowModuleId.eq(flowModuleId))
+        .where(flowDeployment.projectId.eq(projectId).and(flowDeployment.flowModuleId.eq(flowModuleId)))
         .orderByDesc(flowDeployment.id)
         .limit(1)
         .executeOne();
@@ -42,19 +43,19 @@ public class FlowDeploymentFmRepository extends AbstractRepository implements Fl
 
   @Override
   public void deleteById(String projectId, Long id) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl().deleteFrom(FlowDeployment.class)
-        .where(flowDeployment.id.eq(id))
+        .where(flowDeployment.projectId.eq(projectId).and(flowDeployment.id.eq(id)))
         .execute();
     }
   }
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(FlowDeployment.class)
-        .where(filter)
+        .where(flowDeployment.projectId.eq(projectId).and(filter))
         .count();
     }
   }

@@ -2,8 +2,6 @@ package dev.flexmodel.flow.repository;
 
 import dev.flexmodel.common.AbstractRepository;
 import dev.flexmodel.query.Direction;
-import dev.flexmodel.query.Expressions;
-import dev.flexmodel.query.Predicate;
 import jakarta.enterprise.context.ApplicationScoped;
 import dev.flexmodel.codegen.entity.NodeInstanceLog;
 import dev.flexmodel.session.Session;
@@ -18,9 +16,10 @@ public class NodeInstanceLogFmRepository extends AbstractRepository implements N
 
   @Override
   public boolean insertList(String projectId, List<NodeInstanceLog> nodeInstanceLogList) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       boolean ok = true;
       for (NodeInstanceLog log : nodeInstanceLogList) {
+        log.setProjectId(projectId);
         int r = session.dsl().insertInto(NodeInstanceLog.class).values(log).execute();
         ok &= r > 0;
       }
@@ -33,10 +32,10 @@ public class NodeInstanceLogFmRepository extends AbstractRepository implements N
     if (traceId == null || traceId.isEmpty()) {
       return List.of();
     }
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(NodeInstanceLog.class)
-        .where(Expressions.TRUE.and(nodeInstanceLog.traceId.eq(traceId)))
+        .where(nodeInstanceLog.projectId.eq(projectId).and(nodeInstanceLog.traceId.eq(traceId)))
         .orderBy(nodeInstanceLog.id, Direction.ASC)
         .page(1, limit)
         .execute();
@@ -46,11 +45,10 @@ public class NodeInstanceLogFmRepository extends AbstractRepository implements N
   @Override
   public void purgeOldLogs(String projectId, int maxDays) {
     LocalDateTime purgeDate = LocalDateTime.now().minusDays(maxDays);
-    Predicate filter = nodeInstanceLog.createdAt.lte(purgeDate);
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl()
         .deleteFrom(NodeInstanceLog.class)
-        .where(filter)
+        .where(nodeInstanceLog.projectId.eq(projectId).and(nodeInstanceLog.createdAt.lte(purgeDate)))
         .execute();
     }
   }

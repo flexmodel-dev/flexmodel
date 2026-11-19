@@ -20,6 +20,8 @@ public interface ModelRepository {
 
   SchemaObject createModel(String projectId, String datasourceName, SchemaObject model);
 
+  SchemaObject saveModel(String projectId, String datasourceName, SchemaObject model);
+
   void dropModel(String projectId, String datasourceName, String modelName);
 
   TypedField<?, ?> createField(String projectId, String datasourceName, TypedField<?, ?> field);

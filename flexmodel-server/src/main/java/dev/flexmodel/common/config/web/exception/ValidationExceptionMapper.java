@@ -2,6 +2,7 @@ package dev.flexmodel.common.config.web.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.ValidationException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -30,7 +31,7 @@ public class ValidationExceptionMapper implements ExceptionMapper<ValidationExce
         errors.put(property, errorMessage);
       });
       Map<String, Object> body = getErrorsMap(errors);
-      return Response.status(Response.Status.BAD_REQUEST).entity(body).build();
+      return Response.status(Response.Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(body).build();
     }
     return getDefaultResponse(e);
   }

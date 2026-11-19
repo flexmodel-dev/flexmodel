@@ -24,20 +24,21 @@ model ModelName {
 
 支持以下字段类型：
 
-| 类型            | 描述     | 示例                          |
-|---------------|--------|-----------------------------|
-| `String`      | 字符串类型  | `name: String @length(255)` |
-| `Int`         | 整数类型   | `age: Int`                  |
-| `Long`        | 长整数类型  | `id: Long`                  |
-| `Float`       | 浮点数类型  | `price: Float`              |
-| `Boolean`     | 布尔类型   | `active: Boolean`           |
-| `DateTime`    | 日期时间类型 | `createdAt: DateTime`       |
-| `Date`        | 日期类型   | `birthday: Date`            |
-| `Time`        | 时间类型   | `startTime: Time`           |
-| `JSON`        | JSON类型 | `config: JSON`              |
-| `EnumType`    | 枚举类型   | `gender: UserGender`        |
-| `ModelType`   | 关联类型   | `student: Student`          |
-| `ModelType[]` | 关联数组类型 | `students: Student[]`       |
+| 类型          | 描述                   | 示例                        |
+|---------------|------------------------|-----------------------------|
+| `String`      | 字符串类型             | `name: String @length(255)` |
+| `Text`        | 大文本类型，无长度限制 | `content: Text`             |
+| `Int`         | 整数类型               | `age: Int`                  |
+| `Long`        | 长整数类型             | `id: Long`                  |
+| `Float`       | 浮点数类型             | `price: Float`              |
+| `Boolean`     | 布尔类型               | `active: Boolean`           |
+| `DateTime`    | 日期时间类型           | `createdAt: DateTime`       |
+| `Date`        | 日期类型               | `birthday: Date`            |
+| `Time`        | 时间类型               | `startTime: Time`           |
+| `JSON`        | JSON类型               | `config: JSON`              |
+| `EnumType`    | 枚举类型               | `gender: UserGender`        |
+| `ModelType`   | 关联类型               | `student: Student`          |
+| `ModelType[]` | 关联数组类型           | `students: Student[]`       |
 
 ### 字段修饰符
 

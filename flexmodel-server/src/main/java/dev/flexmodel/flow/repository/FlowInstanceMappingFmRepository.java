@@ -14,9 +14,10 @@ public class FlowInstanceMappingFmRepository extends AbstractRepository implemen
 
   @Override
   public List<FlowInstanceMapping> selectFlowInstanceMappingList(String projectId, String flowInstanceId, String nodeInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(FlowInstanceMapping.class)
-        .where(flowInstanceMapping.flowInstanceId.eq(flowInstanceId)
+        .where(flowInstanceMapping.projectId.eq(projectId)
+          .and(flowInstanceMapping.flowInstanceId.eq(flowInstanceId))
           .and(flowInstanceMapping.nodeInstanceId.eq(nodeInstanceId)))
         .orderBy(flowInstanceMapping.createdAt)
         .execute();
@@ -25,9 +26,10 @@ public class FlowInstanceMappingFmRepository extends AbstractRepository implemen
 
   @Override
   public FlowInstanceMapping selectFlowInstanceMapping(String projectId, String flowInstanceId, String nodeInstanceId) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(FlowInstanceMapping.class)
-        .where(flowInstanceMapping.flowInstanceId.eq(flowInstanceId)
+        .where(flowInstanceMapping.projectId.eq(projectId)
+          .and(flowInstanceMapping.flowInstanceId.eq(flowInstanceId))
           .and(flowInstanceMapping.nodeInstanceId.eq(nodeInstanceId)))
         .executeOne();
     }
@@ -35,17 +37,19 @@ public class FlowInstanceMappingFmRepository extends AbstractRepository implemen
 
   @Override
   public int insert(String projectId, FlowInstanceMapping flowInstanceMapping) {
-    try (Session session = getProjectSession(projectId)) {
+    flowInstanceMapping.setProjectId(projectId);
+    try (Session session = openSession()) {
       return session.dsl().insertInto(FlowInstanceMapping.class).values(flowInstanceMapping).execute();
     }
   }
 
   @Override
   public void updateType(String projectId, String flowInstanceId, String nodeInstanceId, int type) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl().update(FlowInstanceMapping.class)
         .set(flowInstanceMapping.type, type)
-        .where(flowInstanceMapping.flowInstanceId.eq(flowInstanceId)
+        .where(flowInstanceMapping.projectId.eq(projectId)
+          .and(flowInstanceMapping.flowInstanceId.eq(flowInstanceId))
           .and(flowInstanceMapping.nodeInstanceId.eq(nodeInstanceId)))
         .execute();
     }

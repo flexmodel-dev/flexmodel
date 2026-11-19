@@ -19,15 +19,43 @@ import static dev.flexmodel.common.FlexmodelConfig.DEFAULT_SCHEMA_NAME;
 @Unremovable
 @ApplicationScoped
 public class FmJobRepository {
+  @Inject
+  dev.flexmodel.common.ProjectUnitOfWork transactions;
+  @Inject
+  dev.flexmodel.common.messaging.ReliableMessages messages;
 
   @Inject
   SessionFactory sessionFactory;
+
+  private Session openSession() {
+    Session borrowed = dev.flexmodel.common.ProjectUnitOfWork.borrowPlatform();
+    return borrowed == null ? sessionFactory.createSession(DEFAULT_SCHEMA_NAME) : borrowed;
+  }
+
+  public void fired(String schedName, org.quartz.spi.OperableTrigger trigger, org.quartz.JobDetail job, java.util.Date scheduled, Long prev, Long next) {
+    Runnable persist = () -> {
+      updateTriggerFireTimes(schedName, trigger.getKey().getName(), trigger.getKey().getGroup(), prev, next);
+      updateTriggerState(schedName, trigger.getKey().getName(), trigger.getKey().getGroup(), next == null ? Trigger.TriggerState.COMPLETE.name() : Trigger.TriggerState.NORMAL.name());
+    };
+    var data = job.getJobDataMap();
+    if (!"WORKFLOW".equals(data.getString("jobType"))) {
+      persist.run();
+      return;
+    }
+    String app = data.getString("projectId");
+    transactions.executePlatform(app, () -> {
+      persist.run();
+      String key = "schedule:" + data.getString("triggerId") + ":" + data.getInt("generation") + ":" + scheduled.getTime();
+      messages.enqueue(app, key, "flow.schedule.fire", java.util.Map.of("flowId", data.getString("jobId"), "deploymentId", data.getString("deploymentId"), "generation", data.getInt("generation"), "scheduledAt", scheduled.toInstant().toString()));
+      return null;
+    });
+  }
 
   public FmJobRepository() {
   }
 
   public QrtzJobDetail findJobDetail(String schedName, String jobName, String jobGroup) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(QrtzJobDetail.class)
         .where(qrtzJobDetail.schedName.eq(schedName)
@@ -38,13 +66,13 @@ public class FmJobRepository {
   }
 
   public void upsertJobDetail(QrtzJobDetail jobDetail) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl().mergeInto(QrtzJobDetail.class).values(jobDetail).execute();
     }
   }
 
   public void deleteJob(String schedName, String jobName, String jobGroup) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .deleteFrom(QrtzJobDetail.class)
         .where(qrtzJobDetail.schedName.eq(schedName)
@@ -55,7 +83,7 @@ public class FmJobRepository {
   }
 
   public List<QrtzTrigger> findTriggersByJob(String schedName, String jobName, String jobGroup) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(QrtzTrigger.class)
         .where(qrtzTrigger.schedName.eq(schedName)
@@ -66,7 +94,7 @@ public class FmJobRepository {
   }
 
   public QrtzTrigger findTrigger(String schedName, String triggerName, String triggerGroup) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(QrtzTrigger.class)
         .where(qrtzTrigger.schedName.eq(schedName)
@@ -77,31 +105,31 @@ public class FmJobRepository {
   }
 
   public void upsertTrigger(QrtzTrigger trigger) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl().mergeInto(QrtzTrigger.class).values(trigger).execute();
     }
   }
 
   public void upsertSimpleTrigger(QrtzSimpleTrigger simple) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl().mergeInto(QrtzSimpleTrigger.class).values(simple).execute();
     }
   }
 
   public void upsertCronTrigger(QrtzCronTrigger cron) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl().mergeInto(QrtzCronTrigger.class).values(cron).execute();
     }
   }
 
   public void upsertSimpropTrigger(QrtzSimpropTrigger simprop) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl().mergeInto(QrtzSimpropTrigger.class).values(simprop).execute();
     }
   }
 
   public void deleteTrigger(String schedName, String triggerName, String triggerGroup) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .deleteFrom(QrtzTrigger.class)
         .where(qrtzTrigger.schedName.eq(schedName)
@@ -130,7 +158,7 @@ public class FmJobRepository {
   }
 
   public List<QrtzTrigger> findTriggers(String schedName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(QrtzTrigger.class)
         .where(qrtzTrigger.schedName.eq(schedName))
         .execute();
@@ -138,7 +166,7 @@ public class FmJobRepository {
   }
 
   public List<QrtzJobDetail> findJobs(String schedName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(QrtzJobDetail.class)
         .where(qrtzJobDetail.schedName.eq(schedName))
         .execute();
@@ -146,7 +174,7 @@ public class FmJobRepository {
   }
 
   public List<QrtzCalendar> findCalendars(String schedName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(QrtzCalendar.class)
         .where(qrtzCalendar.schedName.eq(schedName))
         .execute();
@@ -154,7 +182,7 @@ public class FmJobRepository {
   }
 
   public void clearAll(String schedName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl().deleteFrom(QrtzSimpleTrigger.class).execute();
       session.dsl().deleteFrom(QrtzCronTrigger.class).execute();
       session.dsl().deleteFrom(QrtzSimpropTrigger.class).execute();
@@ -165,7 +193,7 @@ public class FmJobRepository {
   }
 
   public QrtzCalendar findCalendar(String schedName, String calName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(QrtzCalendar.class)
         .where(qrtzCalendar.schedName.eq(schedName)
           .and(qrtzCalendar.calendarName.eq(calName)))
@@ -174,13 +202,13 @@ public class FmJobRepository {
   }
 
   public void upsertCalendar(QrtzCalendar calendar) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl().mergeInto(QrtzCalendar.class).values(calendar).execute();
     }
   }
 
   public void deleteCalendar(String schedName, String calName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl().
         deleteFrom(QrtzCalendar.class)
         .where(qrtzCalendar.schedName.eq(schedName)
@@ -190,7 +218,7 @@ public class FmJobRepository {
   }
 
   public void updateTriggersStateByCalendarName(String schedName, String calName, String state) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(QrtzTrigger.class)
         .set(qrtzTrigger.triggerState, state)
@@ -201,7 +229,7 @@ public class FmJobRepository {
   }
 
   public long countJobs(String schedName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(QrtzJobDetail.class)
         .where(qrtzJobDetail.schedName.eq(schedName))
         .count();
@@ -209,7 +237,7 @@ public class FmJobRepository {
   }
 
   public long countTriggers(String schedName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(QrtzTrigger.class)
         .where(qrtzTrigger.schedName.eq(schedName))
         .count();
@@ -217,7 +245,7 @@ public class FmJobRepository {
   }
 
   public long countCalendars(String schedName) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(QrtzCalendar.class)
         .where(qrtzCalendar.schedName.eq(schedName))
         .count();
@@ -225,7 +253,7 @@ public class FmJobRepository {
   }
 
   public List<QrtzTrigger> findDueTriggers(String schedName, long noLaterThan, long timeWindow, int maxCount) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(QrtzTrigger.class)
         .where(qrtzTrigger.schedName.eq(schedName)
@@ -240,7 +268,7 @@ public class FmJobRepository {
   }
 
   public void updateTriggerState(String schedName, String triggerName, String triggerGroup, String state) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(QrtzTrigger.class)
         .set(qrtzTrigger.triggerState, state)
@@ -252,7 +280,7 @@ public class FmJobRepository {
   }
 
   public void updateAllTriggersState(String schedName, String state) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(QrtzTrigger.class)
         .set(qrtzTrigger.triggerState, state)
@@ -262,7 +290,7 @@ public class FmJobRepository {
   }
 
   public void blockOtherTriggersOfJob(String schedName, JobKey jobKey, TriggerKey current) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(QrtzTrigger.class)
         .set(qrtzTrigger.triggerState, Trigger.TriggerState.BLOCKED.name())
@@ -277,7 +305,7 @@ public class FmJobRepository {
   }
 
   public void unblockBlockedTriggersOfJob(String schedName, JobKey jobKey) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(QrtzTrigger.class)
         .set(qrtzTrigger.triggerState, Trigger.TriggerState.NORMAL.name())
@@ -290,7 +318,7 @@ public class FmJobRepository {
   }
 
   public QrtzCronTrigger findCronMeta(String schedName, String triggerName, String triggerGroup) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(QrtzCronTrigger.class)
         .where(qrtzCronTrigger.schedName.eq(schedName)
@@ -301,7 +329,7 @@ public class FmJobRepository {
   }
 
   public QrtzSimpleTrigger findSimpleMeta(String schedName, String triggerName, String triggerGroup) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(QrtzSimpleTrigger.class)
         .where(qrtzSimpleTrigger.schedName.eq(schedName)
@@ -312,7 +340,7 @@ public class FmJobRepository {
   }
 
   public QrtzSimpropTrigger findSimpropMeta(String schedName, String triggerName, String triggerGroup) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(QrtzSimpropTrigger.class)
         .where(qrtzSimpropTrigger.schedName.eq(schedName)
@@ -323,7 +351,7 @@ public class FmJobRepository {
   }
 
   public void updateTriggerFireTimes(String schedName, String triggerName, String triggerGroup, Long prev, Long next) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(QrtzTrigger.class)
         .set(qrtzTrigger.prevFireTime, prev)
@@ -336,7 +364,7 @@ public class FmJobRepository {
   }
 
   public void updateJobData(String schedName, JobKey jobKey, JobDataMap jobDataMap) {
-    try (Session session = sessionFactory.createSession(DEFAULT_SCHEMA_NAME)) {
+    try (Session session = openSession()) {
       session.dsl()
         .update(QrtzJobDetail.class)
         .set(qrtzJobDetail.jobData, jobDataMap)

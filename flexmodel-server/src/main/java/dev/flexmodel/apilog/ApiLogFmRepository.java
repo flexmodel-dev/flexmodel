@@ -19,9 +19,9 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public List<ApiRequestLog> find(String projectId, Predicate filter, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl().selectFrom(ApiRequestLog.class)
-        .where(filter)
+        .where(apiRequestLog.projectId.eq(projectId).and(filter))
         .orderBy(apiRequestLog.id, Direction.DESC)
         .page(page, size)
         .execute();
@@ -31,13 +31,13 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public List<LogStat> stat(String projectId, Predicate filter, String fmt) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .select(query -> query
           .field("date", dateFormat(field("created_at"), fmt))
           .field("total", Query.count(field("id"))))
         .from(ApiRequestLog.class)
-        .where(filter)
+        .where(apiRequestLog.projectId.eq(projectId).and(filter))
         .groupBy("date")
         .execute(LogStat.class);
     }
@@ -45,13 +45,13 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public List<LogApiRank> ranking(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .select(query -> query
           .field("name", field("path"))
           .field("total", Query.count(field("id"))))
         .from(ApiRequestLog.class)
-        .where(filter)
+        .where(apiRequestLog.projectId.eq(projectId).and(filter))
         .groupBy("path")
         .orderBy("total", Direction.DESC)
         .page(1, 20)
@@ -61,7 +61,8 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public ApiRequestLog save(String projectId, ApiRequestLog record) {
-    try (Session session = getProjectSession(projectId)) {
+    record.setProjectId(projectId);
+    try (Session session = openSession()) {
       session.dsl()
         .mergeInto(ApiRequestLog.class)
         .values(record)
@@ -72,20 +73,20 @@ public class ApiLogFmRepository extends AbstractRepository implements ApiRequest
 
   @Override
   public void delete(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl()
         .deleteFrom(ApiRequestLog.class)
-        .where(filter)
+        .where(apiRequestLog.projectId.eq(projectId).and(filter))
         .execute();
     }
   }
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(ApiRequestLog.class)
-        .where(filter)
+        .where(apiRequestLog.projectId.eq(projectId).and(filter))
         .count();
     }
   }

@@ -23,6 +23,8 @@ public class FileItem {
 
   private String path;
 
+  private boolean restricted;
+
   public enum FileType {
     file,
     folder

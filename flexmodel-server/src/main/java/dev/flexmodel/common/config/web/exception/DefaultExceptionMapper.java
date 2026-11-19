@@ -1,6 +1,7 @@
 package dev.flexmodel.common.config.web.exception;
 
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
@@ -30,7 +31,7 @@ public class DefaultExceptionMapper implements ExceptionMapper<Exception> {
     body.put("code", -1);
     body.put("message", e.getMessage());
     body.put("success", false);
-    return Response.status(e.getResponse().getStatus()).entity(body).build();
+    return Response.status(e.getResponse().getStatus()).type(MediaType.APPLICATION_JSON).entity(body).build();
   }
 
   public static Response getDefaultResponse(Exception e) {
@@ -38,8 +39,7 @@ public class DefaultExceptionMapper implements ExceptionMapper<Exception> {
     body.put("code", -1);
     body.put("message", e.getMessage());
     body.put("success", false);
-    body.put("errors", e.getStackTrace());
-    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(body).build();
+    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(body).build();
   }
 
 }

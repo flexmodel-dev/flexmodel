@@ -18,17 +18,18 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
 
   @Override
   public JobExecutionLog findById(String projectId, String id) {
-    try (Session session = sessionFactory.createSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(JobExecutionLog.class)
-        .where(jobExecutionLog.id.eq(id))
+        .where(jobExecutionLog.projectId.eq(projectId).and(jobExecutionLog.id.eq(id)))
         .executeOne();
     }
   }
 
   @Override
   public JobExecutionLog save(String projectId, JobExecutionLog jobExecutionLog) {
-    try (Session session = getProjectSession(projectId)) {
+    jobExecutionLog.setProjectId(projectId);
+    try (Session session = openSession()) {
       session.dsl()
         .mergeInto(JobExecutionLog.class)
         .values(jobExecutionLog)
@@ -39,20 +40,20 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
 
   @Override
   public void delete(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       session.dsl()
         .deleteFrom(JobExecutionLog.class)
-        .where(filter)
+        .where(jobExecutionLog.projectId.eq(projectId).and(filter))
         .execute();
     }
   }
 
   @Override
   public List<JobExecutionLog> find(String projectId, Predicate filter, Integer page, Integer size) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(JobExecutionLog.class)
-        .where(filter)
+        .where(jobExecutionLog.projectId.eq(projectId).and(filter))
         .page(page, size)
         .orderByDesc(jobExecutionLog.startTime)
         .execute();
@@ -61,10 +62,10 @@ public class JobExecutionLogFmRepository extends AbstractRepository implements J
 
   @Override
   public long count(String projectId, Predicate filter) {
-    try (Session session = getProjectSession(projectId)) {
+    try (Session session = openSession()) {
       return session.dsl()
         .selectFrom(JobExecutionLog.class)
-        .where(filter)
+        .where(jobExecutionLog.projectId.eq(projectId).and(filter))
         .count();
     }
   }

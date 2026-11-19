@@ -7,3 +7,6 @@
 [submodule "flexmodel-sdks"]
 	path = flexmodel-sdks
 	url = git@github.com:flexmodel-dev/flexmodel-sdks.git
+[submodule "flexmodel-apps-ui"]
+	path = flexmodel-apps-ui
+	url = git@github.com:flexmodel-dev/flexmodel-apps-ui.git

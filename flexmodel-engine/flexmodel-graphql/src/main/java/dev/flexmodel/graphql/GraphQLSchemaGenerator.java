@@ -21,6 +21,7 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
 
     private final Map<String, String> typeMapping = Map.ofEntries(
         Map.entry(ScalarType.STRING.getType(), "String"),
+      Map.entry(ScalarType.TEXT.getType(), "String"),
         Map.entry(ScalarType.FLOAT.getType(), "Float"),
         Map.entry(ScalarType.INT.getType(), "Int"),
         Map.entry(ScalarType.LONG.getType(), "Int"),
@@ -33,6 +34,7 @@ public class GraphQLSchemaGenerator extends AbstractGenerator {
 
     private final Map<String, String> comparisonMapping = Map.ofEntries(
         Map.entry(ScalarType.STRING.getType(), "StringComparisonExp"),
+      Map.entry(ScalarType.TEXT.getType(), "StringComparisonExp"),
         Map.entry(ScalarType.FLOAT.getType(), "FloatComparisonExp"),
         Map.entry(ScalarType.INT.getType(), "IntComparisonExp"),
         Map.entry(ScalarType.LONG.getType(), "IntComparisonExp"),

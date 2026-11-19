@@ -224,6 +224,18 @@ public class JdbcModelRegistry implements ModelRegistry {
         assert fieldType != null;
         TypedField<?, ?> field;
         switch (fieldType) {
+          case TEXT: {
+            TextField textField = new TextField(sqlColumn.getName());
+            field = textField;
+            if (sqlColumn.getDefaultValue() != null) {
+              try {
+                textField.setFixedDefaultValue(sqlColumn.getDefaultValue());
+              } catch (Exception e) {
+                log.warn("Unexpected default value: {}, message: {}", sqlColumn.getDefaultValue(), e.getMessage());
+              }
+            }
+            break;
+          }
           default:
           case STRING: {
             StringField stringField = new StringField(sqlColumn.getName());

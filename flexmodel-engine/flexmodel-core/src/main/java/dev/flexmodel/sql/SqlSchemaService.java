@@ -1,16 +1,19 @@
 package dev.flexmodel.sql;
 
-import dev.flexmodel.model.*;
-import dev.flexmodel.model.field.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.ModelRegistry;
+import dev.flexmodel.model.*;
+import dev.flexmodel.model.field.*;
 import dev.flexmodel.service.BaseService;
 import dev.flexmodel.service.SchemaService;
+import dev.flexmodel.sql.dialect.SqlDialect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -60,10 +63,23 @@ public class SqlSchemaService extends BaseService implements SchemaService {
 
   @Override
   public EntityDefinition createEntity(EntityDefinition entity) {
+    validateTextConstraints(entity);
     // 保存到ModelRegistry中
     modelRegistry.register(sessionContext.getSchemaName(), entity);
     SqlTable sqlTable = toSqlTable(entity);
-    createTable(sqlTable);
+    try {
+      createTable(sqlTable);
+    } catch (SqlExecutionException e) {
+      // 非 failsafe 模式下表已存在的异常仍需抛出，但先按物理表结构补齐缺失列
+      addMissingColumns(sqlTable);
+      throw e;
+    }
+    return entity;
+  }
+
+  @Override
+  public EntityDefinition saveEntity(EntityDefinition entity) {
+    modelRegistry.register(sessionContext.getSchemaName(), entity);
     return entity;
   }
 
@@ -78,6 +94,24 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     // 保存到ModelRegistry中
     modelRegistry.register(sessionContext.getSchemaName(), anEnum);
     return anEnum;
+  }
+
+  /**
+   * 大文本列在多数数据库不能直接建索引/唯一键，提前拒绝并给出明确提示。
+   */
+  private void validateTextConstraints(EntityDefinition entity) {
+    for (TypedField<?, ?> field : entity.getFields()) {
+      if (field instanceof TextField && field.isUnique()) {
+        throw new IllegalArgumentException("Text 类型字段不支持唯一约束: " + field.getName());
+      }
+    }
+    for (IndexDefinition index : entity.getIndexes()) {
+      for (IndexDefinition.Field indexField : index.getFields()) {
+        if (entity.getField(indexField.fieldName()) instanceof TextField) {
+          throw new IllegalArgumentException("Text 类型字段不支持索引: " + indexField.fieldName());
+        }
+      }
+    }
   }
 
   private void createTable(SqlTable sqlTable) {
@@ -100,6 +134,33 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     if (tableCreated) {
       createUniqueKeys(sqlTable);
       createIndexes(sqlTable);
+    } else {
+      // 建表失败多因表已存在：按物理表结构补齐缺失列，保证重启时模型与表同步
+      addMissingColumns(sqlTable);
+    }
+  }
+
+  /**
+   * 表已存在时对比物理列与模型列，为模型新增字段补执行 ALTER TABLE ADD COLUMN。
+   * 不依赖 f_model_registry 中可能已污染的定义，重启即自愈。
+   */
+  private void addMissingColumns(SqlTable sqlTable) {
+    List<SqlTable> existingTables = sessionContext.getSqlMetadata().getTables(sqlTable.getName(), null);
+    if (existingTables.isEmpty()) {
+      return;
+    }
+    Set<String> physicalColumns = new HashSet<>();
+    Iterator<SqlColumn> existingItr = existingTables.get(0).getColumnIterator();
+    while (existingItr.hasNext()) {
+      physicalColumns.add(existingItr.next().getName().toLowerCase(Locale.ROOT));
+    }
+    Iterator<SqlColumn> columnItr = sqlTable.getColumnIterator();
+    while (columnItr.hasNext()) {
+      SqlColumn column = columnItr.next();
+      if (!physicalColumns.contains(column.getName().toLowerCase(Locale.ROOT))) {
+        log.info("Add missing column: {}.{}", column.getTableName(), column.getName());
+        createColumn(column);
+      }
     }
   }
 
@@ -112,9 +173,15 @@ public class SqlSchemaService extends BaseService implements SchemaService {
 
   @Override
   public TypedField<?, ?> createField(TypedField<?, ?> field) {
+    if (field instanceof TextField && field.isUnique()) {
+      throw new IllegalArgumentException("Text 类型字段不支持唯一约束: " + field.getName());
+    }
     // 更新实体定义，添加新字段
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(field.getModelName());
     if (entity != null) {
+      if (entity.getField(field.getName()) != null) {
+        return field;
+      }
       entity.addField(field);
       modelRegistry.register(sessionContext.getSchemaName(), entity);
     }
@@ -128,6 +195,7 @@ public class SqlSchemaService extends BaseService implements SchemaService {
   public TypedField<?, ?> modifyField(TypedField<?, ?> field) {
     // 更新实体定义，修改字段
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(field.getModelName());
+    TypedField<?, ?> previous = entity == null ? null : entity.getField(field.getName());
     if (entity != null) {
       entity.removeField(field.getName());
       entity.addField(field);
@@ -135,7 +203,10 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     }
     try {
       if (!(field instanceof ModelRefField)) {
-        modifyColumn(toSqlColumn(field));
+        SqlColumn sqlColumn = toSqlColumn(field);
+        if (previous == null || previous instanceof ModelRefField || columnDefinitionChanged(previous, sqlColumn)) {
+          modifyColumn(sqlColumn);
+        }
       }
     } catch (Exception e) {
       log.error("Modify field occurred exception： {}", e.getMessage(), e);
@@ -143,9 +214,28 @@ public class SqlSchemaService extends BaseService implements SchemaService {
     return field;
   }
 
+  /**
+   * 仅标签/描述等元数据变化时不执行 DDL，避免无意义的 ALTER 与不支持改列的数据库报错。
+   */
+  private boolean columnDefinitionChanged(TypedField<?, ?> previous, SqlColumn next) {
+    SqlColumn before = toSqlColumn(previous);
+    if (before.isUnique() != next.isUnique()) {
+      return true;
+    }
+    SqlDialect dialect = sessionContext.getSqlDialect();
+    return !dialect.getSqlAlterTableModifyColumnString(before)
+      .equals(dialect.getSqlAlterTableModifyColumnString(next));
+  }
+
   private void modifyColumn(SqlColumn sqlColumn) {
-    String sqlAlterModifyColumnString = sessionContext.getSqlDialect().getSqlAlterTableModifyColumnString(sqlColumn);
-    sessionContext.getJdbcOperations().update(sqlAlterModifyColumnString);
+    SqlDialect dialect = sessionContext.getSqlDialect();
+    if (dialect.supportsModifyColumn()) {
+      String sqlAlterModifyColumnString = dialect.getSqlAlterTableModifyColumnString(sqlColumn);
+      sessionContext.getJdbcOperations().update(sqlAlterModifyColumnString);
+    } else {
+      log.warn("SQL dialect {} does not support modifying columns, DDL skipped: {}.{}",
+        dialect.getClass().getSimpleName(), sqlColumn.getTableName(), sqlColumn.getName());
+    }
     SqlTable sqlTable = new SqlTable();
     sqlTable.setName(sqlColumn.getTableName());
     if (sqlColumn.isUnique() && !sqlColumn.isPrimaryKey()) {
@@ -204,6 +294,12 @@ public class SqlSchemaService extends BaseService implements SchemaService {
   @Override
   public IndexDefinition createIndex(IndexDefinition index) {
     EntityDefinition entity = (EntityDefinition) sessionContext.getModelDefinition(index.getModelName());
+    // 大文本列无法直接建索引（MySQL 需要前缀索引，Oracle/DB2/SQL Server 不支持）
+    for (IndexDefinition.Field indexField : index.getFields()) {
+      if (entity.getField(indexField.fieldName()) instanceof TextField) {
+        throw new IllegalArgumentException("Text 类型字段不支持索引: " + indexField.fieldName());
+      }
+    }
     entity.addIndex(index);
     modelRegistry.register(sessionContext.getSchemaName(), entity);
 

@@ -45,7 +45,7 @@ public class TriggerResourceTest {
 
   /**
    * 与 {@code TriggerService.getJobGroup} 推导规则保持一致：
-   * SCHEDULE + FLOW → "{projectId}_flow_{jobId}"；SCHEDULE + FUNCTION → "{projectId}_fn_{jobId}"。
+   * SCHEDULE + FLOW → "{projectId}_flow_{jobId}"。
    */
   private static final String EXPECTED_FLOW_JOB_GROUP = PROJECT_ID + "_flow_" + TEST_JOB_ID;
 

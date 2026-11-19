@@ -2,7 +2,6 @@ package dev.flexmodel.scheduling;
 
 import dev.flexmodel.SQLiteTestResource;
 import dev.flexmodel.scheduling.job.ScheduledFlowExecutionJob;
-import dev.flexmodel.scheduling.job.ScheduledFunctionExecutionJob;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -141,55 +140,6 @@ public class ScheduledJobExecutionTest {
       JobExecutionContext ctx = capturedCtx.get();
       assertNotNull(ctx);
       assertNotNull(capturedEx.get(), "FailingJob should throw JobExecutionException");
-    } finally {
-      quartz.getListenerManager().removeJobListener(captureListener.getName());
-    }
-  }
-
-  @Test
-  void scheduledFunctionExecutionJob_missingJobId_throwsJobExecutionException() throws Exception {
-    CountDownLatch latch = new CountDownLatch(1);
-    AtomicReference<JobExecutionException> capturedEx = new AtomicReference<>();
-
-    JobListener captureListener = new JobListener() {
-      @Override
-      public String getName() { return "CaptureListener-func-missing"; }
-
-      @Override
-      public void jobToBeExecuted(JobExecutionContext context) {}
-
-      @Override
-      public void jobExecutionVetoed(JobExecutionContext context) {}
-
-      @Override
-      public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
-        if (jobException != null) capturedEx.set(jobException);
-        latch.countDown();
-      }
-    };
-
-    quartz.getListenerManager().addJobListener(captureListener);
-    try {
-      JobDataMap map = new JobDataMap();
-      map.put("triggerId", "test-trigger-id");
-      map.put("jobGroup", "test-job-group");
-      map.put("jobType", "FUNCTION");
-      map.put("projectId", "test-project");
-
-      JobDetail job = JobBuilder.newJob(ScheduledFunctionExecutionJob.class)
-        .withIdentity("job-func-missing", "grp-func-missing")
-        .usingJobData(map)
-        .storeDurably()
-        .build();
-      Trigger trigger = TriggerBuilder.newTrigger()
-        .withIdentity("trig-func-missing", "grp-func-missing")
-        .forJob(job)
-        .startNow()
-        .build();
-
-      quartz.scheduleJob(job, trigger);
-      assertTrue(latch.await(5, TimeUnit.SECONDS));
-      assertNotNull(capturedEx.get(), "ScheduledFunctionExecutionJob without jobId should throw JobExecutionException");
     } finally {
       quartz.getListenerManager().removeJobListener(captureListener.getName());
     }

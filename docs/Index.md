@@ -18,4 +18,3 @@
 | 对象存储    | S3/本地统一存储抽象                       |
 | 身份认证    | RBAC + OIDC/LDAP/JWT                      |
 | AI 工具集成 | MCP 协议开放核心工具                      |
-| 边缘函数    | Deno Functions Runtime 隔离执行（实验性） |

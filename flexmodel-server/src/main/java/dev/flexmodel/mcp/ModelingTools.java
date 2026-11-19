@@ -3,8 +3,9 @@ package dev.flexmodel.mcp;
 import dev.flexmodel.JsonUtils;
 import dev.flexmodel.model.*;
 import dev.flexmodel.modeling.ModelingService;
-import io.quarkiverse.mcp.server.Tool;
-import io.quarkiverse.mcp.server.ToolArg;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
@@ -13,25 +14,32 @@ import java.util.List;
 /**
  * MCP 工具：数据建模
  * 提供模型列表、详情、创建实体/枚举、删除模型、执行FML
+ * <p>
+ * 与 {@link AppTools} 相同，注解使用 langchain4j 定义，MCP Server 自动注册复用。
+ * 访问控制由 {@link McpToolAccess} 统一处理。
  */
 @Slf4j
+@ApplicationScoped
 public class ModelingTools {
 
   @Inject
   ModelingService modelingService;
 
+  @Inject
+  McpToolAccess access;
 
-  @Tool(description = """
+  @Tool(name = "list_models", value = """
     List all models (entities, enums, native queries) in a project. \
     Returns a JSON array of model definitions. Each model has: type (entity/enum/NativeQuery), name, \
     and type-specific fields. Entities include fields array and indexes array. \
     Enums include elements array. Native queries include statement string.\
     """)
   public String list_models(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId
   ) {
     log.info("list_models called, projectId={}", projectId);
     try {
+      access.requireDirectory();
       List<SchemaObject> models = modelingService.findModels(projectId);
       return JsonUtils.toJsonString(models);
     } catch (Exception e) {
@@ -40,17 +48,18 @@ public class ModelingTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "get_model", value = """
     Get the detailed definition of a specific model (entity, enum, or native query). \
     For entities: returns fields array (each with name, type, nullable, unique, etc.) and indexes array. \
     For enums: returns elements array. For native queries: returns the SQL statement.\
     """)
   public String get_model(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "The model name to retrieve, e.g. 'Student', 'UserGender'") String modelName
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("The model name to retrieve, e.g. 'Student', 'UserGender'") String modelName
   ) {
     log.info("get_model called, projectId={}, modelName={}", projectId, modelName);
     try {
+      access.requireDirectory();
       SchemaObject model = modelingService.findModel(projectId, modelName);
       return JsonUtils.toJsonString(model);
     } catch (Exception e) {
@@ -59,10 +68,11 @@ public class ModelingTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "create_entity_model", value = """
     Create a new entity model (maps to a database table) in a project. \
     The entityJson must be a JSON object with type='Entity', name, and fields array. \
-    Supported field types: String (with length, default 255), Int, Long, Float (with precision/scale), \
+    Supported field types: String (with length, default 255), Text (unbounded long text, no length, not indexable), \
+    Int, Long, Float (with precision/scale), \
     Boolean, DateTime, Date, Time, JSON, Enum (EnumRef, with 'from' pointing to an enum name, 'multiple' for array), \
     Relation (with 'from', 'localField', 'foreignField', 'cascadeDelete'). \
     Common field properties: name, type, modelName (must match entity name), nullable (default true), \
@@ -78,14 +88,15 @@ public class ModelingTools {
     prefer the execute_fml tool, which supports FML syntax for defining models and relations in a single call.\
     """)
   public String create_entity_model(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = """
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("""
       Entity definition as JSON string: must contain type='Entity', name, and fields array. \
       Each field must have name, type, and modelName. See tool description for supported types and properties.\
       """) String entityJson
   ) {
     log.info("create_entity_model called, projectId={}, entityJson={}", projectId, entityJson);
     try {
+      access.requireDirectory();
       SchemaObject model = JsonUtils.parseToObject(entityJson, SchemaObject.class);
       SchemaObject created = modelingService.createModel(projectId, model);
       return "Entity model created: " + JsonUtils.toJsonString(created);
@@ -95,7 +106,7 @@ public class ModelingTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "create_enum_model", value = """
     Create a new enum definition in a project. Enums define a fixed set of string values \
     that can be referenced by entity fields via the EnumRef field type (using 'from' property). \
     The enumJson must be a JSON object with name, type='Enum', and elements (string array). \
@@ -104,11 +115,12 @@ public class ModelingTools {
     Example: {"name":"UserGender","type":"Enum","elements":["UNKNOWN","MALE","FEMALE"],"comment":"User gender options"}\
     """)
   public String create_enum_model(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "Enum definition as JSON string: must contain name, type='Enum', and elements (string array)") String enumJson
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("Enum definition as JSON string: must contain name, type='Enum', and elements (string array)") String enumJson
   ) {
     log.info("create_enum_model called, projectId={}, enumJson={}", projectId, enumJson);
     try {
+      access.requireDirectory();
       SchemaObject model = JsonUtils.parseToObject(enumJson, SchemaObject.class);
       SchemaObject created = modelingService.createModel(projectId, model);
       return "Enum model created: " + JsonUtils.toJsonString(created);
@@ -118,17 +130,18 @@ public class ModelingTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "delete_model", value = """
     Delete a model (entity, enum, or native query) from a project. \
     This will remove the model definition and drop the corresponding database table/object if it exists. \
     Use with caution as this operation is destructive.\
     """)
   public String delete_model(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "The model name to delete, e.g. 'Student', 'UserGender'") String modelName
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("The model name to delete, e.g. 'Student', 'UserGender'") String modelName
   ) {
     log.info("delete_model called, projectId={}, modelName={}", projectId, modelName);
     try {
+      access.requireDirectory();
       modelingService.dropModel(projectId, modelName);
       return "Model deleted: " + modelName;
     } catch (Exception e) {
@@ -137,7 +150,7 @@ public class ModelingTools {
     }
   }
 
-  @Tool(description = """
+  @Tool(name = "execute_fml", value = """
     Execute a Flexmodel Modeling Language (FML) string against a project. \
     Use this for creating or updating models, adding fields, establishing relations, and seed data — all in one call. \
     FML syntax overview: \
@@ -198,11 +211,12 @@ public class ModelingTools {
      }
     """)
   public String execute_fml(
-    @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-    @ToolArg(description = "The FML string to execute. Can define multiple models, enums, and relations in one call.") String fml
+    @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+    @P("The FML string to execute. Can define multiple models, enums, and relations in one call.") String fml
   ) {
     log.info("execute_fml called, projectId={}, fml={}", projectId, fml);
     try {
+      access.requireDirectory();
       modelingService.executeFml(projectId, fml);
       return "FML executed successfully.";
     } catch (Exception e) {
@@ -211,15 +225,15 @@ public class ModelingTools {
     }
   }
 
-//   @Tool(description = """
+//   @Tool(name = "sync_schema", value = """
 //     Synchronize model definitions to the database by generating and executing DDL statements \
 //     (CREATE TABLE, ALTER TABLE, etc.). This materializes the model schema into physical database objects. \
 //     Provide a comma-separated list of model names to sync specific models, or pass empty/null to sync all. \
 //     Use with caution as this modifies the database schema directly.\
 //     """)
 //   public String sync_schema(
-//     @ToolArg(description = "The project ID, e.g. 'dev_test', 'default'") String projectId,
-//     @ToolArg(description = "Comma-separated model names to sync, e.g. 'Student,Teacher'. Pass empty string or null to sync all models.") String modelNames
+//     @P("The project ID, e.g. 'dev_test', 'default'") String projectId,
+//     @P(value = "Comma-separated model names to sync, e.g. 'Student,Teacher'. Pass empty string or null to sync all models.", required = false) String modelNames
 //   ) {
 //     Set<String> names = null;
 //     if (modelNames != null && !modelNames.isBlank()) {
